@@ -24,8 +24,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V140.0 — "Granular Heritage".
- * #ЧТО: ПЛАН №618 — Добавлена прозрачность выбора конкретных аксиом в логах.
+ * #ЗАЧЕМ: Блюзовый Мозг V141.0 — "Shuffle Bag & Harmonic Purity".
+ * #ЧТО: 1. Исправлена ротация аксиом (теперь проигрываются ВСЕ фразы трека).
+ *       2. Гармония: 90% гитара, скрипки только на экстремальных Tension.
+ *       3. Жесткий лимит соло (2.5 удара) для устранения "хвостов".
  */
 
 export interface BluesBrainConfig {
@@ -198,7 +200,6 @@ export class BluesBrain {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
 
-    // #ЗАЧЕМ: Расширенный объект для гранулярного логирования в Воркере.
     const activeAxioms = {
         melody: this.currentLickId,
         melodyTrack: this.currentTrackName,
@@ -236,6 +237,10 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
+  /**
+   * #ЗАЧЕМ: Логика выбора следующей аксиомы (Shuffle Bag Edition).
+   * #ЧТО: Теперь гарантирует проигрывание ВСЕХ фраз выбранных треков перед повтором.
+   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
@@ -254,20 +259,25 @@ export class BluesBrain {
           });
 
           if (cloudPool.length > 0) {
-              const freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              const finalPool = (freshPool.length === 0 && isFiltered) ? cloudPool : freshPool;
-
-              if (finalPool.length > 0) {
-                  const selected = finalPool[this.random.nextInt(finalPool.length)];
-                  this.currentLickId = selected.id;
-                  this.currentTrackName = selected.compositionId; // Запоминаем имя трека
-                  this.state.recentLicks.push(selected.id);
-                  if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
-                  
-                  const rawPhrase = decompressCompactPhrase(selected.phrase);
-                  this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
-                  return;
+              // --- SHUFFLE BAG LOGIC ---
+              let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              
+              // Если мешок пуст — значит мы проиграли все аксиомы. Трясем мешок (чистим историю для этих ID).
+              if (freshPool.length === 0) {
+                  const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
+                  this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
+                  freshPool = cloudPool;
               }
+
+              const selected = freshPool[this.random.nextInt(freshPool.length)];
+              this.currentLickId = selected.id;
+              this.currentTrackName = selected.compositionId; 
+              this.state.recentLicks.push(selected.id);
+              if (this.state.recentLicks.length > 30) this.state.recentLicks.shift();
+              
+              const rawPhrase = decompressCompactPhrase(selected.phrase);
+              this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+              return;
           }
       }
 
@@ -306,6 +316,7 @@ export class BluesBrain {
       const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
       const third = isMin ? 3 : 4;
       const fifth = 7;
+      const seventh = 10;
       const inversionIdx = Math.floor(this.random.next() * 3); 
 
       bassEvents.forEach(bass => {
@@ -322,7 +333,10 @@ export class BluesBrain {
           if (bass.time === 0 || bass.time === 2.0 || tension > 0.6) {
               const root = bass.note + 24;
               let pitches = [root + third, root + fifth];
-              if (tension > 0.55) pitches.push(root + 14); 
+              
+              // Добавляем украшательства (Extensions)
+              if (tension > 0.55) pitches.push(root + seventh); 
+              if (tension > 0.75) pitches.push(root + 14); // 9-я ступень
 
               pitches.forEach((p, i) => {
                   let finalPitch = p;
@@ -384,7 +398,10 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
-        duration = Math.min(duration, 4.0); 
+        
+        // #ЗАЧЕМ: Устранение "длиннющих нот".
+        // #ЧТО: Жесткий лимит 2.5 удара (чуть больше половины такта) для Lead.
+        duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
         const exhaleModifier = 1.0 - (phraseProgress * 0.3);
@@ -533,11 +550,24 @@ export class BluesBrain {
       this.state.currentMutationType = types[this.random.nextInt(types.length)];
   }
 
+  /**
+   * #ЗАЧЕМ: Управление тембральной драматургией.
+   * #ЧТО: Внедрено правило 90% гитарных аккордов. Скрипки только при Tension > 0.88 или < 0.15.
+   */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
     if (epoch % 4 !== 0 && epoch !== 0) return;
     if (hints.melody) (hints as any).melody = tension > 0.8 ? 'guitar_shineOn' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
-    if (hints.harmony) (hints as any).harmony = tension > 0.7 ? 'violin' : 'guitarChords';
+    
+    // --- HARMONY BALANCE PROTOCOL ---
+    if (hints.harmony) {
+        let target = 'guitarChords';
+        // Скрипки только на экстремальных пиках или провалах
+        if (tension > 0.88 || tension < 0.15) {
+            target = 'violin';
+        }
+        (hints as any).harmony = target;
+    }
   }
 
   private evolveEmotion(epoch: number): void {
