@@ -16,7 +16,10 @@ import {
   Eye,
   EyeOff,
   Trash2,
-  Globe
+  Globe,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -30,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, query } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
@@ -62,6 +65,13 @@ export default function HypercubeDashboard() {
   const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
+  
+  // Renaming State
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
+  const [editNarrativeValue, setEditNarrativeValue] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -258,6 +268,40 @@ export default function HypercubeDashboard() {
     }
   };
 
+  const handleRenameTrack = async (oldId: string, newId: string, licks: any[]) => {
+    if (!newId || oldId === newId) {
+        setEditingGroupId(null);
+        return;
+    }
+    setIsProcessing(true);
+    try {
+        const batch = writeBatch(db);
+        licks.forEach(ax => {
+            const ref = doc(db, 'heritage_axioms', ax.id);
+            batch.update(ref, { compositionId: newId });
+        });
+        await batch.commit();
+        toast({ title: "Track Renamed", description: `Updated ${licks.length} axioms to "${newId}"` });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Rename Failed" });
+    } finally {
+        setIsProcessing(false);
+        setEditingGroupId(null);
+    }
+  };
+
+  const handleUpdateNarrative = async (axiomId: string, newNarrative: string) => {
+    try {
+        const ref = doc(db, 'heritage_axioms', axiomId);
+        await updateDoc(ref, { narrative: newNarrative });
+        toast({ title: "Narrative Updated" });
+    } catch (e) {
+        toast({ variant: "destructive", title: "Update Failed" });
+    } finally {
+        setEditingAxiomId(null);
+    }
+  };
+
   const handlePurgeAll = async () => {
     if (!window.confirm("MASTER PURGE: Wipe entire database? This cannot be undone.")) return;
     setIsProcessing(true);
@@ -375,15 +419,40 @@ export default function HypercubeDashboard() {
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                           <div className="flex items-center justify-between px-4 hover:bg-primary/5 transition-colors group">
-                            <AccordionTrigger className="flex-grow hover:no-underline py-4">
-                              <div className="flex items-center gap-4 text-left">
+                            <div className="flex items-center gap-4 py-4 flex-grow">
                                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
-                                <div className="space-y-0.5">
-                                  <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors">{compId.replace(/_/g, ' ')}</div>
-                                  <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Genre: {licks[0].genre} | Mood: {licks[0].commonMood}</div>
-                                </div>
-                              </div>
-                            </AccordionTrigger>
+                                
+                                {editingGroupId === compId ? (
+                                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                        <Input 
+                                            value={editNameValue} 
+                                            onChange={(e) => setEditNameValue(e.target.value)}
+                                            className="h-8 text-sm w-[300px]"
+                                            autoFocus
+                                        />
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => handleRenameTrack(compId, editNameValue, licks)}>
+                                            <Check className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setEditingGroupId(null)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
+                                        setEditingGroupId(compId);
+                                        setEditNameValue(compId);
+                                    }}>
+                                        <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                                            {compId.replace(/_/g, ' ')}
+                                            <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter">Genre: {licks[0].genre} | Mood: {licks[0].commonMood}</div>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <AccordionTrigger className="hover:no-underline w-auto px-4" />
+                            
                             <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -391,12 +460,39 @@ export default function HypercubeDashboard() {
                           <AccordionContent className="p-0 bg-muted/10 border-t">
                             <div className="divide-y divide-border/20">
                               {licks.map((ax: any, idx: number) => (
-                                <div key={ax.id} className="flex items-center gap-4 p-3 pl-12 hover:bg-primary/5 transition-colors">
+                                <div key={ax.id} className="flex items-center gap-4 p-3 pl-12 hover:bg-primary/5 transition-colors group/row">
                                   <Badge variant="outline" className="text-[10px] uppercase font-black w-16 justify-center bg-background/50">{ax.role}</Badge>
+                                  
                                   <div className="flex-grow min-w-0">
-                                    <div className="text-xs italic text-muted-foreground line-clamp-1 opacity-80">{ax.narrative}</div>
-                                    <div className="text-[9px] font-mono text-muted-foreground mt-0.5">Vector: [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</div>
+                                    {editingAxiomId === ax.id ? (
+                                        <div className="flex items-center gap-2">
+                                            <Input 
+                                                value={editNarrativeValue} 
+                                                onChange={(e) => setEditNarrativeValue(e.target.value)}
+                                                className="h-7 text-xs w-full"
+                                                autoFocus
+                                            />
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => handleUpdateNarrative(ax.id, editNarrativeValue)}>
+                                                <Check className="h-3.5 w-3.5" />
+                                            </Button>
+                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingAxiomId(null)}>
+                                                <X className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="cursor-pointer" onClick={() => {
+                                            setEditingAxiomId(ax.id);
+                                            setEditNarrativeValue(ax.narrative || "");
+                                        }}>
+                                            <div className="text-xs italic text-muted-foreground line-clamp-1 opacity-80 flex items-center gap-2">
+                                                {ax.narrative}
+                                                <Edit2 className="h-2.5 w-2.5 opacity-0 group-hover/row:opacity-100 transition-opacity" />
+                                            </div>
+                                            <div className="text-[9px] font-mono text-muted-foreground mt-0.5">Vector: [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</div>
+                                        </div>
+                                    )}
                                   </div>
+                                  
                                   <div className="flex items-center gap-1 shrink-0">
                                     <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-8 w-8 hover:bg-primary/20">
                                       {playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}
