@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.4 — "Real-time Cloud Sync".
- * #ЧТО: ПЛАН №631 — Добавлен метод refreshCloudAxioms для горячего обновления списка треков.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.5 — "Timer Logic Restoration".
+ * #ЧТО: ПЛАН №632 — Добавлены недостающие функции handleTimerDurationChange и handleToggleTimer.
  */
 'use client';
 
@@ -24,7 +24,7 @@ export type AuraGrooveProps = {
   selectedCompositionIds: string[];
   toggleCompositionFilter: (id: string) => void;
   clearCompositionFilters: () => void;
-  refreshCloudAxioms: () => Promise<void>; // #ЗАЧЕМ: Горячее обновление списка треков.
+  refreshCloudAxioms: () => Promise<void>; 
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
@@ -286,6 +286,24 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const clearCompositionFilters = () => setSelectedCompositionIds([]);
+
+  // --- TIMER HANDLERS ---
+  const handleTimerDurationChange = (minutes: number) => {
+    const seconds = minutes * 60;
+    setTimerSettings(prev => ({
+      ...prev,
+      duration: seconds,
+      timeLeft: seconds
+    }));
+  };
+
+  const handleToggleTimer = () => {
+    setTimerSettings(prev => ({
+      ...prev,
+      isActive: !prev.isActive,
+      timeLeft: prev.duration // Reset time left when starting/stopping
+    }));
+  };
 
   useEffect(() => {
     if (!timerSettings.isActive) return;
