@@ -1,6 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.6 — "Headroom & Sonic Cube".
- * #ЧТО: ПЛАН №620 — Ребалансировка усиления для предотвращения клиппинга.
+ * #ЗАЧЕМ: Audio Engine Context V7.7 — "Hot Cloud Sync".
+ * #ЧТО: 1. Добавлен метод refreshCloudAxioms для принудительного перечитывания базы.
+ *       2. Ребалансировка усиления сохранена.
  */
 'use client';
 
@@ -24,10 +25,6 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 // --- Constants ---
-/** 
- * #ЗАЧЕМ: Безопасный баланс ансамбля (Headroom Protocol).
- * #ЧТО: Значения снижены на 20-30%, чтобы сумма всех слоев не вызывала искажений.
- */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.60, 
   melody: 0.70, 
@@ -50,6 +47,7 @@ interface AudioEngineContextType {
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
+  refreshCloudAxioms: () => Promise<void>; // #ЗАЧЕМ: Ручное обновление Наследия.
   resetWorker: () => void;
   setVolume: (part: string, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: any) => void;
@@ -104,29 +102,35 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
   const recorderDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
 
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   const { toast } = useToast();
   const db = useFirestore();
 
+  // #ЗАЧЕМ: Вынос логики синхронизации в отдельную функцию.
+  const refreshCloudAxioms = useCallback(async () => {
+    if (!db) return;
+    try {
+      const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
+      const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const uniqueIds = Array.from(new Set(axioms.map(ax => (ax as any).compositionId))).filter(Boolean).sort() as string[];
+      setAvailableCompositions(uniqueIds);
+      if (workerRef.current) {
+        workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+      }
+      console.log(`%c[CloudDNA] Synchronized ${axioms.length} axioms.`, 'color: #4ade80; font-weight: bold;');
+    } catch (e) {
+      console.error('[CloudDNA] Sync failed:', e);
+    }
+  }, [db]);
+
   useEffect(() => {
     if (isInitialized && db) {
-      const fetchCloudAxioms = async () => {
-        try {
-          const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
-          const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          const uniqueIds = Array.from(new Set(axioms.map(ax => (ax as any).compositionId))).filter(Boolean).sort();
-          setAvailableCompositions(uniqueIds);
-          if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-        } catch (e) { console.error('[CloudDNA] Sync failed:', e); }
-      };
-      fetchCloudAxioms();
+      refreshCloudAxioms();
     }
-  }, [isInitialized, db]);
+  }, [isInitialized, db, refreshCloudAxioms]);
 
   const stopAllSounds = useCallback(() => {
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
@@ -280,6 +284,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 workerRef.current.postMessage({ command: 'update_settings', data: s });
             }
         },
+        refreshCloudAxioms,
         resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
         setVolume: setVolumeCallback, 
         setInstrument: (async (part: string, name: string) => {

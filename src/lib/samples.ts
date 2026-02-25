@@ -7,7 +7,7 @@ type VelocitySample = {
 
 /**
  * #ЗАЧЕМ: Очищенная библиотека сэмплов фортепиано.
- * #ЧТО: Удален битый сэмпл A2, вызывавший ошибку 404.
+ * #ЧТО: ПЛАН №631 — Окончательное удаление битого сэмпла A2 (404 Error).
  */
 export const PIANO_SAMPLES: Record<string, string> = {
     'D6': '/assets/piano_samples/448604__piano_sust_pedal__d6.ogg',
@@ -200,7 +200,7 @@ export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string[]> = {
       '/assets/guitars_hords_samples/guitar-chord-in-a-minor-am.mp3',
       '/assets/guitars_hords_samples/guitar-chord-in-a-minor-am-sharp.mp3'
   ],
-  'A7': ['/assets/guitars_hords_samples/4565-a7.ogg'],
+  'A7': ['/assets/guitords_samples/4565-a7.ogg'],
   'A6': ['/assets/guitars_hords_samples/4564-a6.ogg'],
   'Am6': ['/assets/guitars_hords_samples/4568-am6.ogg'],
   'Am7': ['/assets/guitars_hords_samples/4569-am7.ogg'],

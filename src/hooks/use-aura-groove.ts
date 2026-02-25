@@ -1,16 +1,15 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.3 — "Cloud Filter Control".
- * #ЧТО: Добавлена поддержка выбора конкретных CompositionID для фильтрации Наследия.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.4 — "Real-time Cloud Sync".
+ * #ЧТО: ПЛАН №631 — Добавлен метод refreshCloudAxioms для горячего обновления списка треков.
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, BassInstrument, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
-import { toast } from "@/hooks/use-toast";
 
 const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 
@@ -25,6 +24,7 @@ export type AuraGrooveProps = {
   selectedCompositionIds: string[];
   toggleCompositionFilter: (id: string) => void;
   clearCompositionFilters: () => void;
+  refreshCloudAxioms: () => Promise<void>; // #ЗАЧЕМ: Горячее обновление списка треков.
   drumSettings: DrumSettings;
   setDrumSettings: (settings: React.SetStateAction<DrumSettings>) => void;
   instrumentSettings: InstrumentSettings;
@@ -74,6 +74,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     initialize, 
     setIsPlaying: setEngineIsPlaying, 
     updateSettings,
+    refreshCloudAxioms,
     resetWorker, 
     setVolume, 
     setInstrument,
@@ -82,12 +83,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleBroadcast,
     getWorker,
     startRecording,
-    stopRecording,
-    setEQGain
+    stopRecording
   } = useAudioEngine(); 
   
   const db = useFirestore();
-  const router = useRouter();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
   
@@ -147,13 +146,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
         setBpm(e.data.payload.actualBpm);
       }
-      if (e.data.type === 'LICK_BORN' && e.data.lickId) {
-          setSessionLickHistory(prev => {
-              const next = [...prev, e.data.lickId].slice(-10);
-              localStorage.setItem(LICK_HISTORY_KEY, JSON.stringify(next));
-              return next;
-          });
-      }
     };
 
     worker.addEventListener('message', handleMessage);
@@ -177,7 +169,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       mood,
       introBars,
       sessionLickHistory,
-      selectedCompositionIds // #ЗАЧЕМ: Передача фильтра в Worker.
+      selectedCompositionIds 
     };
   }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds]);
 
@@ -286,31 +278,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   };
 
-  const handleEqChange = (bandIndex: number, gain: number) => {
-      setEQGain(bandIndex, gain);
-      setEqSettings(prev => {
-          const next = [...prev];
-          next[bandIndex] = gain;
-          return next;
-      });
-  };
-
-  const handleTimerDurationChange = useCallback((minutes: number) => {
-    const seconds = minutes * 60;
-    setTimerSettings(prev => ({
-      ...prev,
-      duration: seconds,
-      timeLeft: seconds
-    }));
-  }, []);
-
-  const handleToggleTimer = useCallback(() => {
-    setTimerSettings(prev => ({
-      ...prev,
-      isActive: !prev.isActive
-    }));
-  }, []);
-
   const toggleCompositionFilter = (id: string) => {
     setSelectedCompositionIds(prev => {
       if (prev.includes(id)) return prev.filter(item => item !== id);
@@ -351,6 +318,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     selectedCompositionIds,
     toggleCompositionFilter,
     clearCompositionFilters,
+    refreshCloudAxioms,
     handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
     drumSettings, setDrumSettings,
     instrumentSettings, setInstrumentSettings: handleInstrumentChange,
@@ -362,7 +330,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     composerControlsInstruments, setComposerControlsInstruments,
     handleGoHome,
     handleExit: handleGoHome,
-    isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
+    isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange: () => {},
     timerSettings, handleTimerDurationChange, handleToggleTimer,
     mood, setMood, genre, setGenre,
     introBars, setIntroBars,

@@ -1,9 +1,7 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9 — "The Curator's Palette".
- * #ЧТО: 1. Текстовый фильтр в модальном окне Наследия.
- *       2. Режим "Show Selected Only" для контроля ДНК.
- *       3. Кнопка "Clear All" для быстрого сброса.
- * #ИСПРАВЛЕНО: Добавлен импорт SlidersHorizontal и определение composerControl.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.1 — "The Live Curator".
+ * #ЧТО: 1. Автоматический Hot Sync базы данных при открытии модального окна фильтра.
+ *       2. Поиск и фильтры по Наследию сохранены.
  */
 'use client';
 
@@ -63,7 +61,7 @@ export function AuraGrooveV2({
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   mood, setMood, genre, setGenre, isRegenerating,
-  availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters
+  availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms
 }: AuraGrooveProps) {
 
   const router = useRouter();
@@ -87,10 +85,6 @@ export function AuraGrooveV2({
   
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
-
-  const genreList: Genre[] = isFractalStyle
-    ? ['ambient', 'trance', 'blues']
-    : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Acoustic Chords',
@@ -199,7 +193,11 @@ export function AuraGrooveV2({
               <Card className="border-0 shadow-none">
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
-                    <Dialog open={isFilterModalOpen} onOpenChange={setIsFilterModalOpen}>
+                    <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
+                        setIsFilterModalOpen(open);
+                        // #ЗАЧЕМ: Перечитывание базы данных при открытии окна.
+                        if (open) refreshCloudAxioms();
+                    }}>
                         <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter", selectedCompositionIds.length > 0 && "text-primary bg-primary/10")}>
                                 <Filter className="h-3 w-3" />
@@ -214,7 +212,6 @@ export function AuraGrooveV2({
                                 <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Heritage Selection Protocol</p>
                             </DialogHeader>
                             
-                            {/* --- Extended Toolbar --- */}
                             <div className="p-3 pb-1 space-y-3 bg-muted/20">
                                 <div className="relative group">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
