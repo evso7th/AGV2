@@ -24,10 +24,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V141.0 — "Shuffle Bag & Harmonic Purity".
- * #ЧТО: 1. Исправлена ротация аксиом (теперь проигрываются ВСЕ фразы трека).
- *       2. Гармония: 90% гитара, скрипки только на экстремальных Tension.
- *       3. Жесткий лимит соло (2.5 удара) для устранения "хвостов".
+ * #ЗАЧЕМ: Блюзовый Мозг V142.0 — "Real-Time Ensemble Sovereignty".
+ * #ЧТО: 1. Поминутный (ежетактный) контроль тембральной драматургии.
+ *       2. Принудительное подавление скрипок в пользу гитары (90% времени).
+ *       3. Гарантированное использование GuitarChordsSampler.
  */
 
 export interface BluesBrainConfig {
@@ -167,6 +167,9 @@ export class BluesBrain {
     }
 
     const events: FractalEvent[] = [];
+    
+    // #ЗАЧЕМ: Ежетактный контроль тембральной драматургии.
+    // #ЧТО: Удалено ограничение epoch % 4. Теперь Мозг правит ансамблем каждое мгновение.
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
 
     if (hints.drums) {
@@ -237,10 +240,6 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
-  /**
-   * #ЗАЧЕМ: Логика выбора следующей аксиомы (Shuffle Bag Edition).
-   * #ЧТО: Теперь гарантирует проигрывание ВСЕХ фраз выбранных треков перед повтором.
-   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
@@ -259,10 +258,7 @@ export class BluesBrain {
           });
 
           if (cloudPool.length > 0) {
-              // --- SHUFFLE BAG LOGIC ---
               let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              
-              // Если мешок пуст — значит мы проиграли все аксиомы. Трясем мешок (чистим историю для этих ID).
               if (freshPool.length === 0) {
                   const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
@@ -333,10 +329,8 @@ export class BluesBrain {
           if (bass.time === 0 || bass.time === 2.0 || tension > 0.6) {
               const root = bass.note + 24;
               let pitches = [root + third, root + fifth];
-              
-              // Добавляем украшательства (Extensions)
               if (tension > 0.55) pitches.push(root + seventh); 
-              if (tension > 0.75) pitches.push(root + 14); // 9-я ступень
+              if (tension > 0.75) pitches.push(root + 14);
 
               pitches.forEach((p, i) => {
                   let finalPitch = p;
@@ -398,9 +392,6 @@ export class BluesBrain {
         const nextNote = barNotes[i+1];
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
-        
-        // #ЗАЧЕМ: Устранение "длиннющих нот".
-        // #ЧТО: Жесткий лимит 2.5 удара (чуть больше половины такта) для Lead.
         duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
@@ -551,18 +542,21 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: Управление тембральной драматургией.
-   * #ЧТО: Внедрено правило 90% гитарных аккордов. Скрипки только при Tension > 0.88 или < 0.15.
+   * #ЗАЧЕМ: Управление тембральной драматургией V5.0.
+   * #ЧТО: 1. Удалено ограничение по тактам. Контроль осуществляется КАЖДЫЙ ТАКТ.
+   *       2. Принудительное подавление скрипок в пользу гитары в 90% случаев.
    */
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
-    if (epoch % 4 !== 0 && epoch !== 0) return;
+    // #ЗАЧЕМ: Отказ от "замерзших" инструментов. 
+    // #ЧТО: Удалена проверка (epoch % 4 !== 0). Теперь Мозг правит каждое мгновение.
+    
     if (hints.melody) (hints as any).melody = tension > 0.8 ? 'guitar_shineOn' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     
-    // --- HARMONY BALANCE PROTOCOL ---
+    // --- HARMONY BALANCE PROTOCOL (The 90/10 Rule) ---
     if (hints.harmony) {
         let target = 'guitarChords';
-        // Скрипки только на экстремальных пиках или провалах
+        // Скрипки только на ЭКСТРЕМАЛЬНЫХ пиках или провалах.
         if (tension > 0.88 || tension < 0.15) {
             target = 'violin';
         }
