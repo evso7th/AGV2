@@ -8,8 +8,8 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 
 
 /**
- * Manages the "harmony" layer. 
- * Updated to support global volume sovereignty across all internal samplers.
+ * #ЗАЧЕМ: Менеджер слоя гармонии.
+ * #ЧТО: ПЛАН №616 — Удален метод setVolume для предотвращения конфликтов с системной шиной.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -17,7 +17,6 @@ export class HarmonySynthManager {
     private activeInstrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none' = 'piano';
     public isInitialized = false;
 
-    // Sampler Instruments
     private piano: SamplerPlayer;
     private guitarChords: GuitarChordsSampler;
     private violin: ViolinSamplerPlayer;
@@ -48,8 +47,8 @@ export class HarmonySynthManager {
         
         this.isInitialized = true;
         
-        // Default volumes
-        this.piano.setVolume(0.8);
+        // #ЗАЧЕМ: Внутренняя балансировка. Общая громкость теперь снаружи.
+        this.piano.setVolume(0.85);
         this.guitarChords.setVolume(1.0);
         this.violin.setVolume(1.0);
         this.flute.setVolume(0.8);
@@ -90,14 +89,6 @@ export class HarmonySynthManager {
                 this.violin.schedule(notes, barStartTime);
                 break;
         }
-    }
-
-    public setVolume(volume: number) {
-        // #ЗАЧЕМ: Трансляция громкости всем участникам слоя гармонии.
-        this.piano.setVolume(volume * 0.8);
-        this.guitarChords.setVolume(volume);
-        this.violin.setVolume(volume);
-        this.flute.setVolume(volume * 0.8);
     }
 
     public setInstrument(instrumentName: 'piano' | 'guitarChords' | 'violin' | 'flute' | 'none') {

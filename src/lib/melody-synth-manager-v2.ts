@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,8 +9,8 @@ import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
 import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
- * A V2 manager for melody and bass parts.
- * Updated to support HYBRID transients and heuristic preset switching.
+ * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
+ * #ЧТО: ПЛАН №616 — Удален метод setPreampGain. Громкость теперь диктуется Context-шиной.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -19,12 +18,13 @@ export class MelodySynthManagerV2 {
     public isInitialized = false;
     private partName: 'melody' | 'bass';
     
-    // Internal Instruments
     private synth: any | null = null; 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
     private darkTelecasterSampler: DarkTelecasterSampler;
     private cs80Sampler: CS80GuitarSampler;
+    
+    // #ЗАЧЕМ: preamp теперь служит только внутренним сумматором, громкость всегда 1.0.
     private preamp: GainNode;
 
     private activePresetName: string = 'none';
@@ -53,8 +53,6 @@ export class MelodySynthManagerV2 {
 
     async init() {
         if (this.isInitialized) return;
-        console.log(`[MelodySynthManagerV2] Initializing for ${this.partName}...`);
-        
         const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
         await this.setInstrument(initialPresetName);
         this.isInitialized = true;
@@ -73,7 +71,6 @@ export class MelodySynthManagerV2 {
         if (!preset) return;
         
         try {
-            console.log(`[MelodySynthManagerV2] Loading: ${presetName} for ${this.partName}`);
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -96,13 +93,11 @@ export class MelodySynthManagerV2 {
             params: e.params 
         }));
         
-        // --- HEURISTIC PRESET SWITCH (V2.2) ---
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
                 const isPhraseBoundary = barCount % 4 === 0;
                 const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none';
-                
                 if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
                     await this.setInstrument(mappedHint);
                 }
@@ -119,7 +114,6 @@ export class MelodySynthManagerV2 {
 
         const currentActive = this.activePresetName;
         
-        // --- Sampler Routing ---
         if (currentActive === 'cs80') {
             this.cs80Sampler.schedule(notesToPlay, barStartTime, tempo);
             return;
@@ -142,21 +136,16 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // --- HYBRID TRANSIENT TRIGGER ---
-        // #ЗАЧЕМ: Возврат "укуса" гитары. 
-        // #ЧТО: Если играет синтезаторная гитара (мелодия), подмешиваем 20мс сэмпла Телекастера.
         if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
-
             if (isFinite(note.duration) && note.duration > 0) {
                  this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }
@@ -165,17 +154,14 @@ export class MelodySynthManagerV2 {
     
     public async setInstrument(instrumentName: string) {
        if (instrumentName === this.activePresetName) return;
-
        if (this.synth) {
            this.synth.disconnect();
            this.synth = null;
        }
-
        if (instrumentName === 'none') {
             this.activePresetName = 'none';
             return;
        }
-
        const isBassPart = this.partName === 'bass';
        const preset = isBassPart
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
@@ -186,12 +172,6 @@ export class MelodySynthManagerV2 {
        } else {
            this.activePresetName = instrumentName;
        }
-    }
-
-    public setPreampGain(volume: number) {
-        if (this.preamp) {
-            this.preamp.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
-        }
     }
 
     public allNotesOff() {

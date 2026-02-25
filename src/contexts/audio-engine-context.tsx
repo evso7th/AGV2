@@ -1,6 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.3 — "Selective Cloud DNA".
- * #ЧТО: Внедрена поддержка извлечения уникальных CompositionID для фильтрации.
+ * #ЗАЧЕМ: Audio Engine Context V7.4 — "Unified Mixer Sovereignty".
+ * #ЧТО: 1. Централизация управления громкостью в системных узлах gainNodesRef.
+ *       2. Удаление двойного масштабирования (менеджер + контекст).
+ *       3. Синхронизация VOICE_BALANCE с ключами InstrumentSettings.
  */
 'use client';
 
@@ -24,26 +26,16 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 
 // --- Constants ---
-const VOICE_BALANCE: Record<InstrumentPart, number> = {
-  bass: 0.55, 
+// #ЗАЧЕМ: Золотой баланс ансамбля.
+const VOICE_BALANCE: Record<string, number> = {
+  bass: 0.85, 
   melody: 1.0, 
-  accompaniment: 0.6, 
-  drums: 1.0, 
-  effects: 0.6, 
-  sparkles: 0.7, 
-  piano: 1.0, 
-  violin: 0.8, 
-  flute: 0.8, 
-  guitarChords: 0.9,
-  acousticGuitarSolo: 0.9, 
-  blackAcoustic: 0.45, 
-  sfx: 0.8, 
-  harmony: 0.8,
-  telecaster: 0.45, 
-  darkTelecaster: 0.45, 
-  cs80: 0.25, 
-  guitar_shineOn: 0.72, 
-  pianoAccompaniment: 0.7, 
+  accompaniment: 0.75, 
+  drums: 0.85, 
+  sparkles: 0.6, 
+  sfx: 0.7, 
+  harmony: 0.85,
+  pianoAccompaniment: 0.75, 
 };
 
 // --- React Context ---
@@ -53,12 +45,12 @@ interface AudioEngineContextType {
   isPlaying: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
-  availableCompositions: string[]; // #ЗАЧЕМ: Список уникальных треков из облака.
+  availableCompositions: string[];
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   resetWorker: () => void;
-  setVolume: (part: InstrumentPart, volume: number) => void;
+  setVolume: (part: string, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: any) => void;
   setBassTechnique: (technique: BassTechnique) => void;
   setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
@@ -115,33 +107,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
-  const gainNodesRef = useRef<any>({});
+  const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   const { toast } = useToast();
   const db = useFirestore();
 
-  /**
-   * #ЗАЧЕМ: Фоновая загрузка аксиом из облака и извлечение уникальных CompositionID.
-   */
   useEffect(() => {
     if (isInitialized && db) {
       const fetchCloudAxioms = async () => {
         try {
-          const axiomsCol = collection(db, 'heritage_axioms');
-          const snapshot = await getDocs(query(axiomsCol));
+          const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
           const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          
-          // Извлекаем уникальные ID композиций для фильтра в UI
           const uniqueIds = Array.from(new Set(axioms.map(ax => (ax as any).compositionId))).filter(Boolean).sort();
           setAvailableCompositions(uniqueIds);
-
-          if (workerRef.current) {
-            console.log(`%c[CloudDNA] Transmitting ${axioms.length} axioms to Worker. Unique tracks: ${uniqueIds.length}`, 'color: #00ced1; font-weight: bold;');
-            workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-          }
-        } catch (e) {
-          console.error('[CloudDNA] Sync failed:', e);
-        }
+          if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+        } catch (e) { console.error('[CloudDNA] Sync failed:', e); }
       };
       fetchCloudAxioms();
     }
@@ -181,25 +161,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
-    
-    if (bassEvents.length > 0 && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
-    }
-    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-    }
-    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
-    }
-    if (harmonyManagerRef.current && harmonyEvents.length > 0) {
-        harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
-    }
-    if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) {
-        pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
-    }
-    if (sfxSynthManagerRef.current && sfxEvents.length > 0) {
-        sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
-    }
+    if (bassEvents.length > 0 && bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
+    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
+    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
+    if (harmonyManagerRef.current && harmonyEvents.length > 0) harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
+    if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
+    if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
   }, []);
 
   const initialize = useCallback(async () => {
@@ -208,9 +175,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setIsInitializing(true);
 
     try {
-        if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
-        }
+        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
 
@@ -228,44 +193,28 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
                 gainNodesRef.current[p] = context.createGain();
-                gainNodesRef.current[p].connect(masterGainNodeRef.current);
+                gainNodesRef.current[p].connect(masterGainNodeRef.current!);
             }
         });
 
-        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
+        if (!drumMachineRef.current) drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
         if (!blackGuitarSamplerRef.current) blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
-        
-        if (!melodyManagerV2Ref.current) {
-            melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
-        }
-        
-        if (!bassManagerV2Ref.current) {
-            bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass!, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
-        }
-        
+        if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
+        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
         if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         if (!sparklePlayerRef.current) sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         if (!sfxSynthManagerRef.current) sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
 
         await Promise.all([
-            drumMachineRef.current.init(),
-            blackGuitarSamplerRef.current.init(),
-            telecasterSamplerRef.current.init(),
-            darkTelecasterSamplerRef.current.init(),
-            cs80SamplerRef.current.init(),
-            accompanimentManagerV2Ref.current.init(),
-            melodyManagerV2Ref.current.init(),
-            bassManagerV2Ref.current.init(),
-            harmonyManagerRef.current.init(),
-            pianoAccompanimentManagerRef.current.init(),
-            sparklePlayerRef.current.init(),
-            sfxSynthManagerRef.current.init()
+            drumMachineRef.current.init(), blackGuitarSamplerRef.current.init(), telecasterSamplerRef.current.init(), darkTelecasterSamplerRef.current.init(), cs80SamplerRef.current.init(),
+            accompanimentManagerV2Ref.current.init(), melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(),
+            harmonyManagerRef.current.init(), pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
         ]);
 
         if (!workerRef.current) {
@@ -289,7 +238,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true);
         return true;
     } catch (e) {
-        console.error('[AudioEngine] Init error:', e);
         toast({ variant: "destructive", title: "Audio Error" });
         return false;
     } finally { 
@@ -302,9 +250,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setIsPlayingState(playing);
     if (!isInitialized || !workerRef.current) return;
     if (playing) {
-        if (audioContextRef.current.state === 'suspended') {
-            audioContextRef.current.resume();
-        }
+        if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
         stopAllSounds(); 
         nextBarTimeRef.current = audioContextRef.current.currentTime + 0.5;
         workerRef.current.postMessage({ command: 'start' });
@@ -314,30 +260,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
-  const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
+  /**
+   * #ЗАЧЕМ: Ультимативное решение проблемы регуляторов.
+   * #ЧТО: Громкость устанавливается только на системных шинах gainNodesRef.
+   *       Это исключает "двойное умножение" и гарантирует работу всех слайдеров.
+   */
+  const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    if (part === 'bass' && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.setPreampGain(volume);
-        return;
-    }
-    if (part === 'melody' && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.setPreampGain(volume);
-        return;
-    }
-    if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.setPreampGain(volume);
-        return;
-    }
-    if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setVolume(volume);
-        return;
-    }
-    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        pianoAccompanimentManagerRef.current.setVolume(volume);
-        return;
-    }
-
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -368,11 +298,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
             setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
         },
-        setEQGain: (i, g) => {}, 
-        startMasterFadeOut: (d) => {}, 
-        cancelMasterFadeOut: () => {},
-        startRecording: () => {}, 
-        stopRecording: () => {}, 
+        setEQGain: (i, g) => {}, startMasterFadeOut: (d) => {}, cancelMasterFadeOut: () => {},
         toggleBroadcast: () => {
             if (broadcastEngineRef.current) {
                 if (isBroadcastActive) broadcastEngineRef.current.stop();

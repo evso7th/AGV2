@@ -24,9 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V137.0 — "Heritage Sovereignty".
- * #ЧТО: 1. Внедрена поддержка декларативной фильтрации по CompositionID.
- *       2. Мозг теперь отдает 100% приоритет выбранным трекам из облака.
+ * #ЗАЧЕМ: Блюзовый Мозг V138.0 — "Harmonic Presence".
+ * #ЧТО: ПЛАН №616 — Повышена плотность слоя гармонии для осязаемого "тела" микса.
  */
 
 export interface BluesBrainConfig {
@@ -38,7 +37,7 @@ export interface BluesBrainConfig {
   };
   sessionLickHistory?: string[];
   cloudAxioms?: any[];
-  selectedCompositionIds?: string[]; // #ЗАЧЕМ: Фильтр треков.
+  selectedCompositionIds?: string[];
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -239,19 +238,14 @@ export class BluesBrain {
           const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
           
-          // --- DECLARATIVE CLOUD FILTER ---
-          // #ЗАЧЕМ: Гитарист должен играть только то, что выбрал пользователь.
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
               const moodMatch = ax.mood === this.mood || ax.commonMood === commonMoodFilter;
               const noveltyMatch = !this.state.recentLicks.includes(ax.id);
-              
-              // Если фильтр активен - игнорируем MoodMatch, даем приоритет выбранным трекам
               if (this.config.selectedCompositionIds && this.config.selectedCompositionIds.length > 0) {
                   return genreMatch && roleMatch && this.config.selectedCompositionIds.includes(ax.compositionId) && noveltyMatch;
               }
-              
               return genreMatch && roleMatch && moodMatch && noveltyMatch;
           });
 
@@ -260,7 +254,6 @@ export class BluesBrain {
               this.currentLickId = selected.id;
               this.state.recentLicks.push(selected.id);
               if (this.state.recentLicks.length > 20) this.state.recentLicks.shift();
-              
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
               return;
@@ -271,7 +264,6 @@ export class BluesBrain {
           const barIn12 = epoch % 12;
           const chord = getChordNameForBar(barIn12);
           const isMinor = this.currentGrandMelody.type === 'minor';
-          
           let phrase: any[] = [];
           if (barIn12 === 11) phrase = this.currentGrandMelody.phraseTurnaround || [];
           else if (isMinor) phrase = chord.startsWith('i') ? this.currentGrandMelody.phrasei! : this.currentGrandMelody.phraseiv!;
@@ -310,7 +302,7 @@ export class BluesBrain {
               ...bass,
               type: 'accompaniment',
               note: type === 'strict' ? bass.note : bass.note + 12,
-              weight: bass.weight * 0.6,
+              weight: bass.weight * 0.65,
               technique: 'swell',
               phrasing: 'legato'
           });
@@ -330,7 +322,7 @@ export class BluesBrain {
                       note: finalPitch,
                       time: bass.time + (i * 0.02),
                       duration: bass.duration * 0.8,
-                      weight: 0.35 - (i * 0.05),
+                      weight: 0.45 - (i * 0.05),
                       technique: 'swell',
                       dynamics: 'p',
                       phrasing: 'legato'
@@ -463,7 +455,7 @@ export class BluesBrain {
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
     return notes.map((p, i) => ({
-        type: 'accompaniment', note: p, time: i * 0.5, duration: 3.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        type: 'accompaniment', note: p, time: i * 0.5, duration: 3.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato'
     }));
   }
 
@@ -480,7 +472,7 @@ export class BluesBrain {
                   note: Math.min(root + scale[i], this.MELODY_CEILING), 
                   time: 0.5 + (i * 0.15), 
                   duration: 1.0, 
-                  weight: 0.25 * (1 - i * 0.1), 
+                  weight: 0.35 * (1 - i * 0.1), 
                   technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               });
           }
@@ -493,7 +485,7 @@ export class BluesBrain {
               events.push({ 
                   type: 'pianoAccompaniment', 
                   note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), 
-                  time: beat, duration: 1.5, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                  time: beat, duration: 1.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               }); 
           } 
       });
@@ -506,21 +498,22 @@ export class BluesBrain {
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       
       const name = rootNames[root % 12];
-      const finalName = isMin ? `${name}m` : name;
+      const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      if (this.random.next() > 0.15 && tension < 0.7) return [];
+      // #ЗАЧЕМ: Повышена плотность слоя гармонии.
+      if (this.random.next() > 0.85 && tension < 0.4) return [];
 
-      return [root + 12, root + 19].map((n, i) => ({ 
+      return [root + 12, root + 19, root + (isMin ? 15 : 16)].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 
           time: i * 0.1, 
           duration: 4.0, 
-          weight: 0.20 + (tension * 0.15),
+          weight: 0.45 + (tension * 0.15),
           technique: 'swell', 
           dynamics: 'p', 
           phrasing: 'legato', 
           chordName: finalName, 
-          params: { barCount: epoch, filterCutoff: 3000 } 
+          params: { barCount: epoch, filterCutoff: 3500 } 
       }));
   }
 

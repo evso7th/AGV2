@@ -4,8 +4,8 @@ import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * A V2 manager for the accompaniment synthesizer.
- * Updated to support Deferred Preset Switching and Identity Guard.
+ * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
+ * #ЧТО: ПЛАН №616 — Громкость теперь управляется Context-шиной.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -27,7 +27,6 @@ export class AccompanimentSynthManagerV2 {
 
     async init() {
         if (this.isInitialized) return;
-        console.log('[AccompanimentManagerV2] Initializing...');
         await this.setInstrument('organ_soft_jazz');
         this.isInitialized = true;
     }
@@ -42,7 +41,6 @@ export class AccompanimentSynthManagerV2 {
         if (!preset) return;
         
         try {
-            console.log(`[AccompanimentManagerV2] Loading: ${presetName}`);
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -50,7 +48,7 @@ export class AccompanimentSynthManagerV2 {
             });
             this.activePresetName = presetName;
         } catch (error) {
-            console.error(`[AccompanimentManagerV2] Error loading instrument for preset ${presetName}:`, error);
+            console.error(`[AccompanimentManagerV2] Error loading:`, error);
         }
     }
 
@@ -64,12 +62,9 @@ export class AccompanimentSynthManagerV2 {
             params: e.params
         }));
 
-        // --- DEFERRED PRESET SWITCH ---
-        // #ЗАЧЕМ: Аккомпанементу нельзя резко менять тембр во время игры.
         if (instrumentHint) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
-                // Смена происходит только если текущий такт пуст или мы выходим из тишины.
                 if (notesToPlay.length === 0 || this.activePresetName === 'none') {
                     await this.setInstrument(mappedHint);
                 }
@@ -81,12 +76,10 @@ export class AccompanimentSynthManagerV2 {
 
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            
             if (note.params?.filterCutoff && this.instrument.setParam) {
                 this.instrument.setParam('filterCutoff', note.params.filterCutoff);
                 this.instrument.setParam('lpf', note.params.filterCutoff);
             }
-
             if (isFinite(note.duration) && note.duration > 0) {
                  this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }
@@ -94,29 +87,18 @@ export class AccompanimentSynthManagerV2 {
     }
     
     public async setInstrument(instrumentName: string) {
-       // #ЗАЧЕМ: Equality Guard. Предотвращает бессмысленные перезагрузки графа.
        if (instrumentName === this.activePresetName) return;
-
        if (this.instrument) {
            this.instrument.disconnect();
            this.instrument = null;
        }
-
        if (instrumentName === 'none') {
             this.activePresetName = 'none';
             return;
        }
-
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
        if (!newPreset) return;
-
        await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
-    }
-
-    public setPreampGain(volume: number) {
-        if (this.preamp) {
-            this.preamp.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
-        }
     }
 
     public allNotesOff() {
