@@ -5,6 +5,10 @@ type VelocitySample = {
     file: string;
 };
 
+/**
+ * #ЗАЧЕМ: Очищенная библиотека сэмплов фортепиано.
+ * #ЧТО: Удален битый сэмпл A2, вызывавший ошибку 404.
+ */
 export const PIANO_SAMPLES: Record<string, string> = {
     'D6': '/assets/piano_samples/448604__piano_sust_pedal__d6.ogg',
     'G7': '/assets/piano_samples/448556__piano_sust_pedal__g7.ogg',
