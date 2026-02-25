@@ -13,7 +13,6 @@ export const PIANO_SAMPLES: Record<string, string> = {
     'D5': '/assets/piano_samples/448619__piano_sust_pedal__d5.ogg',
     'A1': '/assets/piano_samples/448578__piano_sust_pedal__a1.ogg',
     'A0': '/assets/piano_samples/448579__piano_sust_pedal__a0.ogg',
-    'A2': '/assets/piano_samples/448571__piano_sust_ त्यौ__a2.ogg',
     'E7': '/assets/piano_samples/448610__piano_sust_pedal__e7.ogg',
     'F1': '/assets/piano_samples/448586__piano_sust_pedal__f1.ogg',
     'E5': '/assets/piano_samples/448612__piano_sust_pedal__e5.ogg',
