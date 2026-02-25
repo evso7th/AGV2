@@ -6,24 +6,17 @@ import {
   Play, 
   Square,
   Upload, 
-  Activity, 
   Music, 
   Wind, 
   ShieldAlert,
   ArrowLeft,
   Save,
   RotateCcw,
-  FileJson,
-  Timer,
-  Key,
-  Globe,
   Search,
   Eye,
   EyeOff,
   Trash2,
-  ChevronDown,
-  Layers,
-  Filter
+  Globe
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -35,8 +28,9 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, query, deleteDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
