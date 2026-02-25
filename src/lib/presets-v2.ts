@@ -37,7 +37,6 @@ export const V2_PRESETS = {
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 4.0 },
     lpf: { cutoff: 1400, q: 1.0, mode: '24dB' },
     lfo: { shape: 'sine', rate: 0.15, amount: 500, target: 'filter' },
-    comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.55, fb: 0.35, hc: 3500, mix: 0.25 },
     reverbMix: 0.3
@@ -113,11 +112,11 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', 
-    volume: 0.22, // #ЗАЧЕМ: Повышена громкость (ПЛАН №612).
+    volume: 0.11, // #ЗАЧЕМ: Снижение громкости в 2 раза для чистоты микса.
     osc: { width: 0.38, detune: 3, mainGain: 0.9, detGain: 0.12, subGain: 0.35 },
     pickup: { cutoff: 1850, q: 0.9 },
-    drive: { type: 'soft', amount: 0.22 }, 
-    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 4 },
+    drive: { type: 'soft', amount: 0.12 }, // #ЗАЧЕМ: Уменьшение дисторшна (0.22 -> 0.12)
+    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 2 }, // #ЗАЧЕМ: Снижение makeup для предотвращения клиппинга.
     post: { lpf: 3200 },
     phaser: { on: false }, 
     delayA: { on: true, time: 0.42, fb: 0.28, mix: 0.15 },
@@ -128,7 +127,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead Guitar',
-    volume: 0.24, // #ЗАЧЕМ: Повышена громкость.
+    volume: 0.24, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200, q: 1.2 },
     drive: { type: 'muff', amount: 0.65 }, 

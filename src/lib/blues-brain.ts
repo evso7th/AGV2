@@ -24,8 +24,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V143.0 — "Genetic Anchor Supremacy".
- * #ЧТО: ПЛАН №622 — Внедрение "Варианта Б" и эксклюзивного Генетического Якоря.
+ * #ЗАЧЕМ: Блюзовый Мозг V144.0 — "The Discipline of Shadow".
+ * #ЧТО: ПЛАН №623 — Пианист переведен в режим дублирования мелодии. Гитара очищена от грязи.
  */
 
 export interface BluesBrainConfig {
@@ -38,7 +38,7 @@ export interface BluesBrainConfig {
   sessionLickHistory?: string[];
   cloudAxioms?: any[];
   selectedCompositionIds?: string[];
-  activeAnchorId?: string | null; // #ЗАЧЕМ: Трек-донор, зафиксированный для этой сюиты.
+  activeAnchorId?: string | null; 
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -139,9 +139,6 @@ export class BluesBrain {
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
-  /**
-   * #ЗАЧЕМ: Синхронизация Якоря.
-   */
   public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null) {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
@@ -197,15 +194,18 @@ export class BluesBrain {
 
     events.push(...bassEvents);
 
-    if (hints.melody) {
-        events.push(...this.renderMelodicSegment(epoch, currentChord, tension));
-        if (this.currentGuitarRiff) {
-            events.push(...this.renderRhythmicTextureFromRiff(epoch, currentChord, tension));
-        }
-    }
+    // --- MELODY FIRST (to allow sync) ---
+    const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord, tension) : [];
 
     if (hints.pianoAccompaniment) {
-        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension));
+        // #ЗАЧЕМ: Пианист теперь видит, что играет гитара.
+        events.push(...this.renderIntegratedPiano(epoch, currentChord, tension, melodyEvents));
+    }
+
+    events.push(...melodyEvents);
+
+    if (hints.melody && this.currentGuitarRiff) {
+        events.push(...this.renderRhythmicTextureFromRiff(epoch, currentChord, tension));
     }
     
     if (hints.harmony) {
@@ -249,36 +249,21 @@ export class BluesBrain {
       this.currentGrandMelody = finalMelodyPool[this.random.nextInt(finalMelodyPool.length)];
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация режима "Генетического Якоря" (Вариант Б).
-   * #ЧТО: Если зафиксирован activeAnchorId, система использует аксиомы ТОЛЬКО этого трека.
-   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
-          
-          // #ЗАЧЕМ: ПРИНУДИТЕЛЬНЫЙ ЯКОРЬ (Вариант Б).
           const targetAnchor = this.config.activeAnchorId;
 
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
-              
-              // Если есть Якорь - фильтруем ТОЛЬКО по нему.
-              if (targetAnchor) {
-                  return genreMatch && roleMatch && ax.compositionId === targetAnchor;
-              }
-
-              // Fallback (если якорь не определен)
+              if (targetAnchor) return genreMatch && roleMatch && ax.compositionId === targetAnchor;
               const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
               return genreMatch && roleMatch && (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
           });
 
           if (cloudPool.length > 0) {
-              // Shuffle Bag Rotation logic
               let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              
-              // Если мешок пуст - обнуляем историю для этого якоря и начинаем заново
               if (freshPool.length === 0) {
                   const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
@@ -297,7 +282,6 @@ export class BluesBrain {
           }
       }
 
-      // Local fallback (только если в облаке вообще ничего нет по якорю)
       this.currentTrackName = 'Local Fallback';
       if (this.currentGrandMelody) {
           const barIn12 = epoch % 12;
@@ -414,7 +398,7 @@ export class BluesBrain {
         let duration = n.d / 3;
         if (nextNote && (nextNote.t - (n.t + n.d)) < 1) duration += 0.15; 
         
-        // #ЗАЧЕМ: Борьба с кашей. Сольные ноты не должны гудеть.
+        // #ЗАЧЕМ: Жесткий лимит длительности соло для чистоты микса.
         duration = Math.min(duration, 2.5); 
 
         const phraseProgress = n.t / 48;
@@ -502,12 +486,29 @@ export class BluesBrain {
     }));
   }
 
-  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Пианист переведен в режим дисциплинированного дублера.
+   * #ЧТО: Редкие пассажи, фокус на синхронном удвоении мелодии.
+   */
+  private renderIntegratedPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 24;
       const momentum = this.state.tensionMomentum;
       
-      if (momentum < -0.02 && this.random.next() < 0.75) {
+      // #ЗАЧЕМ: Дублирование мелодии (Piano Shadow).
+      // #ЧТО: Создает богатый резонанс с гитарным соло.
+      if (this.random.next() < 0.35 && melodyEvents.length > 0) {
+          return melodyEvents.map(me => ({
+              ...me,
+              type: 'pianoAccompaniment',
+              weight: me.weight * 0.45, // Мягкая тень
+              technique: 'hit',
+              phrasing: 'staccato'
+          }));
+      }
+
+      // #ЗАЧЕМ: Пассажи стали в 4 раза реже.
+      if (momentum < -0.05 && this.random.next() < 0.18) {
           const scale = [0, 2, 3, 5, 7, 9, 10];
           for (let i = 0; i < 6; i++) {
               events.push({ 
@@ -515,7 +516,7 @@ export class BluesBrain {
                   note: Math.min(root + scale[i], this.MELODY_CEILING), 
                   time: 0.5 + (i * 0.15), 
                   duration: 1.0, 
-                  weight: 0.35 * (1 - i * 0.1), 
+                  weight: 0.30 * (1 - i * 0.1), 
                   technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
               });
           }
@@ -524,7 +525,7 @@ export class BluesBrain {
 
       const patterns = [[1.5, 3.5], [0.5, 2.0, 3.75]];
       patterns[epoch % patterns.length].forEach(beat => { 
-          if (this.random.next() < (0.2 + tension * 0.3)) { 
+          if (this.random.next() < (0.15 + tension * 0.25)) { 
               events.push({ 
                   type: 'pianoAccompaniment', 
                   note: Math.min(root + [0, 3, 7, 10][this.random.nextInt(4)], this.MELODY_CEILING), 
@@ -588,14 +589,5 @@ export class BluesBrain {
     if (barIn12 < 4) this.state.phraseState = 'call';
     else if (barIn12 < 8) this.state.phraseState = 'call_var';
     else this.state.phraseState = 'response';
-  }
-
-  private createSeededRandom(seed: number) {
-    let state = seed;
-    const next = () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
-    };
-    return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 }
