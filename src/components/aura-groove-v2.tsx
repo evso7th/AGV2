@@ -3,7 +3,7 @@
  * #ЧТО: 1. Текстовый фильтр в модальном окне Наследия.
  *       2. Режим "Show Selected Only" для контроля ДНК.
  *       3. Кнопка "Clear All" для быстрого сброса.
- * #ИСПРАВЛЕНО: Добавлен импорт SlidersHorizontal.
+ * #ИСПРАВЛЕНО: Добавлен импорт SlidersHorizontal и определение composerControl.
  */
 'use client';
 
@@ -86,6 +86,7 @@ export function AuraGrooveV2({
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
+  const composerControl = isFractalStyle && composerControlsInstruments;
 
   const genreList: Genre[] = isFractalStyle
     ? ['ambient', 'trance', 'blues']
