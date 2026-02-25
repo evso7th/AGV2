@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -13,13 +12,11 @@ import {
   ShieldAlert,
   ArrowLeft,
   Save,
-  X,
   RotateCcw,
   FileJson,
-  Tag,
-  Globe,
   Timer,
-  Key
+  Key,
+  Globe
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -45,15 +42,14 @@ const AVAILABLE_GENRES: Genre[] = [
 ];
 
 /**
- * #ЗАЧЕМ: Дашборд Аудитора ДНК v3.9.
- * #ЧТО: 1. Кнопка Play превращается в Stop при проигрывании.
- *       2. Название Source очищается от технических суффиксов.
+ * #ЗАЧЕМ: Дашборд Аудитора ДНК v4.0.
+ * #ЧТО: Исправлена синтаксическая ошибка JSX и восстановлена логика аудирования.
  */
 export default function HypercubeDashboard() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const { isInitialized, initialize, playRawEvents, stopAllSounds, isPlaying, setIsPlaying } = useAudioEngine();
+  const { isInitialized, initialize, playRawEvents, stopAllSounds } = useAudioEngine();
   
   // --- Global Database Connection ---
   const axiomsQuery = useMemoFirebase(() => query(collection(db, 'heritage_axioms')), [db]);
@@ -79,7 +75,6 @@ export default function HypercubeDashboard() {
     }
   }, []);
 
-  // --- Global Stats Calculation ---
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
     return globalAxioms.reduce((acc, ax) => {
@@ -112,7 +107,6 @@ export default function HypercubeDashboard() {
 
     resetStaging();
 
-    // #ЗАЧЕМ: Очистка имени трека.
     const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "");
 
     if (processedFiles.includes(file.name)) {
@@ -143,7 +137,6 @@ export default function HypercubeDashboard() {
         };
 
         if (Array.isArray(json)) {
-            // #ЗАЧЕМ: Приоритет очищенному имени файла для колонки Source.
             json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || cleanFileName)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
@@ -226,7 +219,6 @@ export default function HypercubeDashboard() {
   };
 
   const handlePlayAxiom = async (axiom: any) => {
-    // #ЗАЧЕМ: Переключатель Play/Stop.
     if (playingAxiomId === axiom.id) {
         stopAllSounds();
         setPlayingAxiomId(null);
@@ -237,7 +229,6 @@ export default function HypercubeDashboard() {
     stopAllSounds();
 
     const phrase = decompressCompactPhrase(axiom.phrase);
-
     const roleToType: Record<string, string> = {
         'melody': 'melody',
         'bass': 'bass',
@@ -338,7 +329,7 @@ export default function HypercubeDashboard() {
                   ))
                 }
               </CardContent>
-            </div>
+            </Card>
           </div>
         </div>
 
