@@ -53,6 +53,8 @@ const AVAILABLE_MOODS: Mood[] = [
   'epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'
 ];
 
+const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light',
   joyful: 'light',
@@ -491,7 +493,12 @@ export default function HypercubeDashboard() {
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[10px] uppercase font-black opacity-70">Key</Label>
-                                                    <Input value={editKeyValue} onChange={(e) => setEditKeyValue(e.target.value)} className="h-8 text-xs bg-background" />
+                                                    <Select value={editKeyValue} onValueChange={setEditKeyValue}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            {AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[10px] uppercase font-black opacity-70">Signature</Label>
