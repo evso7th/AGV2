@@ -62,6 +62,16 @@ export type InstrumentHints = {
     summonProgress?: Partial<Record<string, number>>;
 };
 
+export type NavigationInfo = {
+    currentPart: any;
+    currentBundle: any;
+    isPartTransition: boolean;
+    isBundleTransition: boolean;
+    logMessage: string | null;
+    currentPartStartBar: number;
+    currentPartEndBar: number;
+};
+
 export type GhostChord = {
   rootNote: number;
   chordType: 'major' | 'minor' | 'diminished' | 'dominant';
@@ -82,6 +92,7 @@ export type SuiteDNA = {
   itinerary?: string[];
   dynasty?: string;
   partLickMap?: Map<string, string>;
+  ambientLegacyGroup?: string;
 };
 
 export type BluesSoloPhrase = {
@@ -89,4 +100,5 @@ export type BluesSoloPhrase = {
   d: number;
   deg: string;
   tech?: string;
+  octShift?: number;
 }[];

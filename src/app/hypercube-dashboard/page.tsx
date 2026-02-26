@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -88,6 +89,9 @@ export default function HypercubeDashboard() {
   const [editNameValue, setEditNameValue] = useState("");
   const [editGenreValue, setEditGenreValue] = useState<Genre>('blues');
   const [editMoodValue, setEditMoodValue] = useState<Mood>('melancholic');
+  const [editBpmValue, setEditBpmValue] = useState<string>("72");
+  const [editKeyValue, setEditKeyValue] = useState<string>("E");
+  const [editTsValue, setEditTsValue] = useState<string>("4/4");
 
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editNarrativeValue, setEditNarrativeValue] = useState("");
@@ -288,7 +292,7 @@ export default function HypercubeDashboard() {
     }
   };
 
-  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenre: Genre, newMood: Mood, licks: any[]) => {
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenre: Genre, newMood: Mood, newBpm: number, newKey: string, newTs: string, licks: any[]) => {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
@@ -300,7 +304,10 @@ export default function HypercubeDashboard() {
                 compositionId: newId,
                 genre: newGenre,
                 mood: newMood,
-                commonMood: newCommonMood
+                commonMood: newCommonMood,
+                nativeBpm: newBpm,
+                nativeKey: newKey,
+                timeSignature: newTs
             });
         });
         await batch.commit();
@@ -477,8 +484,31 @@ export default function HypercubeDashboard() {
                                                     </Select>
                                                 </div>
                                             </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-black opacity-70">BPM</Label>
+                                                    <Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-black opacity-70">Key</Label>
+                                                    <Input value={editKeyValue} onChange={(e) => setEditKeyValue(e.target.value)} className="h-8 text-xs bg-background" />
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    <Label className="text-[10px] uppercase font-black opacity-70">Signature</Label>
+                                                    <Select value={editTsValue} onValueChange={setEditTsValue}>
+                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="4/4" className="text-xs">4/4</SelectItem>
+                                                            <SelectItem value="3/4" className="text-xs">3/4</SelectItem>
+                                                            <SelectItem value="5/4" className="text-xs">5/4</SelectItem>
+                                                            <SelectItem value="7/8" className="text-xs">7/8</SelectItem>
+                                                            <SelectItem value="12/8" className="text-xs">12/8</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
                                             <div className="flex items-center gap-2 pt-2">
-                                                <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, licks)}>
+                                                <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}>
                                                     <Check className="h-3.5 w-3.5" /> Save Changes
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}>
@@ -492,6 +522,9 @@ export default function HypercubeDashboard() {
                                             setEditNameValue(compId);
                                             setEditGenreValue(licks[0].genre);
                                             setEditMoodValue(licks[0].mood);
+                                            setEditBpmValue(String(licks[0].nativeBpm || 72));
+                                            setEditKeyValue(licks[0].nativeKey || "E");
+                                            setEditTsValue(licks[0].timeSignature || "4/4");
                                         }}>
                                             <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
                                                 {compId.replace(/_/g, ' ')}
@@ -501,6 +534,8 @@ export default function HypercubeDashboard() {
                                                 <span>Genre: <span className="text-foreground">{licks[0].genre}</span></span>
                                                 <span className="opacity-30">|</span>
                                                 <span>Mood: <span className="text-foreground">{licks[0].mood}</span> ({licks[0].commonMood})</span>
+                                                <span className="opacity-30">|</span>
+                                                <span>Meta: <span className="text-foreground">{licks[0].nativeBpm || '??'} BPM / {licks[0].nativeKey || '??'} / {licks[0].timeSignature || '??'}</span></span>
                                             </div>
                                         </div>
                                     )}
@@ -635,7 +670,7 @@ export default function HypercubeDashboard() {
                             <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId.replace(/_/g, ' ')}</td>
                             <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
                             <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">
-                                {ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'}
+                                {ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}
                             </td>
                             <td className="p-4 font-mono text-[10px] text-muted-foreground">
                               [{ax.vector?.t?.toFixed(1) || 0}, {ax.vector?.b?.toFixed(1) || 0}, {ax.vector?.e?.toFixed(1) || 0}, {ax.vector?.h?.toFixed(1) || 0}]

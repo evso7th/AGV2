@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -24,8 +25,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V149.0 — "Headroom Restoration".
- * #ЧТО: ПЛАН №640 — Снижен коэффициент "Тени" пианино до 0.3 для предотвращения клиппинга.
+ * #ЗАЧЕМ: Блюзовый Мозг V150.0 — "Orchestral Listener".
+ * #ЧТО: 1. Бас жестко ограничен 2-й октавой (MIDI < 48).
+ *       2. Аккомпанемент адаптируется к плотности мелодии (Breathing Logic).
+ *       3. Исправлен эффект "шарманки" через динамическую выборку техник.
  */
 
 export interface BluesBrainConfig {
@@ -66,6 +69,7 @@ export class BluesBrain {
 
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
+  private readonly BASS_CEILING = 47; // #ЗАЧЕМ: Ограничение баса 2-й октавой.
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -148,6 +152,18 @@ export class BluesBrain {
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
   }
 
+  /**
+   * #ЗАЧЕМ: Жесткое ограничение октавы баса.
+   * #ЧТО: MIDI >= 48 (3-я октава и выше) опускается вниз.
+   */
+  private constrainBassOctave(note: number): number {
+      let finalNote = note;
+      while (finalNote > this.BASS_CEILING) {
+          finalNote -= 12;
+      }
+      return Math.max(this.BASS_FLOOR, finalNote);
+  }
+
   public generateBar(
     epoch: number,
     currentChord: GhostChord,
@@ -191,10 +207,13 @@ export class BluesBrain {
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
     
+    // #ЗАЧЕМ: Адаптивность аккомпанемента к плотности оркестра.
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
-        accompanimentEvents.push(...this.renderDynamicAccompaniment(epoch, currentChord, tension));
+        // Проверяем активность мелодии
+        const melodyDensity = melodyEvents.filter(e => e.type === 'melody').length;
+        accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension, melodyDensity));
     }
 
     events.push(...accompanimentEvents);
@@ -325,13 +344,14 @@ export class BluesBrain {
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+      let bassNotes: any[] = [];
       if (this.currentBassAxiom.length > 0) {
           const barInPhrase = epoch % 4;
           const barOffset = barInPhrase * 12;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
-          return barNotes.map(n => ({
+          bassNotes = barNotes.map(n => ({
               type: 'bass',
-              note: Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR),
+              note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t % 12) / 3,
               duration: n.d / 3,
               weight: 0.85,
@@ -339,21 +359,21 @@ export class BluesBrain {
               dynamics: 'p',
               phrasing: 'legato'
           }));
+      } else {
+          const melodyComplexity = this.currentMelodyAxiomObj?.vector?.e || 0.5;
+          if (melodyComplexity > 0.75 && tension < 0.8) {
+              bassNotes = [{ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12), time: 0, duration: 3.5, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }];
+          } else {
+              bassNotes = tension > 0.7 ? this.renderWalkingBass(chord, epoch, tension) : this.renderRiffBass(chord, epoch, tension);
+          }
       }
 
-      const melodyComplexity = this.currentMelodyAxiomObj?.vector?.e || 0.5;
-      if (melodyComplexity > 0.75 && tension < 0.8) {
-          return [{ type: 'bass', note: Math.max(chord.rootNote - 12, this.BASS_FLOOR), time: 0, duration: 3.5, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }];
-      }
-
-      const baseBass = tension > 0.7 ? this.renderWalkingBass(chord, epoch, tension) : this.renderRiffBass(chord, epoch, tension);
-      
       const gaps = this.findMelodyBreaths(melodyEvents);
       if (gaps.length > 0 && this.random.next() < 0.6) {
           const gap = gaps[0];
-          baseBass.push({
+          bassNotes.push({
               type: 'bass',
-              note: Math.max(chord.rootNote - 13, this.BASS_FLOOR), 
+              note: this.constrainBassOctave(chord.rootNote - 13), 
               time: gap.start,
               duration: 0.5,
               weight: 0.6,
@@ -363,7 +383,7 @@ export class BluesBrain {
           });
       }
 
-      return baseBass;
+      return bassNotes;
   }
 
   private findMelodyBreaths(events: FractalEvent[]): { start: number, duration: number }[] {
@@ -490,7 +510,7 @@ export class BluesBrain {
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-    const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+    const root = chord.rootNote - 12;
     const barInRiff = epoch % 4;
     const riff = [ 
         [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }], 
@@ -498,15 +518,33 @@ export class BluesBrain {
         [{ t: 0, n: root, w: 0.85 }, { t: 2.0, n: root + 7, w: 0.7 }, { t: 3.5, n: root + 10, w: 0.65 }], 
         [{ t: 0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 5, w: 0.7 }, { t: 2.5, n: root, w: 0.9 }] 
     ];
-    return riff[barInRiff].map(p => ({ type: 'bass', note: p.n, time: p.t, duration: 1.2, weight: (p.w + (tension * 0.1)) * (0.95 + this.random.next() * 0.1), technique: 'pluck', dynamics: p.t === 0 ? 'mf' : 'p', phrasing: 'legato' }));
+    return riff[barInRiff].map(p => ({ 
+        type: 'bass', 
+        note: this.constrainBassOctave(p.n), 
+        time: p.t, 
+        duration: 1.2, 
+        weight: (p.w + (tension * 0.1)) * (0.95 + this.random.next() * 0.1), 
+        technique: 'pluck', 
+        dynamics: p.t === 0 ? 'mf' : 'p', 
+        phrasing: 'legato' 
+    }));
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-    const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+    const root = chord.rootNote - 12;
     const barIn12 = epoch % 12;
     const nextRoot = getNextChordRoot(barIn12, chord.rootNote) - 12;
     const notes = [ root, root + 7, root + 10, nextRoot - 1 ];
-    return notes.map((p, i) => ({ type: 'bass', note: p, time: i, duration: 0.9, weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' }));
+    return notes.map((p, i) => ({ 
+        type: 'bass', 
+        note: this.constrainBassOctave(p), 
+        time: i, 
+        duration: 0.9, 
+        weight: (i === 0 ? 0.85 : 0.5) + tension * 0.1, 
+        technique: 'pluck', 
+        dynamics: i === 0 ? 'mf' : 'p', 
+        phrasing: 'legato' 
+    }));
   }
 
   private renderNarrativeDrums(epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
@@ -573,20 +611,36 @@ export class BluesBrain {
       return events;
   }
 
-  private renderDynamicAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyDensity: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
-    return notes.map((p, i) => ({
-        type: 'accompaniment', note: p, time: i * 0.5, duration: 3.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+    
+    // #ЗАЧЕМ: Логика адаптивности аккомпанемента.
+    // #ЧТО: Если мелодия плотная (>4 нот/такт), аккомпанемент играет один долгий аккорд (Breathing).
+    //       Если мелодия разреженная, аккомпанемент добавляет ритмику.
+    const isMelodyBusy = melodyDensity > 4;
+    
+    if (isMelodyBusy) {
+        return notes.map((p, i) => ({
+            type: 'accompaniment', note: p, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        }));
+    }
+
+    // Ритмическая вариация для спокойных мест
+    const pattern = (epoch % 2 === 0) ? [0, 1, 2, 3] : [0, 2];
+    return pattern.map((pIdx, i) => ({
+        type: 'accompaniment', 
+        note: notes[pIdx % notes.length], 
+        time: i * (4.0 / pattern.length), 
+        duration: (4.0 / pattern.length) * 0.8, 
+        weight: 0.35, 
+        technique: 'swell', 
+        dynamics: 'p', 
+        phrasing: 'legato'
     }));
   }
 
-  /**
-   * #ЗАЧЕМ: Shadow Piano Mode. Полная синхронность с ансамблем.
-   * #ЧТО: Пианино дублирует мелодию или аккомпанемент, становясь их тенью.
-   *       ПЛАН №640 — Снижен вес тени до 0.3 для защиты от клиппинга.
-   */
   private renderShadowPiano(epoch: number, tension: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
       if (tension < 0.3 && this.random.next() < 0.7) return [];
 

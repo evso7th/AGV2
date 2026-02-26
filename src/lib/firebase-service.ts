@@ -58,7 +58,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
  * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
- * #ОБНОВЛЕНО (ПЛАН №614): Добавлена поддержка nativeBpm, nativeKey и timeSignature.
+ * #ОБНОВЛЕНО (ПЛАН №642): nativeKey, nativeBpm и timeSignature теперь сохраняются.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
