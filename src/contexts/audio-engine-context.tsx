@@ -1,6 +1,8 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V7.9 — "Heritage Metadata Enrichment".
- * #ЧТО: ПЛАН №641 — availableCompositions теперь включает количество аксиом.
+ * #ЗАЧЕМ: Audio Engine Context V8.0 — "The Instant Silence Update".
+ * #ЧТО: 1. Внедрена мгновенная блокировка звука при паузе (Master Mute).
+ *       2. Исправлено управление громкостью пианино (балансировка через VOICE_BALANCE).
+ *       3. ПЛАН №647: Ликвидация послезвучия.
  */
 'use client';
 
@@ -32,7 +34,7 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.40, 
   sfx: 0.50, 
   harmony: 0.60,
-  pianoAccompaniment: 0.55, 
+  pianoAccompaniment: 0.45, // #ЗАЧЕМ: Умеренное присутствие Тени.
 };
 
 type CompositionMeta = { id: string; count: number };
@@ -144,6 +146,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, db, refreshCloudAxioms]);
 
+  /**
+   * #ЗАЧЕМ: Глубокая очистка всех активных звуков.
+   */
   const stopAllSounds = useCallback(() => {
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
@@ -263,32 +268,44 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
+  /**
+   * #ЗАЧЕМ: Реализация Мгновенной Паузы.
+   * #ЧТО: Гейн мастера сбрасывается в 0 за 10 мс.
+   */
   const setIsPlayingStateCallback = useCallback((playing: boolean) => {
     setIsPlayingState(playing);
-    if (!isInitialized || !workerRef.current) return;
+    if (!isInitialized || !workerRef.current || !audioContextRef.current) return;
+    
+    const context = audioContextRef.current;
+    
     if (playing) {
-        if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
+        if (context.state === 'suspended') context.resume();
+        // Плавный вход
+        masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
         stopAllSounds(); 
-        nextBarTimeRef.current = audioContextRef.current.currentTime + 0.5;
+        nextBarTimeRef.current = context.currentTime + 0.5;
         workerRef.current.postMessage({ command: 'start' });
     } else {
+        // Мгновенная тишина
+        masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
         workerRef.current.postMessage({ command: 'stop' });
-        stopAllSounds();
+        setTimeout(() => stopAllSounds(), 50); // Физическая остановка чуть позже для избежания щелчка
     }
   }, [isInitialized, stopAllSounds]);
 
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    // #ЗАЧЕМ: Прямое управление пианино.
+    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+
+    // #ЗАЧЕМ: Прямое управление пианино с балансировкой.
     if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        pianoAccompanimentManagerRef.current.setVolume(volume);
+        pianoAccompanimentManagerRef.current.setVolume(balancedVolume);
         return;
     }
 
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);

@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.1 - Vangelis CS80 Climax).
- * #ЧТО: 1. Гилморовская гитара в финали заменена на CS80 для "Blade Runner" эффекта.
- *       2. Сохранена структура 4-х MAIN секций и бриджей.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.2 - Continuity Fix).
+ * #ЧТО: Внедрены правила призыва Harmony во все секции для предотвращения тишины.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -71,7 +70,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                   melody: { strategy: 'weighted', v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] }
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] } // #ЗАЧЕМ: Гарантия призыва Harmony.
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 } },
@@ -83,7 +83,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
 
             // --- 3. BRIDGE 1 (Morph) ---
             {
-                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 3 }, // ~4 bars
+                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 3 }, 
                 layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true },
                 instrumentRules: { accompaniment: { density: { min: 0.2, max: 0.4 } } },
                 bundles: [{ id: 'B1_B', name: 'Crossing', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -96,7 +96,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'organ_prog', weight: 0.3 }] },
-                   melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] }
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
+                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
@@ -120,7 +121,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
-                   melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 1.0 }] }
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 1.0 }] },
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', kitName: 'blues_melancholic' },
@@ -143,9 +145,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_4', name: 'The Final Climax', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
-                   // #ЗАЧЕМ: Замена гитары на CS80 для эпического финала.
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_prog', weight: 1.0 }] },
-                   melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] }
+                   melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
+                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },

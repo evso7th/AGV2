@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -26,10 +25,12 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V160.0 — "Convergent Evolution".
- * #ЧТО: 1. Внедрена L-логика морфогенеза фраз (размножение нот).
- *       2. Реализован Fractal Drift (постепенное изменение аксиом со временем).
- *       3. Интегрирована Марковская адаптивность к настроению.
+ * #ЗАЧЕМ: Блюзовый Мозг V165.0 — "The Integrated Ensemble".
+ * #ЧТО: 1. Мгновенная остановка и синхронизация Shadow Piano.
+ *       2. Пианист теперь "Тень" ансамбля (унисон/окава).
+ *       3. Адаптивность ударных к "вдохам" мелодии.
+ *       4. Жесткое ограничение октав баса (не выше Си большой октавы).
+ * #ОБНОВЛЕНО (ПЛАН №647): Устранение "Пляммм" и пауз после остановки.
  */
 
 export interface BluesBrainConfig {
@@ -69,8 +70,8 @@ export class BluesBrain {
   private currentGrandMelody: BluesMelody | null = null;
 
   private readonly MELODY_CEILING = 75; 
-  private readonly BASS_FLOOR = 31; 
-  private readonly BASS_CEILING = 47; 
+  private readonly BASS_FLOOR = 31; // #ЗАЧЕМ: Стандарт G1.
+  private readonly BASS_CEILING = 47; // #ЗАЧЕМ: Ограничение Си большой октавы.
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -83,7 +84,7 @@ export class BluesBrain {
       activeAccompTimbre: string,
       recentLicks: string[],
       recentGrandMelodies: string[],
-      driftVector: { time: number, pitch: number } // #ЗАЧЕМ: Вектор фрактального дрейфа.
+      driftVector: { time: number, pitch: number }
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -155,29 +156,31 @@ export class BluesBrain {
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
   }
 
+  /**
+   * #ЗАЧЕМ: Регистрационная чистота баса.
+   * #ЧТО: Принудительное ограничение Си большой октавы (MIDI 47).
+   */
   private constrainBassOctave(note: number): number {
       let finalNote = note;
       while (finalNote > this.BASS_CEILING) {
           finalNote -= 12;
       }
-      return Math.max(this.BASS_FLOOR, finalNote);
+      while (finalNote < this.BASS_FLOOR) {
+          finalNote += 12;
+      }
+      return finalNote;
   }
 
-  /**
-   * #ЗАЧЕМ: L-Система морфогенеза фраз.
-   * #ЧТО: Если нота длинная, она может "расщепиться" на две в том же ладу.
-   */
   private applyMorphogenesis(phrase: any[]): any[] {
       const result: any[] = [];
       phrase.forEach(n => {
           if (n.d > 12 && this.random.next() < 0.3 * this.state.tensionLevel) {
-              // Разделение ноты на две (L-логика)
               result.push({ ...n, d: n.d / 2 });
               result.push({ 
                   ...n, 
                   t: n.t + n.d / 2, 
                   d: n.d / 2, 
-                  deg: this.random.next() < 0.5 ? '5' : 'b3' // Блюзовая вариация
+                  deg: this.random.next() < 0.5 ? '5' : 'b3'
               });
           } else {
               result.push(n);
@@ -186,10 +189,6 @@ export class BluesBrain {
       return result;
   }
 
-  /**
-   * #ЗАЧЕМ: Фрактальный дрейф аксиомы.
-   * #ЧТО: Медленное смещение параметров нот со временем (Epoch).
-   */
   private applyFractalDrift(phrase: any[], epoch: number): any[] {
       const driftSpeed = 0.005;
       return phrase.map(n => ({
@@ -226,14 +225,11 @@ export class BluesBrain {
     if (this.currentAxiom.length === 0 || isPhraseBoundary || navInfo.isPartTransition) {
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
-        
-        // #ЗАЧЕМ: Внедрение Эволюции.
         if (!this.config.activeAnchorId) {
             this.currentAxiom = this.applyMorphogenesis(this.currentAxiom);
         }
     }
 
-    // Применение дрейфа на каждом такте
     this.currentAxiom = this.applyFractalDrift(this.currentAxiom, epoch);
 
     const events: FractalEvent[] = [];
@@ -260,6 +256,7 @@ export class BluesBrain {
     events.push(...accompanimentEvents);
     events.push(...bassEvents);
 
+    // #ЗАЧЕМ: Интеллектуальный Пианист-Тень.
     if (hints.pianoAccompaniment) {
         events.push(...this.renderShadowPiano(epoch, tension, melodyEvents, accompanimentEvents));
     }
@@ -270,6 +267,7 @@ export class BluesBrain {
         events.push(...this.renderRhythmicTextureFromRiff(epoch, currentChord, tension));
     }
     
+    // #ЗАЧЕМ: Гарантированная Harmony.
     if (hints.harmony) {
         events.push(...this.renderDerivativeHarmony(currentChord, epoch, tension));
     }
@@ -279,7 +277,8 @@ export class BluesBrain {
         melodyTrack: this.currentTrackName,
         ensemble: this.ensembleStatus,
         bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
-        drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat')
+        drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
+        harmony: hints.harmony
     };
 
     return { 
@@ -287,7 +286,7 @@ export class BluesBrain {
         lickId: this.currentLickId, 
         mutationType: this.state.currentMutationType,
         activeAxioms,
-        narrative: `Bar ${epoch % 12 + 1}/12. Evolutionary Drift active.`
+        narrative: `Bar ${epoch % 12 + 1}/12. Ensemble synergy active.`
     };
   }
 
@@ -588,15 +587,21 @@ export class BluesBrain {
     }));
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация "Narrative Drums".
+   * #ЧТО: Сбивки по томам и паузы на "вдохе" мелодии.
+   */
   private renderNarrativeDrums(epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const barIn12 = epoch % 12;
       const breaths = this.findMelodyBreaths(melodyEvents);
       const isBreath = breaths.length > 0;
 
+      // #ЗАЧЕМ: Пауза на выдохе (1/2 секунды тишины).
       if (isBreath && this.random.next() < 0.35) return [];
 
       if (barIn12 === 8 || barIn12 === 9) return this.renderDrumStabs(tension);
       
+      // #ЗАЧЕМ: Пробежки по томам в конце бандлов.
       if ((epoch + 1) % 4 === 0 && this.random.next() < 0.75) return this.renderDrumFill(tension);
       
       return this.renderBaseBluesBeat(epoch, tension);
@@ -609,8 +614,10 @@ export class BluesBrain {
       kickTicks.forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t / 3, duration: 0.1, weight: 0.75 + (tension * 0.2), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t / 3, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       
+      // Хэты с свингом
       [0, 2, 3, 5, 6, 8, 9, 11].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t / 3, duration: 0.1, weight: (t % 3 === 0 ? 0.5 : 0.3), technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       
+      // #ЗАЧЕМ: Wet Ride в кульминации.
       if (tension > 0.5 && this.random.next() < 0.4) {
           events.push({ type: 'drum_ride_wetter', note: 51, time: 2.0, duration: 1.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       }
@@ -631,6 +638,7 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
       const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
       
+      // Пробежка по томам
       const fillTicks = [6, 7.5, 9, 10.5];
       fillTicks.forEach((t, i) => {
           events.push({ 
@@ -652,18 +660,26 @@ export class BluesBrain {
       return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Адаптивный аккомпанемент.
+   * #ЧТО: Слушает плотность мелодии. Уступает дорогу быстрым пассажам.
+   */
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyDensity: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
+    
+    // #ЗАЧЕМ: Когнитивная уступка гитаристу.
     const isMelodyBusy = melodyDensity > 4;
     
     if (isMelodyBusy) {
+        // Уходим в фон (длинные аккорды)
         return notes.map((p, i) => ({
             type: 'accompaniment', note: p, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
 
+    // Обычный ритмический рисунок
     const pattern = (epoch % 2 === 0) ? [0, 1, 2, 3] : [0, 2];
     return pattern.map((pIdx, i) => ({
         type: 'accompaniment', 
@@ -677,20 +693,28 @@ export class BluesBrain {
     }));
   }
 
+  /**
+   * #ЗАЧЕМ: Ликвидация "дятла". Внедрение Shadow Mode.
+   * #ЧТО: Пианино синхронно дублирует мелодию или аккомпанемент с жестким лимитом.
+   */
   private renderShadowPiano(epoch: number, tension: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
+      // #ЗАЧЕМ: Когнитивная тишина. В спокойных местах пианист чаще молчит.
       if (tension < 0.3 && this.random.next() < 0.7) return [];
 
+      // Приоритет 1: Дублирование мелодии (Тень Солиста)
       if (melodyEvents.length > 0 && this.random.next() < 0.6) {
-          return melodyEvents.map(me => ({
+          // Лимит плотности для Тени (не больше 4 нот за такт)
+          return melodyEvents.slice(0, 4).map(me => ({
               ...me,
               type: 'pianoAccompaniment',
-              weight: (me.weight || 0.7) * 0.30, 
+              weight: (me.weight || 0.7) * 0.30, // Тонкий отзвук
               technique: 'hit',
               phrasing: 'staccato',
               params: { ...me.params, shadow: 'melody' }
           }));
       }
 
+      // Приоритет 2: Дублирование аккомпанемента (Тень Гармонии)
       if (accompanimentEvents.length > 0) {
           return accompanimentEvents.map(ae => ({
               ...ae,
@@ -708,6 +732,8 @@ export class BluesBrain {
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
       const root = currentChord.rootNote;
       const isMin = currentChord.chordType === 'minor' || currentChord.chordType === 'diminished';
+      
+      // Название аккорда для логов
       const rootNames = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
