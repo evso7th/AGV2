@@ -528,6 +528,9 @@ export function AuraGrooveV2({
       {/* Warm up Modal */}
       <Dialog open={isWarmingUp}>
         <DialogContent className="sm:max-w-md border-primary/20 bg-card/95 backdrop-blur-xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Engine Synchronization</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col items-center justify-center p-6 space-y-6">
             <div className="relative">
                 <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
