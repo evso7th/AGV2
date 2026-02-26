@@ -20,7 +20,11 @@ import {
   Globe,
   Edit2,
   Check,
-  X
+  X,
+  Dna,
+  Zap,
+  Activity,
+  History
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -33,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -54,6 +59,8 @@ const AVAILABLE_MOODS: Mood[] = [
 ];
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
+const DYNASTIES = ['slow-burn', 'texas', 'soul', 'chromatic', 'legacy', 'lyrical', 'moody-blues', 'fifth-dimension'];
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light',
@@ -140,6 +147,38 @@ export default function HypercubeDashboard() {
       .filter(([id]) => id.toLowerCase().includes(explorerSearch.toLowerCase()))
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch]);
+
+  const dynastyStats = useMemo(() => {
+    if (!globalAxioms) return [];
+    
+    return DYNASTIES.map(dynasty => {
+        const relatedAxioms = globalAxioms.filter(ax => ax.tags?.includes(dynasty));
+        const axiomCount = relatedAxioms.length;
+        const compositions = Array.from(new Set(relatedAxioms.map(ax => ax.compositionId)));
+        
+        const avgVector = relatedAxioms.reduce((acc, ax) => {
+            acc.t += ax.vector?.t || 0;
+            acc.b += ax.vector?.b || 0;
+            acc.e += ax.vector?.e || 0;
+            acc.h += ax.vector?.h || 0;
+            return acc;
+        }, { t: 0, b: 0, e: 0, h: 0 });
+
+        if (axiomCount > 0) {
+            avgVector.t /= axiomCount;
+            avgVector.b /= axiomCount;
+            avgVector.e /= axiomCount;
+            avgVector.h /= axiomCount;
+        }
+
+        return {
+            id: dynasty,
+            count: axiomCount,
+            compositions,
+            vector: avgVector
+        };
+    }).sort((a, b) => b.count - a.count);
+  }, [globalAxioms]);
 
   const resetStaging = () => {
     setStagedAxioms([]);
@@ -398,12 +437,15 @@ export default function HypercubeDashboard() {
 
         {/* Main Interface */}
         <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/30 p-1 border border-border/50">
+          <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/30 p-1 border border-border/50">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card">
-              <Globe className="h-4 w-4 mr-2" /> Explore Cloud Heritage
+              <Globe className="h-4 w-4 mr-2" /> Explore
+            </TabsTrigger>
+            <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card">
+              <Dna className="h-4 w-4 mr-2" /> Genetic Map
             </TabsTrigger>
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card">
-              <Upload className="h-4 w-4 mr-2" /> Inject New DNA
+              <Upload className="h-4 w-4 mr-2" /> Inject DNA
             </TabsTrigger>
           </TabsList>
 
@@ -607,6 +649,71 @@ export default function HypercubeDashboard() {
                       ))}
                     </Accordion>
                   )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB: GENETIC MAP */}
+          <TabsContent value="genetic" className="space-y-6">
+            <Card className="border-border/50 shadow-xl bg-card/50">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
+                  <Dna className="h-5 w-5" /> Genetic Bloodlines
+                </CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 border-t">
+                <ScrollArea className="h-[600px] p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dynastyStats.map((dynasty) => (
+                      <Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden">
+                        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
+                          <div className="space-y-0.5">
+                            <CardTitle className="text-sm font-black uppercase tracking-tight text-primary group-hover:text-primary transition-colors">{dynasty.id.replace(/-/g, ' ')}</CardTitle>
+                            <CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription>
+                          </div>
+                          <Badge className="font-mono text-xs">{dynasty.count}</Badge>
+                        </CardHeader>
+                        <CardContent className="p-4 pt-2 space-y-4">
+                          {/* Vector Visuals */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div>
+                              <Progress value={dynasty.vector.t * 100} className="h-1.5 bg-primary/10" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div>
+                              <Progress value={dynasty.vector.b * 100} className="h-1.5 bg-primary/10" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div>
+                              <Progress value={dynasty.vector.e * 100} className="h-1.5 bg-primary/10" />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div>
+                              <Progress value={dynasty.vector.h * 100} className="h-1.5 bg-primary/10" />
+                            </div>
+                          </div>
+
+                          {/* Member Tracks */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5">
+                              <History className="h-3 w-3" /> Member Records
+                            </Label>
+                            <div className="flex flex-wrap gap-1">
+                              {dynasty.compositions.slice(0, 5).map(c => (
+                                <Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>
+                              ))}
+                              {dynasty.compositions.length > 5 && (
+                                <Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </ScrollArea>
               </CardContent>
             </Card>
