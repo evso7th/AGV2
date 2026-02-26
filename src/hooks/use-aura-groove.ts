@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.7 — "Broadcast Standby Enabled".
- * #ЧТО: ПЛАН №654 — Radio (Broadcast) теперь можно включить до нажатия Play.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.8 — "Warm-up Sequence".
+ * #ЧТО: ПЛАН №655 — Добавлена логика прогрева двигателя при включении Radio.
  */
 'use client';
 
@@ -19,6 +19,8 @@ export type AuraGrooveProps = {
   isRegenerating: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
+  isWarmingUp: boolean; // #ЗАЧЕМ: Состояние прогрева для UI.
+  warmUpTimeLeft: number; // #ЗАЧЕМ: Значение таймера.
   loadingText: string;
   availableCompositions: { id: string; count: number }[];
   selectedCompositionIds: string[];
@@ -125,6 +127,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
+  // --- WARM UP STATE ---
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
+  const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
+
   useEffect(() => {
     const saved = localStorage.getItem(LICK_HISTORY_KEY);
     if (saved) {
@@ -211,11 +217,27 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [resetWorker]);
 
   const handleToggleBroadcast = useCallback(() => {
-    // #ЗАЧЕМ: Снято ограничение !isPlaying.
-    // #ЧТО: Радио можно включить до старта музыки для настройки тракта.
     if (!isInitialized) return;
+
+    // #ЗАЧЕМ: Запуск таймера прогрева при включении радио в простое.
+    // #ЧТО: Если радио выключено и музыка не играет — запускаем 5-секундный цикл.
+    if (!isBroadcastActive && !isPlaying) {
+        setIsWarmingUp(true);
+        setWarmUpTimeLeft(5);
+        const timerId = setInterval(() => {
+            setWarmUpTimeLeft(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerId);
+                    setIsWarmingUp(false);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }
+
     toggleBroadcast();
-  }, [isInitialized, toggleBroadcast]);
+  }, [isInitialized, isBroadcastActive, isPlaying, toggleBroadcast]);
 
   const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
@@ -332,7 +354,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   return {
-    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive,
+    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
     availableCompositions,
     selectedCompositionIds,

@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.4 — "Broadcast Standby".
- * #ЧТО: Кнопка Radio теперь доступна до нажатия Play для подготовки аудио-тракта.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.5 — "Broadcast warm-up".
+ * #ЧТО: Добавлено модальное окно прогрева при активации Radio.
  */
 'use client';
 
@@ -61,7 +61,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -504,10 +504,10 @@ export function AuraGrooveV2({
                                       <SelectItem value="ambient_beat" className="text-xs">Ambient</SelectItem>
                                       <SelectItem value="composer" className="text-xs">Composer</SelectItem>
                                   </SelectContent>
-                              </Select>
+                               </Select>
                           </div>
                           <div className="flex items-center gap-2">
-                              <Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Volume</Label>
+                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/> Volume</Label>
                               <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.volume * 100)}</span>
                           </div>
@@ -524,6 +524,25 @@ export function AuraGrooveV2({
 
         </Tabs>
       </main>
+
+      {/* Warm up Modal */}
+      <Dialog open={isWarmingUp}>
+        <DialogContent className="sm:max-w-md border-primary/20 bg-card/95 backdrop-blur-xl">
+          <div className="flex flex-col items-center justify-center p-6 space-y-6">
+            <div className="relative">
+                <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
+                <TowerControl className="h-16 w-16 text-primary relative z-10" />
+            </div>
+            <div className="text-center space-y-2">
+                <h2 className="text-xl font-black uppercase tracking-tighter">Warming up engine</h2>
+                <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest opacity-70">Please wait for synchronization...</p>
+            </div>
+            <div className="text-6xl font-black text-primary font-mono tabular-nums">
+                {warmUpTimeLeft}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
