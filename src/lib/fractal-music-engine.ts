@@ -51,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.0 — "Evolutionary Intelligence".
- * #ЧТО: Поддержка скрещивания ДНК Шедевров при выключенном фильтре.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.1 — "Telemetry Update".
+ * #ЧТО: Поддержка вывода Династии в логи через метод evolve.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -135,7 +135,6 @@ export class FractalMusicEngine {
     this.hookLibrary = [];
     this.introLotteryMap.clear();
 
-    // #ЗАЧЕМ: Передача masterpieces для скрещивания.
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -186,7 +185,8 @@ export class FractalMusicEngine {
       lickId?: string,
       mutationType?: string,
       activeAxioms?: any,
-      narrative?: string
+      narrative?: string,
+      dynasty?: string
   } {
     if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
@@ -209,6 +209,7 @@ export class FractalMusicEngine {
             beautyScore, 
             tension: ambientResult.tension,
             navInfo,
+            dynasty: this.suiteDNA.dynasty,
             activeAxioms: ambientResult.activeAxioms,
             narrative: ambientResult.narrative
         };
@@ -280,6 +281,7 @@ export class FractalMusicEngine {
         beautyScore, 
         tension, 
         navInfo,
+        dynasty: this.suiteDNA.dynasty,
         lickId: (result as any).lickId,
         mutationType: (result as any).mutationType,
         activeAxioms: (result as any).activeAxioms,

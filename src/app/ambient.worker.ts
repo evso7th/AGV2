@@ -1,6 +1,7 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №639): Добавлена поддержка логирования Harmony в ансамбле.
+ * #ОБНОВЛЕНО (ПЛАН №649): Добавлен вывод Династии в логи Воркера.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -177,15 +178,15 @@ const Scheduler = {
         const axioms = payload.activeAxioms || {};
         const narration = payload.narrative || 'Developing story...';
         
-        // #ЗАЧЕМ: Расширенный лог ансамбля с Harmony.
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
+        const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
         
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}]`;
 
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ` +
             `%c${ensembleStr}\n` +
             `%c  ↳ ${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${narration}`,
