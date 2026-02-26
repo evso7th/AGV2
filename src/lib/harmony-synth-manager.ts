@@ -9,7 +9,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 
 /**
  * #ЗАЧЕМ: Менеджер слоя гармонии.
- * #ЧТО: ПЛАН №616 — Удален метод setVolume для предотвращения конфликтов с системной шиной.
+ * #ЧТО: ПЛАН №650 — Добавлены логи отладки для подтверждения получения событий.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -47,7 +47,6 @@ export class HarmonySynthManager {
         
         this.isInitialized = true;
         
-        // #ЗАЧЕМ: Внутренняя балансировка. Общая громкость теперь снаружи.
         this.piano.setVolume(0.85);
         this.guitarChords.setVolume(1.0);
         this.violin.setVolume(1.0);
@@ -75,6 +74,9 @@ export class HarmonySynthManager {
         
         if (notes.length === 0) return;
 
+        // #ЗАЧЕМ: Отладочный лог физического исполнения.
+        console.log(`%c[HarmonyExec] Playing ${notes.length} events using ${instrumentToPlay}`, 'color: #DA70D6; font-weight: bold;');
+
         switch (instrumentToPlay) {
             case 'piano':
                 this.piano.schedule('piano', notes, barStartTime);
@@ -96,6 +98,14 @@ export class HarmonySynthManager {
         let name = instrumentName;
         if (name === 'flute') name = 'violin';
         this.activeInstrumentName = name;
+    }
+
+    public setVolume(volume: number) {
+        // #ЗАЧЕМ: Установка внутреннего гейна сэмплеров.
+        this.piano.setVolume(volume * 0.85);
+        this.guitarChords.setVolume(volume);
+        this.violin.setVolume(volume);
+        this.flute.setVolume(volume * 0.8);
     }
 
     public allNotesOff() {

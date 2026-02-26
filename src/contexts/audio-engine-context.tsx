@@ -1,8 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V8.0 — "The Instant Silence Update".
- * #ЧТО: 1. Внедрена мгновенная блокировка звука при паузе (Master Mute).
- *       2. Исправлено управление громкостью пианино (балансировка через VOICE_BALANCE).
- *       3. ПЛАН №647: Ликвидация послезвучия.
+ * #ЗАЧЕМ: Audio Engine Context V8.1 — "The Balanced Ensemble".
+ * #ЧТО: 1. Исправлена маршрутизация громкости: теперь VOICE_BALANCE применяется ко всем менеджерам.
+ *       2. ПЛАН №650: Восстановление слышимости слоя Harmony.
  */
 'use client';
 
@@ -33,8 +32,8 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.65, 
   sparkles: 0.40, 
   sfx: 0.50, 
-  harmony: 0.60,
-  pianoAccompaniment: 0.45, // #ЗАЧЕМ: Умеренное присутствие Тени.
+  harmony: 0.80, // #ЗАЧЕМ: Повышен приоритет Гармонии.
+  pianoAccompaniment: 0.45,
 };
 
 type CompositionMeta = { id: string; count: number };
@@ -146,9 +145,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, db, refreshCloudAxioms]);
 
-  /**
-   * #ЗАЧЕМ: Глубокая очистка всех активных звуков.
-   */
   const stopAllSounds = useCallback(() => {
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
@@ -268,10 +264,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, isInitializing, toast, scheduleEvents]);
 
-  /**
-   * #ЗАЧЕМ: Реализация Мгновенной Паузы.
-   * #ЧТО: Гейн мастера сбрасывается в 0 за 10 мс.
-   */
   const setIsPlayingStateCallback = useCallback((playing: boolean) => {
     setIsPlayingState(playing);
     if (!isInitialized || !workerRef.current || !audioContextRef.current) return;
@@ -280,25 +272,42 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     if (playing) {
         if (context.state === 'suspended') context.resume();
-        // Плавный вход
         masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
         stopAllSounds(); 
         nextBarTimeRef.current = context.currentTime + 0.5;
         workerRef.current.postMessage({ command: 'start' });
     } else {
-        // Мгновенная тишина
         masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
         workerRef.current.postMessage({ command: 'stop' });
-        setTimeout(() => stopAllSounds(), 50); // Физическая остановка чуть позже для избежания щелчка
+        setTimeout(() => stopAllSounds(), 50); 
     }
   }, [isInitialized, stopAllSounds]);
 
+  /**
+   * #ЗАЧЕМ: Централизованная балансировка громкости.
+   * #ЧТО: Все инструменты теперь используют balancedVolume.
+   */
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
 
-    // #ЗАЧЕМ: Прямое управление пианино с балансировкой.
+    if (part === 'bass' && bassManagerV2Ref.current) {
+        bassManagerV2Ref.current.setPreampGain(balancedVolume);
+        return;
+    }
+    if (part === 'melody' && melodyManagerV2Ref.current) {
+        melodyManagerV2Ref.current.setPreampGain(balancedVolume);
+        return;
+    }
+    if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
+        accompanimentManagerV2Ref.current.setPreampGain(balancedVolume);
+        return;
+    }
+    if (part === 'harmony' && harmonyManagerRef.current) {
+        harmonyManagerRef.current.setVolume(balancedVolume);
+        return;
+    }
     if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
         pianoAccompanimentManagerRef.current.setVolume(balancedVolume);
         return;
