@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №616 — Удален метод setPreampGain. Громкость теперь диктуется Context-шиной.
+ * #ЧТО: ПЛАН №652 — Восстановлен метод setPreampGain для корректной работы системной шины громкости.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -24,7 +24,6 @@ export class MelodySynthManagerV2 {
     private darkTelecasterSampler: DarkTelecasterSampler;
     private cs80Sampler: CS80GuitarSampler;
     
-    // #ЗАЧЕМ: preamp теперь служит только внутренним сумматором, громкость всегда 1.0.
     private preamp: GainNode;
 
     private activePresetName: string = 'none';
@@ -172,6 +171,16 @@ export class MelodySynthManagerV2 {
        } else {
            this.activePresetName = instrumentName;
        }
+    }
+
+    /**
+     * #ЗАЧЕМ: Управление громкостью через системную шину.
+     * #ЧТО: Регулирует гейн преампа, обеспечивая плавный фейд.
+     */
+    public setPreampGain(gain: number) {
+        if (this.preamp) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+        }
     }
 
     public allNotesOff() {
