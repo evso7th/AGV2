@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.3 — "Heritage Transparency".
- * #ЧТО: Внедрена визуализация количества аксиом в Cloud DNA Selector.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.4 — "Broadcast Standby".
+ * #ЧТО: Кнопка Radio теперь доступна до нажатия Play для подготовки аудио-тракта.
  */
 'use client';
 
@@ -169,7 +169,7 @@ export function AuraGrooveV2({
            <Button 
               type="button" 
               onClick={handleToggleBroadcast} 
-              disabled={isInitializing || !isPlaying} 
+              disabled={isInitializing} 
               variant={isBroadcastActive ? "destructive" : "outline"}
               className="h-10 w-10 p-0"
               title={isBroadcastActive ? "Stop Radio" : "Start Radio (Bluetooth Safe)"}

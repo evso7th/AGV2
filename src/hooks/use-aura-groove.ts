@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.6 — "Heritage Metadata Aware".
- * #ЧТО: ПЛАН №641 — availableCompositions теперь поддерживает объекты метаданных.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.7 — "Broadcast Standby Enabled".
+ * #ЧТО: ПЛАН №654 — Radio (Broadcast) теперь можно включить до нажатия Play.
  */
 'use client';
 
@@ -211,9 +211,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [resetWorker]);
 
   const handleToggleBroadcast = useCallback(() => {
-    if (!isInitialized || !isPlaying) return;
+    // #ЗАЧЕМ: Снято ограничение !isPlaying.
+    // #ЧТО: Радио можно включить до старта музыки для настройки тракта.
+    if (!isInitialized) return;
     toggleBroadcast();
-  }, [isInitialized, isPlaying, toggleBroadcast]);
+  }, [isInitialized, toggleBroadcast]);
 
   const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
