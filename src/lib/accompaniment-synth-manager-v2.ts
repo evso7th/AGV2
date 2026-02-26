@@ -5,7 +5,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №616 — Громкость теперь управляется Context-шиной.
+ * #ЧТО: ПЛАН №653 — Восстановлен метод setPreampGain для устранения системной ошибки.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -99,6 +99,16 @@ export class AccompanimentSynthManagerV2 {
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
        if (!newPreset) return;
        await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
+    }
+
+    /**
+     * #ЗАЧЕМ: Управление громкостью через системную шину.
+     * #ЧТО: Регулирует гейн преампа, обеспечивая плавный фейд.
+     */
+    public setPreampGain(gain: number) {
+        if (this.preamp) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
+        }
     }
 
     public allNotesOff() {
