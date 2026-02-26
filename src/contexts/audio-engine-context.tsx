@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V8.1 — "The Balanced Ensemble".
- * #ЧТО: 1. Исправлена маршрутизация громкости: теперь VOICE_BALANCE применяется ко всем менеджерам.
- *       2. ПЛАН №650: Восстановление слышимости слоя Harmony.
+ * #ЗАЧЕМ: Audio Engine Context V8.2 — "Harmony Dominance".
+ * #ЧТО: 1. Повышен системный баланс Harmony до 1.0 для приоритета гитарных аккордов.
+ *       2. ПЛАН №651: Реализация доминанты Guitar Chords в ансамбле.
  */
 'use client';
 
@@ -32,7 +32,7 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.65, 
   sparkles: 0.40, 
   sfx: 0.50, 
-  harmony: 0.80, // #ЗАЧЕМ: Повышен приоритет Гармонии.
+  harmony: 1.0, // #ЗАЧЕМ: Максимальный приоритет для слышимости гитарных аккордов.
   pianoAccompaniment: 0.45,
 };
 
@@ -277,16 +277,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         nextBarTimeRef.current = context.currentTime + 0.5;
         workerRef.current.postMessage({ command: 'start' });
     } else {
+        // #ЗАЧЕМ: Мгновенная тишина при паузе.
         masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
         workerRef.current.postMessage({ command: 'stop' });
         setTimeout(() => stopAllSounds(), 50); 
     }
   }, [isInitialized, stopAllSounds]);
 
-  /**
-   * #ЗАЧЕМ: Централизованная балансировка громкости.
-   * #ЧТО: Все инструменты теперь используют balancedVolume.
-   */
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
