@@ -1,7 +1,8 @@
+
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №599): Внедрена функция repairLegacyPhrase для поддержки старых MIDI-данных.
+ * #ОБНОВЛЕНО (ПЛАН №646): Внедрены Генетическое Скрещивание и Марковское Блуждание.
  */
 
 import type { 
@@ -33,22 +34,14 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
-/** #ЗАЧЕМ: Порядковые ключи для сжатия. */
 export const DEGREE_KEYS = Object.keys(DEGREE_TO_SEMITONE);
-
-/** #ЗАЧЕМ: Порядковые техники для сжатия. */
 export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pluck', 'hit', 'swell'];
 
-/** #ЗАЧЕМ: Обратный маппинг для Алхимика MIDI. */
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Распаковка сжатого числового массива в осмысленные нотные объекты.
- * #ЧТО: [t, d, degIdx, techIdx] -> { t, d, deg, tech }
- */
 export function decompressCompactPhrase(compact: number[]): any[] {
     const result = [];
     for (let i = 0; i < compact.length; i += 4) {
@@ -62,50 +55,27 @@ export function decompressCompactPhrase(compact: number[]): any[] {
     return result;
 }
 
-/**
- * #ЗАЧЕМ: "Алхимик-Конвертер" для старых данных.
- * #ЧТО: Если фраза содержит MIDI ноты (например, 72) вместо индексов, 
- *       она конвертируется в правильный Spec формат [t, d, degIdx, techIdx].
- */
 export function repairLegacyPhrase(compact: number[]): number[] {
     if (!compact || compact.length === 0) return [];
-    
-    // Эвристика: если на 3-й позиции число > 20, это MIDI нота, а не индекс.
     const isLegacy = compact.length >= 3 && compact[2] > 20;
     if (!isLegacy) return compact;
-
     const repaired: number[] = [];
     const BASE_C4 = 60;
-
     for (let i = 0; i < compact.length; i += 4) {
         const t = compact[i];
         const d = compact[i+1];
         const midi = compact[i+2];
-        const vel = compact[i+3];
-
-        // 1. Вычисляем ступень относительно C4
         const semitone = (midi - BASE_C4) % 12;
-        
-        // 2. Ищем ближайшую ступень в нашем маппинге
         const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
         const degIdx = DEGREE_KEYS.indexOf(degName);
-        
-        // 3. Назначаем технику
         const techIdx = TECHNIQUE_KEYS.indexOf('pick');
-
         repaired.push(t, d, degIdx, techIdx);
     }
-
-    console.log(`%c[DNA Repair] Recovered ${repaired.length / 4} notes from Legacy MIDI format.`, 'color: #FFA500;');
     return repaired;
 }
 
-/**
- * #ЗАЧЕМ: Эвристический анализ фразы для калибровки Гиперкуба.
- */
 export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector {
     if (phrase.length === 0) return { t: 0.5, b: 0.5, e: 0.5, h: 0.5 };
-
     let tensionScore = 0;
     phrase.forEach((n, i) => {
         const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
@@ -116,46 +86,35 @@ export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector
             if (diff === 1) tensionScore += 0.15;
         }
     });
-
     let brightnessScore = 0;
     const avgPitch = phrase.reduce((sum, n) => sum + (DEGREE_TO_SEMITONE[n.deg] || 0), 0) / phrase.length;
     brightnessScore = (avgPitch + 12) / 36;
     if (phrase.some(n => n.deg === '3')) brightnessScore += 0.15;
-
     let entropyScore = 0;
     const ticks = phrase.map(n => n.t % 12);
     const uniqueTicks = new Set(ticks).size;
     entropyScore = uniqueTicks / 12;
     const syncopations = ticks.filter(t => ![0, 3, 6, 9].includes(t)).length;
     entropyScore += (syncopations / phrase.length) * 0.5;
-
     let stabilityScore = 0;
     const tonicNotes = phrase.filter(n => n.deg === 'R' || n.deg === '5').length;
     stabilityScore = tonicNotes / phrase.length;
     if (phrase[phrase.length - 1].deg === 'R') stabilityScore += 0.2;
-
-    const clamp = (v: number) => Math.max(0.05, Math.min(0.95, v));
-
+    const clampVal = (v: number) => Math.max(0.05, Math.min(0.95, v));
     return {
-        t: clamp(tensionScore / 2 + 0.3),
-        b: clamp(brightnessScore),
-        e: clamp(entropyScore),
-        h: clamp(stabilityScore)
+        t: clampVal(tensionScore / 2 + 0.3),
+        b: clampVal(brightnessScore),
+        e: clampVal(entropyScore),
+        h: clampVal(stabilityScore)
     };
 }
 
-/**
- * #ЗАЧЕМ: Нормализация длины фразы до "нарративного минимума".
- */
 export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
     if (phrase.length === 0) return [];
-    
     const currentLength = Math.max(...phrase.map(n => n.t + n.d), 0) || 12;
     if (currentLength >= targetTicks) return phrase;
-
     const iterations = Math.ceil(targetTicks / currentLength);
     const result = [];
-
     for (let i = 0; i < iterations; i++) {
         const offset = i * currentLength;
         const variant = phrase.map(n => ({
@@ -166,25 +125,21 @@ export function stretchToNarrativeLength(phrase: any[], targetTicks: number, ran
         }));
         result.push(...variant);
     }
-
     return result.filter(n => n.t < targetTicks);
 }
 
-/** #ЗАЧЕМ: Атлас географических локаций для AmbientBrain. */
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
     HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
     MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
     VOID: { fog: 0.9, depth: 0.8, reg: 0 }
 };
 
-/** #ЗАЧЕМ: Атлас световых состояний (Йога Звука) для AmbientBrain. */
 export const LIGHT_ATLAS: Record<string, { fog: number, depth: number, bright: number }> = {
     PRISM: { fog: 0.1, depth: 0.4, bright: 0.8 },
     GLOW: { fog: 0.4, depth: 0.6, bright: 0.5 },
     DAZZLE: { fog: 0.05, depth: 0.9, bright: 1.0 }
 };
 
-/** #ЗАЧЕМ: Универсальный определитель лада для Матриц Резонанса. */
 export function getScaleForMood(mood: Mood, key: number = 60): number[] {
     const root = key % 12;
     let mode = 'aeolian';
@@ -193,7 +148,6 @@ export function getScaleForMood(mood: Mood, key: number = 60): number[] {
     if (mood === 'melancholic') mode = 'dorian';
     if (mood === 'anxious') mode = 'phrygian';
     if (mood === 'dark' || mood === 'gloomy') mode = 'aeolian';
-    
     const intervals = MODE_SEMITONES[mode] || MODE_SEMITONES.aeolian;
     return intervals.map(i => (root + i) % 12);
 }
@@ -209,37 +163,24 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-/**
- * #ЗАЧЕМ: Генерация энергетического скелета сюиты.
- */
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
     const getJitter = (bar: number) => (calculateMusiNum(bar, 7, seed, 10) / 100) - 0.05;
-
     let accumulatedBars = 0;
     parts?.forEach(part => {
         const partDuration = Math.round((part.duration.percent / 100) * totalBars);
         for (let i = 0; i < partDuration; i++) {
             const progress = i / (partDuration || 1);
             let tension: number;
-
-            if (part.id === 'INTRO' || part.id === 'PROLOGUE') {
-                tension = 0.25 + (progress * 0.1); 
-            } else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) {
-                tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
-            } else if (part.id === 'OUTRO') {
-                tension = 0.3 * (1 - progress * 0.6); 
-            } else if (part.id.includes('BRIDGE')) {
-                tension = 0.45;
-            } else {
-                tension = 0.4; 
-            }
-            
+            if (part.id === 'INTRO' || part.id === 'PROLOGUE') tension = 0.25 + (progress * 0.1); 
+            else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
+            else if (part.id === 'OUTRO') tension = 0.3 * (1 - progress * 0.6); 
+            else if (part.id.includes('BRIDGE')) tension = 0.45;
+            else tension = 0.4; 
             map.push(Math.max(0.1, Math.min(0.95, tension + getJitter(accumulatedBars + i))));
         }
         accumulatedBars += partDuration;
     });
-
     while(map.length < totalBars) {
         const progress = map.length / totalBars;
         map.push(0.4 + 0.3 * Math.sin(progress * Math.PI) + getJitter(map.length));
@@ -258,9 +199,47 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
 }
 
 /**
- * #ЗАЧЕМ: Генерация ДНК сюиты с учетом генетического наследования.
- * #ЧТО: Скрещивание семени текущей сессии с семенем предка (если есть).
+ * #ЗАЧЕМ: Реализация Марковского Блуждания по гармонии.
+ * #ЧТО: Генерирует нелинейный гармонический путь вместо жестких 12 тактов.
  */
+export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number): GhostChord[] {
+    const track: GhostChord[] = [];
+    const root = rootNote;
+    const states = [0, 5, 7, 10]; // I, IV, V, bVII
+    const matrix = [
+        [0.5, 0.3, 0.1, 0.1], // From I
+        [0.4, 0.4, 0.1, 0.1], // From IV
+        [0.6, 0.1, 0.2, 0.1], // From V
+        [0.5, 0.2, 0.2, 0.1]  // From bVII
+    ];
+
+    let currentBar = 0;
+    let currentStateIdx = 0;
+
+    while (currentBar < totalBars) {
+        const dur = [2, 4, 8][calculateMusiNum(currentBar, 3, seed, 3)];
+        track.push({
+            rootNote: root + states[currentStateIdx],
+            chordType: 'minor',
+            bar: currentBar,
+            durationBars: dur
+        });
+        
+        // Markov Step
+        const rand = (calculateMusiNum(currentBar, 13, seed, 100)) / 100;
+        let acc = 0;
+        for (let i = 0; i < 4; i++) {
+            acc += matrix[currentStateIdx][i];
+            if (rand <= acc) {
+                currentStateIdx = i;
+                break;
+            }
+        }
+        currentBar += dur;
+    }
+    return track;
+}
+
 export function generateSuiteDNA(
     totalBars: number, 
     mood: Mood, 
@@ -270,13 +249,19 @@ export function generateSuiteDNA(
     blueprintParts: any[], 
     ancestor?: any, 
     sessionHistory?: string[],
-    bpmConfig?: { base: number, range: [number, number], modifier: number }
+    bpmConfig?: { base: number, range: [number, number], modifier: number },
+    masterpieces?: any[] // #ЗАЧЕМ: Пул предков для скрещивания.
 ): SuiteDNA {
     // --- GENETIC CROSSOVER ---
     let finalSeed = initialSeed;
-    if (ancestor && typeof ancestor.seed === 'number') {
+    if (masterpieces && masterpieces.length > 0) {
+        const parent1 = masterpieces[calculateMusiNum(initialSeed, 7, 0, masterpieces.length)];
+        const parent2 = masterpieces[calculateMusiNum(initialSeed, 11, 5, masterpieces.length)];
+        // Битовое скрещивание семян
+        finalSeed = (parent1.seed & 0xAAAA) | (parent2.seed & 0x5555);
+        console.log(`%c[Genetics] Crossover Active. Inheriting from: ${parent1.mood} and ${parent2.mood}`, 'color: #DA70D6; font-weight: bold;');
+    } else if (ancestor && typeof ancestor.seed === 'number') {
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
-        console.log(`%c[Genetics] Crossover Active. Inheriting DNA from Masterpiece.`, 'color: #DA70D6; font-weight: bold;');
     }
 
     let seedLickId: string | undefined;
@@ -298,15 +283,23 @@ export function generateSuiteDNA(
     }
 
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
-    const harmonyTrack: GhostChord[] = [];
-    let accumulatedBars = 0;
-    blueprintParts.forEach((part: any) => {
-        const partDuration = Math.round((part.duration.percent / 100) * totalBars);
-        for (let i = 0; i < partDuration; i++) {
-            harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: accumulatedBars + i, durationBars: 1 });
-        }
-        accumulatedBars += partDuration;
-    });
+    
+    // #ЗАЧЕМ: Свободный режим использует Марковское Блуждание вместо циклической сетки.
+    const isEvolutionaryMode = !ancestor; 
+    const harmonyTrack = isEvolutionaryMode 
+        ? generateMarkovHarmony(totalBars, key, finalSeed)
+        : [];
+
+    if (!isEvolutionaryMode) {
+        let accumulatedBars = 0;
+        blueprintParts.forEach((part: any) => {
+            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+            for (let i = 0; i < partDuration; i++) {
+                harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: accumulatedBars + i, durationBars: 1 });
+            }
+            accumulatedBars += partDuration;
+        });
+    }
 
     let baseTempo = 72;
     if (bpmConfig) {
@@ -318,15 +311,6 @@ export function generateSuiteDNA(
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
     
-    // Create random itinerary for Ambient
-    const itinerary = ['VOID', 'HARBOR', 'MOUNTAIN'];
-    const shuffledItinerary = [];
-    let tempItin = [...itinerary];
-    for(let i=0; i<3; i++) {
-        const idx = calculateMusiNum(finalSeed, 7, i*13, tempItin.length);
-        shuffledItinerary.push(tempItin.splice(idx, 1)[0]);
-    }
-
     return { 
         harmonyTrack, 
         baseTempo, 
@@ -338,7 +322,6 @@ export function generateSuiteDNA(
         seedLickId, 
         partLickMap,
         sessionHistory,
-        itinerary: shuffledItinerary,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined
     };
 }

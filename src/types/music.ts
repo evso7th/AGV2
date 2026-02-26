@@ -1,3 +1,4 @@
+
 import type { 
     Mood as FractalMood, 
     InstrumentHints as FractalInstrumentHints, 
@@ -22,6 +23,7 @@ export type { FractalEvent, GhostChord };
 export type NavigationInfo = FractalNavigationInfo;
 export type SuiteDNA = FractalSuiteDNA & {
     sessionHistory?: string[];
+    parentSeeds?: number[]; // #ЗАЧЕМ: Поддержка генетического наследования от Шедевров.
 };
 export type InstrumentPart = FractalInstrumentPart;
 
@@ -177,8 +179,9 @@ export type WorkerSettings = {
   sessionLickHistory?: string[];
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
-  activeAnchorId?: string | null; // #ЗАЧЕМ: Фиксация трека-донора для текущей сюиты.
+  activeAnchorId?: string | null; 
   ancestor?: any;
+  masterpieces?: any[]; // #ЗАЧЕМ: Передача пула Шедевров в Воркер для генетического отбора.
 };
 
 export type TimerSettings = {

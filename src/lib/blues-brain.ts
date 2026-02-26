@@ -13,7 +13,8 @@ import {
 import { 
     DEGREE_TO_SEMITONE,
     decompressCompactPhrase,
-    stretchToNarrativeLength
+    stretchToNarrativeLength,
+    calculateMusiNum
 } from './music-theory';
 import { 
     getNextChordRoot, 
@@ -25,10 +26,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V150.0 — "Orchestral Listener".
- * #ЧТО: 1. Бас жестко ограничен 2-й октавой (MIDI < 48).
- *       2. Аккомпанемент адаптируется к плотности мелодии (Breathing Logic).
- *       3. Исправлен эффект "шарманки" через динамическую выборку техник.
+ * #ЗАЧЕМ: Блюзовый Мозг V160.0 — "Convergent Evolution".
+ * #ЧТО: 1. Внедрена L-логика морфогенеза фраз (размножение нот).
+ *       2. Реализован Fractal Drift (постепенное изменение аксиом со временем).
+ *       3. Интегрирована Марковская адаптивность к настроению.
  */
 
 export interface BluesBrainConfig {
@@ -69,7 +70,7 @@ export class BluesBrain {
 
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
-  private readonly BASS_CEILING = 47; // #ЗАЧЕМ: Ограничение баса 2-й октавой.
+  private readonly BASS_CEILING = 47; 
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -81,7 +82,8 @@ export class BluesBrain {
       tensionMomentum: number,
       activeAccompTimbre: string,
       recentLicks: string[],
-      recentGrandMelodies: string[]
+      recentGrandMelodies: string[],
+      driftVector: { time: number, pitch: number } // #ЗАЧЕМ: Вектор фрактального дрейфа.
   };
   private sfxPlayedInPart = false;
   private currentPartId = '';
@@ -133,7 +135,8 @@ export class BluesBrain {
       tensionMomentum: 0,
       activeAccompTimbre: 'organ_soft_jazz',
       recentLicks: [...(sessionLickHistory || [])],
-      recentGrandMelodies: []
+      recentGrandMelodies: [],
+      driftVector: { time: 0, pitch: 0 }
     };
   }
 
@@ -152,16 +155,48 @@ export class BluesBrain {
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
   }
 
-  /**
-   * #ЗАЧЕМ: Жесткое ограничение октавы баса.
-   * #ЧТО: MIDI >= 48 (3-я октава и выше) опускается вниз.
-   */
   private constrainBassOctave(note: number): number {
       let finalNote = note;
       while (finalNote > this.BASS_CEILING) {
           finalNote -= 12;
       }
       return Math.max(this.BASS_FLOOR, finalNote);
+  }
+
+  /**
+   * #ЗАЧЕМ: L-Система морфогенеза фраз.
+   * #ЧТО: Если нота длинная, она может "расщепиться" на две в том же ладу.
+   */
+  private applyMorphogenesis(phrase: any[]): any[] {
+      const result: any[] = [];
+      phrase.forEach(n => {
+          if (n.d > 12 && this.random.next() < 0.3 * this.state.tensionLevel) {
+              // Разделение ноты на две (L-логика)
+              result.push({ ...n, d: n.d / 2 });
+              result.push({ 
+                  ...n, 
+                  t: n.t + n.d / 2, 
+                  d: n.d / 2, 
+                  deg: this.random.next() < 0.5 ? '5' : 'b3' // Блюзовая вариация
+              });
+          } else {
+              result.push(n);
+          }
+      });
+      return result;
+  }
+
+  /**
+   * #ЗАЧЕМ: Фрактальный дрейф аксиомы.
+   * #ЧТО: Медленное смещение параметров нот со временем (Epoch).
+   */
+  private applyFractalDrift(phrase: any[], epoch: number): any[] {
+      const driftSpeed = 0.005;
+      return phrase.map(n => ({
+          ...n,
+          t: n.t + Math.sin(epoch * driftSpeed) * 0.5,
+          weight: n.weight + Math.cos(epoch * driftSpeed) * 0.05
+      }));
   }
 
   public generateBar(
@@ -191,7 +226,15 @@ export class BluesBrain {
     if (this.currentAxiom.length === 0 || isPhraseBoundary || navInfo.isPartTransition) {
         this.refreshUnifiedMutation();
         this.selectNextAxiom(navInfo, dna, epoch);
+        
+        // #ЗАЧЕМ: Внедрение Эволюции.
+        if (!this.config.activeAnchorId) {
+            this.currentAxiom = this.applyMorphogenesis(this.currentAxiom);
+        }
     }
+
+    // Применение дрейфа на каждом такте
+    this.currentAxiom = this.applyFractalDrift(this.currentAxiom, epoch);
 
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints, epoch);
@@ -207,11 +250,9 @@ export class BluesBrain {
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
     
-    // #ЗАЧЕМ: Адаптивность аккомпанемента к плотности оркестра.
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
-        // Проверяем активность мелодии
         const melodyDensity = melodyEvents.filter(e => e.type === 'melody').length;
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension, melodyDensity));
     }
@@ -246,7 +287,7 @@ export class BluesBrain {
         lickId: this.currentLickId, 
         mutationType: this.state.currentMutationType,
         activeAxioms,
-        narrative: `Bar ${epoch % 12 + 1}/12. Ensemble status: ${this.ensembleStatus}`
+        narrative: `Bar ${epoch % 12 + 1}/12. Evolutionary Drift active.`
     };
   }
 
@@ -258,7 +299,7 @@ export class BluesBrain {
       );
       const finalPool = pool.length > 0 ? pool : BLUES_GUITAR_RIFFS;
       this.currentGuitarRiff = finalPool[this.random.nextInt(finalPool.length)];
-      this.state.recentGrandMelodies.push(this.currentGuitarRiff.id);
+      this.state.recentGrandMelodies.push(this.currentGuitarRiff!.id);
       if (this.state.recentGrandMelodies.length > 6) this.state.recentGrandMelodies.shift();
 
       const melodyPool = BLUES_MELODY_RIFFS.filter(m => 
@@ -424,7 +465,7 @@ export class BluesBrain {
           });
 
           if (bass.time === 0 || bass.time === 2.0 || tension > 0.6) {
-              const root = bass.note + 24;
+              const root = (bass.note || 0) + 24;
               let pitches = [root + third, root + fifth];
               if (tension > 0.55) pitches.push(root + seventh); 
               if (tension > 0.75) pitches.push(root + 14);
@@ -615,10 +656,6 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
     const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
-    
-    // #ЗАЧЕМ: Логика адаптивности аккомпанемента.
-    // #ЧТО: Если мелодия плотная (>4 нот/такт), аккомпанемент играет один долгий аккорд (Breathing).
-    //       Если мелодия разреженная, аккомпанемент добавляет ритмику.
     const isMelodyBusy = melodyDensity > 4;
     
     if (isMelodyBusy) {
@@ -627,7 +664,6 @@ export class BluesBrain {
         }));
     }
 
-    // Ритмическая вариация для спокойных мест
     const pattern = (epoch % 2 === 0) ? [0, 1, 2, 3] : [0, 2];
     return pattern.map((pIdx, i) => ({
         type: 'accompaniment', 
@@ -648,7 +684,7 @@ export class BluesBrain {
           return melodyEvents.map(me => ({
               ...me,
               type: 'pianoAccompaniment',
-              weight: me.weight * 0.30, 
+              weight: (me.weight || 0.7) * 0.30, 
               technique: 'hit',
               phrasing: 'staccato',
               params: { ...me.params, shadow: 'melody' }
@@ -659,7 +695,7 @@ export class BluesBrain {
           return accompanimentEvents.map(ae => ({
               ...ae,
               type: 'pianoAccompaniment',
-              weight: ae.weight * 0.25,
+              weight: (ae.weight || 0.7) * 0.25,
               technique: 'hit',
               phrasing: 'staccato',
               params: { ...ae.params, shadow: 'accompaniment' }
@@ -707,15 +743,4 @@ export class BluesBrain {
         (hints as any).harmony = target;
     }
   }
-}
-
-function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
-    if (!isFinite(step) || modulo <= 0) return 0;
-    let num = Math.abs(Math.floor(step + start));
-    let sum = 0;
-    while (num > 0) {
-        sum += num % base;
-        num = Math.floor(num / base);
-    }
-    return sum % modulo;
 }

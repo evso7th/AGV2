@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -45,12 +46,13 @@ interface EngineConfig {
   sessionLickHistory?: string[];
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
-  activeAnchorId?: string | null; // #ЗАЧЕМ: Генетический Якорь сюиты.
+  activeAnchorId?: string | null; 
+  masterpieces?: any[]; // #ЗАЧЕМ: Пул Шедевров для эволюции.
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V24.2 — "Genetic Anchor Supremacy".
- * #ЧТО: Проброс activeAnchorId в Мозги для реализации Варианта Б.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.0 — "Evolutionary Intelligence".
+ * #ЧТО: Поддержка скрещивания ДНК Шедевров при выключенном фильтре.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -133,6 +135,7 @@ export class FractalMusicEngine {
     this.hookLibrary = [];
     this.introLotteryMap.clear();
 
+    // #ЗАЧЕМ: Передача masterpieces для скрещивания.
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
         this.config.mood, 
@@ -142,7 +145,8 @@ export class FractalMusicEngine {
         this.blueprint.structure.parts,
         this.config.ancestor,
         this.config.sessionLickHistory,
-        this.blueprint.musical.bpm
+        this.blueprint.musical.bpm,
+        this.config.masterpieces
     );
 
     if (this.suiteDNA.seedLickId) {
@@ -158,7 +162,7 @@ export class FractalMusicEngine {
             this.config.sessionLickHistory, 
             this.config.cloudAxioms, 
             this.config.selectedCompositionIds,
-            this.config.activeAnchorId // Передаем Якорь в Мозг
+            this.config.activeAnchorId 
         );
         this.ambientBrain = null;
     } else if (this.config.genre === 'ambient') {
