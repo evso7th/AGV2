@@ -25,8 +25,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V165.1 — "The Harmony Trace".
- * #ЧТО: ПЛАН №650 — Добавлена передача аксиомы Harmony в метаданные лога.
+ * #ЗАЧЕМ: Блюзовый Мозг V165.2 — "Bass Telemetry Update".
+ * #ЧТО: ПЛАН №657 — Добавлено динамическое определение и логирование пресета баса.
  */
 
 export interface BluesBrainConfig {
@@ -271,7 +271,6 @@ export class BluesBrain {
         ensemble: this.ensembleStatus,
         bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
         drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
-        // #ЗАЧЕМ: Передача статуса Harmony в воркер.
         harmony: harAxiom
     };
 
@@ -727,6 +726,15 @@ export class BluesBrain {
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
+    // #ЗАЧЕМ: Динамическое определение пресета баса для телеметрии.
+    if (hints.bass) {
+        let target = 'bass_jazz_warm';
+        if (tension > 0.8) target = 'bass_808';
+        else if (this.mood === 'dark' || this.mood === 'gloomy') target = 'bass_ambient_dark';
+        else if (this.mood === 'enthusiastic') target = 'bass_rock_pick';
+        (hints as any).bass = target;
+    }
+    
     if (hints.melody) (hints as any).melody = tension > 0.8 ? 'cs80' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     
