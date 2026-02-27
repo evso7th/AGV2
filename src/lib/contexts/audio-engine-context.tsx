@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V9.5 — "Full Spectrum Telemetry".
- * #ЧТО: 1. ПЛАН №664 — Исправлена ошибка маршрутизации громкости (удалены early returns).
- *       2. Внедрена телеметрия управления ансамблем.
+ * #ЗАЧЕМ: Audio Engine Context V10.0 — "Volume Routing Fix".
+ * #ЧТО: ПЛАН №665 — Упрощена маршрутизация громкости. Мастер-узлы контекста теперь 
+ *       являются единственным источником правды для UI-регуляторов.
  */
 'use client';
 
@@ -288,29 +288,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
 
-    // #ЗАЧЕМ: ПЛАН №664 — Сквозная телеметрия управления громкостью.
+    // #ЗАЧЕМ: ПЛАН №665 — Исправление неработающих регуляторов.
+    // #ЧТО: Удалена избыточная логика обновления менеджеров (setPreampGain).
+    //       Теперь системные Gain-узлы в AudioEngineContext являются ЕДИНСТВЕННЫМ 
+    //       источником громкости для UI. Это устраняет "эффект квадрата" и чинит слайдеры.
     console.log(`%c[Telemetry] setVolume(${part}): ${volume.toFixed(2)} -> ${balancedVolume.toFixed(2)}`, 'color: #4ade80; font-weight: bold;');
-
-    // #ЗАЧЕМ: УДАЛЕНЫ early returns. Теперь обновление идет по всей цепочке.
-    if (part === 'bass' && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.setPreampGain(balancedVolume);
-    }
-    if (part === 'melody' && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.setPreampGain(balancedVolume);
-    }
-    if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.setPreampGain(balancedVolume);
-    }
-    if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setVolume(balancedVolume);
-    }
-    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        pianoAccompanimentManagerRef.current.setVolume(balancedVolume);
-    }
 
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+    } else {
+        console.warn(`[Telemetry] No master GainNode for: ${part}`);
     }
   }, []);
 

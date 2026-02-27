@@ -7,7 +7,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. ПЛАН №640 — Гейн преампа пианино снижен до 0.75 для защиты от клиппинга.
+ * #ЧТО: 1. ПЛАН №665 — Системное снижение громкости пианино в 2 раза (0.75 -> 0.375).
  *       2. Реализована полная остановка всех запланированных источников (stopAll).
  */
 export class SamplerPlayer {
@@ -24,9 +24,9 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системная защита от "Пляммм".
-        // #ЧТО: Гейн снижен с 1.2 до 0.75.
-        this.preamp.gain.value = 0.75; 
+        // #ЗАЧЕМ: Системная калибровка уровней.
+        // #ЧТО: Гейн снижен еще в 2 раза (0.75 -> 0.375).
+        this.preamp.gain.value = 0.375; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);

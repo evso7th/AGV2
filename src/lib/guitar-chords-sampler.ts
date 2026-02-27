@@ -4,8 +4,8 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V3.2 — "Heritage Power".
- * #ЧТО: ПЛАН №651 — Гейн преампа возвращен к 1.0 для доминанты гитарных аккордов.
+ * #ЗАЧЕМ: Сэмплер аккордов V3.3 — "Mix Calibration".
+ * #ЧТО: ПЛАН №665 — Гейн преампа снижен в 2 раза (1.0 -> 0.5) для баланса ансамбля.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -20,8 +20,9 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Восстановление мощности аккордов. Гейн поднят до 1.0.
-        this.preamp.gain.value = 1.0;
+        // #ЗАЧЕМ: Системная калибровка уровней.
+        // #ЧТО: Гейн снижен в 2 раза (1.0 -> 0.5).
+        this.preamp.gain.value = 0.5;
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
