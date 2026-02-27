@@ -440,11 +440,17 @@ export default function HypercubeDashboard() {
         action: async () => {
             setIsProcessing(true);
             try {
-                const batch = writeBatch(db);
-                axioms.forEach(ax => {
-                    batch.delete(doc(db, 'heritage_axioms', ax.id));
-                });
-                await batch.commit();
+                // #ЗАЧЕМ: Защита от лимитов Firestore Batch (500 операций).
+                // #ЧТО: Удаление пакетами по 450 штук.
+                const CHUNK_SIZE = 450;
+                for (let i = 0; i < axioms.length; i += CHUNK_SIZE) {
+                    const chunk = axioms.slice(i, i + CHUNK_SIZE);
+                    const batch = writeBatch(db);
+                    chunk.forEach(ax => {
+                        batch.delete(doc(db, 'heritage_axioms', ax.id));
+                    });
+                    await batch.commit();
+                }
                 toast({ title: "Track Purged", description: `Successfully deleted ${compId}` });
             } catch (e) {
                 toast({ variant: "destructive", title: "Purge Failed" });
@@ -503,13 +509,26 @@ export default function HypercubeDashboard() {
         action: async () => {
             setIsProcessing(true);
             try {
-                const batch = writeBatch(db);
-                globalAxioms?.forEach(d => batch.delete(doc(db, 'heritage_axioms', d.id)));
-                await batch.commit();
+                if (!globalAxioms || globalAxioms.length === 0) return;
+
+                // #ЗАЧЕМ: Исправление "Purge Failed" для больших коллекций.
+                // #ЧТО: Циклическое удаление чанками по 450 штук (лимит Firestore Batch — 500).
+                const CHUNK_SIZE = 450;
+                for (let i = 0; i < globalAxioms.length; i += CHUNK_SIZE) {
+                    const chunk = globalAxioms.slice(i, i + CHUNK_SIZE);
+                    const batch = writeBatch(db);
+                    chunk.forEach(axiom => {
+                        batch.delete(doc(db, 'heritage_axioms', axiom.id));
+                    });
+                    await batch.commit();
+                }
+
                 setProcessedFiles([]);
-                toast({ title: "Hypercube Cleared" });
+                localStorage.removeItem(PROCESSED_FILES_KEY);
+                toast({ title: "Hypercube Cleared", description: "All heritage DNA has been successfully purged." });
             } catch (e) {
-                toast({ variant: "destructive", title: "Purge Failed" });
+                console.error("[MasterPurge] Critical failure:", e);
+                toast({ variant: "destructive", title: "Purge Failed", description: "Batch limit or quota exceeded." });
             } finally {
                 setIsProcessing(false);
             }
