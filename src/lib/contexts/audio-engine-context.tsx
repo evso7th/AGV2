@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V8.2 — "Harmony Dominance".
- * #ЧТО: 1. Повышен системный баланс Harmony до 1.0 для приоритета гитарных аккордов.
- *       2. ПЛАН №651: Реализация доминанты Guitar Chords в ансамбле.
+ * #ЗАЧЕМ: Audio Engine Context V9.0 — "V2 Absolute Sovereignty".
+ * #ЧТО: 1. Полное удаление V1-менеджеров. Движка V1 больше не существует.
+ *       2. ПЛАН №663: Консолидация всей маршрутизации на V2-движке.
  */
 'use client';
 
@@ -23,9 +23,6 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import type { FractalEvent, InstrumentHints } from '@/types/fractal';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import { AccompanimentSynthManager } from '@/lib/accompaniment-synth-manager';
-import { BassSynthManager } from '@/lib/bass-synth-manager';
-import { MelodySynthManager } from '@/lib/melody-synth-manager';
 
 // --- Constants ---
 const VOICE_BALANCE: Record<string, number> = {
@@ -35,7 +32,7 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.65, 
   sparkles: 0.40, 
   sfx: 0.50, 
-  harmony: 1.0, // #ЗАЧЕМ: Максимальный приоритет для слышимости гитарных аккордов.
+  harmony: 1.0, 
   pianoAccompaniment: 0.45,
 };
 
@@ -91,11 +88,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const settingsRef = useRef<WorkerSettings | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
-  const accompanimentManagerRef = useRef<AccompanimentSynthManager | null>(null);
+  // #ЗАЧЕМ: V1 менеджеры удалены навсегда.
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
-  const melodyManagerRef = useRef<MelodySynthManager | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const bassManagerRef = useRef<BassSynthManager | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
   const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
@@ -152,7 +147,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, db, refreshCloudAxioms]);
 
   const stopAllSounds = useCallback(() => {
-    [melodyManagerRef, melodyManagerV2Ref, bassManagerRef, bassManagerV2Ref, accompanimentManagerRef, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
+    // #ЧТО: Очищен список останавливаемых менеджеров.
+    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll();
     sfxSynthManagerRef.current?.allNotesOff();
@@ -184,24 +180,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       else if (et === 'sfx') sfxEvents.push(event);
     }
 
-    const composerControls = settingsRef.current?.composerControlsInstruments;
-    const useV2 = settingsRef.current?.score === 'neuro_f_matrix';
-
+    // #ЗАЧЕМ: Упрощенная маршрутизация. Только V2 и Самплеры.
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
     
-    if (bassEvents.length > 0) {
-        if (useV2 && bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
-        else if (bassManagerRef.current) bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+    if (bassEvents.length > 0 && bassManagerV2Ref.current) {
+        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
     }
 
-    if (accompanimentEvents.length > 0) {
-        if (useV2 && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-        else if (accompanimentManagerRef.current) accompanimentManagerRef.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment, composerControls);
+    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
+        accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     }
 
-    if (melodyEvents.length > 0) {
-        if (useV2 && melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
-        else if (melodyManagerRef.current) melodyManagerRef.current.schedule(melodyEvents, barStartTime, tempo, barCount, instrumentHints?.melody, composerControls);
+    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
+        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
     }
 
     if (harmonyManagerRef.current && harmonyEvents.length > 0) harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
@@ -243,11 +234,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        if (!accompanimentManagerRef.current) accompanimentManagerRef.current = new AccompanimentSynthManager(context, gainNodesRef.current.accompaniment);
+        // #ЗАЧЕМ: Удалена инициализация V1. Только V2.
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
-        if (!melodyManagerRef.current) melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody, blackGuitarSamplerRef.current!, telecasterSamplerRef.current!, 'melody');
         if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
-        if (!bassManagerRef.current) bassManagerRef.current = new BassSynthManager(context, gainNodesRef.current.bass);
         if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
         if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
@@ -256,7 +245,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         await Promise.all([
             drumMachineRef.current.init(), blackGuitarSamplerRef.current.init(), telecasterSamplerRef.current.init(), darkTelecasterSamplerRef.current.init(), cs80SamplerRef.current.init(),
-            accompanimentManagerRef.current.init(), accompanimentManagerV2Ref.current.init(), melodyManagerRef.current.init(), melodyManagerV2Ref.current.init(), bassManagerRef.current.init(), bassManagerV2Ref.current.init(),
+            accompanimentManagerV2Ref.current.init(), melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(),
             harmonyManagerRef.current.init(), pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
         ]);
 
@@ -308,27 +297,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [isInitialized, stopAllSounds]);
 
-  /**
-   * #ЗАЧЕМ: Улучшенная калибровка громкости ансамбля.
-   * #ЧТО: ПЛАН №660 — Реализована сквозная поддержка balancedVolume для всех типов менеджеров.
-   */
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
     
-    const balancedVolume = volume * (VOICE_BALANCE[part as InstrumentPart] ?? 1);
+    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
 
-    // 1. Обновляем V1/V2 менеджеры (если они активны)
-    if (part === 'bass') {
-        bassManagerV2Ref.current?.setPreampGain(balancedVolume);
-        bassManagerRef.current?.setPreampGain(balancedVolume);
+    // #ЗАЧЕМ: Управление громкостью теперь строго через V2 и системную шину.
+    if (part === 'bass' && bassManagerV2Ref.current) {
+        bassManagerV2Ref.current.setPreampGain(balancedVolume);
     }
-    if (part === 'melody') {
-        melodyManagerV2Ref.current?.setPreampGain(balancedVolume);
-        melodyManagerRef.current?.setPreampGain(balancedVolume);
+    if (part === 'melody' && melodyManagerV2Ref.current) {
+        melodyManagerV2Ref.current.setPreampGain(balancedVolume);
     }
-    if (part === 'accompaniment') {
-        accompanimentManagerV2Ref.current?.setPreampGain(balancedVolume);
-        accompanimentManagerRef.current?.setPreampGain(balancedVolume);
+    if (part === 'accompaniment' && accompanimentManagerV2Ref.current) {
+        accompanimentManagerV2Ref.current.setPreampGain(balancedVolume);
     }
     if (part === 'harmony' && harmonyManagerRef.current) {
         harmonyManagerRef.current.setVolume(balancedVolume);
@@ -337,7 +319,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         pianoAccompanimentManagerRef.current.setVolume(balancedVolume);
     }
 
-    // 2. Всегда обновляем системную шину (мастер-громкость для данной партии)
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
@@ -358,18 +339,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setVolume: setVolumeCallback, 
         setInstrument: (async (part: string, name: string) => {
             if (!isInitialized) return;
-            if (part === 'bass') {
-                await bassManagerV2Ref.current?.setInstrument(name);
-                bassManagerRef.current?.setInstrument(name as any);
-            }
-            else if (part === 'melody') {
-                await melodyManagerV2Ref.current?.setInstrument(name);
-                melodyManagerRef.current?.setInstrument(name as any);
-            }
-            else if (part === 'accompaniment') {
-                await accompanimentManagerV2Ref.current?.setInstrument(name);
-                accompanimentManagerRef.current?.setInstrument(name as any);
-            }
+            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(name);
+            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(name);
+            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
             else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
         }) as any,
         setBassTechnique: (t) => {}, 
