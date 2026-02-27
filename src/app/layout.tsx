@@ -1,9 +1,13 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-import { FirebaseClientProvider } from '@/firebase';
+import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { AudioEngineProvider } from '@/contexts/audio-engine-context';
 
+/**
+ * #ЗАЧЕМ: Корневой лейаут AuraGroove.
+ * #ЧТО: Использует прямые импорты провайдеров для предотвращения ChunkLoadError.
+ */
 export const metadata: Metadata = {
   title: 'AuraGroove',
   description: 'AI-powered ambient music generator',

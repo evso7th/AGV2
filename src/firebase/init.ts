@@ -1,13 +1,13 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
+import { firebaseConfig } from './config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 /**
  * #ЗАЧЕМ: Изолированная инициализация Firebase.
- * #ЧТО: Вынесено из index.ts для предотвращения циклических зависимостей.
+ * #ЧТО: Использует относительные импорты для изоляции чанков.
  */
 export function initializeFirebase() {
   if (!getApps().length) {
