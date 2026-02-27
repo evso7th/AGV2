@@ -26,7 +26,9 @@ import {
   History,
   TrendingUp,
   LayoutGrid,
-  Layers
+  Layers,
+  ListChecks,
+  RefreshCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -587,6 +589,17 @@ export default function HypercubeDashboard() {
     }
   };
 
+  const invertSelection = () => {
+    const shownIds = groupedAxioms.map(([id]) => id);
+    const next = new Set<string>();
+    shownIds.forEach(id => {
+      if (!selectedTrackGroups.has(id)) {
+        next.add(id);
+      }
+    });
+    setSelectedTrackGroups(next);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8 font-body">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -680,8 +693,13 @@ export default function HypercubeDashboard() {
                 </div>
                 {groupedAxioms.length > 0 && (
                     <div className="flex items-center gap-2 pt-2 px-1">
-                        <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter">
-                            {selectedTrackGroups.size === groupedAxioms.length ? "Deselect All" : "Select All Tracks"}
+                        <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
+                            <Check className="h-3 w-3" />
+                            {selectedTrackGroups.size === groupedAxioms.length ? "Deselect All" : "Select All Filtered"}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={invertSelection} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
+                            <RotateCcw className="h-3 w-3" />
+                            Invert Selection
                         </Button>
                     </div>
                 )}
@@ -1076,7 +1094,7 @@ export default function HypercubeDashboard() {
                             <td className="p-4 text-xs italic text-muted-foreground line-clamp-2">{ax.narrative}</td>
                             <td className="p-4 text-right">
                               <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">
-                                {playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}
+                                {playingAxiomId === axiom.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}
                               </Button>
                             </td>
                           </tr>
