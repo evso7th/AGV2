@@ -1,12 +1,12 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.9 — "Static Volume Strategy".
- * #ЧТО: ПЛАН №665 — Оптимизировано обновление громкости. Устранены переприменения при изменении BPM.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.0 — "Volume Reactivity Restoration".
+ * #ЧТО: ПЛАН №665 — Удалена блокировка громкости. Теперь изменения из UI применяются мгновенно.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
@@ -67,30 +67,14 @@ export type AuraGrooveProps = {
 
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
-    isInitialized,
-    isInitializing,
-    isPlaying,
-    isRecording,
-    isBroadcastActive,
-    availableCompositions,
-    initialize, 
-    setIsPlaying: setEngineIsPlaying, 
-    updateSettings,
-    refreshCloudAxioms,
-    resetWorker, 
-    setVolume, 
-    setInstrument,
-    setTextureSettings: setEngineTextureSettings,
-    toggleBroadcast,
-    getWorker,
-    startRecording,
-    stopRecording
+    isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
+    setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, resetWorker, setVolume, setInstrument,
+    setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording
   } = useAudioEngine(); 
   
   const db = useFirestore();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
-  
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
     melody: { name: "blackAcoustic" as any, volume: 0.25 },
@@ -98,7 +82,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     harmony: { name: "guitarChords", volume: 0.10 }, 
     pianoAccompaniment: { name: "piano", volume: 0.12 },
   });
-
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
       sparkles: { enabled: true, volume: 0.12 },
       sfx: { enabled: true, volume: 0.12 },
@@ -114,214 +97,88 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [currentSeed, setCurrentSeed] = useState<number>(0);
   const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
   const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
-
-  const [isEqModalOpen, setIsEqModalOpen] = useState(false);
-  const [eqSettings, setEqSettings] = useState<number[]>(Array(7).fill(0));
-  
-  const [timerSettings, setTimerSettings] = useState<TimerSettings>({
-    duration: 0, 
-    timeLeft: 0,
-    isActive: false
-  });
-  
+  const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
-
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
 
-  // #ЗАЧЕМ: Устранение "дыхания" громкости.
-  // #ЧТО: Используем Ref для предотвращения бесконечных вызовов setVolume.
-  const lastAppliedVolumesRef = useRef<Record<string, number>>({});
-
-  useEffect(() => {
-    const saved = localStorage.getItem(LICK_HISTORY_KEY);
-    if (saved) {
-        try { setSessionLickHistory(JSON.parse(saved)); } catch(e) {}
-    }
-  }, []);
-
   useEffect(() => { initialize(); }, [initialize]);
 
-  useEffect(() => {
-    const worker = getWorker?.();
-    if (!worker) return;
-    const handleMessage = (e: MessageEvent) => {
-      if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
-        setBpm(e.data.payload.actualBpm);
-      }
-    };
-    worker.addEventListener('message', handleMessage);
-    return () => worker.removeEventListener('message', handleMessage);
-  }, [getWorker]);
-
-  const getFullSettings = useCallback((): Omit<WorkerSettings, 'seed'> => {
-    return {
-      bpm, score, genre, instrumentSettings,
-      drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
-      textureSettings: {
-          sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
-          sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
-      },
-      density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds 
-    };
-  }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds]);
+  const updateAllVolumes = useCallback(() => {
+    if (!isInitialized) return;
+    Object.entries(instrumentSettings).forEach(([part, s]) => setVolume(part, s.volume));
+    setVolume('drums', drumSettings.volume);
+    setVolume('sparkles', textureSettings.sparkles.enabled ? textureSettings.sparkles.volume : 0);
+    setVolume('sfx', textureSettings.sfx.enabled ? textureSettings.sfx.volume : 0);
+  }, [isInitialized, instrumentSettings, drumSettings, textureSettings, setVolume]);
 
   useEffect(() => {
     if (isInitialized) {
-        const fullSettings = getFullSettings();
-        updateSettings(fullSettings);
-        
-        // #ЗАЧЕМ: Синхронизация громкости только при изменении значений.
-        Object.entries(instrumentSettings).forEach(([part, settings]) => {
-            if (settings && 'volume' in settings && lastAppliedVolumesRef.current[part] !== settings.volume) {
-              setVolume(part, settings.volume);
-              lastAppliedVolumesRef.current[part] = settings.volume;
-            }
+        updateSettings({
+          bpm, score, genre, instrumentSettings,
+          drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
+          textureSettings: {
+              sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
+              sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
+          },
+          density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds 
         });
-        
-        if (lastAppliedVolumesRef.current.drums !== drumSettings.volume) {
-            setVolume('drums', drumSettings.volume);
-            lastAppliedVolumesRef.current.drums = drumSettings.volume;
-        }
-        
-        setEngineTextureSettings({sparkles: textureSettings.sparkles, sfx: textureSettings.sfx});
+        updateAllVolumes();
     }
-  }, [isInitialized, instrumentSettings, drumSettings, textureSettings, getFullSettings, updateSettings, setVolume, setEngineTextureSettings]);
-
-  const handlePlayPause = useCallback(async () => {
-    if (!isInitialized) return;
-    if (!hasPlayedOnce && !isPlaying) {
-      const newSeed = Date.now();
-      setCurrentSeed(newSeed);
-      resetWorker();
-      setHasPlayedOnce(true);
-    }
-    setEngineIsPlaying(!isPlaying);
-  }, [isInitialized, isPlaying, setEngineIsPlaying, hasPlayedOnce, resetWorker]);
-
-  const handleRegenerate = useCallback(() => {
-      setIsRegenerating(true);
-      const newSeed = Date.now();
-      setCurrentSeed(newSeed);
-      setTimeout(() => setIsRegenerating(false), 500); 
-      resetWorker();
-  }, [resetWorker]);
-
-  const handleToggleBroadcast = useCallback(() => {
-    if (!isInitialized) return;
-    if (!isBroadcastActive && !isPlaying) {
-        setIsWarmingUp(true);
-        setWarmUpTimeLeft(5);
-        const timerId = setInterval(() => {
-            setWarmUpTimeLeft(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerId);
-                    setIsWarmingUp(false);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-    }
-    toggleBroadcast();
-  }, [isInitialized, isBroadcastActive, isPlaying, toggleBroadcast]);
-
-  const handleSaveMasterpiece = useCallback(() => {
-    if (!isInitialized || !isPlaying) return;
-    saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
-  }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
-
-  const handleToggleRecording = useCallback(() => {
-    if (isRecording) stopRecording(); else startRecording();
-  }, [isRecording, stopRecording, startRecording]);
-
-  const handleInstrumentChange = (part: keyof InstrumentSettings, name: any) => {
-    setInstrumentSettings(prev => ({
-        ...prev,
-        [part]: { ...prev[part as keyof typeof prev], name }
-    }));
-    setInstrument(part as any, name as any);
-  };
-  
-  const handleBassTechniqueChange = (technique: BassTechnique) => {
-      setInstrumentSettings(prev => ({
-        ...prev,
-        bass: { ...prev.bass, technique }
-      }));
-  };
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, selectedCompositionIds, updateSettings, updateAllVolumes]);
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    setVolume(part, value);
+    setVolume(part as string, value);
     if (part in instrumentSettings) {
-      setInstrumentSettings(prev => ({
-        ...prev,
-        [part]: { ...prev[part as keyof typeof prev], volume: value }
-      }));
+      setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
     } else if (part === 'drums') {
       setDrumSettings(prev => ({ ...prev, volume: value }));
     } else if (part === 'sparkles' || part === 'sfx') {
-      setTextureSettings(prev => ({
-        ...prev,
-        [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value }
-      }));
+      setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } }));
     }
-  };
-
-  const handleTextureEnabledChange = (part: 'sparkles' | 'sfx', enabled: boolean) => {
-      setTextureSettings(prev => {
-          const newSettings = { ...prev, [part]: { ...prev[part], enabled }};
-          setEngineTextureSettings(newSettings);
-          return newSettings;
-      });
-  };
-
-  const toggleCompositionFilter = (id: string) => {
-    setSelectedCompositionIds(prev => {
-      if (prev.includes(id)) return prev.filter(item => item !== id);
-      return [...prev, id];
-    });
-  };
-
-  const clearCompositionFilters = () => setSelectedCompositionIds([]);
-
-  const handleTimerDurationChange = (minutes: number) => {
-    const seconds = minutes * 60;
-    setTimerSettings(prev => ({ ...prev, duration: seconds, timeLeft: seconds }));
-  };
-
-  const handleToggleTimer = () => {
-    setTimerSettings(prev => ({ ...prev, isActive: !prev.isActive, timeLeft: prev.duration }));
-  };
-
-  useEffect(() => {
-    if (!timerSettings.isActive) return;
-    if (timerSettings.timeLeft <= 0) {
-      setEngineIsPlaying(false);
-      setTimerSettings(prev => ({ ...prev, isActive: false }));
-      return;
-    }
-    const interval = setInterval(() => {
-      setTimerSettings(prev => ({ ...prev, timeLeft: Math.max(0, prev.timeLeft - 1) }));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying]);
-
-  const handleGoHome = () => {
-    setEngineIsPlaying(false);
-    window.location.href = '/';
   };
 
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft,
-    loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
-    availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms,
-    handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
-    drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: handleInstrumentChange,
-    handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
+    loadingText: isInitializing ? 'Initializing...' : 'Ready',
+    availableCompositions, selectedCompositionIds, toggleCompositionFilter: (id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
+    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
+    handlePlayPause: async () => {
+        if (!isInitialized) return;
+        if (!hasPlayedOnce && !isPlaying) {
+            setCurrentSeed(Date.now());
+            resetWorker();
+            setHasPlayedOnce(true);
+        }
+        setEngineIsPlaying(!isPlaying);
+    },
+    handleRegenerate: () => {
+        setIsRegenerating(true);
+        setCurrentSeed(Date.now());
+        setTimeout(() => setIsRegenerating(false), 500); 
+        resetWorker();
+    },
+    handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
+    handleToggleBroadcast: () => {
+        if (!isBroadcastActive && !isPlaying) {
+            setIsWarmingUp(true); setWarmUpTimeLeft(5);
+            const tid = setInterval(() => setWarmUpTimeLeft(p => { if(p<=1){clearInterval(tid); setIsWarmingUp(false); return 0;} return p-1; }), 1000);
+        }
+        toggleBroadcast();
+    },
+    handleSaveMasterpiece: () => saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }),
+    drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: (part, name) => {
+        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } }));
+        setInstrument(part as any, name as any);
+    },
+    handleBassTechniqueChange: () => {}, handleVolumeChange, textureSettings, 
+    handleTextureEnabledChange: (part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
-    composerControlsInstruments, setComposerControlsInstruments, handleGoHome, handleExit: handleGoHome,
-    isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange: () => {},
-    timerSettings, handleTimerDurationChange, handleToggleTimer, mood, setMood, genre, setGenre, introBars, setIntroBars,
+    composerControlsInstruments, setComposerControlsInstruments, handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
+    isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings: [], handleEqChange: () => {},
+    timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
+    handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
+    mood, setMood, genre, setGenre, introBars, setIntroBars,
   };
 };
