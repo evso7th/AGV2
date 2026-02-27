@@ -40,6 +40,16 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   Radar, 
   RadarChart, 
@@ -96,9 +106,6 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   gloomy: 'dark'
 };
 
-/**
- * #ЗАЧЕМ: Универсальный компонент множественного выбора.
- */
 function MultiSelector<T extends string>({ 
   options, 
   values, 
@@ -158,6 +165,10 @@ export default function HypercubeDashboard() {
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
   
+  // Confirmation Dialog State
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmAction] = useState<{ title: string, desc: string, action: () => void } | null>(null);
+
   // Renaming & Metadata State
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
@@ -410,27 +421,39 @@ export default function HypercubeDashboard() {
   };
 
   const handleDeleteAxiom = (id: string) => {
-    if (!window.confirm("CRITICAL: Delete this specific axiom from Cloud?")) return;
-    const docRef = doc(db, 'heritage_axioms', id);
-    deleteDocumentNonBlocking(docRef);
-    toast({ title: "Purge Initiated", description: "Deleting axiom..." });
+    setConfirmAction({
+        title: "Delete Axiom",
+        desc: "CRITICAL: Delete this specific axiom from Cloud? This action cannot be undone.",
+        action: () => {
+            const docRef = doc(db, 'heritage_axioms', id);
+            deleteDocumentNonBlocking(docRef);
+            toast({ title: "Purge Initiated", description: "Deleting axiom..." });
+        }
+    });
+    setConfirmOpen(true);
   };
 
-  const handleDeleteTrack = async (compId: string, axioms: any[]) => {
-    if (!window.confirm(`CRITICAL: Purge entire track "${compId.replace(/_/g, ' ')}" and all its ${axioms.length} axioms?`)) return;
-    setIsProcessing(true);
-    try {
-      const batch = writeBatch(db);
-      axioms.forEach(ax => {
-        batch.delete(doc(db, 'heritage_axioms', ax.id));
-      });
-      await batch.commit();
-      toast({ title: "Track Purged", description: `Successfully deleted ${compId}` });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Purge Failed" });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handleDeleteTrack = (compId: string, axioms: any[]) => {
+    setConfirmAction({
+        title: `Purge Track: ${compId.replace(/_/g, ' ')}`,
+        desc: `CRITICAL: Delete entire track and all its ${axioms.length} axioms from Cloud?`,
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const batch = writeBatch(db);
+                axioms.forEach(ax => {
+                    batch.delete(doc(db, 'heritage_axioms', ax.id));
+                });
+                await batch.commit();
+                toast({ title: "Track Purged", description: `Successfully deleted ${compId}` });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Purge Failed" });
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    });
+    setConfirmOpen(true);
   };
 
   const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenres: Genre[], newMoods: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
@@ -473,20 +496,26 @@ export default function HypercubeDashboard() {
     }
   };
 
-  const handlePurgeAll = async () => {
-    if (!window.confirm("MASTER PURGE: Wipe entire database? This cannot be undone.")) return;
-    setIsProcessing(true);
-    try {
-      const batch = writeBatch(db);
-      globalAxioms?.forEach(d => batch.delete(doc(db, 'heritage_axioms', d.id)));
-      await batch.commit();
-      setProcessedFiles([]);
-      toast({ title: "Hypercube Cleared" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Purge Failed" });
-    } finally {
-      setIsProcessing(false);
-    }
+  const handlePurgeAll = () => {
+    setConfirmAction({
+        title: "MASTER PURGE",
+        desc: "Wipe entire database? This will delete ALL heritage axioms. This cannot be undone.",
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const batch = writeBatch(db);
+                globalAxioms?.forEach(d => batch.delete(doc(db, 'heritage_axioms', d.id)));
+                await batch.commit();
+                setProcessedFiles([]);
+                toast({ title: "Hypercube Cleared" });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Purge Failed" });
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    });
+    setConfirmOpen(true);
   };
 
   return (
@@ -975,6 +1004,32 @@ export default function HypercubeDashboard() {
         </Tabs>
 
       </div>
+
+      {/* Global Alert Dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="border-primary/20 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">
+              {confirmConfig?.title || "Are you sure?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-bold">
+              {confirmConfig?.desc || "This action is critical and cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+                onClick={() => {
+                    confirmConfig?.action();
+                    setConfirmOpen(false);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black"
+            >
+              Confirm Execution
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
