@@ -1,13 +1,12 @@
 
 // НАЧАЛО ЖУРНАЛА ПРОЕКТА "AuraGroove"
 
-// --- ЗАПИСЬ: 2026-02-24 (ПЛАН №670: FUZZY ANCHOR MATCHING) ---
-// СОБЫТИЕ: Устранение сбоев при выборе суверенного Анкора.
+// --- ЗАПИСЬ: 2026-02-24 (ПЛАН №672: CLEAR TELECASTER DECOMMISSIONING) ---
+// СОБЫТИЕ: Исключение использования сэмплов из каталога 'clear_telecaster'.
 // РЕЗУЛЬТАТ:
-//   1. ID NORMALIZATION: В AmbientBrain и BluesBrain внедрена функция нормализации ID (ignore case, spaces, symbols).
-//   2. ROBUST SEARCH: Поиск аксиом в cloudAxioms теперь нечувствителен к форматированию названий треков.
-//   3. FALLBACK PROTECTION: Система корректно находит Pink Floyd, даже если ID записан как "pink_floyd" или "Pink Floyd".
-//   4. LOGGING: Подтверждена работоспособность вывода melodyTrack в консоль воркера.
+//   1. Сэмплы в telecaster-chord-samples.ts закомментированы.
+//   2. Сэмплы в samples.ts (ACOUSTIC_GUITAR_CHORD_SAMPLES) закомментированы.
+//   3. Система автоматически переключилась на использование альтернативных акустических сэмплов.
 
-// --- ЗАПИСЬ: 2026-02-24 (ПЛАН №668: ADVANCED BATCH SELECTION) ---
+// --- ЗАПИСЬ: 2026-02-24 (ПЛАН №670: FUZZY ANCHOR MATCHING) ---
 // ... (остальные записи)
