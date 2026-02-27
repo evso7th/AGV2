@@ -25,8 +25,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V166.0 — "Genetic Pollination".
- * #ЧТО: ПЛАН №658 — Разрешено межжанровое заимствование аксиом (Neuro-Blues mode).
+ * #ЗАЧЕМ: Блюзовый Мозг V167.0 — "Sovereignty Restored".
+ * #ЧТО: ПЛАН №659 — Восстановлен жесткий жанровый фильтр. Блюз только для Блюза.
  */
 
 export interface BluesBrainConfig {
@@ -315,10 +315,9 @@ export class BluesBrain {
 
               if (targetAnchor) return ax.compositionId === targetAnchor;
 
-              // #ЗАЧЕМ: Генетическое опыление (Pollination).
-              // #ЧТО: В свободном режиме разрешены compatible genres (rock, progressive, ballad).
-              const compatibleGenres = ['blues', 'rock', 'progressive', 'ballad'];
-              const genreMatch = compatibleGenres.includes(ax.genre);
+              // #ЗАЧЕМ: Жанровая Суверенность восстановлена.
+              // #ЧТО: Блюз использует ТОЛЬКО блюзовые аксиомы.
+              const genreMatch = ax.genre === 'blues';
               if (!genreMatch) return false;
 
               const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 

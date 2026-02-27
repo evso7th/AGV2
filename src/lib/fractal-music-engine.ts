@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -47,12 +46,12 @@ interface EngineConfig {
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 
-  masterpieces?: any[]; // #ЗАЧЕМ: Пул Шедевров для эволюции.
+  masterpieces?: any[]; 
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.1 — "Telemetry Update".
- * #ЧТО: Поддержка вывода Династии в логи через метод evolve.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.2 — "Sovereignty Restored".
+ * #ЧТО: ПЛАН №659 — Восстановлена базовая инициализация AmbientBrain.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -165,6 +164,7 @@ export class FractalMusicEngine {
         );
         this.ambientBrain = null;
     } else if (this.config.genre === 'ambient') {
+        // #ЗАЧЕМ: Возврат к классической инициализации.
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);
         this.bluesBrain = null;
     } else {

@@ -1,10 +1,7 @@
 /**
- * @fileOverview Ambient Brain v17.1 — "The Sentient Composer".
- * #ЗАЧЕМ: Борьба с однообразием. Внедрена логика "Рождения" Аксиом с мутациями.
- * #ЧТО: 1. Метод mutateAxiomOnBirth трансформирует наследие под конкретную сессию.
- *       2. Stagnation Guard отслеживает зацикливание и вызывает "Когнитивный Прыжок".
- *       3. Tension Momentum влияет на плотность событий в реальном времени.
- * #ОБНОВЛЕНО (ПЛАН №602): Исправлена ошибка отсутствия performIntroLottery.
+ * @fileOverview Ambient Brain v17.2 — "Cloud DNA Integration".
+ * #ЗАЧЕМ: Реализация "Cloud First" поиска ДНК для Эмбиента.
+ * #ЧТО: ПЛАН №659 — Восстановлен жанровый фильтр. Только Эмбиент из облака.
  */
 
 import type { 
@@ -19,7 +16,7 @@ import type {
     Phrasing,
     SfxRule
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength } from './music-theory';
+import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength, decompressCompactPhrase } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
@@ -92,43 +89,6 @@ export class AmbientBrain {
         return { next, nextInt: (max: number) => Math.floor(next() * max), shuffle };
     }
 
-    /**
-     * #ЗАЧЕМ: Первичная мутация при "Рождении" аксиомы в сессии.
-     * #ЧТО: Трансформирует наследие (Inversion, Retrograde, Transposition) на основе seed.
-     */
-    private mutateAxiomOnBirth(phrase: any[], sessionKey: number): any[] {
-        const mutationType = calculateMusiNum(sessionKey, 3, 0, 4);
-        let result = [...phrase];
-
-        switch (mutationType) {
-            case 1: // Inversion
-                const pivot = DEGREE_TO_SEMITONE[phrase[0]?.deg || 'R'] || 0;
-                result = phrase.map(n => {
-                    const s = DEGREE_TO_SEMITONE[n.deg] || 0;
-                    const inv = (pivot - (s - pivot)) % 12;
-                    return { ...n, deg: this.semitoneToClosestDegree(inv < 0 ? inv + 12 : inv) };
-                });
-                break;
-            case 2: // Retrograde (Time reverse inside phrases)
-                const maxT = Math.max(...phrase.map(n => n.t));
-                result = phrase.map(n => ({ ...n, t: maxT - n.t })).sort((a, b) => a.t - b.t);
-                break;
-            case 3: // Modal Transposition (+- quart/fifth)
-                const shift = sessionKey % 2 === 0 ? 5 : 7;
-                result = phrase.map(n => ({ ...n, octShift: (n.octShift || 0) + (shift > 6 ? 1 : 0) }));
-                break;
-        }
-        return result;
-    }
-
-    private semitoneToClosestDegree(s: number): string {
-        const degrees: Record<number, string> = {
-            0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
-            8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8'
-        };
-        return degrees[s % 12] || 'R';
-    }
-
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
@@ -198,52 +158,55 @@ export class AmbientBrain {
             }
         }
 
-        // --- MELODY SENTINEL WITH NOVELTY GUARD ---
+        // --- MELODY SENTINEL WITH CLOUD DNA INTEGRATION ---
         if (epoch >= this.soloistBusyUntilBar) {
             const baseChance = isPositive ? 0.60 : 0.40; 
             const developmentChance = baseChance + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
-                let groupKey = dna.ambientLegacyGroup || 'BUDD';
-                const group = AMBIENT_LEGACY[groupKey];
-                
-                let lickIdx = -1;
-                let attempts = 0;
-                while (attempts < 10) {
-                    lickIdx = calculateMusiNum(epoch + attempts, 7, this.seed, group.licks.length);
-                    const themeId = `${groupKey}_${lickIdx}`;
-                    if (!this.usedThemeHistory.includes(themeId)) break;
-                    attempts++;
+                // #ЗАЧЕМ: ПЛАН №659 — Cloud First. Поиск эмбиентных аксиом в облаке.
+                let cloudAxiom: any = null;
+                if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
+                    const cloudPool = dna.cloudAxioms.filter(ax => 
+                        ax.role === 'melody' && 
+                        ax.genre === 'ambient' && 
+                        ax.mood === this.mood
+                    );
+                    if (cloudPool.length > 0) {
+                        cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
+                    }
                 }
 
-                const lick = group.licks[lickIdx];
-                const themeId = `${groupKey}_${lickIdx}`;
-
-                if (themeId === this.currentTheme?.id) {
-                    this.stagnationCounter++;
+                if (cloudAxiom) {
+                    const rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+                    const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
+                    const phraseBars = Math.ceil(Math.max(...narrativePhrase.map(n => n.t + n.d)) / 12);
+                    this.currentTheme = {
+                        phrase: narrativePhrase,
+                        startBar: epoch,
+                        endBar: epoch + phraseBars,
+                        id: cloudAxiom.id,
+                        tags: cloudAxiom.tags || ['cloud']
+                    };
+                    this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                 } else {
-                    if (this.stagnationCounter > 0) this.stagnationCounter--;
+                    // Fallback to AMBIENT_LEGACY
+                    let groupKey = dna.ambientLegacyGroup || 'BUDD';
+                    const group = AMBIENT_LEGACY[groupKey];
+                    let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
+                    const lick = group.licks[lickIdx];
+                    const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
+                    const phraseBars = Math.ceil(Math.max(...narrativePhrase.map(n => n.t + n.d)) / 12);
+                    
+                    this.currentTheme = {
+                        phrase: narrativePhrase,
+                        startBar: epoch,
+                        endBar: epoch + phraseBars,
+                        id: `${groupKey}_${lickIdx}`,
+                        tags: lick.tags
+                    };
+                    this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                 }
-
-                // #ЗАЧЕМ: Применение мутации рождения.
-                const transformedPhrase = this.mutateAxiomOnBirth(lick.phrase, this.seed + epoch);
-                const narrativePhrase = stretchToNarrativeLength(transformedPhrase, 48, this.random);
-                const phraseTicks = Math.max(...narrativePhrase.map(n => n.t + n.d));
-                const phraseBars = Math.ceil((phraseTicks + 1) / 12);
-                
-                this.currentTheme = {
-                    phrase: narrativePhrase,
-                    startBar: epoch,
-                    endBar: epoch + phraseBars,
-                    id: themeId,
-                    tags: lick.tags
-                };
-                
-                this.usedThemeHistory.push(themeId);
-                if (this.usedThemeHistory.length > 5) this.usedThemeHistory.shift();
-
-                const restBars = this.mood === 'enthusiastic' ? 0 : 1;
-                this.soloistBusyUntilBar = epoch + phraseBars + restBars; 
             } else {
                 this.currentTheme = null;
             }
@@ -303,7 +266,7 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
-        const narrative = this.currentTheme ? `Evoking transformed ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
+        const narrative = this.currentTheme ? `Evoking ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
 
         return { 
             events, 
@@ -354,10 +317,6 @@ export class AmbientBrain {
         this.registerShift = this.mood === 'joyful' ? 12 : (this.mood === 'epic' ? -12 : 0);
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация лотереи инструментов для интро.
-     * #ЧТО: Детерминированно распределяет доступные инструменты по сценам.
-     */
     private performIntroLottery(stages: any[]) {
         const participantsMap = new Map<InstrumentPart, any>();
         stages.forEach(s => {
