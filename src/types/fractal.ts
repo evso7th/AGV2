@@ -93,6 +93,8 @@ export type SuiteDNA = {
   dynasty?: string;
   partLickMap?: Map<string, string>;
   ambientLegacyGroup?: string;
+  cloudAxioms?: any[]; 
+  activeAnchorId?: string | null;
 };
 
 export type BluesSoloPhrase = {

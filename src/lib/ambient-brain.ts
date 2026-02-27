@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Ambient Brain v17.5 — "Multi-Tag Heritage Awareness".
- * #ЗАЧЕМ: Поддержка множественных жанров и настроений в облачном ДНК.
- * #ЧТО: ПЛАН №661 — Фильтрация cloudPool теперь поддерживает массивы тегов.
+ * @fileOverview Ambient Brain v18.0 — "Anchor Sovereignty Protocol".
+ * #ЗАЧЕМ: Реализация безусловного приоритета выбранного Анкора.
+ * #ЧТО: ПЛАН №669 — Проброс melodyTrack в логи и обход жанровых фильтров для Анкора.
  */
 
 import type { 
@@ -10,11 +11,8 @@ import type {
     Mood, 
     SuiteDNA, 
     NavigationInfo,
-    Technique,
     InstrumentHints,
-    InstrumentPart,
-    Phrasing,
-    SfxRule
+    InstrumentPart
 } from '@/types/music';
 import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength, decompressCompactPhrase } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
@@ -63,6 +61,9 @@ export class AmbientBrain {
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
+    
+    // #ЗАЧЕМ: Прозрачность Ансамбля.
+    private currentTrackName: string = 'Ambient Legacy';
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
 
@@ -164,11 +165,16 @@ export class AmbientBrain {
             const developmentChance = baseChance + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
-                // #ЗАЧЕМ: ПЛАН №661 — Адаптивная фильтрация по множественным тегам.
                 let cloudAxiom: any = null;
                 if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
+                    const targetAnchor = dna.activeAnchorId;
                     const cloudPool = dna.cloudAxioms.filter(ax => {
                         if (ax.role !== 'melody') return false;
+                        
+                        // #ЗАЧЕМ: ПЛАН №669 — Безусловный приоритет Анкора.
+                        // #ЧТО: Если Анкор выбран, игнорируем жанровые теги.
+                        if (targetAnchor) return ax.compositionId === targetAnchor;
+
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                         return genreArr.includes('ambient') && moodArr.includes(this.mood);
@@ -189,6 +195,7 @@ export class AmbientBrain {
                         id: cloudAxiom.id,
                         tags: cloudAxiom.tags || ['cloud']
                     };
+                    this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                 } else {
                     // Fallback to AMBIENT_LEGACY
@@ -206,6 +213,7 @@ export class AmbientBrain {
                         id: `${groupKey}_${lickIdx}`,
                         tags: lick.tags
                     };
+                    this.currentTrackName = 'Ambient Legacy';
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                 }
             } else {
@@ -267,7 +275,9 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
-        const narrative = this.currentTheme ? `Evoking ${this.currentTheme.id} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
+        // #ЗАЧЕМ: Улучшенная обратная связь в нарративе.
+        const narrativeSource = this.currentTrackName === 'Ambient Legacy' ? (this.currentTheme?.id || 'Atmospheric') : this.currentTrackName;
+        const narrative = this.currentTheme ? `Evoking ${narrativeSource} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
 
         return { 
             events, 
@@ -276,6 +286,7 @@ export class AmbientBrain {
             beautyScore: 0.5,
             activeAxioms: {
                 melody: this.currentTheme?.id || 'Atmospheric',
+                melodyTrack: this.currentTrackName,
                 bass: isPositive ? 'Narrative' : 'Steady',
                 accompaniment: hints.accompaniment
             },
@@ -421,6 +432,20 @@ export class AmbientBrain {
             phrasing: 'legato',
             params: { attack: 2.0, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
         }));
+    }
+
+    private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        return [{
+            type: 'melody',
+            note: chord.rootNote + 24 + this.registerShift,
+            time: 0,
+            duration: 4.0,
+            weight: 0.25,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 1.0, release: 3.0, filterCutoff: this.solistCutoff * 0.5 }
+        }];
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
@@ -578,7 +603,7 @@ export class AmbientBrain {
         };
     }
 
-    private renderSfx(tension: number, rules?: SfxRule): FractalEvent[] {
+    private renderSfx(tension: number, rules?: any): FractalEvent[] {
         return [{
             type: 'sfx',
             note: 60,
@@ -694,23 +719,5 @@ export class AmbientBrain {
         
         const maxCutoff = isPositive ? 6500 : (this.mood === 'anxious' ? 3500 : 5300);
         this.solistCutoff = (maxCutoff * (1 - this.fog * 0.7) + 1500) * (1.0 + dazzle * 0.5); 
-    }
-
-    private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.registerShift;
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
-        const notes = [root, root + (isMinor ? 3 : 4), root + 7];
-
-        return notes.map((n, i) => ({
-            type: 'accompaniment',
-            note: n,
-            time: i * 0.2,
-            duration: 12.0, 
-            weight: 0.38 * (0.9 + this.random.next() * 0.2),
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 2.0, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
-        }));
     }
 }

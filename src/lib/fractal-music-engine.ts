@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -50,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.2 — "Sovereignty Restored".
- * #ЧТО: ПЛАН №659 — Восстановлена базовая инициализация AmbientBrain.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.3 — "Anchor Sovereignty".
+ * #ЧТО: ПЛАН №669 — Проброс Anchor и CloudAxioms в SuiteDNA для AmbientBrain.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -144,7 +145,9 @@ export class FractalMusicEngine {
         this.config.ancestor,
         this.config.sessionLickHistory,
         this.blueprint.musical.bpm,
-        this.config.masterpieces
+        this.config.masterpieces,
+        this.config.cloudAxioms,
+        this.config.activeAnchorId
     );
 
     if (this.suiteDNA.seedLickId) {
@@ -164,7 +167,6 @@ export class FractalMusicEngine {
         );
         this.ambientBrain = null;
     } else if (this.config.genre === 'ambient') {
-        // #ЗАЧЕМ: Возврат к классической инициализации.
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);
         this.bluesBrain = null;
     } else {

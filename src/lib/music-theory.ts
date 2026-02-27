@@ -2,7 +2,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities
  * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №646): Внедрены Генетическое Скрещивание и Марковское Блуждание.
+ * #ОБНОВЛЕНО (ПЛАН №669): Поля cloudAxioms и activeAnchorId включены в SuiteDNA.
  */
 
 import type { 
@@ -250,7 +250,9 @@ export function generateSuiteDNA(
     ancestor?: any, 
     sessionHistory?: string[],
     bpmConfig?: { base: number, range: [number, number], modifier: number },
-    masterpieces?: any[] // #ЗАЧЕМ: Пул предков для скрещивания.
+    masterpieces?: any[],
+    cloudAxioms?: any[], 
+    activeAnchorId?: string | null
 ): SuiteDNA {
     // --- GENETIC CROSSOVER ---
     let finalSeed = initialSeed;
@@ -322,7 +324,9 @@ export function generateSuiteDNA(
         seedLickId, 
         partLickMap,
         sessionHistory,
-        dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined
+        dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
+        cloudAxioms,
+        activeAnchorId
     };
 }
 
