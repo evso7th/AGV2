@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain v18.0 — "Anchor Sovereignty Protocol".
- * #ЗАЧЕМ: Реализация безусловного приоритета выбранного Анкора.
- * #ЧТО: ПЛАН №669 — Проброс melodyTrack в логи и обход жанровых фильтров для Анкора.
+ * @fileOverview Ambient Brain v18.1 — "Identity Crisis Fix".
+ * #ЗАЧЕМ: Реализация устойчивого поиска Анкора.
+ * #ЧТО: ПЛАН №670 — Сравнение ID теперь игнорирует регистр и разделители.
  */
 
 import type { 
@@ -62,7 +62,6 @@ export class AmbientBrain {
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     
-    // #ЗАЧЕМ: Прозрачность Ансамбля.
     private currentTrackName: string = 'Ambient Legacy';
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
@@ -90,6 +89,11 @@ export class AmbientBrain {
         return { next, nextInt: (max: number) => Math.floor(next() * max), shuffle };
     }
 
+    /** #ЗАЧЕМ: Универсальная нормализация имен треков. */
+    private normalize(s: string): string {
+        return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
@@ -111,7 +115,7 @@ export class AmbientBrain {
         }
 
         if (needsCognitiveJump) {
-            this.fog = Math.max(0.1, this.fog * 0.8); // Sudden clarity
+            this.fog = Math.max(0.1, this.fog * 0.8); 
             this.stagnationCounter = 0;
         }
 
@@ -167,13 +171,13 @@ export class AmbientBrain {
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
                 if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
-                    const targetAnchor = dna.activeAnchorId;
+                    const targetAnchor = dna.activeAnchorId ? this.normalize(dna.activeAnchorId) : null;
                     const cloudPool = dna.cloudAxioms.filter(ax => {
                         if (ax.role !== 'melody') return false;
                         
-                        // #ЗАЧЕМ: ПЛАН №669 — Безусловный приоритет Анкора.
-                        // #ЧТО: Если Анкор выбран, игнорируем жанровые теги.
-                        if (targetAnchor) return ax.compositionId === targetAnchor;
+                        // #ЗАЧЕМ: ПЛАН №670 — Нормализованный поиск Анкора.
+                        // #ЧТО: Игнорируем регистр и символы при поиске суверенного трека.
+                        if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
 
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -275,7 +279,6 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
-        // #ЗАЧЕМ: Улучшенная обратная связь в нарративе.
         const narrativeSource = this.currentTrackName === 'Ambient Legacy' ? (this.currentTheme?.id || 'Atmospheric') : this.currentTrackName;
         const narrative = this.currentTheme ? `Evoking ${narrativeSource} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
 

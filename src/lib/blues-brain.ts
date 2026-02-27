@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -25,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V168.0 — "Anti-Drone Protocol".
- * #ЧТО: ПЛАН №662 — Внедрен запрет на гудение баса дольше 1 такта (через фильтрацию и обрезку).
+ * #ЗАЧЕМ: Блюзовый Мозг V168.1 — "Identity Crisis Fix".
+ * #ЧТО: ПЛАН №670 — Нормализованный поиск Анкора для стабильности выбора.
  */
 
 export interface BluesBrainConfig {
@@ -144,6 +145,10 @@ export class BluesBrain {
       return state / Math.pow(2, 32);
     };
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
+  }
+
+  private normalize(s: string): string {
+      return s.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
   public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null) {
@@ -307,11 +312,13 @@ export class BluesBrain {
       this.ensembleStatus = 'ADAPTIVE';
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
-          const targetAnchor = this.config.activeAnchorId;
+          const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
 
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
-              if (targetAnchor) return ax.compositionId === targetAnchor;
+              
+              // #ЗАЧЕМ: ПЛАН №670 — Нормализованный поиск Анкора.
+              if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
 
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               if (!genreArr.includes('blues')) return false;
@@ -345,10 +352,8 @@ export class BluesBrain {
 
               const sibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && 
-                  ax.compositionId === selected.compositionId && 
+                  this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset &&
-                  // #ЗАЧЕМ: ПЛАН №662 — Запрет "гудения" баса дольше 1 такта (12 тиков).
-                  // #ЧТО: Исключаем басовые аксиомы, содержащие ноты длительностью > 12 тиков.
                   !(ax.phrase && ax.phrase.some((v: number, i: number) => i % 4 === 1 && v > 12))
               );
               if (sibling) {
@@ -396,8 +401,6 @@ export class BluesBrain {
               type: 'bass',
               note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t % 12) / 3,
-              // #ЗАЧЕМ: Финальный барьер против гудения.
-              // #ЧТО: Ограничиваем физическую длительность ноты баса до ~1 такта (3.8 долей).
               duration: Math.min(n.d / 3, 3.8), 
               weight: 0.85,
               technique: 'pluck',
@@ -407,7 +410,6 @@ export class BluesBrain {
       } else {
           const melodyComplexity = this.currentMelodyAxiomObj?.vector?.e || 0.5;
           if (melodyComplexity > 0.75 && tension < 0.8) {
-              // #ЗАЧЕМ: Даже в адаптивном режиме педаль ограничена 3.5 долями.
               bassNotes = [{ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12), time: 0, duration: 3.5, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }];
           } else {
               bassNotes = tension > 0.7 ? this.renderWalkingBass(chord, epoch, tension) : this.renderRiffBass(chord, epoch, tension);
