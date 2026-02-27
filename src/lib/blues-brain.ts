@@ -25,8 +25,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V165.2 — "Bass Telemetry Update".
- * #ЧТО: ПЛАН №657 — Добавлено динамическое определение и логирование пресета баса.
+ * #ЗАЧЕМ: Блюзовый Мозг V166.0 — "Genetic Pollination".
+ * #ЧТО: ПЛАН №658 — Разрешено межжанровое заимствование аксиом (Neuro-Blues mode).
  */
 
 export interface BluesBrainConfig {
@@ -310,12 +310,21 @@ export class BluesBrain {
           const targetAnchor = this.config.activeAnchorId;
 
           const cloudPool = this.config.cloudAxioms.filter(ax => {
-              const genreMatch = ax.genre === 'blues';
               const roleMatch = ax.role === 'melody';
-              if (targetAnchor) return genreMatch && roleMatch && ax.compositionId === targetAnchor;
+              if (!roleMatch) return false;
+
+              if (targetAnchor) return ax.compositionId === targetAnchor;
+
+              // #ЗАЧЕМ: Генетическое опыление (Pollination).
+              // #ЧТО: В свободном режиме разрешены compatible genres (rock, progressive, ballad).
+              const compatibleGenres = ['blues', 'rock', 'progressive', 'ballad'];
+              const genreMatch = compatibleGenres.includes(ax.genre);
+              if (!genreMatch) return false;
+
               const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
-              return genreMatch && roleMatch && (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
+              
+              return (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
           });
 
           if (cloudPool.length > 0) {
@@ -726,7 +735,6 @@ export class BluesBrain {
   }
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints, epoch: number) {
-    // #ЗАЧЕМ: Динамическое определение пресета баса для телеметрии.
     if (hints.bass) {
         let target = 'bass_jazz_warm';
         if (tension > 0.8) target = 'bass_808';
