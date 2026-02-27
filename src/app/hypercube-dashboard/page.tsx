@@ -25,7 +25,8 @@ import {
   Activity,
   History,
   TrendingUp,
-  LayoutGrid
+  LayoutGrid,
+  Layers
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion"; // Fixed path or assume it works
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -165,6 +166,9 @@ export default function HypercubeDashboard() {
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
   
+  // Batch Track Selection
+  const [selectedTrackGroups, setSelectedTrackGroups] = useState<Set<string>>(new Set());
+
   // Confirmation Dialog State
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmAction] = useState<{ title: string, desc: string, action: () => void } | null>(null);
@@ -440,8 +444,6 @@ export default function HypercubeDashboard() {
         action: async () => {
             setIsProcessing(true);
             try {
-                // #ЗАЧЕМ: Защита от лимитов Firestore Batch (500 операций).
-                // #ЧТО: Удаление пакетами по 450 штук.
                 const CHUNK_SIZE = 450;
                 for (let i = 0; i < axioms.length; i += CHUNK_SIZE) {
                     const chunk = axioms.slice(i, i + CHUNK_SIZE);
@@ -454,6 +456,41 @@ export default function HypercubeDashboard() {
                 toast({ title: "Track Purged", description: `Successfully deleted ${compId}` });
             } catch (e) {
                 toast({ variant: "destructive", title: "Purge Failed" });
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    });
+    setConfirmOpen(true);
+  };
+
+  const handleWipeSelected = () => {
+    if (selectedTrackGroups.size === 0) return;
+    
+    setConfirmAction({
+        title: `WIPE SELECTED (${selectedTrackGroups.size} tracks)`,
+        desc: `CRITICAL: Permanently delete all axioms associated with the ${selectedTrackGroups.size} selected tracks?`,
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const selectedAxioms = groupedAxioms
+                    .filter(([compId]) => selectedTrackGroups.has(compId))
+                    .flatMap(([, licks]) => licks);
+
+                const CHUNK_SIZE = 450;
+                for (let i = 0; i < selectedAxioms.length; i += CHUNK_SIZE) {
+                    const chunk = selectedAxioms.slice(i, i + CHUNK_SIZE);
+                    const batch = writeBatch(db);
+                    chunk.forEach(ax => {
+                        batch.delete(doc(db, 'heritage_axioms', ax.id));
+                    });
+                    await batch.commit();
+                }
+                
+                setSelectedTrackGroups(new Set());
+                toast({ title: "Selective Purge Complete", description: `Wiped ${selectedAxioms.length} axioms from ${selectedTrackGroups.size} tracks.` });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Batch Purge Failed" });
             } finally {
                 setIsProcessing(false);
             }
@@ -511,8 +548,6 @@ export default function HypercubeDashboard() {
             try {
                 if (!globalAxioms || globalAxioms.length === 0) return;
 
-                // #ЗАЧЕМ: Исправление "Purge Failed" для больших коллекций.
-                // #ЧТО: Циклическое удаление чанками по 450 штук (лимит Firestore Batch — 500).
                 const CHUNK_SIZE = 450;
                 for (let i = 0; i < globalAxioms.length; i += CHUNK_SIZE) {
                     const chunk = globalAxioms.slice(i, i + CHUNK_SIZE);
@@ -535,6 +570,21 @@ export default function HypercubeDashboard() {
         }
     });
     setConfirmOpen(true);
+  };
+
+  const toggleTrackSelection = (compId: string) => {
+    const next = new Set(selectedTrackGroups);
+    if (next.has(compId)) next.delete(compId);
+    else next.add(compId);
+    setSelectedTrackGroups(next);
+  };
+
+  const selectAllFiltered = () => {
+    if (selectedTrackGroups.size === groupedAxioms.length) {
+        setSelectedTrackGroups(new Set());
+    } else {
+        setSelectedTrackGroups(new Set(groupedAxioms.map(([compId]) => compId)));
+    }
   };
 
   return (
@@ -609,6 +659,11 @@ export default function HypercubeDashboard() {
                     <CardDescription className="text-[10px] uppercase font-bold">Inspect and Curate Heritage Axioms</CardDescription>
                   </div>
                   <div className="flex items-center gap-3">
+                    {selectedTrackGroups.size > 0 && (
+                        <Button variant="destructive" size="sm" onClick={handleWipeSelected} disabled={isProcessing} className="shadow-lg animate-in fade-in zoom-in duration-200">
+                            <Trash2 className="h-4 w-4 mr-2" /> Wipe Selected ({selectedTrackGroups.size})
+                        </Button>
+                    )}
                     <div className="relative group">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
@@ -623,6 +678,13 @@ export default function HypercubeDashboard() {
                     </Button>
                   </div>
                 </div>
+                {groupedAxioms.length > 0 && (
+                    <div className="flex items-center gap-2 pt-2 px-1">
+                        <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter">
+                            {selectedTrackGroups.size === groupedAxioms.length ? "Deselect All" : "Select All Tracks"}
+                        </Button>
+                    </div>
+                )}
               </CardHeader>
               <CardContent className="p-0 border-t">
                 <ScrollArea className="h-[600px] px-4 py-2">
@@ -643,6 +705,12 @@ export default function HypercubeDashboard() {
                           <div className="flex flex-col px-4 hover:bg-primary/5 transition-colors group">
                             <div className="flex items-center justify-between py-4">
                                 <div className="flex items-center gap-4 flex-grow">
+                                    <Checkbox 
+                                        checked={selectedTrackGroups.has(compId)} 
+                                        onCheckedChange={() => toggleTrackSelection(compId)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="border-primary/30"
+                                    />
                                     <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
                                     
                                     {editingGroupId === compId ? (
