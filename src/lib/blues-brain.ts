@@ -25,8 +25,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V167.5 — "Multi-Tag Heritage Awareness".
- * #ЧТО: ПЛАН №661 — Адаптивная фильтрация по множественным жанрам и настроениям.
+ * #ЗАЧЕМ: Блюзовый Мозг V168.0 — "Anti-Drone Protocol".
+ * #ЧТО: ПЛАН №662 — Внедрен запрет на гудение баса дольше 1 такта (через фильтрацию и обрезку).
  */
 
 export interface BluesBrainConfig {
@@ -313,7 +313,6 @@ export class BluesBrain {
               if (ax.role !== 'melody') return false;
               if (targetAnchor) return ax.compositionId === targetAnchor;
 
-              // #ЗАЧЕМ: ПЛАН №661 — Адаптивная фильтрация по множественным тегам.
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               if (!genreArr.includes('blues')) return false;
 
@@ -347,7 +346,10 @@ export class BluesBrain {
               const sibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && 
                   ax.compositionId === selected.compositionId && 
-                  ax.barOffset === selected.barOffset
+                  ax.barOffset === selected.barOffset &&
+                  // #ЗАЧЕМ: ПЛАН №662 — Запрет "гудения" баса дольше 1 такта (12 тиков).
+                  // #ЧТО: Исключаем басовые аксиомы, содержащие ноты длительностью > 12 тиков.
+                  !(ax.phrase && ax.phrase.some((v: number, i: number) => i % 4 === 1 && v > 12))
               );
               if (sibling) {
                   const rawBass = decompressCompactPhrase(sibling.phrase);
@@ -394,7 +396,9 @@ export class BluesBrain {
               type: 'bass',
               note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t % 12) / 3,
-              duration: n.d / 3,
+              // #ЗАЧЕМ: Финальный барьер против гудения.
+              // #ЧТО: Ограничиваем физическую длительность ноты баса до ~1 такта (3.8 долей).
+              duration: Math.min(n.d / 3, 3.8), 
               weight: 0.85,
               technique: 'pluck',
               dynamics: 'p',
@@ -403,6 +407,7 @@ export class BluesBrain {
       } else {
           const melodyComplexity = this.currentMelodyAxiomObj?.vector?.e || 0.5;
           if (melodyComplexity > 0.75 && tension < 0.8) {
+              // #ЗАЧЕМ: Даже в адаптивном режиме педаль ограничена 3.5 долями.
               bassNotes = [{ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12), time: 0, duration: 3.5, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }];
           } else {
               bassNotes = tension > 0.7 ? this.renderWalkingBass(chord, epoch, tension) : this.renderRiffBass(chord, epoch, tension);
