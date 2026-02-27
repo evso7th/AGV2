@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №664 — Добавлена телеметрия управления преампом.
+ * #ЧТО: ПЛАН №665 — Удален внутренний преамп. Громкость теперь управляется системным узлом контекста.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -24,8 +24,6 @@ export class MelodySynthManagerV2 {
     private darkTelecasterSampler: DarkTelecasterSampler;
     private cs80Sampler: CS80GuitarSampler;
     
-    private preamp: GainNode;
-
     private activePresetName: string = 'none';
 
     constructor(
@@ -44,10 +42,6 @@ export class MelodySynthManagerV2 {
         this.darkTelecasterSampler = darkTelecasterSampler;
         this.cs80Sampler = cs80Sampler;
         this.partName = partName;
-
-        this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.0;
-        this.preamp.connect(this.destination);
     }
 
     async init() {
@@ -73,7 +67,7 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp
+                output: this.destination
             });
             this.activePresetName = presetName;
         } catch (error) {
@@ -173,15 +167,8 @@ export class MelodySynthManagerV2 {
        }
     }
 
-    /**
-     * #ЗАЧЕМ: Управление громкостью через системную шину.
-     * #ЧТО: ПЛАН №664 — Телеметрия подтверждения гейна.
-     */
     public setPreampGain(gain: number) {
-        if (this.preamp) {
-            console.log(`[V2-Manager:${this.partName}] Preamp Gain Set: ${gain.toFixed(3)}`);
-            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
-        }
+        // #ЗАЧЕМ: Заглушка. Громкость теперь управляется в AudioEngineContext.
     }
 
     public allNotesOff() {
@@ -198,6 +185,5 @@ export class MelodySynthManagerV2 {
     public dispose() { 
         this.stop(); 
         if (this.synth) this.synth.disconnect();
-        if (this.preamp) { this.preamp.disconnect(); } 
     }
 }

@@ -1,10 +1,10 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V4.8 — "Warm-up Sequence".
- * #ЧТО: ПЛАН №655 — Добавлена логика прогрева двигателя при включении Radio.
+ * #ЗАЧЕМ: Хук управления UI музыкой V4.9 — "Static Volume Strategy".
+ * #ЧТО: ПЛАН №665 — Оптимизировано обновление громкости. Устранены переприменения при изменении BPM.
  */
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
@@ -19,8 +19,8 @@ export type AuraGrooveProps = {
   isRegenerating: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
-  isWarmingUp: boolean; // #ЗАЧЕМ: Состояние прогрева для UI.
-  warmUpTimeLeft: number; // #ЗАЧЕМ: Значение таймера.
+  isWarmingUp: boolean;
+  warmUpTimeLeft: number;
   loadingText: string;
   availableCompositions: { id: string; count: number }[];
   selectedCompositionIds: string[];
@@ -80,7 +80,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     resetWorker, 
     setVolume, 
     setInstrument,
-    setBassTechnique,
     setTextureSettings: setEngineTextureSettings,
     toggleBroadcast,
     getWorker,
@@ -104,6 +103,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       sparkles: { enabled: true, volume: 0.12 },
       sfx: { enabled: true, volume: 0.12 },
   });
+  
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
   const [genre, setGenre] = useState<Genre>('ambient');
@@ -127,55 +127,43 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
 
-  // --- WARM UP STATE ---
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
+
+  // #ЗАЧЕМ: Устранение "дыхания" громкости.
+  // #ЧТО: Используем Ref для предотвращения бесконечных вызовов setVolume.
+  const lastAppliedVolumesRef = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const saved = localStorage.getItem(LICK_HISTORY_KEY);
     if (saved) {
-        try {
-            setSessionLickHistory(JSON.parse(saved));
-        } catch(e) {}
+        try { setSessionLickHistory(JSON.parse(saved)); } catch(e) {}
     }
   }, []);
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  useEffect(() => { initialize(); }, [initialize]);
 
   useEffect(() => {
     const worker = getWorker?.();
     if (!worker) return;
-
     const handleMessage = (e: MessageEvent) => {
       if (e.data.type === 'SCORE_READY' && e.data.payload?.actualBpm) {
         setBpm(e.data.payload.actualBpm);
       }
     };
-
     worker.addEventListener('message', handleMessage);
     return () => worker.removeEventListener('message', handleMessage);
   }, [getWorker]);
 
-
   const getFullSettings = useCallback((): Omit<WorkerSettings, 'seed'> => {
     return {
-      bpm,
-      score,
-      genre,
-      instrumentSettings,
+      bpm, score, genre, instrumentSettings,
       drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
       textureSettings: {
           sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
           sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
       },
-      density,
-      composerControlsInstruments,
-      mood,
-      introBars,
-      sessionLickHistory,
-      selectedCompositionIds 
+      density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds 
     };
   }, [bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds]);
 
@@ -184,27 +172,31 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const fullSettings = getFullSettings();
         updateSettings(fullSettings);
         
+        // #ЗАЧЕМ: Синхронизация громкости только при изменении значений.
         Object.entries(instrumentSettings).forEach(([part, settings]) => {
-            const instrumentPart = part as InstrumentPart;
-            if (settings && 'volume' in settings) {
-              setVolume(instrumentPart, settings.volume);
+            if (settings && 'volume' in settings && lastAppliedVolumesRef.current[part] !== settings.volume) {
+              setVolume(part, settings.volume);
+              lastAppliedVolumesRef.current[part] = settings.volume;
             }
         });
-        setVolume('drums', drumSettings.volume);
+        
+        if (lastAppliedVolumesRef.current.drums !== drumSettings.volume) {
+            setVolume('drums', drumSettings.volume);
+            lastAppliedVolumesRef.current.drums = drumSettings.volume;
+        }
+        
         setEngineTextureSettings({sparkles: textureSettings.sparkles, sfx: textureSettings.sfx});
     }
-  }, [isInitialized, genre, mood, getFullSettings, updateSettings, instrumentSettings, drumSettings, textureSettings, setVolume, setEngineTextureSettings]);
+  }, [isInitialized, instrumentSettings, drumSettings, textureSettings, getFullSettings, updateSettings, setVolume, setEngineTextureSettings]);
 
   const handlePlayPause = useCallback(async () => {
     if (!isInitialized) return;
-    
     if (!hasPlayedOnce && !isPlaying) {
       const newSeed = Date.now();
       setCurrentSeed(newSeed);
       resetWorker();
       setHasPlayedOnce(true);
     }
-
     setEngineIsPlaying(!isPlaying);
   }, [isInitialized, isPlaying, setEngineIsPlaying, hasPlayedOnce, resetWorker]);
 
@@ -218,9 +210,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleToggleBroadcast = useCallback(() => {
     if (!isInitialized) return;
-
-    // #ЗАЧЕМ: Запуск таймера прогрева при включении радио в простое.
-    // #ЧТО: Если радио выключено и музыка не играет — запускаем 5-секундный цикл.
     if (!isBroadcastActive && !isPlaying) {
         setIsWarmingUp(true);
         setWarmUpTimeLeft(5);
@@ -235,29 +224,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
             });
         }, 1000);
     }
-
     toggleBroadcast();
   }, [isInitialized, isBroadcastActive, isPlaying, toggleBroadcast]);
 
   const handleSaveMasterpiece = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
-    
-    saveMasterpiece(db, {
-      seed: currentSeed,
-      mood,
-      genre,
-      density,
-      bpm,
-      instrumentSettings
-    });
+    saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
 
   const handleToggleRecording = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
+    if (isRecording) stopRecording(); else startRecording();
   }, [isRecording, stopRecording, startRecording]);
 
   const handleInstrumentChange = (part: keyof InstrumentSettings, name: any) => {
@@ -273,12 +249,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
         ...prev,
         bass: { ...prev.bass, technique }
       }));
-      setBassTechnique(technique);
   };
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part, value);
-    
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({
         ...prev,
@@ -311,40 +285,25 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const clearCompositionFilters = () => setSelectedCompositionIds([]);
 
-  // --- TIMER HANDLERS ---
   const handleTimerDurationChange = (minutes: number) => {
     const seconds = minutes * 60;
-    setTimerSettings(prev => ({
-      ...prev,
-      duration: seconds,
-      timeLeft: seconds
-    }));
+    setTimerSettings(prev => ({ ...prev, duration: seconds, timeLeft: seconds }));
   };
 
   const handleToggleTimer = () => {
-    setTimerSettings(prev => ({
-      ...prev,
-      isActive: !prev.isActive,
-      timeLeft: prev.duration 
-    }));
+    setTimerSettings(prev => ({ ...prev, isActive: !prev.isActive, timeLeft: prev.duration }));
   };
 
   useEffect(() => {
     if (!timerSettings.isActive) return;
-    
     if (timerSettings.timeLeft <= 0) {
       setEngineIsPlaying(false);
       setTimerSettings(prev => ({ ...prev, isActive: false }));
       return;
     }
-
     const interval = setInterval(() => {
-      setTimerSettings(prev => ({
-        ...prev,
-        timeLeft: Math.max(0, prev.timeLeft - 1)
-      }));
+      setTimerSettings(prev => ({ ...prev, timeLeft: Math.max(0, prev.timeLeft - 1) }));
     }, 1000);
-
     return () => clearInterval(interval);
   }, [timerSettings.isActive, timerSettings.timeLeft, setEngineIsPlaying]);
 
@@ -356,25 +315,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft,
     loadingText: isInitializing ? 'Initializing...' : (isInitialized ? 'Ready' : 'Click to initialize audio'),
-    availableCompositions,
-    selectedCompositionIds,
-    toggleCompositionFilter,
-    clearCompositionFilters,
-    refreshCloudAxioms,
+    availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms,
     handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece,
-    drumSettings, setDrumSettings,
-    instrumentSettings, setInstrumentSettings: handleInstrumentChange,
-    handleBassTechniqueChange, handleVolumeChange,
-    textureSettings, handleTextureEnabledChange,
-    bpm, handleBpmChange: setBpm,
-    score, handleScoreChange: setScore,
-    density, setDensity,
-    composerControlsInstruments, setComposerControlsInstruments,
-    handleGoHome,
-    handleExit: handleGoHome,
+    drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: handleInstrumentChange,
+    handleBassTechniqueChange, handleVolumeChange, textureSettings, handleTextureEnabledChange,
+    bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
+    composerControlsInstruments, setComposerControlsInstruments, handleGoHome, handleExit: handleGoHome,
     isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange: () => {},
-    timerSettings, handleTimerDurationChange, handleToggleTimer,
-    mood, setMood, genre, setGenre,
-    introBars, setIntroBars,
+    timerSettings, handleTimerDurationChange, handleToggleTimer, mood, setMood, genre, setGenre, introBars, setIntroBars,
   };
 };

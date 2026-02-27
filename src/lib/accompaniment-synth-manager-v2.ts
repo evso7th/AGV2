@@ -5,7 +5,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №664 — Телеметрия подтверждения гейна.
+ * #ЧТО: ПЛАН №665 — Удален внутренний преамп для предотвращения нелинейности громкости.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -14,15 +14,10 @@ export class AccompanimentSynthManagerV2 {
     private instrument: any | null = null; 
     
     private activePresetName: string = 'none';
-    private preamp: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
-        
-        this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.0;
-        this.preamp.connect(this.destination);
     }
 
     async init() {
@@ -44,7 +39,7 @@ export class AccompanimentSynthManagerV2 {
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp
+                output: this.destination
             });
             this.activePresetName = presetName;
         } catch (error) {
@@ -101,15 +96,8 @@ export class AccompanimentSynthManagerV2 {
        await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
     }
 
-    /**
-     * #ЗАЧЕМ: Управление громкостью через системную шину.
-     * #ЧТО: ПЛАН №664 — Телеметрия подтверждения гейна.
-     */
     public setPreampGain(gain: number) {
-        if (this.preamp) {
-            console.log(`[V2-Manager:Accomp] Preamp Gain Set: ${gain.toFixed(3)}`);
-            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
-        }
+        // #ЗАЧЕМ: Громкость теперь полностью управляется в AudioEngineContext.
     }
 
     public allNotesOff() {
@@ -119,5 +107,5 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); this.preamp.disconnect(); }
+    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); }
 }

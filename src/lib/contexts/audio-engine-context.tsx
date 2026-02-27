@@ -292,13 +292,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     // #ЧТО: Удалена избыточная логика обновления менеджеров (setPreampGain).
     //       Теперь системные Gain-узлы в AudioEngineContext являются ЕДИНСТВЕННЫМ 
     //       источником громкости для UI. Это устраняет "эффект квадрата" и чинит слайдеры.
-    console.log(`%c[Telemetry] setVolume(${part}): ${volume.toFixed(2)} -> ${balancedVolume.toFixed(2)}`, 'color: #4ade80; font-weight: bold;');
+    console.log(`%c[Volume] setVolume(${part}): ${volume.toFixed(2)} -> ${balancedVolume.toFixed(2)}`, 'color: #4ade80; font-weight: bold;');
 
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
-    } else {
-        console.warn(`[Telemetry] No master GainNode for: ${part}`);
     }
   }, []);
 

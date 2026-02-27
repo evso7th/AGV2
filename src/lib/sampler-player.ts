@@ -8,7 +8,6 @@ type SamplerInstrument = {
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
  * #ЧТО: 1. ПЛАН №665 — Системное снижение громкости пианино в 2 раза (0.75 -> 0.375).
- *       2. Реализована полная остановка всех запланированных источников (stopAll).
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -24,8 +23,7 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системная калибровка уровней.
-        // #ЧТО: Гейн снижен еще в 2 раза (0.75 -> 0.375).
+        // #ЗАЧЕМ: Системная калибровка уровней. Гейн снижен в 2 раза.
         this.preamp.gain.value = 0.375; 
         this.preamp.connect(this.outputNode);
         
@@ -33,13 +31,13 @@ export class SamplerPlayer {
     }
     
     public setVolume(volume: number) {
-        this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        // #ЗАЧЕМ: Очистка от перекрестного управления. 
+        //         Теперь системная громкость устанавливается на Context-узле.
     }
 
 
     async loadInstrument(instrumentName: string, sampleMap: Record<string, string>): Promise<boolean> {
         if (this.instruments.has(instrumentName)) {
-            console.log(`[SamplerPlayer] Instrument "${instrumentName}" already loaded.`);
             return true;
         }
 
@@ -50,33 +48,23 @@ export class SamplerPlayer {
 
             const loadPromises = Object.entries(sampleMap).map(async ([noteStr, url]) => {
                 const midi = this.noteToMidi(noteStr);
-                if (midi === null) {
-                    console.warn(`[SamplerPlayer] Could not parse MIDI for note: ${noteStr}`);
-                    return;
-                }
+                if (midi === null) return;
                 
                 minMidi = Math.min(minMidi, midi);
                 maxMidi = Math.max(maxMidi, midi);
 
                 try {
                     const response = await fetch(url);
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch sample: ${url} (${response.statusText})`);
-                    }
+                    if (!response.ok) return;
                     const arrayBuffer = await response.arrayBuffer();
                     const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
                     loadedBuffers.set(midi, audioBuffer);
-                } catch (error) {
-                    console.error(`Error loading sample ${noteStr} from ${url}:`, error);
-                }
+                } catch (error) {}
             });
 
             await Promise.all(loadPromises);
 
-            if (loadedBuffers.size === 0) {
-                 console.error(`[SamplerPlayer] No samples were loaded for instrument "${instrumentName}".`);
-                 return false;
-            }
+            if (loadedBuffers.size === 0) return false;
             
             this.instruments.set(instrumentName, {
                 buffers: loadedBuffers,
@@ -86,26 +74,18 @@ export class SamplerPlayer {
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error(`[SamplerPlayer] Failed to load instrument "${instrumentName}":`, error);
             return false;
         }
     }
     
     public schedule(instrumentName: string, notes: Note[], time: number, loggerPrefix?: string) {
-        if (!this.isInitialized) {
-            return;
-        }
-        
+        if (!this.isInitialized) return;
         const instrument = this.instruments.get(instrumentName);
-        if (!instrument) {
-            return;
-        }
+        if (!instrument) return;
 
         notes.forEach(note => {
             const { buffer, midi: sampleMidi } = this.findClosestSample(instrument, note.midi);
-            if (!buffer) {
-                return;
-            }
+            if (!buffer) return;
 
             const startTime = time + note.time;
             const velocity = note.velocity ?? 0.7;
