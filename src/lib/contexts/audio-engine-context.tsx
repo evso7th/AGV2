@@ -1,7 +1,7 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V9.0 — "V2 Absolute Sovereignty".
- * #ЧТО: 1. Полное удаление V1-менеджеров. Движка V1 больше не существует.
- *       2. ПЛАН №663: Консолидация всей маршрутизации на V2-движке.
+ * #ЗАЧЕМ: Audio Engine Context V9.5 — "Full Spectrum Telemetry".
+ * #ЧТО: 1. ПЛАН №664 — Исправлена ошибка маршрутизации громкости (удалены early returns).
+ *       2. Внедрена телеметрия управления ансамблем.
  */
 'use client';
 
@@ -88,7 +88,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const settingsRef = useRef<WorkerSettings | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
-  // #ЗАЧЕМ: V1 менеджеры удалены навсегда.
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -147,7 +146,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, db, refreshCloudAxioms]);
 
   const stopAllSounds = useCallback(() => {
-    // #ЧТО: Очищен список останавливаемых менеджеров.
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll();
@@ -180,21 +178,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       else if (et === 'sfx') sfxEvents.push(event);
     }
 
-    // #ЗАЧЕМ: Упрощенная маршрутизация. Только V2 и Самплеры.
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
-    
-    if (bassEvents.length > 0 && bassManagerV2Ref.current) {
-        bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
-    }
-
-    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) {
-        accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-    }
-
-    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) {
-        melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
-    }
-
+    if (bassEvents.length > 0 && bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
+    if (accompanimentEvents.length > 0 && accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
+    if (melodyEvents.length > 0 && melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(melodyEvents, barStartTime, tempo, instrumentHints?.melody, barCount);
     if (harmonyManagerRef.current && harmonyEvents.length > 0) harmonyManagerRef.current.schedule(harmonyEvents, barStartTime, tempo, instrumentHints?.harmony);
     if (pianoAccompanimentManagerRef.current && pianoEvents.length > 0) pianoAccompanimentManagerRef.current.schedule(pianoEvents, barStartTime, tempo);
     if (sfxSynthManagerRef.current && sfxEvents.length > 0) sfxSynthManagerRef.current.trigger(sfxEvents, barStartTime, tempo);
@@ -234,7 +221,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!darkTelecasterSamplerRef.current) darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         if (!cs80SamplerRef.current) cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        // #ЗАЧЕМ: Удалена инициализация V1. Только V2.
         if (!accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
         if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
         if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
@@ -302,7 +288,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
 
-    // #ЗАЧЕМ: Управление громкостью теперь строго через V2 и системную шину.
+    // #ЗАЧЕМ: ПЛАН №664 — Сквозная телеметрия управления громкостью.
+    console.log(`%c[Telemetry] setVolume(${part}): ${volume.toFixed(2)} -> ${balancedVolume.toFixed(2)}`, 'color: #4ade80; font-weight: bold;');
+
+    // #ЗАЧЕМ: УДАЛЕНЫ early returns. Теперь обновление идет по всей цепочке.
     if (part === 'bass' && bassManagerV2Ref.current) {
         bassManagerV2Ref.current.setPreampGain(balancedVolume);
     }

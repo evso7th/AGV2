@@ -5,7 +5,7 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №653 — Восстановлен метод setPreampGain для устранения системной ошибки.
+ * #ЧТО: ПЛАН №664 — Телеметрия подтверждения гейна.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -103,10 +103,11 @@ export class AccompanimentSynthManagerV2 {
 
     /**
      * #ЗАЧЕМ: Управление громкостью через системную шину.
-     * #ЧТО: Регулирует гейн преампа, обеспечивая плавный фейд.
+     * #ЧТО: ПЛАН №664 — Телеметрия подтверждения гейна.
      */
     public setPreampGain(gain: number) {
         if (this.preamp) {
+            console.log(`[V2-Manager:Accomp] Preamp Gain Set: ${gain.toFixed(3)}`);
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.01);
         }
     }
