@@ -142,7 +142,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if(useMelodyV2) melodyManagerV2Ref.current?.setInstrument(name);
         else melodyManagerRef.current?.setInstrument(name);
     } else if (part === 'bass') {
-        bassManagerRef.current?.setInstrument(name);
+        if(useMelodyV2) bassManagerV2Ref.current?.setInstrument(name);
+        else bassManagerRef.current?.setInstrument(name);
     } else if (part === 'harmony') {
         harmonyManagerRef.current?.setInstrument(name);
     }
@@ -170,7 +171,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     if (drumMachineRef.current && drumEvents.length > 0) drumMachineRef.current.schedule(drumEvents, barStartTime, tempo);
-    if (bassEvents.length > 0 && bassManagerRef.current) bassManagerRef.current.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+    if (bassEvents.length > 0) {
+        if (useMelodyV2) bassManagerV2Ref.current?.schedule(bassEvents, barStartTime, tempo, instrumentHints?.bass, barCount);
+        else bassManagerRef.current?.schedule(bassEvents, barStartTime, tempo, barCount, instrumentHints?.bass, composerControls);
+    }
 
     if (accompanimentEvents.length > 0) {
         if (useMelodyV2) accompanimentManagerV2Ref.current?.schedule(accompanimentEvents, barStartTime, tempo, barCount, instrumentHints?.accompaniment as any);
@@ -187,39 +191,40 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [useMelodyV2]);
 
   /**
-   * #ЗАЧЕМ: Исправлена работа слайдеров громкости.
-   * #ЧТО: setVolumeCallback теперь корректно делегирует громкость активному менеджеру (V1 или V2).
+   * #ЗАЧЕМ: Улучшенная калибровка громкости ансамбля.
+   * #ЧТО: ПЛАН №660 — Реализована сквозная поддержка balancedVolume для всех типов менеджеров.
    */
   const setVolumeCallback = useCallback((part: InstrumentPart, volume: number) => {
     if (part === 'pads' || part === 'effects') return;
 
-    // #ЗАЧЕМ: Корректная маршрутизация громкости.
-    if (part === 'bass' && bassManagerRef.current) {
-        bassManagerRef.current.setPreampGain(volume);
+    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+
+    if (part === 'bass') {
+        if (useMelodyV2) bassManagerV2Ref.current?.setPreampGain(balancedVolume);
+        else bassManagerRef.current?.setPreampGain(balancedVolume);
         return;
     }
     if (part === 'melody') {
-        if (useMelodyV2) melodyManagerV2Ref.current?.setPreampGain(volume);
-        else melodyManagerRef.current?.setPreampGain(volume);
+        if (useMelodyV2) melodyManagerV2Ref.current?.setPreampGain(balancedVolume);
+        else melodyManagerRef.current?.setPreampGain(balancedVolume);
         return;
     }
     if (part === 'accompaniment') {
-        if (useMelodyV2) accompanimentManagerV2Ref.current?.setPreampGain(volume);
-        else accompanimentManagerRef.current?.setPreampGain(volume);
+        if (useMelodyV2) accompanimentManagerV2Ref.current?.setPreampGain(balancedVolume);
+        else accompanimentManagerRef.current?.setPreampGain(balancedVolume);
         return;
     }
     if (part === 'harmony' && harmonyManagerRef.current) {
-        harmonyManagerRef.current.setVolume(volume);
+        harmonyManagerRef.current.setVolume(balancedVolume);
         return;
     }
     if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        pianoAccompanimentManagerRef.current.setVolume(volume);
+        pianoAccompanimentManagerRef.current.setVolume(balancedVolume);
         return;
     }
 
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, [useMelodyV2]);
@@ -277,6 +282,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!telecasterSamplerRef.current) telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         if (!melodyManagerRef.current) melodyManagerRef.current = new MelodySynthManager(context, gainNodesRef.current.melody, blackGuitarSamplerRef.current, telecasterSamplerRef.current, 'melody');
         if (!melodyManagerV2Ref.current) melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current, blackGuitarSamplerRef.current, {} as any, {} as any, 'melody');
+        if (!bassManagerV2Ref.current) bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current, blackGuitarSamplerRef.current, {} as any, {} as any, 'bass');
         if (!harmonyManagerRef.current) harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         if (!pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         if (!sparklePlayerRef.current) sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
@@ -297,12 +303,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         isInitialized, isInitializing, isPlaying, useMelodyV2, initialize,
         setIsPlaying: (playing) => {
             setIsPlaying(playing);
-            if (!isInitialized || !workerRef.current) return;
+            if (!isInitialized || !workerRef.current || !audioContextRef.current) return;
+            const context = audioContextRef.current;
             if (playing) {
-                if (audioContextRef.current.state === 'suspended') audioContextRef.current.resume();
-                nextBarTimeRef.current = audioContextRef.current.currentTime + 0.2;
+                if (context.state === 'suspended') context.resume();
+                masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
+                nextBarTimeRef.current = context.currentTime + 0.2;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
+                masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
                 workerRef.current.postMessage({ command: 'stop' });
             }
         }, 
