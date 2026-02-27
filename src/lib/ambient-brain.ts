@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v17.2 — "Cloud DNA Integration".
- * #ЗАЧЕМ: Реализация "Cloud First" поиска ДНК для Эмбиента.
- * #ЧТО: ПЛАН №659 — Восстановлен жанровый фильтр. Только Эмбиент из облака.
+ * @fileOverview Ambient Brain v17.5 — "Multi-Tag Heritage Awareness".
+ * #ЗАЧЕМ: Поддержка множественных жанров и настроений в облачном ДНК.
+ * #ЧТО: ПЛАН №661 — Фильтрация cloudPool теперь поддерживает массивы тегов.
  */
 
 import type { 
@@ -164,14 +164,15 @@ export class AmbientBrain {
             const developmentChance = baseChance + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
-                // #ЗАЧЕМ: ПЛАН №659 — Cloud First. Поиск эмбиентных аксиом в облаке.
+                // #ЗАЧЕМ: ПЛАН №661 — Адаптивная фильтрация по множественным тегам.
                 let cloudAxiom: any = null;
                 if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
-                    const cloudPool = dna.cloudAxioms.filter(ax => 
-                        ax.role === 'melody' && 
-                        ax.genre === 'ambient' && 
-                        ax.mood === this.mood
-                    );
+                    const cloudPool = dna.cloudAxioms.filter(ax => {
+                        if (ax.role !== 'melody') return false;
+                        const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                        const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                        return genreArr.includes('ambient') && moodArr.includes(this.mood);
+                    });
                     if (cloudPool.length > 0) {
                         cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
                     }
@@ -404,19 +405,22 @@ export class AmbientBrain {
         return hints;
     }
 
-    private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING);
-        return [{
-            type: 'melody',
-            note: root,
-            time: 0,
-            duration: 12.0,
-            weight: 0.45 * (1.0 - this.fog * 0.2), 
+    private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
+        const root = chord.rootNote + 12 + this.registerShift;
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const notes = [root, root + (isMinor ? 3 : 4), root + 7];
+
+        return notes.map((n, i) => ({
+            type: 'accompaniment',
+            note: n,
+            time: i * 0.2,
+            duration: 12.0, 
+            weight: 0.38 * (0.9 + this.random.next() * 0.2),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { attack: 1.5, release: 4.0, filterCutoff: this.solistCutoff }
-        }];
+            params: { attack: 2.0, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
+        }));
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {

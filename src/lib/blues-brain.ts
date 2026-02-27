@@ -25,8 +25,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V167.0 — "Sovereignty Restored".
- * #ЧТО: ПЛАН №659 — Восстановлен жесткий жанровый фильтр. Блюз только для Блюза.
+ * #ЗАЧЕМ: Блюзовый Мозг V167.5 — "Multi-Tag Heritage Awareness".
+ * #ЧТО: ПЛАН №661 — Адаптивная фильтрация по множественным жанрам и настроениям.
  */
 
 export interface BluesBrainConfig {
@@ -310,20 +310,20 @@ export class BluesBrain {
           const targetAnchor = this.config.activeAnchorId;
 
           const cloudPool = this.config.cloudAxioms.filter(ax => {
-              const roleMatch = ax.role === 'melody';
-              if (!roleMatch) return false;
-
+              if (ax.role !== 'melody') return false;
               if (targetAnchor) return ax.compositionId === targetAnchor;
 
-              // #ЗАЧЕМ: Жанровая Суверенность восстановлена.
-              // #ЧТО: Блюз использует ТОЛЬКО блюзовые аксиомы.
-              const genreMatch = ax.genre === 'blues';
-              if (!genreMatch) return false;
+              // #ЗАЧЕМ: ПЛАН №661 — Адаптивная фильтрация по множественным тегам.
+              const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+              if (!genreArr.includes('blues')) return false;
 
               const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
               
-              return (ax.mood === this.mood || ax.commonMood === commonMoodFilter);
+              const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+              const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+              
+              return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
           });
 
           if (cloudPool.length > 0) {
@@ -447,7 +447,7 @@ export class BluesBrain {
       tension: number
   ): FractalEvent[] {
       const events: FractalEvent[] = [];
-      const isMin = chord.chordType === 'minor' || chord.chordType === 'diminished';
+      const isMin = chord.chordType === 'minor';
       const third = isMin ? 3 : 4;
       const fifth = 7;
       const seventh = 10;

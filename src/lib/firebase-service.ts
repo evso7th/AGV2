@@ -1,4 +1,3 @@
-
 import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -58,14 +57,14 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
  * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
- * #ОБНОВЛЕНО (ПЛАН №642): nativeKey, nativeBpm и timeSignature теперь сохраняются.
+ * #ОБНОВЛЕНО (ПЛАН №661): Поддержка множественных жанров и настроений.
  */
 export function saveHeritageAxiom(db: Firestore, data: {
     phrase: number[];
     role: 'melody' | 'bass' | 'drums' | 'accomp';
-    genre: string;
-    commonMood: CommonMood;
-    mood: string;
+    genre: string[];
+    commonMood: CommonMood[];
+    mood: string[];
     compositionId: string;
     barOffset: number;
     vector: AxiomVector;

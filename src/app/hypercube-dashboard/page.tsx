@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -25,7 +24,8 @@ import {
   Zap,
   Activity,
   History,
-  TrendingUp
+  TrendingUp,
+  LayoutGrid
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -39,6 +39,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { 
   Radar, 
   RadarChart, 
@@ -95,6 +96,50 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   gloomy: 'dark'
 };
 
+/**
+ * #ЗАЧЕМ: Универсальный компонент множественного выбора.
+ */
+function MultiSelector<T extends string>({ 
+  options, 
+  values, 
+  onValuesChange, 
+  placeholder,
+  className 
+}: { 
+  options: T[], 
+  values: T[], 
+  onValuesChange: (vals: T[]) => void, 
+  placeholder: string,
+  className?: string
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("h-8 text-xs bg-background justify-between font-normal", className)}>
+          <span className="truncate pr-4">
+            {values.length > 0 ? values.join(", ") : placeholder}
+          </span>
+          <LayoutGrid className="ml-2 h-3 w-3 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <ScrollArea className="h-48 p-2">
+          {options.map(opt => (
+            <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group" 
+                 onClick={() => {
+                   const next = values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt];
+                   onValuesChange(next);
+                 }}>
+              <Checkbox checked={values.includes(opt)} onCheckedChange={() => {}} />
+              <Label className="text-[11px] font-bold uppercase cursor-pointer flex-grow leading-none">{opt}</Label>
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function HypercubeDashboard() {
   const db = useFirestore();
   const router = useRouter();
@@ -106,18 +151,18 @@ export default function HypercubeDashboard() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = Set(new Set());
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>('');
-  const [selectedGenre, setSelectedGenre] = useState<Genre>('blues');
+  const [selectedGenre, setSelectedGenre] = useState<Genre[]>(['blues']);
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
   
   // Renaming & Metadata State
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState("");
-  const [editGenreValue, setEditGenreValue] = useState<Genre>('blues');
-  const [editMoodValue, setEditMoodValue] = useState<Mood>('melancholic');
+  const [editGenreValue, setEditGenreValue] = useState<Genre[]>([]);
+  const [editMoodValue, setEditMoodValue] = useState<Mood[]>([]);
   const [editBpmValue, setEditBpmValue] = useState<string>("72");
   const [editKeyValue, setEditKeyValue] = useState<string>("E");
   const [editTsValue, setEditTsValue] = useState<string>("4/4");
@@ -142,9 +187,13 @@ export default function HypercubeDashboard() {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
     return globalAxioms.reduce((acc, ax) => {
       acc.total++;
-      acc.genres[ax.genre] = (acc.genres[ax.genre] || 0) + 1;
-      acc.moods[ax.mood] = (acc.moods[ax.mood] || 0) + 1;
-      acc.commonMoods[ax.commonMood] = (acc.commonMoods[ax.commonMood] || 0) + 1;
+      const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+      const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+      const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+      
+      genres.forEach(g => { acc.genres[g] = (acc.genres[g] || 0) + 1; });
+      moods.forEach(m => { acc.moods[m] = (acc.moods[m] || 0) + 1; });
+      commons.forEach(cm => { acc.commonMoods[cm] = (acc.commonMoods[cm] || 0) + 1; });
       return acc;
     }, { 
         total: 0, 
@@ -258,6 +307,9 @@ export default function HypercubeDashboard() {
                 phrase: repairedPhrase,
                 id: `${compId}_${ax.role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
                 compositionId: compId,
+                genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
+                mood: Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []),
+                commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : (ax.mood ? [MOOD_TO_COMMON[Array.isArray(ax.mood) ? (ax.mood[0] as Mood) : (ax.mood as Mood)]] : ['neutral'])),
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || null,
                 timeSignature: ax.timeSignature || ax.ts || null
@@ -331,9 +383,14 @@ export default function HypercubeDashboard() {
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (const ax of toInject) {
+        const newMoods = ax.mood.length > 0 ? ax.mood : ['melancholic'];
+        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m])));
+        
         await saveHeritageAxiom(db, {
           ...ax,
           genre: selectedGenre, 
+          mood: newMoods,
+          commonMood: newCommons,
           barOffset: 0,
           origin: `Manual_Forge_Injection_${currentFileName}`,
           timestamp: new Date().toISOString() as any,
@@ -376,19 +433,19 @@ export default function HypercubeDashboard() {
     }
   };
 
-  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenre: Genre, newMood: Mood, newBpm: number, newKey: string, newTs: string, licks: any[]) => {
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenres: Genre[], newMoods: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
-        const newCommonMood = MOOD_TO_COMMON[newMood];
+        const newCommonMoods = Array.from(new Set(newMoods.map(m => MOOD_TO_COMMON[m])));
         
         licks.forEach(ax => {
             const ref = doc(db, 'heritage_axioms', ax.id);
             batch.update(ref, { 
                 compositionId: newId,
-                genre: newGenre,
-                mood: newMood,
-                commonMood: newCommonMood,
+                genre: newGenres,
+                mood: newMoods,
+                commonMood: newCommonMoods,
                 nativeBpm: newBpm,
                 nativeKey: newKey,
                 timeSignature: newTs
@@ -554,21 +611,23 @@ export default function HypercubeDashboard() {
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[10px] uppercase font-black opacity-70">Genre</Label>
-                                                    <Select value={editGenreValue} onValueChange={(v) => setEditGenreValue(v as Genre)}>
-                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {AVAILABLE_GENRES.map(g => <SelectItem key={g} value={g} className="capitalize text-xs">{g}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <MultiSelector 
+                                                      options={AVAILABLE_GENRES} 
+                                                      values={editGenreValue} 
+                                                      onValuesChange={setEditGenreValue}
+                                                      placeholder="Select genres..."
+                                                      className="w-full"
+                                                    />
                                                 </div>
                                                 <div className="space-y-1.5">
                                                     <Label className="text-[10px] uppercase font-black opacity-70">Mood</Label>
-                                                    <Select value={editMoodValue} onValueChange={(v) => setEditMoodValue(v as Mood)}>
-                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {AVAILABLE_MOODS.map(m => <SelectItem key={m} value={m} className="capitalize text-xs">{m}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
+                                                    <MultiSelector 
+                                                      options={AVAILABLE_MOODS} 
+                                                      values={editMoodValue} 
+                                                      onValuesChange={setEditMoodValue}
+                                                      placeholder="Select moods..."
+                                                      className="w-full"
+                                                    />
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-3 gap-4">
@@ -612,8 +671,8 @@ export default function HypercubeDashboard() {
                                         <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
                                             setEditingGroupId(compId);
                                             setEditNameValue(compId);
-                                            setEditGenreValue(licks[0].genre);
-                                            setEditMoodValue(licks[0].mood);
+                                            setEditGenreValue(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]);
+                                            setEditMoodValue(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]);
                                             setEditBpmValue(String(licks[0].nativeBpm || 72));
                                             setEditKeyValue(licks[0].nativeKey || "E");
                                             setEditTsValue(licks[0].timeSignature || "4/4");
@@ -623,9 +682,9 @@ export default function HypercubeDashboard() {
                                                 <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>
                                             <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex gap-2">
-                                                <span>Genre: <span className="text-foreground">{licks[0].genre}</span></span>
+                                                <span>Genre: <span className="text-foreground">{(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]).join(', ')}</span></span>
                                                 <span className="opacity-30">|</span>
-                                                <span>Mood: <span className="text-foreground">{licks[0].mood}</span> ({licks[0].commonMood})</span>
+                                                <span>Mood: <span className="text-foreground">{(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]).join(', ')}</span></span>
                                                 <span className="opacity-30">|</span>
                                                 <span>Meta: <span className="text-foreground">{licks[0].nativeBpm || '??'} BPM / {licks[0].nativeKey || '??'} / {licks[0].timeSignature || '??'}</span></span>
                                             </div>
@@ -835,13 +894,14 @@ export default function HypercubeDashboard() {
                 <Upload className="mr-3 h-5 w-5" /> Load Local DNA
               </Button>
               <div className="flex items-center gap-3 pl-6 border-l border-border/50">
-                <Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genre:</Label>
-                <Select value={selectedGenre} onValueChange={(v) => setSelectedGenre(v as Genre)}>
-                  <SelectTrigger id="genre-inject" className="w-[180px] h-10 font-bold bg-background shadow-sm border-primary/10"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {AVAILABLE_GENRES.map(g => <SelectItem key={g} value={g} className="capitalize font-bold">{g}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label>
+                <MultiSelector 
+                  options={AVAILABLE_GENRES} 
+                  values={selectedGenre} 
+                  onValuesChange={setSelectedGenre}
+                  placeholder="Select genres..."
+                  className="w-[240px] h-10 font-bold"
+                />
               </div>
             </div>
 

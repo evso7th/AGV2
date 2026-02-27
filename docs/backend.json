@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -37,9 +36,9 @@
         "id": { "type": "string" },
         "phrase": { "type": "array", "items": { "type": "number" } },
         "role": { "type": "string", "enum": ["melody", "bass", "drums", "accomp"] },
-        "genre": { "type": "string" },
-        "commonMood": { "type": "string", "enum": ["dark", "neutral", "light"] },
-        "mood": { "type": "string" },
+        "genre": { "type": "array", "items": { "type": "string" } },
+        "commonMood": { "type": "array", "items": { "type": "string", "enum": ["dark", "neutral", "light"] } },
+        "mood": { "type": "array", "items": { "type": "string" } },
         "compositionId": { "type": "string" },
         "barOffset": { "type": "number" },
         "nativeBpm": { "type": "number", "description": "Original tempo of the fragment." },
