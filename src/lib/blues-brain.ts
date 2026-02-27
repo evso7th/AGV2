@@ -26,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V168.1 — "Identity Crisis Fix".
- * #ЧТО: ПЛАН №670 — Нормализованный поиск Анкора для стабильности выбора.
+ * #ЗАЧЕМ: Блюзовый Мозг V168.2 — "Harmony Sparsity".
+ * #ЧТО: ПЛАН №671 — Ограничение аккордовых событий до 2 за такт для чистоты микса.
  */
 
 export interface BluesBrainConfig {
@@ -247,6 +247,7 @@ export class BluesBrain {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
         const melodyDensity = melodyEvents.filter(e => e.type === 'melody').length;
+        // #ЗАЧЕМ: Ограничение аккомпанемента до 2 событий.
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension, melodyDensity));
     }
 
@@ -265,6 +266,7 @@ export class BluesBrain {
     
     let harAxiom = 'none';
     if (hints.harmony) {
+        // #ЗАЧЕМ: Ограничение гармонии до 2 событий.
         const harEvents = this.renderDerivativeHarmony(currentChord, epoch, tension);
         events.push(...harEvents);
         harAxiom = harEvents[0]?.chordName || 'Active';
@@ -317,7 +319,6 @@ export class BluesBrain {
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
               
-              // #ЗАЧЕМ: ПЛАН №670 — Нормализованный поиск Анкора.
               if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
 
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
@@ -460,8 +461,11 @@ export class BluesBrain {
       const seventh = 10;
       const inversionIdx = Math.floor(this.random.next() * 3); 
 
-      bassEvents.forEach(bass => {
-          if (bass.type !== 'bass') return;
+      // #ЗАЧЕМ: ПЛАН №671 — Лимит унисона до 2 событий за такт.
+      let eventCount = 0;
+      for (const bass of bassEvents) {
+          if (bass.type !== 'bass' || eventCount >= 2) continue;
+          
           events.push({
               ...bass,
               type: 'accompaniment',
@@ -477,24 +481,25 @@ export class BluesBrain {
               if (tension > 0.55) pitches.push(root + seventh); 
               if (tension > 0.75) pitches.push(root + 14);
 
-              pitches.forEach((p, i) => {
-                  let finalPitch = p;
-                  if (inversionIdx === 1) finalPitch += 12;
-                  if (inversionIdx === 2 && i === 0) finalPitch += 12;
+              // #ЗАЧЕМ: В унисоне берем только ПЕРВУЮ дополнительную ноту для разреженности.
+              const p = pitches[0];
+              let finalPitch = p;
+              if (inversionIdx === 1) finalPitch += 12;
+              if (inversionIdx === 2) finalPitch += 12;
 
-                  events.push({
-                      type: 'accompaniment',
-                      note: finalPitch,
-                      time: bass.time + (i * 0.02),
-                      duration: bass.duration * 0.8,
-                      weight: 0.45 - (i * 0.05),
-                      technique: 'swell',
-                      dynamics: 'p',
-                      phrasing: 'legato'
-                  });
+              events.push({
+                  type: 'accompaniment',
+                  note: finalPitch,
+                  time: bass.time + 0.02,
+                  duration: bass.duration * 0.8,
+                  weight: 0.45,
+                  technique: 'swell',
+                  dynamics: 'p',
+                  phrasing: 'legato'
               });
           }
-      });
+          eventCount++;
+      }
       return events;
   }
 
@@ -662,7 +667,8 @@ export class BluesBrain {
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyDensity: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
-    const notes = [root, root + (isMin ? 3 : 4), root + 7, root + 10];
+    // #ЗАЧЕМ: ПЛАН №671 — Ограничение аккордовых нот до двух (Корень и Терция).
+    const notes = [root, root + (isMin ? 3 : 4)];
     
     const isMelodyBusy = melodyDensity > 4;
     
@@ -672,12 +678,13 @@ export class BluesBrain {
         }));
     }
 
-    const pattern = (epoch % 2 === 0) ? [0, 1, 2, 3] : [0, 2];
+    // #ЗАЧЕМ: ПЛАН №671 — Строго 2 события за такт.
+    const pattern = [0, 2];
     return pattern.map((pIdx, i) => ({
         type: 'accompaniment', 
-        note: notes[pIdx % notes.length], 
-        time: i * (4.0 / pattern.length), 
-        duration: (4.0 / pattern.length) * 0.8, 
+        note: notes[i % notes.length], // Используем только 2 доступные ноты
+        time: i * 2.0, // Равномерное распределение на 2 события
+        duration: 1.8, 
         weight: 0.35, 
         technique: 'swell', 
         dynamics: 'p', 
@@ -721,7 +728,9 @@ export class BluesBrain {
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      return [root + 12, root + 19, root + (isMin ? 15 : 16)].map((n, i) => ({ 
+      // #ЗАЧЕМ: ПЛАН №671 — Ограничение гармонии до 2 нот (Корень и Характерная Терция).
+      // #ЧТО: Удалена квинта для создания "воздуха" в блюзовом миксе.
+      return [root + 12, root + (isMin ? 15 : 16)].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 
           time: i * 0.1, 
