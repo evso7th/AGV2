@@ -151,7 +151,7 @@ export default function HypercubeDashboard() {
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
-  const [selectedIds, setSelectedIds] = Set(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<Genre[]>(['blues']);
@@ -565,7 +565,7 @@ export default function HypercubeDashboard() {
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
                         placeholder="Search composition..." 
-                        className="pl-9 h-9 w-[240px] text-xs bg-background/50"
+                        className="pl-9 h-9 text-xs bg-background/50"
                         value={explorerSearch}
                         onChange={(e) => setFilterSearchText(e.target.value)}
                       />
