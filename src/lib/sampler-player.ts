@@ -7,7 +7,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. ПЛАН №665 — Системное снижение громкости пианино в 2 раза (0.75 -> 0.375).
+ * #ЧТО: 1. ПЛАН №678 — Системное снижение громкости пианино в 2 раза (0.375 -> 0.1875).
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -24,7 +24,7 @@ export class SamplerPlayer {
         
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Системная калибровка уровней. Гейн снижен в 2 раза.
-        this.preamp.gain.value = 0.375; 
+        this.preamp.gain.value = 0.1875; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
