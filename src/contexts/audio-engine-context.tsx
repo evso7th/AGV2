@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V11.1 — "The Silent Control".
- * #ЧТО: Удалено логирование [VolumeRestored] для очистки консоли.
+ * #ЗАЧЕМ: Audio Engine Context V12.0 — "The Auth Enforcer".
+ * #ЧТО: Внедрена автоматическая анонимная авторизация для доступа к Cloud DNA.
  */
 'use client';
 
@@ -21,7 +22,7 @@ import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.60, 
@@ -103,6 +104,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const { toast } = useToast();
   const db = useFirestore();
+  const auth = useAuth();
 
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -157,6 +159,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
+
+        // #ЗАЧЕМ: Инициализация анонимной сессии для доступа к Firestore.
+        if (auth && !auth.currentUser) {
+            console.log('[AudioEngine] Initiating Anonymous Handshake...');
+            initiateAnonymousSignIn(auth);
+        }
 
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
@@ -222,7 +230,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     } finally { 
         setIsInitializing(false); 
     }
-  }, [isInitialized, isInitializing, toast, scheduleEvents]);
+  }, [isInitialized, isInitializing, toast, scheduleEvents, auth]);
 
   return (
     <AudioEngineContext.Provider value={{

@@ -1,104 +1,35 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
      * AuraGroove V2 Security Rules
-     *
-     * CORE PHILOSOPHY:
-     * This ruleset enforces a strict User-Ownership model. Access is primarily determined by 
-     * the hierarchical path structure and verified against denormalized ownership fields 
-     * (userId, projectId) within the documents themselves.
-     *
-     * DATA STRUCTURE:
-     * All application data is nested under the user's root document: /users/{userId}.
-     * - Projects are subcollections of a User.
-     * - Designs and GenerationSessions are subcollections of a Project.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Authorization Independence: Every document contains the UIDs required for its 
-     *    own authorization (e.g., userId, projectId). This allows rules to verify access 
-     *    without expensive get() calls to parent documents.
-     * 2. Path-Field Consistency: On creation, the rules enforce that the internal 
-     *    ownership fields (like userId) match the document's path variables.
-     * 3. Relational Immutability: Once a document is created, fields that define its 
-     *    place in the hierarchy (userId, projectId, id) are made immutable.
-     * 4. Prototyping Flexibility: While authorization is strictly enforced, the 
-     *    internal shape of content fields (titles, descriptions, arrays) is not 
-     *    validated to allow for rapid UI iteration.
+     * Pure V2 Domain Standard
      */
 
-    // --- Global Helper Functions ---
-
-    /** Checks if the request is made by an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    // --- Heritage Axioms (The Hypercube) ---
+    match /heritage_axioms/{axiomId} {
+      // Allow any authenticated user to read and contribute to the heritage
+      allow read, write: if isSignedIn();
     }
 
-    /** Combined check for ownership and document existence for state-changing operations. */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    // --- Masterpieces ---
+    match /masterpieces/{masterpieceId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if false; 
     }
 
-    // --- Collection Rules ---
-
-    /**
-     * @description Rules for the root User profile document.
-     * @path /users/{userId}
-     * @allow (create) if the auth UID matches the document ID and the internal 'id' matches.
-     * @deny (get) if a user tries to read another user's profile.
-     * @principle Self-Creation and Path-Based Ownership.
-     */
+    // --- User Profiles ---
     match /users/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-
-      /**
-       * @description Rules for Projects owned by a user.
-       * @path /users/{userId}/projects/{projectId}
-       * @allow (list) if the user is the owner of the parent path.
-       * @deny (update) if the user attempts to change the project's owner (userId).
-       * @principle Authorization Independence via denormalized userId.
-       */
-      match /projects/{projectId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.id == projectId;
-        allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId && request.resource.data.id == resource.data.id;
-        allow delete: if isExistingOwner(userId);
-
-        /**
-         * @description Rules for AI Generation Sessions within a project.
-         * @path /users/{userId}/projects/{projectId}/generationSessions/{sessionId}
-         * @allow (create) if path variables match the denormalized data fields.
-         * @principle Relational Integrity and Ownership.
-         */
-        match /generationSessions/{sessionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.projectId == projectId && request.resource.data.id == sessionId;
-          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId && request.resource.data.projectId == resource.data.projectId && request.resource.data.id == resource.data.id;
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for individual Design artifacts.
-         * @path /users/{userId}/projects/{projectId}/designs/{designId}
-         * @allow (update) if the user modifies their own design without changing identifiers.
-         * @principle Structural Segregation ensuring private data per user.
-         */
-        match /designs/{designId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.projectId == projectId && request.resource.data.id == designId;
-          allow update: if isExistingOwner(userId) && request.resource.data.userId == resource.data.userId && request.resource.data.projectId == resource.data.projectId && request.resource.data.id == resource.data.id;
-          allow delete: if isExistingOwner(userId);
-        }
-      }
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
     }
   }
 }
