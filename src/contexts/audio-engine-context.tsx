@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V12.0 — "The Auth Enforcer".
- * #ЧТО: Внедрена автоматическая анонимная авторизация для доступа к Cloud DNA.
+ * #ЗАЧЕМ: Audio Engine Context V12.1 — "Singleton Guard".
+ * #ЧТО: ПЛАН №687 — Внедрена блокировка повторной инициализации для предотвращения дублирования ударных.
  */
 'use client';
 
@@ -78,6 +78,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
   
+  const initializationInFlightRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
@@ -152,7 +153,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const initialize = useCallback(async () => {
-    if (isInitialized || isInitializing) return true;
+    // #ЗАЧЕМ: Синхронная блокировка через Ref предотвращает двойную инициализацию при remount.
+    if (isInitialized || initializationInFlightRef.current) return true;
+    initializationInFlightRef.current = true;
     setIsInitializing(true);
 
     try {
@@ -160,9 +163,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
 
-        // #ЗАЧЕМ: Инициализация анонимной сессии для доступа к Firestore.
         if (auth && !auth.currentUser) {
-            console.log('[AudioEngine] Initiating Anonymous Handshake...');
             initiateAnonymousSignIn(auth);
         }
 
@@ -184,7 +185,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
 
-        drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums);
+        drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
@@ -229,8 +230,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return false;
     } finally { 
         setIsInitializing(false); 
+        initializationInFlightRef.current = false;
     }
-  }, [isInitialized, isInitializing, toast, scheduleEvents, auth]);
+  }, [toast, scheduleEvents, auth]); // Удалены isInitialized и isInitializing из зависимостей
 
   return (
     <AudioEngineContext.Provider value={{
