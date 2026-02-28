@@ -11,7 +11,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Сэмплер скрипки с системной калибровкой громкости.
- * #ЧТО: ПЛАН №624 — Громкость снижена в 3 раза (3.5 -> 1.16) для баланса ансамбля.
+ * #ЧТО: ПЛАН №680 — Добавлены защитные проверки isFinite для AudioParam.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -32,6 +32,7 @@ export class ViolinSamplerPlayer {
     }
     
     public setVolume(volume: number) {
+        if (!isFinite(volume)) return;
         this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
     }
 
@@ -77,18 +78,27 @@ export class ViolinSamplerPlayer {
             const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi, note.velocity);
             if (!buffer) return;
 
+            const startTime = time + note.time;
+            const velocity = note.velocity ?? 0.7;
+
+            // #ЗАЧЕМ: Защита от краха AudioParam.
+            if (!isFinite(startTime) || !isFinite(velocity)) return;
+
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
+            
+            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
+            if (!isFinite(playbackRate)) return;
+
+            gainNode.gain.setValueAtTime(velocity, this.audioContext.currentTime);
 
             source.connect(gainNode);
             gainNode.connect(this.preamp);
 
-            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
-            source.start(time + note.time);
+            source.start(startTime);
             source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
         });
     }

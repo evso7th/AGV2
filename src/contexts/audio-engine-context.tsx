@@ -1,7 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V11.0 — "The Great Restoration".
- * #ЧТО: 1. Исправлена блокировка громкости. setVolume теперь работает для всех партий.
- *       2. Консолидация V2 менеджеров в едином контексте.
+ * #ЗАЧЕМ: Audio Engine Context V11.1 — "The Silent Control".
+ * #ЧТО: Удалено логирование [VolumeRestored] для очистки консоли.
  */
 'use client';
 
@@ -109,7 +108,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        console.log(`[VolumeRestored] Applying ${part}: ${volume} -> ${balancedVolume.toFixed(2)}`);
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
@@ -140,7 +138,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
-    const beatDuration = 60 / tempo;
     
     // Dispatch to managers
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);

@@ -1,8 +1,7 @@
 /**
- * @fileOverview Ambient Brain v19.0 — "Static Dynamics & Grid-Markov Support".
- * #ЗАЧЕМ: Устранение всех динамических изменений громкости.
- * #ЧТО: 1. ПЛАН №679 — Веса нот зафиксированы на константах.
- *       2. Удалены все модуляторы громкости (momentum, exhaleModifier).
+ * @fileOverview Ambient Brain v20.0 — "Heritage Integrity Protocol".
+ * #ЗАЧЕМ: Эмбиент теперь уважает Анкоры (активные фильтры) так же строго, как Блюз.
+ * #ЧТО: ПЛАН №680 — Принудительная активация облачных аксиом при активном Анкоре.
  */
 
 import type { 
@@ -165,8 +164,10 @@ export class AmbientBrain {
         }
 
         if (epoch >= this.soloistBusyUntilBar) {
-            const baseChance = isPositive ? 0.60 : 0.40; 
-            const developmentChance = baseChance + localTension * 0.25;
+            // #ЗАЧЕМ: Если Анкор активен, вероятность вступления темы — 100%.
+            const hasAnchor = !!dna.activeAnchorId;
+            const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
+            const developmentChance = hasAnchor ? 1.0 : (baseChance + localTension * 0.25);
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
@@ -185,6 +186,7 @@ export class AmbientBrain {
                     });
                     
                     if (cloudPool.length > 0) {
+                        // Если есть Анкор, берем строго из этого пула
                         cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
                     }
                 }
@@ -202,7 +204,8 @@ export class AmbientBrain {
                     };
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
-                } else {
+                } else if (!hasAnchor) {
+                    // Fallback на легаси только если Анкор не задан
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
@@ -348,16 +351,16 @@ export class AmbientBrain {
 
         if (currentInstructions) {
             Object.entries(currentInstructions).forEach(([partStr, rule]: [any, any]) => {
-                const partName = partStr as InstrumentPart;
-                if (!this.activatedParts.has(partName)) {
+                const part = partStr as InstrumentPart;
+                if (!this.activatedParts.has(part)) {
                     if (this.random.next() < (rule.activationChance ?? 1.0)) {
-                        this.activatedParts.add(partName);
+                        this.activatedParts.add(part);
                         let selected = pickWeightedDeterministic(rule.instrumentOptions || rule.v2Options || rule.options || [], this.seed, epoch, 500);
-                        this.activeTimbres[partName] = selected;
+                        this.activeTimbres[part] = selected;
                     }
                 } else if (rule.instrumentOptions?.length > 0) {
                     let selected = pickWeightedDeterministic(rule.instrumentOptions, this.seed, epoch, 500);
-                    this.activeTimbres[partName] = selected;
+                    this.activeTimbres[part] = selected;
                 }
             });
         }
@@ -385,7 +388,6 @@ export class AmbientBrain {
             note: n,
             time: i * 0.2,
             duration: 12.0, 
-            // #ЗАЧЕМ: Статическая громкость.
             weight: 0.5,
             technique: 'swell',
             dynamics: 'p',
@@ -400,7 +402,6 @@ export class AmbientBrain {
             note: chord.rootNote + 24 + this.registerShift,
             time: 0,
             duration: 4.0,
-            // #ЗАЧЕМ: Статическая громкость.
             weight: 0.4,
             technique: 'swell',
             dynamics: 'p',
@@ -421,7 +422,6 @@ export class AmbientBrain {
                 note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                // #ЗАЧЕМ: Статическая громкость. Удален exhaleModifier.
                 weight: 0.8,
                 technique: n.tech || 'pick',
                 dynamics: 'p',
@@ -445,7 +445,6 @@ export class AmbientBrain {
                 note: pitch,
                 time: (n.t % 12) / 3,
                 duration: n.d / 3,
-                // #ЗАЧЕМ: Статическая громкость.
                 weight: 0.8,
                 technique: 'pluck',
                 dynamics: 'p',

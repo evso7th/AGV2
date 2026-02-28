@@ -1,4 +1,3 @@
-
 import type { Note } from "@/types/music";
 
 type VelocitySample = {
@@ -10,6 +9,10 @@ type SamplerInstrument = {
     buffers: Map<number, { velocity: number; buffer: AudioBuffer }[]>;
 };
 
+/**
+ * #ЗАЧЕМ: Сэмплер флейты с защитой от ошибок.
+ * #ЧТО: ПЛАН №680 — Добавлены проверки isFinite для AudioParam.
+ */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
     private outputNode: GainNode;
@@ -27,12 +30,12 @@ export class FluteSamplerPlayer {
     }
     
     public setVolume(volume: number) {
+        if (!isFinite(volume)) return;
         this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
     }
 
     async loadInstrument(instrumentName: string, sampleMap: Record<string, VelocitySample[]>): Promise<boolean> {
         if (this.instruments.has(instrumentName)) {
-            console.log(`[FluteSamplerPlayer] Instrument "${instrumentName}" already loaded.`);
             return true;
         }
 
@@ -41,10 +44,7 @@ export class FluteSamplerPlayer {
             
             const loadPromises = Object.entries(sampleMap).flatMap(([noteStr, samples]) => {
                 const midi = this.noteToMidi(noteStr);
-                if (midi === null) {
-                    console.warn(`[FluteSamplerPlayer] Could not parse MIDI for note: ${noteStr}`);
-                    return [];
-                }
+                if (midi === null) return [];
                 
                 if (!loadedBuffers.has(midi)) {
                     loadedBuffers.set(midi, []);
@@ -57,9 +57,7 @@ export class FluteSamplerPlayer {
                         const arrayBuffer = await response.arrayBuffer();
                         const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
                         loadedBuffers.get(midi)!.push({ velocity: sample.velocity, buffer: audioBuffer });
-                    } catch (error) {
-                        console.error(`Error loading sample ${noteStr} (${sample.velocity}) from ${sample.file}:`, error);
-                    }
+                    } catch (error) {}
                 });
             });
 
@@ -70,49 +68,50 @@ export class FluteSamplerPlayer {
             }
 
             if (Array.from(loadedBuffers.values()).every(arr => arr.length === 0)) {
-                 console.error(`[FluteSamplerPlayer] No samples were loaded for instrument "${instrumentName}".`);
                  return false;
             }
             
             this.instruments.set(instrumentName, { buffers: loadedBuffers });
-            
-            console.log(`[FluteSamplerPlayer] Instrument "${instrumentName}" loaded.`);
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error(`[FluteSamplerPlayer] Failed to load instrument "${instrumentName}":`, error);
             return false;
         }
     }
     
     public schedule(notes: Note[], time: number) {
         const instrument = this.instruments.get('flute');
-        if (!this.isInitialized || !instrument) {
-            console.warn('[FluteSamplerPlayer] Tried to schedule before "flute" instrument was initialized.');
-            return;
-        }
+        if (!this.isInitialized || !instrument) return;
 
         notes.forEach(note => {
             const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi, note.velocity);
             if (!buffer) return;
 
+            const startTime = time + note.time;
+            const velocity = note.velocity ?? 0.7;
+
+            // #ЗАЧЕМ: Защита от краха AudioParam.
+            if (!isFinite(startTime) || !isFinite(velocity)) return;
+
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
             
             const gainNode = this.audioContext.createGain();
-            gainNode.gain.setValueAtTime(note.velocity ?? 0.7, this.audioContext.currentTime);
+            
+            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
+            if (!isFinite(playbackRate)) return;
+
+            gainNode.gain.setValueAtTime(velocity, this.audioContext.currentTime);
 
             source.connect(gainNode);
             gainNode.connect(this.preamp);
 
-            const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             source.playbackRate.value = playbackRate;
 
-            const startTime = time + note.time;
             source.start(startTime);
 
             source.onended = () => {
-                gainNode.disconnect();
+                try { gainNode.disconnect(); } catch(e) {}
             };
         });
     }
@@ -157,10 +156,6 @@ export class FluteSamplerPlayer {
         return 12 * (octave + 1) + noteIndex;
     }
 
-    public stopAll() {
-    }
-
-    public dispose() {
-        this.outputNode.disconnect();
-    }
+    public stopAll() {}
+    public dispose() { this.outputNode.disconnect(); }
 }
