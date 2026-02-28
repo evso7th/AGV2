@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v22.1 — "Universal Anchor Sovereignty".
- * #ЗАЧЕМ: Эмбиент теперь строго соблюдает Анкоры и синхронизирует ансамбль во всех мудах.
- * #ЧТО: ПЛАН №688 — Исправлено игнорирование Блюзовых анкоров в Эмбиент режиме.
+ * @fileOverview Ambient Brain v22.2 — "Strict Genre Sovereignty".
+ * #ЗАЧЕМ: Реализация закона Строгого Маппинга.
+ * #ЧТО: ПЛАН №689 — Аксиомы теперь ВСЕГДА фильтруются по жанру, даже при наличии Анкора.
  */
 
 import type { 
@@ -146,7 +146,6 @@ export class AmbientBrain {
         // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
             const hasAnchor = !!this.activeAnchorId;
-            // Если Анкор задан, шанс вступления ВСЕГДА 100%.
             const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
             const developmentChance = hasAnchor ? 1.0 : (baseChance + localTension * 0.25);
             
@@ -160,14 +159,21 @@ export class AmbientBrain {
 
                     const cloudPool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
-                        // #ЗАЧЕМ: Приоритет Анкора. Если он задан — игнорируем жанровые теги.
-                        if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
                         
+                        // #ЗАЧЕМ: Строгий маппинг. Аксиома ОБЯЗАНА соответствовать текущему жанру.
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         if (!genreArr.includes(this.genre)) return false;
-                        const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                        const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                        return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
+
+                        // Если Анкор задан — ищем только внутри него (но уже отфильтрованного по жанру).
+                        if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
+                        
+                        // Mood filter (если нет Анкора)
+                        if (!targetAnchor) {
+                            const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                            const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                            return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
+                        }
+                        return true;
                     });
                     
                     if (cloudPool.length > 0) {
@@ -340,7 +346,7 @@ export class AmbientBrain {
         let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
 
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
-            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
+            const partBars = navInfo.currentPartEndBar - navInfo.currentStartBar + 1;
             const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
             const stageIndex = Math.floor(progress * (stages?.length || 1));
             currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, (stages?.length || 1) - 1));

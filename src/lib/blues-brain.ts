@@ -26,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V169.0 — "Static Dynamics Overhaul".
- * #ЧТО: ПЛАН №679 — Удалены все динамические множители веса нот. Громкость теперь 100% статична.
+ * #ЗАЧЕМ: Блюзовый Мозг V169.1 — "Strict Genre Sovereignty".
+ * #ЧТО: ПЛАН №689 — Аксиомы теперь фильтруются строго по жанру, даже при выборе Анкора.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -271,13 +271,22 @@ export class BluesBrain {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
-              if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
+              
+              // #ЗАЧЕМ: Строгий маппинг. Аксиома ОБЯЗАНА соответствовать текущему жанру.
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               if (!genreArr.includes(this.config.genre)) return false;
-              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-              const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-              const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-              return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
+
+              // Если Анкор задан — ищем только внутри него (но уже отфильтрованного по жанру).
+              if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
+              
+              // Mood filter (если нет Анкора)
+              if (!targetAnchor) {
+                  const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                  const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                  const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                  return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
+              }
+              return true;
           });
 
           if (cloudPool.length > 0) {
@@ -343,7 +352,6 @@ export class BluesBrain {
               note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t % 12) / 3,
               duration: 3.5, 
-              // #ЗАЧЕМ: Статическая громкость.
               weight: 0.85,
               technique: 'pluck',
               dynamics: 'p',
@@ -414,7 +422,6 @@ export class BluesBrain {
         note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
         time: (n.t % 12) / 3,
         duration: 2.0,
-        // #ЗАЧЕМ: Статическая громкость.
         weight: 0.85,
         technique: n.tech || 'pick',
         dynamics: 'p',
