@@ -1,6 +1,7 @@
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V3.9 — "Imperial Headroom".
- * #ЧТО: ПЛАН №640 — Лимитер откалиброван на -6dB для предотвращения "Пляммм".
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.0 — "Static Volume & Imperial Headroom".
+ * #ЧТО: 1. ПЛАН №679 — Полная блокировка изменения громкости внутри setPreset. 
+ *       2. Лимитер зафиксирован на -6dB для защиты от суммарных искажений.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -307,8 +308,9 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             currentPreset = p; 
             rebuild(p); 
             filt.frequency.value = p.lpf?.cutoff ?? 2000; 
-            chorus.setMix(p.chorus?.on ? 0.3 : 0); 
+            chorus.setMix(p.chorus?.on ? (p.chorus?.mix ?? 0.3) : 0); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.18; 
+            // #ЗАЧЕМ: Устранение "прыжков" громкости. Блокируем перезапись instrumentGain.
         }
     };
 };
@@ -368,7 +370,12 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             activeVoiceRecords.clear();
             [organSum, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); 
         },
-        setPreset: (p: any) => { currentPreset = p; wave = getWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1; }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            wave = getWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); 
+            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1; 
+            // #ЗАЧЕМ: Блокировка авто-громкости.
+        }
     };
 };
 
@@ -422,7 +429,10 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             activeVoiceRecords.clear();
             try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} 
         },
-        setPreset: (p: any) => { currentPreset = p; }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            // #ЗАЧЕМ: Блокировка авто-громкости.
+        }
     };
 };
 
@@ -498,6 +508,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             currentPreset = p; 
             shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); 
             phaser.setMix(p.phaser?.on ? 0.2 : 0); cachedWave = null;
+            // #ЗАЧЕМ: Блокировка авто-громкости.
         }
     };
 };
@@ -510,7 +521,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 } = {}): Promise<InstrumentAPI> {
     
     const master = ctx.createGain(); master.gain.value = 0.8;
-    const instrumentGain = ctx.createGain(); instrumentGain.gain.value = isFinite(preset.volume) ? preset.volume : 0.7;
+    const instrumentGain = ctx.createGain(); 
+    // #ЗАЧЕМ: Установка начальной громкости только ОДИН раз.
+    instrumentGain.gain.value = isFinite(preset.volume) ? preset.volume : 0.7;
     const expressionGain = ctx.createGain(); expressionGain.gain.value = 1.0;
     const reverb = ctx.createConvolver();
     if (plateIRUrl) loadIR(ctx, plateIRUrl).then(buf => { if (buf) reverb.buffer = buf; });
@@ -524,7 +537,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
     const limiter = ctx.createDynamicsCompressor();
     // #ЗАЧЕМ: Увеличение запаса по громкости (Headroom).
-    // #ЧТО: Порог снижен до -6dB для предотвращения искажений при суммировании голосов.
     limiter.threshold.value = -6.0; 
     limiter.knee.value = 0;
     limiter.ratio.value = 20;

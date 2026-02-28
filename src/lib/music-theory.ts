@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Universal Music Theory Utilities
- * #ЗАЧЕМ: Базовый набор инструментов для работы с нотами и энергетическими картами.
- * #ОБНОВЛЕНО (ПЛАН №669): Поля cloudAxioms и activeAnchorId включены в SuiteDNA.
+ * @fileOverview Universal Music Theory Utilities V2.0 — "Markov Sovereignty".
+ * #ЗАЧЕМ: Реализация жанровых матриц переходов для нелинейной гармонии.
+ * #ЧТО: ПЛАН №679 — Внедрен Grid-Markov Convergence для Ambient, Trance и Blues.
  */
 
 import type { 
@@ -28,7 +27,6 @@ export const MODE_SEMITONES: Record<string, number[]> = {
     locrian: [0, 1, 3, 5, 6, 8, 10]
 };
 
-/** #ЗАЧЕМ: Универсальный маппинг ступеней для всех Мозгов системы. */
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
@@ -40,6 +38,32 @@ export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'har
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
+};
+
+// #ЗАЧЕМ: Жанровые матрицы переходов.
+const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
+    ambient: [
+        [0.6, 0.2, 0.1, 0.1], // From I: stay, go to IV, V, vi
+        [0.4, 0.4, 0.1, 0.1], // From IV
+        [0.5, 0.1, 0.3, 0.1], // From V
+        [0.4, 0.2, 0.2, 0.2]  // From vi
+    ],
+    trance: [
+        [0.7, 0.1, 0.2],      // From i: stay, go to bVI, bVII
+        [0.3, 0.5, 0.2],      // From bVI
+        [0.4, 0.1, 0.5]       // From bVII
+    ],
+    blues: [
+        [0.5, 0.4, 0.1],      // From I: stay, go to IV, V
+        [0.6, 0.3, 0.1],      // From IV
+        [0.7, 0.1, 0.2]       // From V
+    ]
+};
+
+const GENRE_STATES: Record<string, number[]> = {
+    ambient: [0, 5, 7, 9], // I, IV, V, vi
+    trance: [0, 8, 10],    // i, bVI, bVII
+    blues: [0, 5, 7]       // I, IV, V
 };
 
 export function decompressCompactPhrase(compact: number[]): any[] {
@@ -74,41 +98,6 @@ export function repairLegacyPhrase(compact: number[]): number[] {
     return repaired;
 }
 
-export function analyzeAxiomVector(phrase: any[], rootNote: number): AxiomVector {
-    if (phrase.length === 0) return { t: 0.5, b: 0.5, e: 0.5, h: 0.5 };
-    let tensionScore = 0;
-    phrase.forEach((n, i) => {
-        const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
-        if ([1, 6, 10].includes(semitone % 12)) tensionScore += 0.2;
-        const prev = phrase[i-1];
-        if (prev) {
-            const diff = Math.abs(semitone - (DEGREE_TO_SEMITONE[prev.deg] || 0));
-            if (diff === 1) tensionScore += 0.15;
-        }
-    });
-    let brightnessScore = 0;
-    const avgPitch = phrase.reduce((sum, n) => sum + (DEGREE_TO_SEMITONE[n.deg] || 0), 0) / phrase.length;
-    brightnessScore = (avgPitch + 12) / 36;
-    if (phrase.some(n => n.deg === '3')) brightnessScore += 0.15;
-    let entropyScore = 0;
-    const ticks = phrase.map(n => n.t % 12);
-    const uniqueTicks = new Set(ticks).size;
-    entropyScore = uniqueTicks / 12;
-    const syncopations = ticks.filter(t => ![0, 3, 6, 9].includes(t)).length;
-    entropyScore += (syncopations / phrase.length) * 0.5;
-    let stabilityScore = 0;
-    const tonicNotes = phrase.filter(n => n.deg === 'R' || n.deg === '5').length;
-    stabilityScore = tonicNotes / phrase.length;
-    if (phrase[phrase.length - 1].deg === 'R') stabilityScore += 0.2;
-    const clampVal = (v: number) => Math.max(0.05, Math.min(0.95, v));
-    return {
-        t: clampVal(tensionScore / 2 + 0.3),
-        b: clampVal(brightnessScore),
-        e: clampVal(entropyScore),
-        h: clampVal(stabilityScore)
-    };
-}
-
 export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
     if (phrase.length === 0) return [];
     const currentLength = Math.max(...phrase.map(n => n.t + n.d), 0) || 12;
@@ -120,8 +109,8 @@ export function stretchToNarrativeLength(phrase: any[], targetTicks: number, ran
         const variant = phrase.map(n => ({
             ...n,
             t: n.t + offset,
-            weight: (n.weight || 0.8) * (0.9 + random.next() * 0.2),
-            timeJitter: (random.next() * 0.1 - 0.05)
+            weight: 0.8,
+            timeJitter: 0
         }));
         result.push(...variant);
     }
@@ -199,37 +188,38 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
 }
 
 /**
- * #ЗАЧЕМ: Реализация Марковского Блуждания по гармонии.
- * #ЧТО: Генерирует нелинейный гармонический путь вместо жестких 12 тактов.
+ * #ЗАЧЕМ: Реализация Grid-Markov Harmony.
+ * #ЧТО: Генерирует нелинейный гармонический путь, специфичный для жанра.
  */
-export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number): GhostChord[] {
+export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number, genre: string): GhostChord[] {
     const track: GhostChord[] = [];
     const root = rootNote;
-    const states = [0, 5, 7, 10]; // I, IV, V, bVII
-    const matrix = [
-        [0.5, 0.3, 0.1, 0.1], // From I
-        [0.4, 0.4, 0.1, 0.1], // From IV
-        [0.6, 0.1, 0.2, 0.1], // From V
-        [0.5, 0.2, 0.2, 0.1]  // From bVII
-    ];
+    
+    // Выбор матрицы по жанру (Ambient по умолчанию)
+    const matrix = GENRE_HARMONY_MATRICES[genre] || GENRE_HARMONY_MATRICES.ambient;
+    const states = GENRE_STATES[genre] || GENRE_STATES.ambient;
 
     let currentBar = 0;
     let currentStateIdx = 0;
 
     while (currentBar < totalBars) {
-        const dur = [2, 4, 8][calculateMusiNum(currentBar, 3, seed, 3)];
+        // Длительности зафиксированы на сетку (2, 4, 8 тактов)
+        const durPool = [2, 4, 8];
+        const dur = durPool[calculateMusiNum(currentBar, 3, seed, 3)];
+        
         track.push({
-            rootNote: root + states[currentStateIdx],
+            rootNote: root + (states[currentStateIdx] || 0),
             chordType: 'minor',
             bar: currentBar,
-            durationBars: dur
+            durationBars: Math.min(dur, totalBars - currentBar)
         });
         
         // Markov Step
         const rand = (calculateMusiNum(currentBar, 13, seed, 100)) / 100;
         let acc = 0;
-        for (let i = 0; i < 4; i++) {
-            acc += matrix[currentStateIdx][i];
+        const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
+        for (let i = 0; i < currentMatrixRow.length; i++) {
+            acc += currentMatrixRow[i];
             if (rand <= acc) {
                 currentStateIdx = i;
                 break;
@@ -254,14 +244,11 @@ export function generateSuiteDNA(
     cloudAxioms?: any[], 
     activeAnchorId?: string | null
 ): SuiteDNA {
-    // --- GENETIC CROSSOVER ---
     let finalSeed = initialSeed;
     if (masterpieces && masterpieces.length > 0) {
         const parent1 = masterpieces[calculateMusiNum(initialSeed, 7, 0, masterpieces.length)];
         const parent2 = masterpieces[calculateMusiNum(initialSeed, 11, 5, masterpieces.length)];
-        // Битовое скрещивание семян
         finalSeed = (parent1.seed & 0xAAAA) | (parent2.seed & 0x5555);
-        console.log(`%c[Genetics] Crossover Active. Inheriting from: ${parent1.mood} and ${parent2.mood}`, 'color: #DA70D6; font-weight: bold;');
     } else if (ancestor && typeof ancestor.seed === 'number') {
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
     }
@@ -275,9 +262,7 @@ export function generateSuiteDNA(
             BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
         );
         const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
-        
         seedLickId = finalPool[calculateMusiNum(finalSeed, 13, 0, finalPool.length)];
-
         blueprintParts.forEach((part: any, i: number) => {
             const partLick = finalPool[(calculateMusiNum(finalSeed, 17, i * 7, finalPool.length))];
             partLickMap.set(part.id, partLick);
@@ -286,22 +271,8 @@ export function generateSuiteDNA(
 
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
     
-    // #ЗАЧЕМ: Свободный режим использует Марковское Блуждание вместо циклической сетки.
-    const isEvolutionaryMode = !ancestor; 
-    const harmonyTrack = isEvolutionaryMode 
-        ? generateMarkovHarmony(totalBars, key, finalSeed)
-        : [];
-
-    if (!isEvolutionaryMode) {
-        let accumulatedBars = 0;
-        blueprintParts.forEach((part: any) => {
-            const partDuration = Math.round((part.duration.percent / 100) * totalBars);
-            for (let i = 0; i < partDuration; i++) {
-                harmonyTrack.push({ rootNote: key, chordType: 'minor', bar: accumulatedBars + i, durationBars: 1 });
-            }
-            accumulatedBars += partDuration;
-        });
-    }
+    // #ЗАЧЕМ: Grid-Markov Convergence теперь является основным режимом.
+    const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
 
     let baseTempo = 72;
     if (bpmConfig) {
@@ -314,19 +285,11 @@ export function generateSuiteDNA(
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
     
     return { 
-        harmonyTrack, 
-        baseTempo, 
-        rhythmicFeel: 'shuffle', 
-        bassStyle: 'walking', 
-        drumStyle: 'shuffle_A', 
-        soloPlanMap: new Map(), 
-        tensionMap, 
-        seedLickId, 
-        partLickMap,
-        sessionHistory,
+        harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', 
+        drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
+        seedLickId, partLickMap, sessionHistory,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
-        cloudAxioms,
-        activeAnchorId
+        cloudAxioms, activeAnchorId
     };
 }
 
@@ -335,15 +298,8 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     const root = chord.rootNote;
     const notes = [root, root + (isMinor ? 3 : 4), root + 7];
     return notes.map((note, i) => ({
-        type: 'accompaniment',
-        note: note + 12,
-        time: i * 0.1,
-        duration: 4.0,
-        weight: 0.5,
-        technique: 'swell',
-        dynamics: 'p',
-        phrasing: 'legato',
-        chordName: chord.chordType === 'minor' ? 'Am' : 'E',
-        params: { barCount: epoch }
+        type: 'accompaniment', note: note + 12, time: i * 0.1, duration: 4.0, 
+        weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+        chordName: chord.chordType === 'minor' ? 'Am' : 'E', params: { barCount: epoch }
     }));
 }
