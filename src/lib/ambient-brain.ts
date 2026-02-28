@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v20.0 — "Heritage Integrity Protocol".
- * #ЗАЧЕМ: Эмбиент теперь уважает Анкоры (активные фильтры) так же строго, как Блюз.
- * #ЧТО: ПЛАН №680 — Принудительная активация облачных аксиом при активном Анкоре.
+ * @fileOverview Ambient Brain v21.0 — "Anchor Sovereignty & Cloud Sync".
+ * #ЗАЧЕМ: Эмбиент теперь строго соблюдает Анкоры и синхронизируется с облаком.
+ * #ЧТО: ПЛАН №682 — Внедрен метод updateCloudAxioms и приоритетный выбор тем.
  */
 
 import type { 
@@ -67,7 +67,10 @@ export class AmbientBrain {
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     
-    private currentTrackName: string = 'Ambient Legacy';
+    private currentTrackName: string = '';
+    private cloudAxioms: any[] = [];
+    private activeAnchorId: string | null = null;
+    
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
 
@@ -97,6 +100,14 @@ export class AmbientBrain {
 
     private normalize(s: string): string {
         return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    /**
+     * #ЗАЧЕМ: Синхронизация с облачными данными в реальном времени.
+     */
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null) {
+        this.cloudAxioms = axioms || [];
+        if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
     }
 
     public generateBar(
@@ -133,6 +144,7 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
+        // BASS THEME LOGIC
         if (isPositive && epoch >= this.bassBusyUntilBar) {
             if (this.currentBassTheme && this.random.next() < 0.75) {
                 this.currentBassTheme.phrase = this.currentBassTheme.phrase.map(n => ({
@@ -163,19 +175,21 @@ export class AmbientBrain {
             }
         }
 
+        // MELODY THEME LOGIC
         if (epoch >= this.soloistBusyUntilBar) {
-            // #ЗАЧЕМ: Если Анкор активен, вероятность вступления темы — 100%.
-            const hasAnchor = !!dna.activeAnchorId;
+            const hasAnchor = !!this.activeAnchorId;
             const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
             const developmentChance = hasAnchor ? 1.0 : (baseChance + localTension * 0.25);
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
-                if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
-                    const targetAnchor = dna.activeAnchorId ? this.normalize(dna.activeAnchorId) : null;
+                const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
+
+                if (poolToUse.length > 0) {
+                    const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
                     const commonMoodFilter = MOOD_TO_COMMON[this.mood];
 
-                    const cloudPool = dna.cloudAxioms.filter(ax => {
+                    const cloudPool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
                         if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
@@ -186,7 +200,6 @@ export class AmbientBrain {
                     });
                     
                     if (cloudPool.length > 0) {
-                        // Если есть Анкор, берем строго из этого пула
                         cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
                     }
                 }
@@ -205,7 +218,6 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                 } else if (!hasAnchor) {
-                    // Fallback на легаси только если Анкор не задан
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
@@ -278,7 +290,7 @@ export class AmbientBrain {
             events.push(...this.renderSfx(localTension, sfxRule));
         }
 
-        const narrativeSource = this.currentTrackName === 'Ambient Legacy' ? (this.currentTheme?.id || 'Atmospheric') : this.currentTrackName;
+        const narrativeSource = this.currentTrackName || 'Atmospheric';
         const narrative = this.currentTheme ? `Evoking ${narrativeSource} (${this.currentTheme.tags.join(', ')})` : 'Flowing through ambient textures.';
 
         return { 
@@ -288,7 +300,8 @@ export class AmbientBrain {
             beautyScore: 0.5,
             activeAxioms: {
                 melody: this.currentTheme?.id || 'Atmospheric',
-                melodyTrack: this.currentTrackName,
+                melodyTrack: narrativeSource,
+                ensemble: this.currentBassTheme ? 'SIBLING' : 'ADAPTIVE',
                 bass: isPositive ? 'Narrative' : 'Steady',
                 accompaniment: hints.accompaniment
             },

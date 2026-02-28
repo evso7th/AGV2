@@ -11,7 +11,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Сэмплер скрипки с системной калибровкой громкости.
- * #ЧТО: ПЛАН №680 — Добавлены защитные проверки isFinite для AudioParam.
+ * #ЧТО: ПЛАН №682 — Усилена защита от невалидных чисел (isFinite) для всех параметров AudioNode.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -25,7 +25,6 @@ export class ViolinSamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
         // #ЗАЧЕМ: Системное снижение громкости скрипок по требованию пользователя.
-        // #ЧТО: Гейн снижен в 3 раза (3.5 -> 1.16).
         this.preamp.gain.value = 1.16; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
@@ -81,8 +80,8 @@ export class ViolinSamplerPlayer {
             const startTime = time + note.time;
             const velocity = note.velocity ?? 0.7;
 
-            // #ЗАЧЕМ: Защита от краха AudioParam.
-            if (!isFinite(startTime) || !isFinite(velocity)) return;
+            // #ЗАЧЕМ: Усиленная защита от краха AudioParam.
+            if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(note.midi) || !isFinite(sampleMidi)) return;
 
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
@@ -91,7 +90,8 @@ export class ViolinSamplerPlayer {
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             if (!isFinite(playbackRate)) return;
 
-            gainNode.gain.setValueAtTime(velocity, this.audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
             source.connect(gainNode);
             gainNode.connect(this.preamp);

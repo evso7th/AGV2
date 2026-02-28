@@ -11,7 +11,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Сэмплер флейты с защитой от ошибок.
- * #ЧТО: ПЛАН №680 — Добавлены проверки isFinite для AudioParam.
+ * #ЧТО: ПЛАН №682 — Усилена валидация всех параметров AudioParam (isFinite).
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -90,8 +90,8 @@ export class FluteSamplerPlayer {
             const startTime = time + note.time;
             const velocity = note.velocity ?? 0.7;
 
-            // #ЗАЧЕМ: Защита от краха AudioParam.
-            if (!isFinite(startTime) || !isFinite(velocity)) return;
+            // #ЗАЧЕМ: Усиленная защита от краха AudioParam.
+            if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(note.midi) || !isFinite(sampleMidi)) return;
 
             const source = this.audioContext.createBufferSource();
             source.buffer = buffer;
@@ -101,7 +101,8 @@ export class FluteSamplerPlayer {
             const playbackRate = Math.pow(2, (note.midi - sampleMidi) / 12);
             if (!isFinite(playbackRate)) return;
 
-            gainNode.gain.setValueAtTime(velocity, this.audioContext.currentTime);
+            gainNode.gain.setValueAtTime(0, startTime);
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
 
             source.connect(gainNode);
             gainNode.connect(this.preamp);

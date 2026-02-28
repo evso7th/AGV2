@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -51,8 +50,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.4 — "Multi-Genre Heritage".
- * #ЧТО: ПЛАН №673 — Расширение использования AmbientBrain на все не-блюзовые жанры для поддержки Наследия.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.5 — "Anchor Synchronization".
+ * #ЧТО: ПЛАН №682 — Обеспечена передача облачных аксиом и Анкоров в AmbientBrain.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -89,9 +88,15 @@ export class FractalMusicEngine {
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
       if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined) {
+          // #ЗАЧЕМ: Синхронизация облачных данных со специализированными мозгами.
           if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
               this.config.cloudAxioms, 
               this.config.selectedCompositionIds,
+              this.config.activeAnchorId
+          );
+          
+          if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
+              this.config.cloudAxioms,
               this.config.activeAnchorId
           );
       }
@@ -156,7 +161,6 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
-    // #ЗАЧЕМ: ПЛАН №673 — Динамический выбор Мозга.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(
             this.config.seed, 
@@ -169,9 +173,9 @@ export class FractalMusicEngine {
         );
         this.ambientBrain = null;
     } else {
-        // AmbientBrain теперь обрабатывает все остальные жанры (ambient, trance, etc.)
-        // для поддержки фильтрации Наследия по метаданным.
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre);
+        // #ЗАЧЕМ: Начальная передача облачных данных в Эмбиент-мозг.
+        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId);
         this.bluesBrain = null;
     }
 
@@ -199,7 +203,6 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    // #ЗАЧЕМ: ПЛАН №673 — Обработка всех не-блюзовых жанров через AmbientBrain.
     if (this.config.genre !== 'blues' && this.ambientBrain) {
         const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
         const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
