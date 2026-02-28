@@ -8,7 +8,8 @@ import {
   NavigationInfo,
   BluesGuitarRiff,
   BluesMelody,
-  BluesCognitiveState
+  BluesCognitiveState,
+  CommonMood
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
@@ -26,9 +27,15 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V168.2 — "Harmony Sparsity".
- * #ЧТО: ПЛАН №671 — Ограничение аккордовых событий до 2 за такт для чистоты микса.
+ * #ЗАЧЕМ: Блюзовый Мозг V168.3 — "Genre Sovereignty".
+ * #ЧТО: ПЛАН №673 — Динамическая фильтрация облачных аксиом по текущему жанру сессии.
  */
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -41,12 +48,14 @@ export interface BluesBrainConfig {
   cloudAxioms?: any[];
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 
+  genre: string;
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
   tempo: 72,
   rootNote: 55, // G3
-  emotion: { melancholy: 0.82, darkness: 0.25 }
+  emotion: { melancholy: 0.82, darkness: 0.25 },
+  genre: 'blues'
 };
 
 export class BluesBrain {
@@ -92,7 +101,8 @@ export class BluesBrain {
       sessionLickHistory?: string[], 
       cloudAxioms?: any[], 
       selectedCompositionIds?: string[],
-      activeAnchorId?: string | null
+      activeAnchorId?: string | null,
+      genre?: string
   ) {
     this.seed = seed;
     this.mood = mood;
@@ -104,6 +114,7 @@ export class BluesBrain {
       cloudAxioms: cloudAxioms || [],
       selectedCompositionIds: selectedCompositionIds || [],
       activeAnchorId: activeAnchorId || null,
+      genre: genre || 'blues',
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -247,7 +258,6 @@ export class BluesBrain {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType, tension));
     } else if (hints.accompaniment) {
         const melodyDensity = melodyEvents.filter(e => e.type === 'melody').length;
-        // #ЗАЧЕМ: Ограничение аккомпанемента до 2 событий.
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension, melodyDensity));
     }
 
@@ -266,7 +276,6 @@ export class BluesBrain {
     
     let harAxiom = 'none';
     if (hints.harmony) {
-        // #ЗАЧЕМ: Ограничение гармонии до 2 событий.
         const harEvents = this.renderDerivativeHarmony(currentChord, epoch, tension);
         events.push(...harEvents);
         harAxiom = harEvents[0]?.chordName || 'Active';
@@ -321,12 +330,11 @@ export class BluesBrain {
               
               if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
 
+              // #ЗАЧЕМ: ПЛАН №673 — Динамический фильтр жанров.
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-              if (!genreArr.includes('blues')) return false;
+              if (!genreArr.includes(this.config.genre)) return false;
 
-              const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(this.mood) ? 'light' : 
-                                       (['melancholic', 'dark', 'anxious', 'gloomy'].includes(this.mood) ? 'dark' : 'neutral');
-              
+              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
               const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
               const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
               
@@ -461,7 +469,6 @@ export class BluesBrain {
       const seventh = 10;
       const inversionIdx = Math.floor(this.random.next() * 3); 
 
-      // #ЗАЧЕМ: ПЛАН №671 — Лимит унисона до 2 событий за такт.
       let eventCount = 0;
       for (const bass of bassEvents) {
           if (bass.type !== 'bass' || eventCount >= 2) continue;
@@ -481,7 +488,6 @@ export class BluesBrain {
               if (tension > 0.55) pitches.push(root + seventh); 
               if (tension > 0.75) pitches.push(root + 14);
 
-              // #ЗАЧЕМ: В унисоне берем только ПЕРВУЮ дополнительную ноту для разреженности.
               const p = pitches[0];
               let finalPitch = p;
               if (inversionIdx === 1) finalPitch += 12;
@@ -667,7 +673,6 @@ export class BluesBrain {
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyDensity: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const isMin = chord.chordType === 'minor';
-    // #ЗАЧЕМ: ПЛАН №671 — Ограничение аккордовых нот до двух (Корень и Терция).
     const notes = [root, root + (isMin ? 3 : 4)];
     
     const isMelodyBusy = melodyDensity > 4;
@@ -678,12 +683,11 @@ export class BluesBrain {
         }));
     }
 
-    // #ЗАЧЕМ: ПЛАН №671 — Строго 2 события за такт.
     const pattern = [0, 2];
     return pattern.map((pIdx, i) => ({
         type: 'accompaniment', 
-        note: notes[i % notes.length], // Используем только 2 доступные ноты
-        time: i * 2.0, // Равномерное распределение на 2 события
+        note: notes[i % notes.length], 
+        time: i * 2.0, 
         duration: 1.8, 
         weight: 0.35, 
         technique: 'swell', 
@@ -728,8 +732,6 @@ export class BluesBrain {
       const name = rootNames[root % 12];
       const finalName = isMin ? `${name}m7` : `${name}7`;
 
-      // #ЗАЧЕМ: ПЛАН №671 — Ограничение гармонии до 2 нот (Корень и Характерная Терция).
-      // #ЧТО: Удалена квинта для создания "воздуха" в блюзовом миксе.
       return [root + 12, root + (isMin ? 15 : 16)].map((n, i) => ({ 
           type: 'harmony', 
           note: n + 12, 
@@ -768,5 +770,14 @@ export class BluesBrain {
         }
         (hints as any).harmony = target;
     }
+  }
+
+  private createSeededRandom(seed: number) {
+    let state = seed;
+    const next = () => {
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
+    };
+    return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 }

@@ -51,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.3 — "Anchor Sovereignty".
- * #ЧТО: ПЛАН №669 — Проброс Anchor и CloudAxioms в SuiteDNA для AmbientBrain.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.4 — "Multi-Genre Heritage".
+ * #ЧТО: ПЛАН №673 — Расширение использования AmbientBrain на все не-блюзовые жанры для поддержки Наследия.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -156,6 +156,7 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
+    // #ЗАЧЕМ: ПЛАН №673 — Динамический выбор Мозга.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(
             this.config.seed, 
@@ -163,15 +164,15 @@ export class FractalMusicEngine {
             this.config.sessionLickHistory, 
             this.config.cloudAxioms, 
             this.config.selectedCompositionIds,
-            this.config.activeAnchorId 
+            this.config.activeAnchorId,
+            this.config.genre
         );
         this.ambientBrain = null;
-    } else if (this.config.genre === 'ambient') {
-        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood);
-        this.bluesBrain = null;
     } else {
+        // AmbientBrain теперь обрабатывает все остальные жанры (ambient, trance, etc.)
+        // для поддержки фильтрации Наследия по метаданным.
+        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre);
         this.bluesBrain = null;
-        this.ambientBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
@@ -198,7 +199,8 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    if (this.config.genre === 'ambient' && this.ambientBrain) {
+    // #ЗАЧЕМ: ПЛАН №673 — Обработка всех не-блюзовых жанров через AmbientBrain.
+    if (this.config.genre !== 'blues' && this.ambientBrain) {
         const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
         const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
         

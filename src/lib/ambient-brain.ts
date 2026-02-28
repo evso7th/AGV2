@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v18.1 — "Identity Crisis Fix".
- * #ЗАЧЕМ: Реализация устойчивого поиска Анкора.
- * #ЧТО: ПЛАН №670 — Сравнение ID теперь игнорирует регистр и разделители.
+ * @fileOverview Ambient Brain v18.5 — "Genre & Metadata Sovereignty".
+ * #ЗАЧЕМ: Реализация строгого соответствия жанрам из метаданных DNA.
+ * #ЧТО: 1. Использование динамического фильтра жанров вместо хардкода 'ambient'.
+ *       2. Внедрена поддержка Common Mood (light/dark/neutral) для умного подбора аксиом.
  */
 
 import type { 
@@ -12,7 +13,9 @@ import type {
     SuiteDNA, 
     NavigationInfo,
     InstrumentHints,
-    InstrumentPart
+    InstrumentPart,
+    Genre,
+    CommonMood
 } from '@/types/music';
 import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength, decompressCompactPhrase } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
@@ -32,9 +35,16 @@ const PERIODS = [8, 45, 180, 600];
 const WEIGHTS = [0.15, 0.35, 0.30, 0.20];
 const MOD_DEPTH = [0.05, 0.12, 0.25, 0.40];
 
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
+
 export class AmbientBrain {
     private seed: number;
     private mood: Mood;
+    private genre: Genre;
     private random: any;
     
     private fog: number = 0.3;
@@ -66,9 +76,10 @@ export class AmbientBrain {
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
 
-    constructor(seed: number, mood: Mood) {
+    constructor(seed: number, mood: Mood, genre: Genre) {
         this.seed = seed;
         this.mood = mood;
+        this.genre = genre;
         this.random = this.createSeededRandom(seed);
     }
 
@@ -172,17 +183,25 @@ export class AmbientBrain {
                 let cloudAxiom: any = null;
                 if (dna.cloudAxioms && dna.cloudAxioms.length > 0) {
                     const targetAnchor = dna.activeAnchorId ? this.normalize(dna.activeAnchorId) : null;
+                    const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+
                     const cloudPool = dna.cloudAxioms.filter(ax => {
                         if (ax.role !== 'melody') return false;
                         
                         // #ЗАЧЕМ: ПЛАН №670 — Нормализованный поиск Анкора.
-                        // #ЧТО: Игнорируем регистр и символы при поиске суверенного трека.
                         if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
 
+                        // #ЗАЧЕМ: ПЛАН №673 — Динамический фильтр жанров.
+                        // #ЧТО: Трек должен содержать текущий жанр сессии.
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                        if (!genreArr.includes(this.genre)) return false;
+
                         const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                        return genreArr.includes('ambient') && moodArr.includes(this.mood);
+                        const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                        
+                        return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
                     });
+                    
                     if (cloudPool.length > 0) {
                         cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
                     }
@@ -475,7 +494,7 @@ export class AmbientBrain {
                 duration: (n.d / 3) * 1.6, 
                 weight: (0.55 * breathDecay) * (0.9 + this.random.next() * 0.2),
                 technique: n.tech || 'pick',
-                dynamics: 'p',
+                dynamics: (tension > 0.65) ? 'mf' : 'p',
                 phrasing: momentum < -0.02 ? 'legato' : 'detached', 
                 params: { filterCutoff: this.solistCutoff, barCount: epoch } 
             });
@@ -602,7 +621,7 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { mood: this.mood, genre: 'ambient', category: isPositive ? 'light' : 'ambient_common' }
+            params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' }
         };
     }
 
@@ -616,7 +635,7 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'staccato',
-            params: { mood: this.mood, genre: 'ambient', rules }
+            params: { mood: this.mood, genre: this.genre, rules }
         }];
     }
 
