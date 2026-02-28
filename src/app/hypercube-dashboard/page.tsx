@@ -1094,7 +1094,7 @@ export default function HypercubeDashboard() {
                             <td className="p-4 text-xs italic text-muted-foreground line-clamp-2">{ax.narrative}</td>
                             <td className="p-4 text-right">
                               <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">
-                                {playingAxiomId === axiom.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}
+                                {playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}
                               </Button>
                             </td>
                           </tr>
