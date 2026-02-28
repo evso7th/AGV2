@@ -9,7 +9,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 
 /**
  * #ЗАЧЕМ: Менеджер слоя гармонии.
- * #ЧТО: ПЛАН №688 — Внедрена фильтрация событий. Слышит только тип 'harmony'.
+ * #ЧТО: ПЛАН №690 — Внедрена фильтрация событий. Слышит только тип 'harmony'.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;

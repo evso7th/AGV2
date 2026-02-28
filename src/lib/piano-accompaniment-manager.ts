@@ -6,7 +6,7 @@ import { PIANO_SAMPLES } from "@/lib/samples";
 
 /**
  * #ЗАЧЕМ: Этот менеджер управляет независимой партией фортепианного аккомпанемента.
- * #ЧТО: ПЛАН №688 — Внедрена фильтрация событий. Слышит только тип 'pianoAccompaniment'.
+ * #ЧТО: ПЛАН №690 — Внедрена фильтрация событий. Слышит только тип 'pianoAccompaniment'.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v22.2 — "Strict Genre Sovereignty".
- * #ЗАЧЕМ: Реализация закона Строгого Маппинга.
- * #ЧТО: ПЛАН №689 — Аксиомы теперь ВСЕГДА фильтруются по жанру, даже при наличии Анкора.
+ * @fileOverview Ambient Brain v22.3 — "Metadata Sovereignty".
+ * #ЗАЧЕМ: Реализация закона Строгого Маппинга и суверенитета пользователя.
+ * #ЧТО: ПЛАН №690 — Аксиомы фильтруются строго по жанру. Нарратив исправлен.
  */
 
 import type { 
@@ -146,8 +146,8 @@ export class AmbientBrain {
         // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
             const hasAnchor = !!this.activeAnchorId;
-            const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
-            const developmentChance = hasAnchor ? 1.0 : (baseChance + localTension * 0.25);
+            // #ЗАЧЕМ: Если Анкор задан, поиск обязателен.
+            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40) + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
@@ -160,11 +160,11 @@ export class AmbientBrain {
                     const cloudPool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
                         
-                        // #ЗАЧЕМ: Строгий маппинг. Аксиома ОБЯЗАНА соответствовать текущему жанру.
+                        // #ЗАЧЕМ: Metadata Sovereignty. Жанр - первичный фильтр.
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         if (!genreArr.includes(this.genre)) return false;
 
-                        // Если Анкор задан — ищем только внутри него (но уже отфильтрованного по жанру).
+                        // Если Анкор задан — ищем только внутри него.
                         if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
                         
                         // Mood filter (если нет Анкора)
@@ -195,7 +195,7 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                     
-                    const sibling = (this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || [])).find(ax => 
+                    const sibling = poolToUse.find(ax => 
                         ax.role === 'bass' && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
                         ax.barOffset === cloudAxiom.barOffset
@@ -469,7 +469,7 @@ export class AmbientBrain {
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'dimнished';
         const pattern = [
             { t: 0, n: root, d: 0.7, w: 0.85 },
             { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },

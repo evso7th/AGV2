@@ -26,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V169.1 — "Strict Genre Sovereignty".
- * #ЧТО: ПЛАН №689 — Аксиомы теперь фильтруются строго по жанру, даже при выборе Анкора.
+ * #ЗАЧЕМ: Блюзовый Мозг V169.2 — "Metadata Sovereignty".
+ * #ЧТО: ПЛАН №690 — Реализован строгий жанровый фильтр.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -272,14 +272,12 @@ export class BluesBrain {
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
               
-              // #ЗАЧЕМ: Строгий маппинг. Аксиома ОБЯЗАНА соответствовать текущему жанру.
+              // #ЗАЧЕМ: Strict Genre Check.
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               if (!genreArr.includes(this.config.genre)) return false;
 
-              // Если Анкор задан — ищем только внутри него (но уже отфильтрованного по жанру).
               if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
               
-              // Mood filter (если нет Анкора)
               if (!targetAnchor) {
                   const commonMoodFilter = MOOD_TO_COMMON[this.mood];
                   const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
