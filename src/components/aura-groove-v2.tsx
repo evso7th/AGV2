@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.5 — "Broadcast warm-up".
- * #ЧТО: Добавлено модальное окно прогрева при активации Radio.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.6 — "Stability Restoration".
+ * #ЧТО: Внедрены защитные проверки для EQ и ворм-ап модалки.
  */
 'use client';
 
@@ -148,13 +148,17 @@ export function AuraGrooveV2({
                 <DialogContent className="sm:max-w-md">
                   <DialogHeader><DialogTitle>System Equalizer</DialogTitle></DialogHeader>
                   <div className="flex justify-around items-end pt-4 h-48">
-                    {EQ_BANDS.map((band, index) => (
-                      <div key={index} className="flex flex-col items-center justify-end space-y-2">
-                        <span className="text-xs font-mono text-muted-foreground">{eqSettings[index] > 0 ? '+' : ''}{eqSettings[index].toFixed(1)}</span>
-                        <Slider value={[eqSettings[index]]} min={-10} max={10} step={0.5} onValueChange={(v) => handleEqChange(index, v[0])} orientation="vertical" className="h-32" />
-                        <Label className="text-xs text-muted-foreground">{band.label}</Label>
-                      </div>
-                    ))}
+                    {EQ_BANDS.map((band, index) => {
+                      // #ЗАЧЕМ: Защита от undefined при рендеринге полос EQ.
+                      const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
+                      return (
+                        <div key={index} className="flex flex-col items-center justify-end space-y-2">
+                          <span className="text-xs font-mono text-muted-foreground">{val > 0 ? '+' : ''}{val.toFixed(1)}</span>
+                          <Slider value={[val]} min={-10} max={10} step={0.5} onValueChange={(v) => handleEqChange(index, v[0])} orientation="vertical" className="h-32" />
+                          <Label className="text-xs text-muted-foreground">{band.label}</Label>
+                        </div>
+                      );
+                    })}
                   </div>
                 </DialogContent>
               </Dialog>

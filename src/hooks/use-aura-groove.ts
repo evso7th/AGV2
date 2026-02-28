@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.0 — "Volume Reactivity Restoration".
- * #ЧТО: ПЛАН №665 — Удалена блокировка громкости. Теперь изменения из UI применяются мгновенно.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.1 — "State Integrity Fix".
+ * #ЧТО: ПЛАН №675 — Инициализировано состояние эквалайзера для предотвращения краша .toFixed().
  */
 'use client';
 
@@ -69,7 +69,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, resetWorker, setVolume, setInstrument,
-    setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording
+    setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
+    setEQGain
   } = useAudioEngine(); 
   
   const db = useFirestore();
@@ -102,6 +103,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
+
+  // #ЗАЧЕМ: Состояние эквалайзера для предотвращения крашей в UI.
+  const [isEqModalOpen, setIsEqModalOpen] = useState(false);
+  const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
 
   useEffect(() => { initialize(); }, [initialize]);
 
@@ -176,7 +181,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleTextureEnabledChange: (part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments, handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
-    isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings: [], handleEqChange: () => {},
+    isEqModalOpen, setIsEqModalOpen, eqSettings, 
+    handleEqChange: (index: number, value: number) => {
+        const next = [...eqSettings];
+        next[index] = value;
+        setEqSettings(next);
+        setEQGain(index, value);
+    },
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
