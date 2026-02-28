@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v21.0 — "Anchor Sovereignty & Cloud Sync".
- * #ЗАЧЕМ: Эмбиент теперь строго соблюдает Анкоры и синхронизируется с облаком.
- * #ЧТО: ПЛАН №682 — Внедрен метод updateCloudAxioms и приоритетный выбор тем.
+ * @fileOverview Ambient Brain v22.0 — "Universal Anchor Sovereignty".
+ * #ЗАЧЕМ: Эмбиент теперь строго соблюдает Анкоры и синхронизирует ансамбль во всех мудах.
+ * #ЧТО: ПЛАН №683 — Исправлен игнор Анкора и добавлена поддержка сиблингов для меланхолии.
  */
 
 import type { 
@@ -68,6 +68,8 @@ export class AmbientBrain {
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     
     private currentTrackName: string = '';
+    private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
+    
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
     
@@ -102,9 +104,6 @@ export class AmbientBrain {
         return s.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    /**
-     * #ЗАЧЕМ: Синхронизация с облачными данными в реальном времени.
-     */
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
@@ -144,38 +143,7 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // BASS THEME LOGIC
-        if (isPositive && epoch >= this.bassBusyUntilBar) {
-            if (this.currentBassTheme && this.random.next() < 0.75) {
-                this.currentBassTheme.phrase = this.currentBassTheme.phrase.map(n => ({
-                    ...n,
-                    deg: this.random.next() < 0.25 ? ['R', '5', '4', 'b7', '2'][this.random.nextInt(5)] : n.deg
-                }));
-                this.currentBassTheme.startBar = epoch;
-                const bars = this.currentBassTheme.endBar - this.currentBassTheme.startBar;
-                this.currentBassTheme.endBar = epoch + bars;
-                this.bassBusyUntilBar = epoch + bars;
-            } else {
-                const bars = this.random.nextInt(3) + 2; 
-                const noteCount = this.random.nextInt(5) + 4; 
-                const phrase: any[] = [];
-                const pool = ['R', '5', '4', 'b7', '2'];
-                for (let i = 0; i < noteCount; i++) {
-                    phrase.push({
-                        t: i * (bars * 12 / noteCount),
-                        d: (bars * 12 / noteCount) * 0.85,
-                        deg: pool[this.random.nextInt(pool.length)]
-                    });
-                }
-                const finalBass = stretchToNarrativeLength(phrase, 24, this.random);
-                const actualBars = Math.ceil(Math.max(...finalBass.map(n => n.t + n.d)) / 12);
-                
-                this.currentBassTheme = { phrase: finalBass, startBar: epoch, endBar: epoch + actualBars };
-                this.bassBusyUntilBar = epoch + actualBars;
-            }
-        }
-
-        // MELODY THEME LOGIC
+        // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
             const hasAnchor = !!this.activeAnchorId;
             const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
@@ -217,6 +185,27 @@ export class AmbientBrain {
                     };
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
+                    
+                    // #ЗАЧЕМ: Привязка баса к той же теме (SIBLING) во всех настроениях.
+                    const sibling = (this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || [])).find(ax => 
+                        ax.role === 'bass' && 
+                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
+                        ax.barOffset === cloudAxiom.barOffset
+                    );
+                    
+                    if (sibling) {
+                        const rawBass = decompressCompactPhrase(sibling.phrase);
+                        this.currentBassTheme = {
+                            phrase: stretchToNarrativeLength(rawBass, 48, this.random),
+                            startBar: epoch,
+                            endBar: epoch + phraseBars
+                        };
+                        this.bassBusyUntilBar = epoch + phraseBars;
+                        this.ensembleStatus = 'SIBLING';
+                    } else {
+                        this.currentBassTheme = null;
+                        this.ensembleStatus = 'ADAPTIVE';
+                    }
                 } else if (!hasAnchor) {
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
@@ -234,9 +223,11 @@ export class AmbientBrain {
                     };
                     this.currentTrackName = 'Ambient Legacy';
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
+                    this.ensembleStatus = 'LOCAL';
                 }
             } else {
                 this.currentTheme = null;
+                this.currentTrackName = '';
             }
         }
 
@@ -248,7 +239,8 @@ export class AmbientBrain {
 
         events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         
-        if (isPositive && this.currentBassTheme) {
+        // --- BASS RENDERING ---
+        if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
         } else if (this.mood === 'anxious') {
             events.push(...this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch));
@@ -256,6 +248,7 @@ export class AmbientBrain {
             events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
         }
 
+        // --- MELODY RENDERING ---
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -301,9 +294,10 @@ export class AmbientBrain {
             activeAxioms: {
                 melody: this.currentTheme?.id || 'Atmospheric',
                 melodyTrack: narrativeSource,
-                ensemble: this.currentBassTheme ? 'SIBLING' : 'ADAPTIVE',
-                bass: isPositive ? 'Narrative' : 'Steady',
-                accompaniment: hints.accompaniment
+                ensemble: this.ensembleStatus,
+                bass: this.currentBassTheme ? 'Sibling' : 'Steady',
+                accompaniment: hints.accompaniment,
+                harmony: hints.harmony || 'none'
             },
             narrative
         };
@@ -435,7 +429,7 @@ export class AmbientBrain {
                 note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: (n.d / 3) * 1.6, 
-                weight: 0.8,
+                weight: 0.85,
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato', 
@@ -458,7 +452,7 @@ export class AmbientBrain {
                 note: pitch,
                 time: (n.t % 12) / 3,
                 duration: n.d / 3,
-                weight: 0.8,
+                weight: 0.85,
                 technique: 'pluck',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -471,9 +465,9 @@ export class AmbientBrain {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const pattern = [
-            { t: 0, n: root, d: 0.7, w: 0.8 },
-            { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.7 },
-            { t: 3.0, n: Math.max(root + 7, this.BASS_FLOOR), d: 0.7, w: 0.75 }
+            { t: 0, n: root, d: 0.7, w: 0.85 },
+            { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },
+            { t: 3.0, n: Math.max(root + 7, this.BASS_FLOOR), d: 0.7, w: 0.8 }
         ];
         return pattern.map(p => ({
             type: 'bass', note: p.n, time: p.t, duration: p.d, 
@@ -485,7 +479,7 @@ export class AmbientBrain {
     private renderRitualWalkingBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
         const ritualPattern = [
-            { t: 0, n: root, w: 0.8 }, { t: 1.0, n: root + 7, w: 0.7 }, { t: 1.5, n: root + 6, w: 0.75 }, { t: 2.5, n: root, w: 0.75 }
+            { t: 0, n: root, w: 0.85 }, { t: 1.0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 6, w: 0.8 }, { t: 2.5, n: root, w: 0.8 }
         ];
         return ritualPattern.map(p => ({
             type: 'bass', note: p.n, time: p.t, duration: 0.4,
@@ -522,7 +516,7 @@ export class AmbientBrain {
             note: n + 12 + this.registerShift, 
             time: i * 0.5,
             duration: 8.0,
-            weight: 0.5, 
+            weight: 0.55, 
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
@@ -563,8 +557,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const heartbeatProb = 0.6; 
         if (this.random.next() < heartbeatProb) {
-            events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-            events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
         return events;
     }
