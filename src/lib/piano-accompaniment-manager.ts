@@ -1,4 +1,3 @@
-
 // src/lib/piano-accompaniment-manager.ts
 import type { Note } from "@/types/music";
 import type { FractalEvent } from "@/types/fractal";
@@ -7,9 +6,7 @@ import { PIANO_SAMPLES } from "@/lib/samples";
 
 /**
  * #ЗАЧЕМ: Этот менеджер управляет независимой партией фортепианного аккомпанемента.
- * #ЧТО: Он использует сэмплер для воспроизведения фортепианных нот,
- *       полученных от FractalMusicEngine.
- * #СВЯЗИ: Управляется AudioEngineContext, получает события типа 'pianoAccompaniment'.
+ * #ЧТО: ПЛАН №688 — Внедрена фильтрация событий. Слышит только тип 'pianoAccompaniment'.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -36,13 +33,17 @@ export class PianoAccompanimentManager {
     public schedule(events: FractalEvent[], startTime: number, tempo: number) {
         if (!this.isInitialized) return;
         
+        // #ЗАЧЕМ: "Обрезаем уши". Игнорируем всё, что не является типом 'pianoAccompaniment'.
+        const filteredEvents = events.filter(e => e.type === 'pianoAccompaniment');
+        if (filteredEvents.length === 0) return;
+
         const beatDuration = 60 / tempo;
         if (!isFinite(beatDuration)) {
             console.error(`[pianosacc] Invalid tempo resulted in non-finite beatDuration: ${tempo}`);
             return;
         }
 
-        const notes: Note[] = events.map(event => ({
+        const notes: Note[] = filteredEvents.map(event => ({
             midi: event.note,
             time: event.time * beatDuration,
             duration: event.duration * beatDuration,
@@ -50,7 +51,7 @@ export class PianoAccompanimentManager {
             params: event.params
         }));
         
-        console.log(`[pianosacc] Received ${events.length} events, converted to ${notes.length} notes to play.`);
+        console.log(`[pianosacc] Received ${filteredEvents.length} relevant events, converted to ${notes.length} notes to play.`);
         this.piano.schedule('piano', notes, startTime, 'pianosacc');
     }
 

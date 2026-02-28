@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v22.0 — "Universal Anchor Sovereignty".
+ * @fileOverview Ambient Brain v22.1 — "Universal Anchor Sovereignty".
  * #ЗАЧЕМ: Эмбиент теперь строго соблюдает Анкоры и синхронизирует ансамбль во всех мудах.
- * #ЧТО: ПЛАН №683 — Исправлен игнор Анкора и добавлена поддержка сиблингов для меланхолии.
+ * #ЧТО: ПЛАН №688 — Исправлено игнорирование Блюзовых анкоров в Эмбиент режиме.
  */
 
 import type { 
@@ -146,6 +146,7 @@ export class AmbientBrain {
         // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
             const hasAnchor = !!this.activeAnchorId;
+            // Если Анкор задан, шанс вступления ВСЕГДА 100%.
             const baseChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40); 
             const developmentChance = hasAnchor ? 1.0 : (baseChance + localTension * 0.25);
             
@@ -159,7 +160,9 @@ export class AmbientBrain {
 
                     const cloudPool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
+                        // #ЗАЧЕМ: Приоритет Анкора. Если он задан — игнорируем жанровые теги.
                         if (targetAnchor) return this.normalize(ax.compositionId || '') === targetAnchor;
+                        
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         if (!genreArr.includes(this.genre)) return false;
                         const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -186,7 +189,6 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                     
-                    // #ЗАЧЕМ: Привязка баса к той же теме (SIBLING) во всех настроениях.
                     const sibling = (this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || [])).find(ax => 
                         ax.role === 'bass' && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
@@ -239,7 +241,6 @@ export class AmbientBrain {
 
         events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         
-        // --- BASS RENDERING ---
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
         } else if (this.mood === 'anxious') {
@@ -248,7 +249,6 @@ export class AmbientBrain {
             events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
         }
 
-        // --- MELODY RENDERING ---
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {

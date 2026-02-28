@@ -86,9 +86,19 @@ export function getBridgeBlueprint(mood: Mood): MusicBlueprint {
 }
 
 export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
+    // #ЗАЧЕМ: Отладка маппинга для предотвращения genre mismatch.
+    console.log(`%c[Mapping] Requesting: ${genre}/${mood}`, 'color: #00FF7F; font-weight: bold;');
+    
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];
-    if (genreBlueprints && genreBlueprints[mood]) return genreBlueprints[mood]!;
+    if (genreBlueprints && genreBlueprints[mood]) {
+        const bp = genreBlueprints[mood]!;
+        console.log(`%c[Mapping] Success: ${bp.name} (${bp.id})`, 'color: #32CD32;');
+        return bp;
+    }
+    
+    console.warn(`[Mapping] Fallback triggered for ${genre}/${mood}. Using Ambient.`);
     const fallbackBlueprint = BLUEPRINT_LIBRARY['ambient']?.[mood];
     if (fallbackBlueprint) return fallbackBlueprint;
+    
     return MelancholicAmbientBlueprint;
 }

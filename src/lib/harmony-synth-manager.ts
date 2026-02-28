@@ -9,7 +9,7 @@ import { FluteSamplerPlayer } from './flute-sampler-player';
 
 /**
  * #ЗАЧЕМ: Менеджер слоя гармонии.
- * #ЧТО: ПЛАН №650 — Добавлены логи отладки для подтверждения получения событий.
+ * #ЧТО: ПЛАН №688 — Внедрена фильтрация событий. Слышит только тип 'harmony'.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -62,8 +62,12 @@ export class HarmonySynthManager {
         if (instrumentToPlay === 'flute') instrumentToPlay = 'violin';
         if (instrumentToPlay === 'none') return;
 
+        // #ЗАЧЕМ: "Обрезаем уши". Игнорируем всё, что не является типом 'harmony'.
+        const harmonyEvents = events.filter(e => e.type === 'harmony');
+        if (harmonyEvents.length === 0) return;
+
         const beatDuration = 60 / tempo;
-        const notes: (Note & { chordName?: string, params?: any })[] = events.map(event => ({
+        const notes: (Note & { chordName?: string, params?: any })[] = harmonyEvents.map(event => ({
             midi: event.note,
             time: event.time * beatDuration,
             duration: event.duration * beatDuration,
@@ -72,9 +76,6 @@ export class HarmonySynthManager {
             params: event.params,
         }));
         
-        if (notes.length === 0) return;
-
-        // #ЗАЧЕМ: Отладочный лог физического исполнения.
         console.log(`%c[HarmonyExec] Playing ${notes.length} events using ${instrumentToPlay}`, 'color: #DA70D6; font-weight: bold;');
 
         switch (instrumentToPlay) {
@@ -101,7 +102,6 @@ export class HarmonySynthManager {
     }
 
     public setVolume(volume: number) {
-        // #ЗАЧЕМ: Установка внутреннего гейна сэмплеров.
         this.piano.setVolume(volume * 0.85);
         this.guitarChords.setVolume(volume);
         this.violin.setVolume(volume);
