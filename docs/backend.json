@@ -1,84 +1,287 @@
 {
   "entities": {
     "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
       "type": "object",
-      "description": "Represents an individual user.",
+      "description": "Represents a user profile within the AuraGroove V2 application. Authentication is handled externally.",
       "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "displayName": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "email", "displayName", "createdAt", "updatedAt"]
-    },
-    "Masterpiece": {
-      "title": "Masterpiece",
-      "type": "object",
-      "description": "A successful musical combination saved to global memory.",
-      "properties": {
-        "seed": { "type": "number" },
-        "mood": { "type": "string" },
-        "genre": { "type": "string" },
-        "density": { "type": "number" },
-        "bpm": { "type": "number" },
-        "instrumentSettings": { "type": "object" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["seed", "mood", "genre", "timestamp"]
-    },
-    "HeritageAxiom": {
-      "title": "HeritageAxiom",
-      "type": "object",
-      "description": "A vector-indexed musical fragment for the AuraGroove Hypercube.",
-      "properties": {
-        "id": { "type": "string" },
-        "phrase": { "type": "array", "items": { "type": "number" } },
-        "role": { "type": "string", "enum": ["melody", "bass", "drums", "accomp"] },
-        "genre": { "type": "array", "items": { "type": "string" } },
-        "commonMood": { "type": "array", "items": { "type": "string", "enum": ["dark", "neutral", "light"] } },
-        "mood": { "type": "array", "items": { "type": "string" } },
-        "compositionId": { "type": "string" },
-        "barOffset": { "type": "number" },
-        "nativeBpm": { "type": "number", "description": "Original tempo of the fragment." },
-        "nativeKey": { "type": "string", "description": "Original musical key (e.g. Am, E)." },
-        "timeSignature": { 
-          "type": "string", 
-          "enum": ["4/4", "3/4", "5/4", "7/8", "12/8"],
-          "description": "Original time signature."
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
         },
-        "vector": {
-          "type": "object",
-          "properties": {
-            "t": { "type": "number", "description": "Tension (0-1)" },
-            "b": { "type": "number", "description": "Brightness (0-1)" },
-            "e": { "type": "number", "description": "Entropy/Rhythm Irregularity (0-1)" },
-            "h": { "type": "number", "description": "Harmonic Stability (0-1)" }
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for communication and identification.",
+          "format": "email"
+        },
+        "username": {
+          "type": "string",
+          "description": "A unique username chosen by the user for display purposes."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Project": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Project",
+      "type": "object",
+      "description": "A container for a user's creative work, organizing multiple designs and content generation sessions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Project entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who owns this project. (Relationship: User 1:N Project)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user-defined name of the project."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional brief description summarizing the project's purpose or content."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the project was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the project was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GenerationSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "GenerationSession",
+      "type": "object",
+      "description": "Records the details of a single content generation request made using the GenAI feature, including the prompt and raw AI output.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the GenerationSession entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this generation session is associated with. (Relationship: Project 1:N GenerationSession)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who initiated this content generation. (Relationship: User 1:N GenerationSession)"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "The user's text input prompt provided to the generative AI model."
+        },
+        "generatedContent": {
+          "type": "string",
+          "description": "The raw output or initial content ideas generated by the AI, typically stored as a JSON string or plain text."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the generation session occurred.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "projectId",
+        "userId",
+        "prompt",
+        "generatedContent",
+        "createdAt"
+      ]
+    },
+    "Design": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Design",
+      "type": "object",
+      "description": "Represents a single editable canvas or visual design artifact, comprising various visual components arranged by the user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Design entity."
+        },
+        "projectId": {
+          "type": "string",
+          "description": "Reference to the Project this design belongs to. (Relationship: Project 1:N Design)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the User who created or last modified this design. (Relationship: User 1:N Design)"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title given to this specific design."
+        },
+        "description": {
+          "type": "string",
+          "description": "An optional brief description of the design's content or purpose."
+        },
+        "canvasWidth": {
+          "type": "number",
+          "description": "The width of the design canvas in pixels."
+        },
+        "canvasHeight": {
+          "type": "number",
+          "description": "The height of the design canvas in pixels."
+        },
+        "backgroundColor": {
+          "type": "string",
+          "description": "The hexadecimal color code for the background of the design canvas (e.g., '#E8EAF6')."
+        },
+        "components": {
+          "type": "array",
+          "description": "An ordered list of design elements on the canvas, each representing a text, image, or shape component with its properties, position, size, and content.",
+          "items": {
+            "type": "string"
           }
         },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "narrative": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "createdAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the design was first created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "The timestamp indicating when the design was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["phrase", "role", "compositionId", "commonMood", "vector", "timestamp"]
+      "required": [
+        "id",
+        "projectId",
+        "userId",
+        "title",
+        "canvasWidth",
+        "canvasHeight",
+        "backgroundColor",
+        "components",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/User" },
-      "description": "User profiles."
-    },
-    "/masterpieces/{masterpieceId}": {
-      "schema": { "$ref": "#/backend/entities/Masterpiece" },
-      "description": "Global pool of successful musical seeds for evolutionary inheritance."
-    },
-    "/heritage_axioms/{axiomId}": {
-      "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
-      "description": "The Hypercube Axiom Bank. Vector-indexed musical fragments."
-    }
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores individual user profiles. Documents are identified by the user's authentication UID. Access is restricted to the owner matching `request.auth.uid`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, matching `request.auth.uid`."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}",
+        "definition": {
+          "entityName": "Project",
+          "schema": {
+            "$ref": "#/backend/entities/Project"
+          },
+          "description": "Contains projects created by a specific user. Includes denormalized 'userId' field for authorization independence, ensuring the project owner matches the path's userId and `request.auth.uid`.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who owns the project."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier of the project."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/generationSessions/{sessionId}",
+        "definition": {
+          "entityName": "GenerationSession",
+          "schema": {
+            "$ref": "#/backend/entities/GenerationSession"
+          },
+          "description": "Records AI content generation sessions within a specific project. Includes denormalized 'userId' and 'projectId' fields for authorization independence, verifying ownership and project association without `get()` calls.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who initiated the session."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier of the parent project."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier of the generation session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/projects/{projectId}/designs/{designId}",
+        "definition": {
+          "entityName": "Design",
+          "schema": {
+            "$ref": "#/backend/entities/Design"
+          },
+          "description": "Stores individual design artifacts belonging to a project. Includes denormalized 'userId' and 'projectId' fields for authorization independence, linking designs directly to their owner and project.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user who created the design."
+            },
+            {
+              "name": "projectId",
+              "description": "The unique identifier of the parent project."
+            },
+            {
+              "name": "designId",
+              "description": "The unique identifier of the design."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed with a strong emphasis on Authorization Independence, enabling robust and easily debuggable security rules. All user-specific data is organized hierarchically, starting with a top-level `/users` collection.\n\n**Authorization Independence (CRITICAL):** Each document (User profile, Project, GenerationSession, Design) explicitly includes its `userId` (and `projectId` where applicable) as a field. For instance, a `Project` document residing at `/users/{userId}/projects/{projectId}` will also have `userId: '{userId}'` and `id: '{projectId}'` as fields within the document itself. This denormalization means that security rules can always verify ownership by comparing `request.auth.uid` directly with `resource.data.userId` without needing expensive and complex `get()` calls to parent documents (e.g., to get the owner of a Project from the parent User document). This ensures atomic operations like batch writes can be secured efficiently and simplifies rule logic considerably.\n\n**QAPs (Query as Authorization Predicates):** The hierarchical structure, combined with denormalized ownership fields, inherently supports secure list operations. For example, to list a user's projects, a client would query `/users/{userId}/projects`. Firestore security rules would then ensure that `{userId}` in the path matches `request.auth.uid` and that `resource.data.userId` also matches `request.auth.uid`. This design follows **Structural Segregation**, ensuring that all documents within a given subcollection (e.g., `projects` under a specific user) share the same security posture – they are owned by that user. This makes rules simple and prevents unauthorized data from being inadvertently exposed in list queries.\n\n**Access Modeling:** The chosen model is primarily **Path-Based Ownership** for private user data. `/users/{userId}` is the root for all data owned by a specific user. Nested entities like `Projects`, `GenerationSessions`, and `Designs` follow this hierarchy (`/users/{userId}/projects/{projectId}/...`). This clearly delineates ownership and simplifies rule construction. No collaborative data or global roles are explicitly requested, but if needed, they would follow the Membership Map or Existence over Content strategies respectively. The use of descriptive wildcards (e.g., `{userId}`, `{projectId}`) ensures **Data Clarity and Predictability**."
   }
 }

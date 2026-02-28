@@ -1,29 +1,18 @@
 'use client';
 
-import React, { useMemo, type ReactNode, useEffect } from 'react';
-import { FirebaseProvider } from './provider';
-import { initializeFirebase } from './init';
-import { initiateAnonymousSignIn } from './non-blocking-login';
+import React, { useMemo, type ReactNode } from 'react';
+import { FirebaseProvider } from '@/firebase/provider';
+import { initializeFirebase } from '@/firebase';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
-/**
- * #ЗАЧЕМ: Клиентский провайдер Firebase.
- * #ЧТО: Инициализирует SDK и выполняет анонимный вход.
- *       Использует прямые импорты для предотвращения ChunkLoadError.
- */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
+    // Initialize Firebase on the client side, once per component mount.
     return initializeFirebase();
-  }, []); 
-
-  useEffect(() => {
-    if (firebaseServices.auth) {
-      initiateAnonymousSignIn(firebaseServices.auth);
-    }
-  }, [firebaseServices.auth]);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   return (
     <FirebaseProvider
