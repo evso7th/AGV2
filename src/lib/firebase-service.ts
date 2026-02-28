@@ -56,43 +56,32 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: Сохраняет аксиому с использованием детерминированного ID для защиты от дубликатов.
- * #ОБНОВЛЕНО (ПЛАН №661): Поддержка множественных жанров и настроений.
+ * #ЧТО: ПЛАН №685 — Тотальная защита от undefined. Все поля проверяются перед setDoc.
  */
-export function saveHeritageAxiom(db: Firestore, data: {
-    phrase: number[];
-    role: 'melody' | 'bass' | 'drums' | 'accomp';
-    genre: string[];
-    commonMood: CommonMood[];
-    mood: string[];
-    compositionId: string;
-    barOffset: number;
-    vector: AxiomVector;
-    origin: string;
-    tags: string[];
-    narrative: string;
-    nativeBpm?: number;
-    nativeKey?: string;
-    timeSignature?: string;
-}) {
-    const axiomId = generateAxiomId(data.compositionId, data.role, data.phrase);
+export function saveHeritageAxiom(db: Firestore, data: any) {
+    const compositionId = data.compositionId || 'Unknown_Heritage';
+    const role = data.role || 'melody';
+    const phrase = data.phrase || [];
+    
+    const axiomId = generateAxiomId(compositionId, role, phrase);
     const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
+    // #ЗАЧЕМ: Firestore не принимает undefined. Обеспечиваем наличие всех полей.
     const payload = {
-        phrase: data.phrase,
-        role: data.role,
-        genre: data.genre,
-        commonMood: data.commonMood,
-        mood: data.mood,
-        compositionId: data.compositionId,
-        barOffset: data.barOffset,
-        vector: data.vector,
-        origin: data.origin,
-        tags: data.tags,
-        narrative: data.narrative,
-        nativeBpm: data.nativeBpm || null,
-        nativeKey: data.nativeKey || null,
-        timeSignature: data.timeSignature || null,
+        phrase: phrase,
+        role: role,
+        genre: Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []),
+        commonMood: Array.isArray(data.commonMood) ? data.commonMood : (data.commonMood ? [data.commonMood] : []),
+        mood: Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []),
+        compositionId: compositionId,
+        barOffset: data.barOffset ?? 0,
+        vector: data.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
+        origin: data.origin || 'Manual_Forge',
+        tags: Array.isArray(data.tags) ? data.tags : [],
+        narrative: data.narrative || "Heritage component.",
+        nativeBpm: data.nativeBpm ?? data.bpm ?? null,
+        nativeKey: data.nativeKey ?? data.key ?? null,
+        timeSignature: data.timeSignature ?? data.ts ?? null,
         timestamp: serverTimestamp()
     };
 

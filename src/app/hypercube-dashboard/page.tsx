@@ -317,16 +317,25 @@ export default function HypercubeDashboard() {
         const json = JSON.parse(event.target?.result as string);
         const flattened: any[] = [];
         
+        // #ЗАЧЕМ: Очистка и нормализация данных при импорте.
         const processAxiom = (ax: any, idx: number, compId: string) => {
-            const repairedPhrase = repairLegacyPhrase(ax.phrase);
+            const role = ax.role || 'melody';
+            const repairedPhrase = repairLegacyPhrase(ax.phrase || []);
+            const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
+            const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
+            
             return {
                 ...ax,
                 phrase: repairedPhrase,
-                id: `${compId}_${ax.role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+                role: role,
+                id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
                 compositionId: compId,
                 genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
-                mood: Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []),
-                commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : (ax.mood ? [MOOD_TO_COMMON[Array.isArray(ax.mood) ? (ax.mood[0] as Mood) : (ax.mood as Mood)]] : ['neutral'])),
+                mood: moods,
+                commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
+                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
+                tags: ax.tags || [],
+                narrative: ax.narrative || "Heritage component.",
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || null,
                 timeSignature: ax.timeSignature || ax.ts || null
@@ -400,8 +409,9 @@ export default function HypercubeDashboard() {
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (const ax of toInject) {
-        const newMoods = ax.mood.length > 0 ? ax.mood : ['melancholic'];
-        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m])));
+        // #ЗАЧЕМ: Гарантия целостности данных при инъекции.
+        const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
+        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
         
         await saveHeritageAxiom(db, {
           ...ax,
@@ -439,16 +449,16 @@ export default function HypercubeDashboard() {
     setConfirmOpen(true);
   };
 
-  const handleDeleteTrack = (compId: string, axioms: any[]) => {
+  const handleDeleteTrack = (compId: string, licks: any[]) => {
     setConfirmAction({
         title: `Purge Track: ${compId.replace(/_/g, ' ')}`,
-        desc: `CRITICAL: Delete entire track and all its ${axioms.length} axioms from Cloud?`,
+        desc: `CRITICAL: Delete entire track and all its ${licks.length} axioms from Cloud?`,
         action: async () => {
             setIsProcessing(true);
             try {
                 const CHUNK_SIZE = 450;
-                for (let i = 0; i < axioms.length; i += CHUNK_SIZE) {
-                    const chunk = axioms.slice(i, i + CHUNK_SIZE);
+                for (let i = 0; i < licks.length; i += CHUNK_SIZE) {
+                    const chunk = licks.slice(i, i + CHUNK_SIZE);
                     const batch = writeBatch(db);
                     chunk.forEach(ax => {
                         batch.delete(doc(db, 'heritage_axioms', ax.id));
