@@ -1,4 +1,3 @@
-
 import type { BassPreset } from './instrument-factory';
 
 
@@ -31,181 +30,184 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_jazz_warm: {
         type: 'bass' as const,
         name: 'Jazz Upright',
-        volume: 0.72,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: 2, gain: 0.35 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.12 } ],
-        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.5 },
-        adsr: { a: 0.015, d: 0.4, s: 0.7, r: 0.35 },
-        filter: { type: 'lowpass' as const, cutoff: 1200, q: 0.6, keyTrack: 0.25 },
-        filterEnv: { on: true, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
+        // #ЗАЧЕМ: Устранение гула. Бас стал более округлым и тихим.
+        volume: 0.55, 
+        osc: [ 
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, 
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
+        ],
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
+        adsr: { a: 0.03, d: 0.5, s: 0.6, r: 0.4 },
+        filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
+        filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
-        comp: { threshold: -18, ratio: 3, attack: 0.01, release: 0.15, makeup: 4 },
-        eq: { lowShelf: { freq: 80, gain: 3 }, mid: { freq: 800, q: 1.2, gain: -2 }, highShelf: { freq: 2500, gain: -4 } },
-        stringNoise: { on: true, type: 'finger' as const, amount: 0.15 },
+        comp: { threshold: -22, ratio: 2, attack: 0.01, release: 0.2, makeup: 2 },
+        eq: { lowShelf: { freq: 80, gain: 2 }, mid: { freq: 800, q: 1.2, gain: -4 }, highShelf: { freq: 2500, gain: -8 } },
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.05 },
         chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
-        reverbMix: 0.12
+        reverbMix: 0.05
     },
-    // #ЗАЧЕМ: Устранение искажений. glideBass замещен на bass_ambient.
     glideBass: {
         type: 'bass' as const,
         name: 'Ambient Sub',
-        volume: 0.65,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: -3, gain: 0.25 }, { type: 'sine' as const, octave: 1, detune: 5, gain: 0.08 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
+        volume: 0.55,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
         adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },
-        filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5, keyTrack: 0.15 },
-        filterEnv: { on: true, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
+        filter: { type: 'lowpass' as const, cutoff: 350, q: 0.5, keyTrack: 0.1 },
+        filterEnv: { on: false, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
-        comp: { threshold: -20, ratio: 3, attack: 0.02, release: 0.3, makeup: 4 },
-        eq: { lowShelf: { freq: 60, gain: 5 }, mid: { freq: 400, q: 0.8, gain: -3 }, highShelf: { freq: 1500, gain: -6 } },
+        comp: { threshold: -20, ratio: 2, attack: 0.02, release: 0.3, makeup: 2 },
+        eq: { lowShelf: { freq: 60, gain: 3 }, mid: { freq: 400, q: 0.8, gain: -5 }, highShelf: { freq: 1500, gain: -10 } },
         stringNoise: { on: false, type: 'finger' as const, amount: 0 },
-        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.25 },
-        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.2, hc: 1200 },
-        reverbMix: 0.35
+        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.15 },
+        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.1, hc: 1200 },
+        reverbMix: 0.2
     },
     bass_cs80: {
         type: 'bass' as const,
         name: 'CS80 Hybrid Bass',
-        volume: 0.8,
+        volume: 0.6,
         osc: [], 
         adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 } 
     },
     bass_jazz_fretless: {
         type: 'bass' as const,
         name: 'Fretless Jaco',
-        volume: 0.7,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.55 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.4 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.15 } ],
+        volume: 0.6,
+        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.4 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.4 } ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.4 },
         adsr: { a: 0.025, d: 0.5, s: 0.75, r: 0.4 },
-        filter: { type: 'lowpass' as const, cutoff: 1800, q: 1.2, keyTrack: 0.4 },
-        filterEnv: { on: true, attack: 0.02, decay: 0.35, sustain: 0.3, release: 0.25, depth: 800, velocity: 0.6 },
-        drive: { on: true, type: 'tube' as const, amount: 0.15, tone: 3500 },
-        comp: { threshold: -16, ratio: 3.5, attack: 0.008, release: 0.12, makeup: 5 },
-        eq: { lowShelf: { freq: 100, gain: 2 }, mid: { freq: 1200, q: 1.5, gain: 3 }, highShelf: { freq: 3000, gain: -2 } },
-        stringNoise: { on: true, type: 'finger' as const, amount: 0.08 },
-        chorus: { on: true, rate: 0.25, depth: 0.004, mix: 0.2 },
+        filter: { type: 'lowpass' as const, cutoff: 800, q: 1.0, keyTrack: 0.2 },
+        filterEnv: { on: true, attack: 0.02, decay: 0.35, sustain: 0.3, release: 0.25, depth: 400, velocity: 0.4 },
+        drive: { on: true, type: 'tube' as const, amount: 0.1, tone: 3000 },
+        comp: { threshold: -16, ratio: 2.5, attack: 0.008, release: 0.12, makeup: 3 },
+        eq: { lowShelf: { freq: 100, gain: 2 }, mid: { freq: 1200, q: 1.5, gain: 1 }, highShelf: { freq: 3000, gain: -5 } },
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.05 },
+        chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.15 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
-        reverbMix: 0.15
+        reverbMix: 0.1
     },
     bass_blues: {
         type: 'bass' as const,
         name: 'Blues Bass',
-        volume: 0.7,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.6 }, { type: 'triangle' as const, octave: 0, detune: 3, gain: 0.4 }, { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.15 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.45 } ],
+        volume: 0.6,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: 3, gain: 0.3 } ],
         adsr: { a: 0.012, d: 0.35, s: 0.65, r: 0.3 },
-        filter: { type: 'lowpass' as const, cutoff: 1400, q: 0.8, keyTrack: 0.3 },
-        filterEnv: { on: true, attack: 0.01, decay: 0.2, sustain: 0.25, release: 0.2, depth: 500, velocity: 0.5 },
-        drive: { on: true, type: 'tube' as const, amount: 0.25, tone: 2500 },
-        comp: { threshold: -15, ratio: 4, attack: 0.008, release: 0.12, makeup: 5 },
-        eq: { lowShelf: { freq: 90, gain: 2 }, mid: { freq: 600, q: 1.0, gain: 1 }, highShelf: { freq: 2800, gain: -3 } },
-        stringNoise: { on: true, type: 'finger' as const, amount: 0.12 },
+        filter: { type: 'lowpass' as const, cutoff: 900, q: 0.6, keyTrack: 0.2 },
+        filterEnv: { on: true, attack: 0.01, decay: 0.2, sustain: 0.25, release: 0.2, depth: 300, velocity: 0.4 },
+        drive: { on: true, type: 'tube' as const, amount: 0.15, tone: 2000 },
+        comp: { threshold: -15, ratio: 3, attack: 0.008, release: 0.12, makeup: 3 },
+        eq: { lowShelf: { freq: 90, gain: 2 }, mid: { freq: 600, q: 1.0, gain: 0 }, highShelf: { freq: 2800, gain: -6 } },
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.08 },
         chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
-        reverbMix: 0.1
+        reverbMix: 0.08
     },
     bass_ambient: {
         type: 'bass' as const,
         name: 'Ambient Sub',
-        volume: 0.65,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: -3, gain: 0.25 }, { type: 'sine' as const, octave: 1, detune: 5, gain: 0.08 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
+        volume: 0.55,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
         adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },
-        filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5, keyTrack: 0.15 },
-        filterEnv: { on: true, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
+        filter: { type: 'lowpass' as const, cutoff: 350, q: 0.5, keyTrack: 0.1 },
+        filterEnv: { on: false, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
-        comp: { threshold: -20, ratio: 3, attack: 0.02, release: 0.3, makeup: 4 },
-        eq: { lowShelf: { freq: 60, gain: 5 }, mid: { freq: 400, q: 0.8, gain: -3 }, highShelf: { freq: 1500, gain: -6 } },
+        comp: { threshold: -20, ratio: 2, attack: 0.02, release: 0.3, makeup: 2 },
+        eq: { lowShelf: { freq: 60, gain: 3 }, mid: { freq: 400, q: 0.8, gain: -5 }, highShelf: { freq: 1500, gain: -10 } },
         stringNoise: { on: false, type: 'finger' as const, amount: 0 },
-        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.25 },
-        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.2, hc: 1200 },
-        reverbMix: 0.35
+        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.15 },
+        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.1, hc: 1200 },
+        reverbMix: 0.2
     },
     bass_ambient_dark: {
         type: 'bass' as const,
         name: 'Dark Ambient',
-        volume: 0.6,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.65 }, { type: 'triangle' as const, octave: -1, detune: 0, gain: 0.35 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.9 } ],
+        volume: 0.5,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.65 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.9 } ],
         adsr: { attack: 0.5, decay: 1.2, sustain: 0.9, release: 2.0 },
-        filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4 },
+        filter: { type: 'lowpass' as const, cutoff: 300, q: 0.4 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0, chorus: { rate: 0.08, depth: 0.006, mix: 0.3 }, delay: { time: 0.8, feedback: 0.5, mix: 0.25 } }
+        effects: { distortion: 0, chorus: { rate: 0.08, depth: 0.006, mix: 0.2 }, delay: { time: 0.8, feedback: 0.5, mix: 0.15 } }
     },
     bass_trance_acid: {
         type: 'bass' as const,
         name: 'Acid Bass',
-        volume: 0.72,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.9 }, { type: 'square' as const, octave: -1, detune: 0, gain: 0.4 } ],
+        volume: 0.6,
+        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'square' as const, octave: -1, detune: 0, gain: 0.3 } ],
         adsr: { attack: 0.001, decay: 0.1, sustain: 0.3, release: 0.08 },
-        filter: { type: 'lowpass' as const, cutoff: 400, q: 8 },
+        filter: { type: 'lowpass' as const, cutoff: 400, q: 6 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.4, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.2, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_reggae: {
         type: 'bass' as const,
         name: 'Reggae Bass',
-        volume: 0.75,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.2 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
+        volume: 0.65,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
         adsr: { attack: 0.008, decay: 0.25, sustain: 0.4, release: 0.15 },
-        filter: { type: 'lowpass' as const, cutoff: 900, q: 0.7 },
+        filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.375, feedback: 0.35, mix: 0.18 } }
+        effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.375, feedback: 0.35, mix: 0.15 } }
     },
     bass_dub: {
         type: 'bass' as const,
         name: 'Dub Bass',
-        volume: 0.7,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.75 }, { type: 'triangle' as const, octave: 0, detune: -2, gain: 0.25 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.85 } ],
+        volume: 0.6,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.75 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.85 } ],
         adsr: { attack: 0.01, decay: 0.3, sustain: 0.5, release: 0.25 },
-        filter: { type: 'lowpass' as const, cutoff: 700, q: 1.2 },
+        filter: { type: 'lowpass' as const, cutoff: 500, q: 0.8 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.12, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.5, feedback: 0.45, mix: 0.25 } }
+        effects: { distortion: 0.05, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.5, feedback: 0.45, mix: 0.2 } }
     },
     bass_house: {
         type: 'bass' as const,
         name: 'House Bass',
-        volume: 0.78,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.85 }, { type: 'triangle' as const, octave: 0, detune: 0, gain: 0.15 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.65 } ],
+        volume: 0.65,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.85 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.65 } ],
         adsr: { attack: 0.002, decay: 0.18, sustain: 0.35, release: 0.12 },
-        filter: { type: 'lowpass' as const, cutoff: 1200, q: 0.8 },
+        filter: { type: 'lowpass' as const, cutoff: 1000, q: 0.6 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.2, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.1, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_808: {
         type: 'bass' as const,
         name: '808 Sub',
-        volume: 0.8,
+        volume: 0.7,
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
         adsr: { attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.5 },
-        filter: { type: 'lowpass' as const, cutoff: 500, q: 0.5 },
+        filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.35, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.2, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_deep_house: {
         type: 'bass' as const,
         name: 'Deep House',
-        volume: 0.72,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.25 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.1 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.6 } ],
+        volume: 0.6,
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.6 } ],
         adsr: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.18 },
-        filter: { type: 'lowpass' as const, cutoff: 1000, q: 1.5 },
+        filter: { type: 'lowpass' as const, cutoff: 800, q: 1.0 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.18, chorus: { rate: 0.15, depth: 0.003, mix: 0.12 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.1, chorus: { rate: 0.15, depth: 0.003, mix: 0.1 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_rock_pick: {
         type: 'bass' as const,
         name: 'Rock Pick',
-        volume: 0.75,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.6 }, { type: 'square' as const, octave: 0, detune: 2, gain: 0.25 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.3 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.4 } ],
+        volume: 0.65,
+        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.5 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.4 } ],
         adsr: { attack: 0.003, decay: 0.2, sustain: 0.6, release: 0.15 },
-        filter: { type: 'lowpass' as const, cutoff: 2200, q: 1.0 },
+        filter: { type: 'lowpass' as const, cutoff: 1800, q: 0.8 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.4, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.25, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_slap: {
         type: 'bass' as const,
         name: 'Slap Bass',
-        volume: 0.72,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.55 }, { type: 'square' as const, octave: 0, detune: 3, gain: 0.3 }, { type: 'sine' as const, octave: 1, detune: 0, gain: 0.2 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.45 } ],
+        volume: 0.65,
+        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.45 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.45 } ],
         adsr: { attack: 0.001, decay: 0.15, sustain: 0.4, release: 0.12 },
-        filter: { type: 'lowpass' as const, cutoff: 2500, q: 2 },
+        filter: { type: 'lowpass' as const, cutoff: 2000, q: 1.5 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.25, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.15, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     }
 };

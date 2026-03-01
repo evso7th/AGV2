@@ -28,8 +28,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V172.0 — "Multichannel Reconstruction".
- * #ЧТО: ПЛАН №694 — Внедрена поддержка до 3-х независимых партий аккомпанемента.
+ * #ЗАЧЕМ: Блюзовый Мозг V173.0 — "Ensemble Persistence & Sonic Polish".
+ * #ЧТО: ПЛАН №702 — Устранение «одинокого баса» и мгновенный запуск новых фраз.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -37,6 +37,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
+
+const BLUES_PROGRESSION_OFFSETS = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -68,8 +70,6 @@ export class BluesBrain {
   private currentMelodyAxiomObj: any | null = null;
   private currentAxiom: any[] = [];
   private currentBassAxiom: any[] = [];
-  
-  // #ЗАЧЕМ: Массив для поддержки многоканального аккомпанемента.
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
   
   private currentLickId: string = '';
@@ -82,6 +82,8 @@ export class BluesBrain {
   private readonly MELODY_CEILING = 75; 
   private readonly BASS_FLOOR = 31; 
   private readonly BASS_CEILING = 47; 
+
+  private soloistBusyUntilBar: number = -1;
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -192,14 +194,15 @@ export class BluesBrain {
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) this.selectGrandAxiom(tension);
 
-    if (this.currentAxiom.length === 0 || epoch % 4 === 0 || navInfo.isPartTransition) {
+    // #ЗАЧЕМ: Устранение длинных пауз. Новая аксиома ищется сразу.
+    if (epoch >= this.soloistBusyUntilBar || epoch % 4 === 0 || navInfo.isPartTransition) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
 
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    const melodyEvents = hints.melody ? this.renderMelodicSegment(epoch, currentChord) : [];
+    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord) : [];
 
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, melodyEvents));
 
@@ -211,7 +214,6 @@ export class BluesBrain {
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
     } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
-        // #ЗАЧЕМ: Отработка многоканального Наследия.
         this.currentAccompAxioms.forEach((ax, idx) => {
             const role = ax.role.toLowerCase();
             let targetType: InstrumentPart = 'accompaniment';
@@ -261,7 +263,7 @@ export class BluesBrain {
             accompaniment: this.currentAccompAxioms.length > 0 ? `${this.currentAccompAxioms.length} layers` : 'Adaptive',
             harmony: harAxiom
         },
-        narrative: `Bar ${epoch % 12 + 1}/12. Ensemble synergy active.`
+        narrative: `Bar ${epoch % 12 + 1}/12. Persistence active.`
     };
   }
 
@@ -291,7 +293,6 @@ export class BluesBrain {
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          
           const basePool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
@@ -311,7 +312,6 @@ export class BluesBrain {
               });
 
               const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
-              
               let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
               if (freshPool.length === 0) {
                   const poolIds = new Set(finalPool.map(ax => ax.id));
@@ -328,6 +328,10 @@ export class BluesBrain {
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
               
+              // Назначение длительности занятости
+              const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
+              this.soloistBusyUntilBar = epoch + phraseBars;
+
               const bassSibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
@@ -337,7 +341,6 @@ export class BluesBrain {
                   this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
               }
 
-              // #ЗАЧЕМ: Тройной симбиоз с лимитом 3 канала.
               const accompSiblings = this.config.cloudAxioms.filter(ax => 
                   ax.role?.startsWith('accomp') && 
                   this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
@@ -375,6 +378,7 @@ export class BluesBrain {
           }
           this.currentAxiom = stretchToNarrativeLength(phrase, 48, this.random);
           this.currentLickId = this.currentGrandMelody.id;
+          this.soloistBusyUntilBar = epoch + 1;
           return;
       }
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
@@ -382,6 +386,7 @@ export class BluesBrain {
       this.currentLickId = nextId;
       const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+      this.soloistBusyUntilBar = epoch + 1;
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {

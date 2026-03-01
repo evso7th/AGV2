@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain v23.0 — "Multichannel Heritage Reconstruction".
- * #ЗАЧЕМ: Поддержка детальной оркестровки из вертикальных срезов Наследия.
- * #ЧТО: ПЛАН №694 — Реализована загрузка до 3-х партий аккомпанемента одновременно.
+ * @fileOverview Ambient Brain v24.0 — "Ensemble Continuity & Human Breath".
+ * #ЗАЧЕМ: Устранение «одинокого баса» и сокращение пауз между фразами.
+ * #ЧТО: ПЛАН №702 — Внедрен Sticky Ensemble и мгновенный перезапуск тем.
  */
 
 import type { 
@@ -67,8 +67,6 @@ export class AmbientBrain {
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
-    
-    // #ЗАЧЕМ: Список активных слоев аккомпанемента из Наследия.
     private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
     
     private currentTrackName: string = '';
@@ -147,11 +145,11 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // --- MELODY THEME LOGIC ---
+        // #ЗАЧЕМ: Устранение длинных пауз. Теперь новая аксиома ищется сразу после конца старой.
         if (epoch >= this.soloistBusyUntilBar) {
-            this.currentAccompAxioms = []; // Очистка старых слоев
+            this.currentAccompAxioms = []; 
             const hasAnchor = !!this.activeAnchorId;
-            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40) + localTension * 0.25;
+            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.70 : 0.50) + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
@@ -195,7 +193,8 @@ export class AmbientBrain {
                         tags: cloudAxiom.tags || ['cloud']
                     };
                     this.currentTrackName = cloudAxiom.compositionId;
-                    this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
+                    // #ЗАЧЕМ: Убрана лишняя задержка (+1). Вздох стал коротким и человечным.
+                    this.soloistBusyUntilBar = epoch + phraseBars;
                     
                     const bassSibling = poolToUse.find(ax => 
                         ax.role === 'bass' && 
@@ -215,8 +214,6 @@ export class AmbientBrain {
                         this.currentBassTheme = null;
                     }
 
-                    // #ЗАЧЕМ: Поддержка многоканального аккомпанемента.
-                    // #ЧТО: ПЛАН №694 — Поиск всех сиблингов (accomp) с лимитом 3.
                     const accompSiblings = poolToUse.filter(ax => 
                         ax.role?.startsWith('accomp') && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
@@ -246,7 +243,7 @@ export class AmbientBrain {
                         tags: lick.tags
                     };
                     this.currentTrackName = 'Ambient Legacy';
-                    this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
+                    this.soloistBusyUntilBar = epoch + phraseBars;
                     this.ensembleStatus = 'LOCAL';
                     this.currentBassTheme = null;
                     this.currentAccompAxioms = [];
@@ -263,9 +260,7 @@ export class AmbientBrain {
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        // --- MULTICHANNEL RENDERING ---
         if (this.currentAccompAxioms.length > 0) {
-            // #ЗАЧЕМ: Умный роутинг оцифрованных дорожек по каналам.
             this.currentAccompAxioms.forEach((ax, idx) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = 'accompaniment';
@@ -279,7 +274,8 @@ export class AmbientBrain {
                     events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType));
                 }
             });
-        } else {
+        } else if (hints.accompaniment) {
+            // #ЗАЧЕМ: Защита от пустоты. Если сиблингов нет, играем стандартный пэд.
             events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         }
         
@@ -336,7 +332,8 @@ export class AmbientBrain {
                 melody: this.currentTheme?.id || 'Atmospheric',
                 melodyTrack: narrativeSource,
                 ensemble: this.ensembleStatus,
-                bass: this.currentBassTheme ? 'Sibling' : 'Steady',
+                bass: this.currentBassTheme ? 'Sibling' : (localTension > 0.7 ? 'Walking' : 'Steady'),
+                drums: 'Consistent',
                 accompaniment: this.currentAccompAxioms.length > 0 ? `${this.currentAccompAxioms.length} layers` : 'Adaptive',
                 harmony: hints.harmony || 'none'
             },
@@ -614,10 +611,16 @@ export class AmbientBrain {
 
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const heartbeatProb = 0.6; 
+        // #ЗАЧЕМ: Усиление стабильности ритма. Теперь ударные более постоянны.
+        const heartbeatProb = 0.85; 
         if (this.random.next() < heartbeatProb) {
             events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            
+            // Дополнительный тихий хэт для «дыхания»
+            if (this.random.next() < 0.5) {
+                events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: 2.0, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            }
         }
         return events;
     }

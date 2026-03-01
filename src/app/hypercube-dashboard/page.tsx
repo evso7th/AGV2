@@ -387,7 +387,6 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
 
-    // #ЗАЧЕМ: ПЛАН №697 — Мгновенный старт за счет нормализации времени.
     const minTick = Math.min(...phrase.map(n => n.t));
     const rawRole = (axiom.role || 'melody').toLowerCase();
     
@@ -399,7 +398,6 @@ export default function HypercubeDashboard() {
     const events: FractalEvent[] = phrase.map((n: any) => {
       let eventType: string = type;
       if (rawRole === 'drums') {
-          // #ЗАЧЕМ: ПЛАН №701 — Маппинг ступеней для аудита ударных.
           const deg = String(n.deg);
           if (deg === 'R' || deg === '0') eventType = 'drum_kick_reso';
           else if (deg === 'b3' || deg === '3' || deg === '4') eventType = 'drum_snare';
@@ -426,10 +424,16 @@ export default function HypercubeDashboard() {
     else if (type === 'bass') hints.bass = 'bass_jazz_warm';
     else if (type === 'drums') hints.drums = 'melancholic'; 
     else if (type === 'accompaniment') {
-        hints.accompaniment = rawRole.includes('piano') ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+        // #ЗАЧЕМ: Учет гитарного аккомпанемента в предпрослушивании.
+        if (rawRole.includes('guitar')) {
+            // Перенаправляем на канал melody для использования blackAcoustic
+            events.forEach(e => { if(e.type === 'accompaniment') e.type = 'melody'; });
+            hints.melody = 'blackAcoustic';
+        } else {
+            hints.accompaniment = rawRole.includes('piano') ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+        }
     }
 
-    // #ЗАЧЕМ: ПЛАН №698 — Использование нативного темпа.
     const tempo = axiom.nativeBpm || 72;
     playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
@@ -701,19 +705,19 @@ export default function HypercubeDashboard() {
             </Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Genre Map</CardTitle></CardHeader>
-              <CardContent className="flex flex-wrap gap-1.5">
+              <CardContent><div className="flex flex-wrap gap-1.5">
                 {Object.entries(globalStats.genres).map(([g, count]) => (
                     <Badge key={g} variant="secondary" className="text-[10px] uppercase font-bold py-0.5">{g}: {count}</Badge>
                 ))}
-              </CardContent>
+              </div></CardContent>
             </Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader>
-              <CardContent className="flex flex-wrap gap-1">
+              <CardContent><div className="flex flex-wrap gap-1">
                 {Object.entries(globalStats.commonMoods).map(([cm, count]) => (
                     <Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>
                 ))}
-              </CardContent>
+              </div></CardContent>
             </Card>
         </div>
 
