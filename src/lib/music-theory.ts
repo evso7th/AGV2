@@ -1,7 +1,7 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.0 — "Markov Sovereignty".
- * #ЗАЧЕМ: Реализация жанровых матриц переходов для нелинейной гармонии.
- * #ЧТО: ПЛАН №679 — Внедрен Grid-Markov Convergence для Ambient, Trance и Blues.
+ * @fileOverview Universal Music Theory Utilities V2.1 — "Tempo Inheritance".
+ * #ЗАЧЕМ: Реализация наследования темпа из облачных метаданных.
+ * #ЧТО: ПЛАН №699 — Пьеса наследует нативный BPM от выбранного Анкора или темпового лидера.
  */
 
 import type { 
@@ -274,8 +274,27 @@ export function generateSuiteDNA(
     // #ЗАЧЕМ: Grid-Markov Convergence теперь является основным режимом.
     const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
 
+    // --- TEMPO INHERITANCE LOGIC (ПЛАН №699) ---
+    let inheritedBpm: number | null = null;
+    if (cloudAxioms && cloudAxioms.length > 0) {
+        if (activeAnchorId) {
+            // Priority 1: User-selected Anchor track
+            const anchorAxiom = cloudAxioms.find(ax => ax.compositionId === activeAnchorId && ax.nativeBpm);
+            if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
+        } else {
+            // Priority 2: Random tempo leader from relevant cloud licks
+            const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);
+            if (leaders.length > 0) {
+                const picked = leaders[calculateMusiNum(finalSeed, 29, 0, leaders.length)];
+                inheritedBpm = picked.nativeBpm;
+            }
+        }
+    }
+
     let baseTempo = 72;
-    if (bpmConfig) {
+    if (inheritedBpm) {
+        baseTempo = inheritedBpm;
+    } else if (bpmConfig) {
         const [min, max] = bpmConfig.range;
         const rangeWidth = max - min;
         const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * rangeWidth;
