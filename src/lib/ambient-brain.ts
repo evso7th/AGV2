@@ -68,7 +68,7 @@ export class AmbientBrain {
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     
-    // #ЗАЧЕМ: Поддержка множественных аккомпанементов (сиблингов).
+    // #ЗАЧЕМ: Список активных слоев аккомпанемента из Наследия.
     private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
     
     private currentTrackName: string = '';
@@ -124,8 +124,8 @@ export class AmbientBrain {
         const localTension = this.computeGlobalTension(waves);
 
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
-        
         const needsCognitiveJump = this.stagnationCounter > 2;
+        
         if (isPositive) {
             this.applyRadiance(epoch, dna, needsCognitiveJump);
         } else {
@@ -149,7 +149,7 @@ export class AmbientBrain {
 
         // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
-            this.currentAccompAxioms = []; // Очистка при смене фразы
+            this.currentAccompAxioms = []; // Очистка старых слоев
             const hasAnchor = !!this.activeAnchorId;
             const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40) + localTension * 0.25;
             
@@ -215,13 +215,13 @@ export class AmbientBrain {
                         this.currentBassTheme = null;
                     }
 
-                    // #ЗАЧЕМ: Поиск ВСЕХ аккомпанирующих сиблингов (до 3-х).
-                    // #ЧТО: ПЛАН №694 — Ищем все роли, начинающиеся на 'accomp'.
+                    // #ЗАЧЕМ: Поддержка многоканального аккомпанемента.
+                    // #ЧТО: ПЛАН №694 — Поиск всех сиблингов (accomp) с лимитом 3.
                     const accompSiblings = poolToUse.filter(ax => 
                         ax.role?.startsWith('accomp') && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
                         ax.barOffset === cloudAxiom.barOffset
-                    ).slice(0, 3); // Ограничение: максимум 3.
+                    ).slice(0, 3);
 
                     this.currentAccompAxioms = accompSiblings.map(ax => ({
                         phrase: stretchToNarrativeLength(decompressCompactPhrase(ax.phrase), 48, this.random),
@@ -265,18 +265,16 @@ export class AmbientBrain {
 
         // --- MULTICHANNEL RENDERING ---
         if (this.currentAccompAxioms.length > 0) {
-            // #ЗАЧЕМ: Распределение сиблингов по инструментальным каналам.
+            // #ЗАЧЕМ: Умный роутинг оцифрованных дорожек по каналам.
             this.currentAccompAxioms.forEach((ax, idx) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = 'accompaniment';
                 
-                // Умный роутинг
                 if (role.includes('piano')) targetType = 'pianoAccompaniment';
-                else if (role.includes('strings') || role.includes('violin') || role.includes('flute')) targetType = 'harmony';
+                else if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) targetType = 'harmony';
                 else if (idx === 1 && !this.currentAccompAxioms.some(a => a.role.includes('strings'))) targetType = 'harmony';
                 else if (idx === 2) targetType = 'pianoAccompaniment';
 
-                // Только если канал разрешен блюпринтом
                 if ((navInfo.currentPart.layers as any)[targetType]) {
                     events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType));
                 }
@@ -300,11 +298,11 @@ export class AmbientBrain {
             }
         }
 
-        if (hints.pianoAccompaniment && this.currentAccompAxioms.length === 0) {
+        if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
             events.push(...this.renderPianoDrops(yogaChord, epoch, localTension));
         }
 
-        if (hints.harmony && this.currentAccompAxioms.length === 0) {
+        if (hints.harmony && this.currentAccompAxioms.filter(a => a.role.includes('strings') || a.role.includes('violin')).length === 0) {
             const harmonyChance = isPositive ? 0.35 : 1.0; 
             if (this.random.next() < harmonyChance) {
                 const timbre = localTension > 0.55 ? 'violin' : 'guitarChords';
@@ -316,8 +314,7 @@ export class AmbientBrain {
         events.push(...this.renderAmbientPercussion(epoch, localTension));
 
         if (hints.sparkles) {
-            let sparkleProb = 0.3;
-            if (this.random.next() < sparkleProb) {
+            if (this.random.next() < 0.3) {
                 events.push(this.renderSparkle(yogaChord, isPositive));
             }
         }

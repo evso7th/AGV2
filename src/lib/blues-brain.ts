@@ -217,7 +217,7 @@ export class BluesBrain {
             let targetType: InstrumentPart = 'accompaniment';
             
             if (role.includes('piano')) targetType = 'pianoAccompaniment';
-            else if (role.includes('strings') || role.includes('violin') || role.includes('flute')) targetType = 'harmony';
+            else if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) targetType = 'harmony';
             else if (idx === 1 && !this.currentAccompAxioms.some(a => a.role.includes('strings'))) targetType = 'harmony';
             else if (idx === 2) targetType = 'pianoAccompaniment';
 
