@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V12.1 — "Singleton Guard".
- * #ЧТО: ПЛАН №687 — Внедрена блокировка повторной инициализации для предотвращения дублирования ударных.
+ * #ЗАЧЕМ: Audio Engine Context V12.2 — "Dynamic Audition".
+ * #ЧТО: ПЛАН №698 — Исправлен хардкод темпа (72) в playRawEvents. Теперь уважает nativeBpm.
  */
 'use client';
 
@@ -58,7 +58,7 @@ interface AudioEngineContextType {
   stopRecording: () => void;
   toggleBroadcast: () => void;
   getWorker: () => Worker | null;
-  playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints) => void;
+  playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => void;
   stopAllSounds: () => void;
 }
 
@@ -153,7 +153,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const initialize = useCallback(async () => {
-    // #ЗАЧЕМ: Синхронная блокировка через Ref предотвращает двойную инициализацию при remount.
     if (isInitialized || initializationInFlightRef.current) return true;
     initializationInFlightRef.current = true;
     setIsInitializing(true);
@@ -232,7 +231,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false); 
         initializationInFlightRef.current = false;
     }
-  }, [toast, scheduleEvents, auth]); // Удалены isInitialized и isInitializing из зависимостей
+  }, [toast, scheduleEvents, auth]);
 
   return (
     <AudioEngineContext.Provider value={{
@@ -283,8 +282,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         }, 
         getWorker: () => workerRef.current, 
-        playRawEvents: (e, h) => {
-            if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, 72, 0, h)
+        playRawEvents: (e, h, t) => {
+            if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, t || 72, 0, h)
         },
         stopAllSounds,
         startRecording: () => setIsRecording(true),

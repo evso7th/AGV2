@@ -387,8 +387,6 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
 
-    // #ЗАЧЕМ: Мгновенное начало воспроизведения.
-    // #ЧТО: Вычитаем минимальный тик из времени всех нот в сессии прослушивания.
     const minTick = Math.min(...phrase.map(n => n.t));
 
     const roleToType: Record<string, string> = {
@@ -418,7 +416,9 @@ export default function HypercubeDashboard() {
                 (axiom.role === 'drums' ? 'melancholic' : 'organ_soft_jazz'))
     };
 
-    playRawEvents(events, hints);
+    // #ЗАЧЕМ: Уважение нативного темпа при прослушивании.
+    const tempo = axiom.nativeBpm || 72;
+    playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
   };
 
@@ -645,8 +645,6 @@ export default function HypercubeDashboard() {
     setSelectedTrackGroups(next);
   };
 
-  // #ЗАЧЕМ: Сортировка оцифрованного наследия внутри трека.
-  // #ЧТО: Сначала по времени (Offset), затем по весу роли (Melody > Bass > Drums > Accomp).
   const getSortedLicks = (licks: any[]) => {
       return [...licks].sort((a, b) => {
           if (a.barOffset !== b.barOffset) return a.barOffset - b.barOffset;
