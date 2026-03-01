@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview Universal Music Theory Utilities V2.1 — "Tempo Inheritance".
- * #ЗАЧЕМ: Реализация наследования темпа из облачных метаданных.
- * #ЧТО: ПЛАН №699 — Пьеса наследует нативный BPM от выбранного Анкора или темпового лидера.
+ * @fileOverview Universal Music Theory Utilities V2.2 — "Genetic Anchor Integrity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №700 — Жесткая блокировка трека (Genetic Lock) для Сиблингов.
  */
 
 import type { 
@@ -40,30 +40,29 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-// #ЗАЧЕМ: Жанровые матрицы переходов.
 const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
     ambient: [
-        [0.6, 0.2, 0.1, 0.1], // From I: stay, go to IV, V, vi
-        [0.4, 0.4, 0.1, 0.1], // From IV
-        [0.5, 0.1, 0.3, 0.1], // From V
-        [0.4, 0.2, 0.2, 0.2]  // From vi
+        [0.6, 0.2, 0.1, 0.1], 
+        [0.4, 0.4, 0.1, 0.1], 
+        [0.5, 0.1, 0.3, 0.1], 
+        [0.4, 0.2, 0.2, 0.2]  
     ],
     trance: [
-        [0.7, 0.1, 0.2],      // From i: stay, go to bVI, bVII
-        [0.3, 0.5, 0.2],      // From bVI
-        [0.4, 0.1, 0.5]       // From bVII
+        [0.7, 0.1, 0.2],      
+        [0.3, 0.5, 0.2],      
+        [0.4, 0.1, 0.5]       
     ],
     blues: [
-        [0.5, 0.4, 0.1],      // From I: stay, go to IV, V
-        [0.6, 0.3, 0.1],      // From IV
-        [0.7, 0.1, 0.2]       // From V
+        [0.5, 0.4, 0.1],      
+        [0.6, 0.3, 0.1],      
+        [0.7, 0.1, 0.2]       
     ]
 };
 
 const GENRE_STATES: Record<string, number[]> = {
-    ambient: [0, 5, 7, 9], // I, IV, V, vi
-    trance: [0, 8, 10],    // i, bVI, bVII
-    blues: [0, 5, 7]       // I, IV, V
+    ambient: [0, 5, 7, 9], 
+    trance: [0, 8, 10],    
+    blues: [0, 5, 7]       
 };
 
 export function decompressCompactPhrase(compact: number[]): any[] {
@@ -187,43 +186,28 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
     return (options[options.length - 1].name || options[options.length - 1].value) as T;
 }
 
-/**
- * #ЗАЧЕМ: Реализация Grid-Markov Harmony.
- * #ЧТО: Генерирует нелинейный гармонический путь, специфичный для жанра.
- */
 export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number, genre: string): GhostChord[] {
     const track: GhostChord[] = [];
     const root = rootNote;
-    
-    // Выбор матрицы по жанру (Ambient по умолчанию)
     const matrix = GENRE_HARMONY_MATRICES[genre] || GENRE_HARMONY_MATRICES.ambient;
     const states = GENRE_STATES[genre] || GENRE_STATES.ambient;
-
     let currentBar = 0;
     let currentStateIdx = 0;
-
     while (currentBar < totalBars) {
-        // Длительности зафиксированы на сетку (2, 4, 8 тактов)
         const durPool = [2, 4, 8];
         const dur = durPool[calculateMusiNum(currentBar, 3, seed, 3)];
-        
         track.push({
             rootNote: root + (states[currentStateIdx] || 0),
             chordType: 'minor',
             bar: currentBar,
             durationBars: Math.min(dur, totalBars - currentBar)
         });
-        
-        // Markov Step
         const rand = (calculateMusiNum(currentBar, 13, seed, 100)) / 100;
         let acc = 0;
         const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
         for (let i = 0; i < currentMatrixRow.length; i++) {
             acc += currentMatrixRow[i];
-            if (rand <= acc) {
-                currentStateIdx = i;
-                break;
-            }
+            if (rand <= acc) { currentStateIdx = i; break; }
         }
         currentBar += dur;
     }
@@ -258,9 +242,21 @@ export function generateSuiteDNA(
 
     if (genre === 'blues') {
         const dynasty = getDynastyForMood(mood, finalSeed);
-        const pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-            BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
-        );
+        let pool: string[] = [];
+        
+        // #ЗАЧЕМ: ПЛАН №700 — Реализация Генетического Замка для блюзовых ликов.
+        if (activeAnchorId && cloudAxioms) {
+            const normalizedAnchor = activeAnchorId.toLowerCase().replace(/[^a-z0-9]/g, '');
+            pool = cloudAxioms
+                .filter(ax => ax.role === 'melody' && ax.compositionId.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedAnchor)
+                .map(ax => ax.id);
+        }
+
+        if (pool.length === 0) {
+            pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
+                BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
+            );
+        }
         const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
         seedLickId = finalPool[calculateMusiNum(finalSeed, 13, 0, finalPool.length)];
         blueprintParts.forEach((part: any, i: number) => {
@@ -270,19 +266,14 @@ export function generateSuiteDNA(
     }
 
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
-    
-    // #ЗАЧЕМ: Grid-Markov Convergence теперь является основным режимом.
     const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
 
-    // --- TEMPO INHERITANCE LOGIC (ПЛАН №699) ---
     let inheritedBpm: number | null = null;
     if (cloudAxioms && cloudAxioms.length > 0) {
         if (activeAnchorId) {
-            // Priority 1: User-selected Anchor track
             const anchorAxiom = cloudAxioms.find(ax => ax.compositionId === activeAnchorId && ax.nativeBpm);
             if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
         } else {
-            // Priority 2: Random tempo leader from relevant cloud licks
             const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);
             if (leaders.length > 0) {
                 const picked = leaders[calculateMusiNum(finalSeed, 29, 0, leaders.length)];

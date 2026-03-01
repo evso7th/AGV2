@@ -40,7 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -319,7 +319,7 @@ export default function HypercubeDashboard() {
         const flattened: any[] = [];
         
         const processAxiom = (ax: any, idx: number, compId: string) => {
-            const role = ax.role || 'melody';
+            const role = (ax.role || 'melody').toLowerCase();
             const phrase = ax.phrase || [];
             
             let maxTick = 0;
@@ -387,10 +387,10 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
 
+    // #ЗАЧЕМ: ПЛАН №697 — Мгновенный старт за счет нормализации времени.
     const minTick = Math.min(...phrase.map(n => n.t));
     const rawRole = (axiom.role || 'melody').toLowerCase();
     
-    // #ЗАЧЕМ: Умное определение типа инструмента для предпрослушивания.
     let type: any = 'melody';
     if (rawRole === 'bass') type = 'bass';
     else if (rawRole === 'drums') type = 'drums';
@@ -399,7 +399,7 @@ export default function HypercubeDashboard() {
     const events: FractalEvent[] = phrase.map((n: any) => {
       let eventType: string = type;
       if (rawRole === 'drums') {
-          // #ЗАЧЕМ: Маппинг ступеней на реальные сэмплы для аудита барабанов.
+          // #ЗАЧЕМ: ПЛАН №701 — Маппинг ступеней для аудита ударных.
           const deg = String(n.deg);
           if (deg === 'R' || deg === '0') eventType = 'drum_kick_reso';
           else if (deg === 'b3' || deg === '3' || deg === '4') eventType = 'drum_snare';
@@ -426,10 +426,10 @@ export default function HypercubeDashboard() {
     else if (type === 'bass') hints.bass = 'bass_jazz_warm';
     else if (type === 'drums') hints.drums = 'melancholic'; 
     else if (type === 'accompaniment') {
-        // #ЗАЧЕМ: Семантический выбор тембра для предпрослушивания.
         hints.accompaniment = rawRole.includes('piano') ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     }
 
+    // #ЗАЧЕМ: ПЛАН №698 — Использование нативного темпа.
     const tempo = axiom.nativeBpm || 72;
     playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
@@ -1169,7 +1169,7 @@ export default function HypercubeDashboard() {
                   <div className="flex gap-3">
                     <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button>
                     <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl">
-                      <Save className={cn("h-5 w-5", isProcessing && "animate-spin")} />
+                      <Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />
                       Inject {selectedIds.size} Axioms
                     </Button>
                   </div>

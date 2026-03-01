@@ -1,6 +1,7 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №650): Расширено логирование для включения Harmony.
+ * #ОБНОВЛЕНО (ПЛАН №700): Реализована система Генетического Замка (Anchor Locking) для Автопилота.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -76,6 +77,8 @@ const Scheduler = {
     initializeEngine(settings: WorkerSettings) {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
+        
+        // #ЗАЧЕМ: ПЛАН №700 — Фиксация трека-лидера (Genetic Lock).
         const activeAnchorId = this.pickActiveAnchor();
 
         const finalSettings = {
@@ -86,8 +89,8 @@ const Scheduler = {
             cloudAxioms: this.cloudAxiomPool 
         };
 
-        const anchorLog = activeAnchorId ? ` | Anchor: ${activeAnchorId}` : '';
-        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})${anchorLog}`, 'color: #FFD700; font-weight:bold;');
+        const lockLog = activeAnchorId ? ` | [Genetic Lock: ${activeAnchorId.toUpperCase()}]` : '';
+        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})${lockLog}`, 'color: #FFD700; font-weight:bold;');
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
@@ -177,13 +180,11 @@ const Scheduler = {
         const axioms = payload.activeAxioms || {};
         const narration = payload.narrative || 'Developing story...';
         
-        // #ЗАЧЕМ: Полная прозрачность ансамбля.
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
         
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
-        // #ЗАЧЕМ: Вывод аксиомы Гармонии в лог.
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
 
         console.log(
