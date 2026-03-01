@@ -322,7 +322,6 @@ export default function HypercubeDashboard() {
             const role = ax.role || 'melody';
             const phrase = ax.phrase || [];
             
-            // #ЗАЧЕМ: Автоматический расчет Bars и NoteCount для прозрачности.
             let maxTick = 0;
             for(let i=0; i<phrase.length; i+=4) {
                 const end = (phrase[i] || 0) + (phrase[i+1] || 0);
@@ -386,6 +385,12 @@ export default function HypercubeDashboard() {
     stopAllSounds();
 
     const phrase = decompressCompactPhrase(axiom.phrase);
+    if (phrase.length === 0) return;
+
+    // #ЗАЧЕМ: Мгновенное начало воспроизведения.
+    // #ЧТО: Вычитаем минимальный тик из времени всех нот в сессии прослушивания.
+    const minTick = Math.min(...phrase.map(n => n.t));
+
     const roleToType: Record<string, string> = {
         'melody': 'melody',
         'bass': 'bass',
@@ -397,7 +402,7 @@ export default function HypercubeDashboard() {
     const events: FractalEvent[] = phrase.map((n: any) => ({
       type: type,
       note: (axiom.role === 'bass' ? 31 : (axiom.role === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
-      time: n.t / 3, 
+      time: (n.t - minTick) / 3, 
       duration: n.d / 3,
       weight: 0.8,
       technique: n.tech as any,
@@ -638,6 +643,21 @@ export default function HypercubeDashboard() {
       }
     });
     setSelectedTrackGroups(next);
+  };
+
+  // #ЗАЧЕМ: Сортировка оцифрованного наследия внутри трека.
+  // #ЧТО: Сначала по времени (Offset), затем по весу роли (Melody > Bass > Drums > Accomp).
+  const getSortedLicks = (licks: any[]) => {
+      return [...licks].sort((a, b) => {
+          if (a.barOffset !== b.barOffset) return a.barOffset - b.barOffset;
+          const roleOrder = ['melody', 'bass', 'drums', 'accomp'];
+          const getRoleWeight = (r: string) => {
+              const base = r.split(' ')[0].toLowerCase(); 
+              const idx = roleOrder.indexOf(base);
+              return idx === -1 ? 99 : idx;
+          };
+          return getRoleWeight(a.role) - getRoleWeight(b.role);
+      });
   };
 
   return (
@@ -889,7 +909,7 @@ export default function HypercubeDashboard() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border/20">
-                                {licks.map((ax: any) => (
+                                {getSortedLicks(licks).map((ax: any) => (
                                   <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
                                     <td className="p-3 pl-12">
                                       {editingAxiomId === ax.id ? (
@@ -1163,7 +1183,7 @@ export default function HypercubeDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/30">
-                        {stagedAxioms.map((ax) => (
+                        {getSortedLicks(stagedAxioms).map((ax) => (
                           <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
                             <td className="p-4 text-center">
                               <Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => {
