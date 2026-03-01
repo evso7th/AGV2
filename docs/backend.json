@@ -15,11 +15,11 @@
     },
     "HeritageAxiom": {
       "title": "HeritageAxiom",
-      "description": "A musical fragment (lick) from the digitized human heritage.",
+      "description": "A musical fragment (lick) from the digitized human heritage. Roles can be specific (e.g., 'accomp piano') for multi-channel reconstruction.",
       "type": "object",
       "properties": {
         "phrase": { "type": "array", "items": { "type": "number" }, "description": "Compressed MIDI data [t, d, deg, tech]" },
-        "role": { "type": "string", "enum": ["melody", "bass", "drums", "accomp"] },
+        "role": { "type": "string", "description": "Role of the fragment: melody, bass, drums, or 'accomp [instrument_name]'" },
         "compositionId": { "type": "string", "description": "Original track name" },
         "genre": { "type": "array", "items": { "type": "string" } },
         "mood": { "type": "array", "items": { "type": "string" } },

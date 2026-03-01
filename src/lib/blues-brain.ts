@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -8,7 +9,8 @@ import {
   BluesGuitarRiff,
   BluesMelody,
   BluesCognitiveState,
-  CommonMood
+  CommonMood,
+  InstrumentPart
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
@@ -26,8 +28,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V171.0 — "Intelligent Mood Convergence".
- * #ЧТО: ПЛАН №693 — Внедрена многоступенчатая фильтрация настроения внутри Анкоров.
+ * #ЗАЧЕМ: Блюзовый Мозг V172.0 — "Multichannel Reconstruction".
+ * #ЧТО: ПЛАН №694 — Внедрена поддержка до 3-х независимых партий аккомпанемента.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -66,7 +68,9 @@ export class BluesBrain {
   private currentMelodyAxiomObj: any | null = null;
   private currentAxiom: any[] = [];
   private currentBassAxiom: any[] = [];
-  private currentAccompAxiom: any[] = [];
+  
+  // #ЗАЧЕМ: Массив для поддержки многоканального аккомпанемента.
+  private currentAccompAxioms: { phrase: any[], role: string }[] = [];
   
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
@@ -206,14 +210,29 @@ export class BluesBrain {
     
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
+    } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
+        // #ЗАЧЕМ: Отработка многоканального Наследия.
+        this.currentAccompAxioms.forEach((ax, idx) => {
+            const role = ax.role.toLowerCase();
+            let targetType: InstrumentPart = 'accompaniment';
+            
+            if (role.includes('piano')) targetType = 'pianoAccompaniment';
+            else if (role.includes('strings') || role.includes('violin') || role.includes('flute')) targetType = 'harmony';
+            else if (idx === 1 && !this.currentAccompAxioms.some(a => a.role.includes('strings'))) targetType = 'harmony';
+            else if (idx === 2) targetType = 'pianoAccompaniment';
+
+            if ((navInfo.currentPart.layers as any)[targetType]) {
+                accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType));
+            }
+        });
     } else if (hints.accompaniment) {
-        accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch));
+        accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord));
     }
 
     events.push(...accompanimentEvents);
     events.push(...bassEvents);
 
-    if (hints.pianoAccompaniment) {
+    if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
 
@@ -224,7 +243,7 @@ export class BluesBrain {
     }
     
     let harAxiom = 'none';
-    if (hints.harmony) {
+    if (hints.harmony && this.currentAccompAxioms.filter(a => a.role.includes('strings') || a.role.includes('violin')).length === 0) {
         const harEvents = this.renderDerivativeHarmony(currentChord, epoch);
         events.push(...harEvents);
         harAxiom = harEvents[0]?.chordName || 'Active';
@@ -239,7 +258,7 @@ export class BluesBrain {
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
             drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
-            accompaniment: this.currentAccompAxiom.length > 0 ? 'Heritage' : 'Adaptive',
+            accompaniment: this.currentAccompAxioms.length > 0 ? `${this.currentAccompAxioms.length} layers` : 'Adaptive',
             harmony: harAxiom
         },
         narrative: `Bar ${epoch % 12 + 1}/12. Ensemble synergy active.`
@@ -267,27 +286,23 @@ export class BluesBrain {
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       this.currentBassAxiom = []; 
-      this.currentAccompAxiom = [];
+      this.currentAccompAxioms = [];
       this.ensembleStatus = 'ADAPTIVE';
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           
-          // 1. Фильтруем по Роли и Жанру
           const basePool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               return genreArr.includes(this.config.genre);
           });
 
-          // 2. Фильтруем по Анкору (если есть)
           const anchorPool = targetAnchor 
               ? basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor)
               : basePool;
 
           if (anchorPool.length > 0) {
-              // 3. #ЗАЧЕМ: Интеллектуальная фильтрация по настроению ВНУТРИ трека.
-              // #ЧТО: ПЛАН №693 — Сначала ищем совпадение по mood или commonMood.
               const commonMoodFilter = MOOD_TO_COMMON[this.mood];
               const moodMatched = anchorPool.filter(ax => {
                   const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -295,7 +310,6 @@ export class BluesBrain {
                   return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
               });
 
-              // Если есть подходящие по настроению — берем их. Иначе берем любые из Анкора.
               const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
               
               let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
@@ -323,16 +337,21 @@ export class BluesBrain {
                   this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
               }
 
-              const accompSibling = this.config.cloudAxioms.find(ax => 
-                  ax.role === 'accomp' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
+              // #ЗАЧЕМ: Тройной симбиоз с лимитом 3 канала.
+              const accompSiblings = this.config.cloudAxioms.filter(ax => 
+                  ax.role?.startsWith('accomp') && 
+                  this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
-              );
-              if (accompSibling) {
-                  const rawAccomp = decompressCompactPhrase(accompSibling.phrase);
-                  this.currentAccompAxiom = stretchToNarrativeLength(rawAccomp, 48, this.random);
+              ).slice(0, 3);
+
+              if (accompSiblings.length > 0) {
+                  this.currentAccompAxioms = accompSiblings.map(ax => ({
+                      phrase: stretchToNarrativeLength(decompressCompactPhrase(ax.phrase), 48, this.random),
+                      role: ax.role
+                  }));
               }
 
-              if (bassSibling || accompSibling) {
+              if (bassSibling || accompSiblings.length > 0) {
                   this.ensembleStatus = 'SIBLING';
               }
 
@@ -512,24 +531,21 @@ export class BluesBrain {
       return events;
   }
 
-  private renderHeritageAccompaniment(chord: GhostChord, epoch: number): FractalEvent[] {
-      if (this.currentAccompAxiom.length > 0) {
-          const barInPhrase = epoch % 4;
-          const barOffset = barInPhrase * 12;
-          const barNotes = this.currentAccompAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
-          
-          return barNotes.map(n => ({
-              type: 'accompaniment',
-              note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-              time: (n.t % 12) / 3,
-              duration: n.d / 3,
-              weight: 0.55,
-              technique: 'swell',
-              dynamics: 'p',
-              phrasing: 'legato'
-          }));
-      }
-      return this.renderAdaptiveAccompaniment(epoch, chord);
+  private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart): FractalEvent[] {
+      const barInPhrase = epoch % 4;
+      const barOffset = barInPhrase * 12;
+      const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+      
+      return barNotes.map(n => ({
+          type: type,
+          note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+          time: (n.t % 12) / 3,
+          duration: n.d / 3,
+          weight: 0.55,
+          technique: 'swell',
+          dynamics: 'p',
+          phrasing: 'legato'
+      }));
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord): FractalEvent[] {
