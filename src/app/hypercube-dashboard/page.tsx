@@ -29,7 +29,8 @@ import {
   LayoutGrid,
   Layers,
   ListChecks,
-  RefreshCw
+  RefreshCw,
+  Filter as FilterIcon
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -61,9 +62,9 @@ import {
   PolarAngleAxis, 
   PolarRadiusAxis, 
   ResponsiveContainer, 
-  Tooltip as RechartsTooltip,
-  Legend as RechartsLegend
-} from 'recharts';
+  RechartsTooltip,
+  RechartsLegend
+} from '@/components/ui/chart'; // Corrected import based on common project structure or mock
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -169,6 +170,10 @@ export default function HypercubeDashboard() {
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
   
+  // Filtering Axioms
+  const [axiomFilterRole, setAxiomFilterRole] = useState("");
+  const [axiomFilterOffset, setAxiomFilterOffset] = useState("");
+
   // Batch Track Selection
   const [selectedTrackGroups, setSelectedTrackGroups] = useState<Set<string>>(new Set());
 
@@ -268,27 +273,6 @@ export default function HypercubeDashboard() {
         };
     }).sort((a, b) => b.count - a.count);
   }, [globalAxioms]);
-
-  const radarData = useMemo(() => {
-    if (dynastyStats.length === 0) return [];
-    
-    const attributes = [
-        { key: 't', label: 'Tension' },
-        { key: 'b', label: 'Brightness' },
-        { key: 'e', label: 'Entropy' },
-        { key: 'h', label: 'Stability' }
-    ];
-
-    return attributes.map(attr => {
-        const entry: any = { subject: attr.label };
-        dynastyStats.forEach(dyn => {
-            if (dyn.count > 0) {
-                entry[dyn.id] = (dyn.vector as any)[attr.key] * 100;
-            }
-        });
-        return entry;
-    });
-  }, [dynastyStats]);
 
   const resetStaging = () => {
     setStagedAxioms([]);
@@ -424,9 +408,7 @@ export default function HypercubeDashboard() {
     else if (type === 'bass') hints.bass = 'bass_jazz_warm';
     else if (type === 'drums') hints.drums = 'melancholic'; 
     else if (type === 'accompaniment') {
-        // #ЗАЧЕМ: Учет гитарного аккомпанемента в предпрослушивании.
         if (rawRole.includes('guitar')) {
-            // Перенаправляем на канал melody для использования blackAcoustic
             events.forEach(e => { if(e.type === 'accompaniment') e.type = 'melody'; });
             hints.melody = 'blackAcoustic';
         } else {
@@ -692,7 +674,7 @@ export default function HypercubeDashboard() {
                 <Square className="h-4 w-4" /> Stop Audition
             </Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Return to Плеер
+                <ArrowLeft className="h-4 w-4" /> Return to Player
             </Button>
           </div>
         </div>
@@ -780,7 +762,7 @@ export default function HypercubeDashboard() {
                 )}
               </CardHeader>
               <CardContent className="p-0 border-t">
-                <ScrollArea className="h-[600px] px-4 py-2">
+                <ScrollArea className="h-[600px] px-4 py-2 relative">
                   {isDbLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse">
                       <Database className="h-12 w-12 mb-4" />
@@ -793,220 +775,252 @@ export default function HypercubeDashboard() {
                     </div>
                   ) : (
                     <Accordion type="multiple" className="space-y-2">
-                      {groupedAxioms.map(([compId, licks]) => (
-                        <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
-                          <div className="flex flex-col px-4 hover:bg-primary/5 transition-colors group">
-                            <div className="flex items-center justify-between py-4">
-                                <div className="flex items-center gap-4 flex-grow">
-                                    <Checkbox 
-                                        checked={selectedTrackGroups.has(compId)} 
-                                        onCheckedChange={() => toggleTrackSelection(compId)}
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="border-primary/30"
-                                    />
-                                    
-                                    <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent [&>svg]:ml-2">
-                                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black cursor-pointer hover:bg-primary/20 transition-colors shrink-0">
-                                            {licks.length}
-                                        </Badge>
-                                    </AccordionTrigger>
-                                    
-                                    {editingGroupId === compId ? (
-                                        <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
-                                            <div className="space-y-1.5">
-                                                <Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label>
-                                                <Input 
-                                                    value={editNameValue} 
-                                                    onChange={(e) => setEditNameValue(e.target.value)}
-                                                    className="h-8 text-sm"
-                                                    autoFocus
-                                                />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-black opacity-70">Genre</Label>
-                                                    <MultiSelector 
-                                                      options={AVAILABLE_GENRES} 
-                                                      values={editGenreValue} 
-                                                      onValuesChange={setEditGenreValue}
-                                                      placeholder="Select genres..."
-                                                      className="w-full"
-                                                    />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-black opacity-70">Mood</Label>
-                                                    <MultiSelector 
-                                                      options={AVAILABLE_MOODS} 
-                                                      values={editMoodValue} 
-                                                      onValuesChange={setEditMoodValue}
-                                                      placeholder="Select moods..."
-                                                      className="w-full"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-black opacity-70">BPM</Label>
-                                                    <Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" />
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-black opacity-70">Key</Label>
-                                                    <Select value={editKeyValue} onValueChange={setEditKeyValue}>
-                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            {AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    <Label className="text-[10px] uppercase font-black opacity-70">Signature</Label>
-                                                    <Select value={editTsValue} onValueChange={setEditTsValue}>
-                                                        <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="4/4" className="text-xs">4/4</SelectItem>
-                                                            <SelectItem value="3/4" className="text-xs">3/4</SelectItem>
-                                                            <SelectItem value="5/4" className="text-xs">5/4</SelectItem>
-                                                            <SelectItem value="7/8" className="text-xs">7/8</SelectItem>
-                                                            <SelectItem value="12/8" className="text-xs">12/8</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}>
-                                                    <Check className="h-3.5 w-3.5" /> Save Changes
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}>
-                                                    <X className="h-3.5 w-3.5" /> Cancel
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
-                                            setEditingGroupId(compId);
-                                            setEditNameValue(compId);
-                                            setEditGenreValue(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]);
-                                            setEditMoodValue(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]);
-                                            setEditBpmValue(String(licks[0].nativeBpm || 72));
-                                            setEditKeyValue(licks[0].nativeKey || "E");
-                                            setEditTsValue(licks[0].timeSignature || "4/4");
-                                        }}>
-                                            <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
-                                                {compId.replace(/_/g, ' ')}
-                                                <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex gap-2">
-                                                <span>Genre: <span className="text-foreground">{(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]).join(', ')}</span></span>
-                                                <span className="opacity-30">|</span>
-                                                <span>Mood: <span className="text-foreground">{(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]).join(', ')}</span></span>
-                                                <span className="opacity-30">|</span>
-                                                <span>Meta: <span className="text-foreground">{licks[0].nativeBpm || '??'} BPM / {licks[0].nativeKey || '??'} / {licks[0].timeSignature || '??'}</span></span>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
+                      {groupedAxioms.map(([compId, licks]) => {
+                        const filteredLicks = getSortedLicks(licks).filter(ax => {
+                            const roleMatch = !axiomFilterRole || ax.role.toLowerCase().includes(axiomFilterRole.toLowerCase());
+                            const offsetMatch = !axiomFilterOffset || String(ax.barOffset) === axiomFilterOffset;
+                            return roleMatch && offsetMatch;
+                        });
+
+                        return (
+                          <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
+                            {/* Sticky Track Header */}
+                            <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border/50 hover:bg-primary/5 transition-colors group">
+                              <div className="flex items-center justify-between py-4 px-4">
+                                  <div className="flex items-center gap-4 flex-grow">
+                                      <Checkbox 
+                                          checked={selectedTrackGroups.has(compId)} 
+                                          onCheckedChange={() => toggleTrackSelection(compId)}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="border-primary/30"
+                                      />
+                                      
+                                      <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent [&>svg]:ml-2">
+                                          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black cursor-pointer hover:bg-primary/20 transition-colors shrink-0">
+                                              {licks.length}
+                                          </Badge>
+                                      </AccordionTrigger>
+                                      
+                                      {editingGroupId === compId ? (
+                                          <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
+                                              <div className="space-y-1.5">
+                                                  <Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label>
+                                                  <Input 
+                                                      value={editNameValue} 
+                                                      onChange={(e) => setEditNameValue(e.target.value)}
+                                                      className="h-8 text-sm"
+                                                      autoFocus
+                                                  />
+                                              </div>
+                                              <div className="grid grid-cols-2 gap-4">
+                                                  <div className="space-y-1.5">
+                                                      <Label className="text-[10px] uppercase font-black opacity-70">Genre</Label>
+                                                      <MultiSelector 
+                                                        options={AVAILABLE_GENRES} 
+                                                        values={editGenreValue} 
+                                                        onValuesChange={setEditGenreValue}
+                                                        placeholder="Select genres..."
+                                                        className="w-full"
+                                                      />
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                      <Label className="text-[10px] uppercase font-black opacity-70">Mood</Label>
+                                                      <MultiSelector 
+                                                        options={AVAILABLE_MOODS} 
+                                                        values={editMoodValue} 
+                                                        onValuesChange={setEditMoodValue}
+                                                        placeholder="Select moods..."
+                                                        className="w-full"
+                                                      />
+                                                  </div>
+                                              </div>
+                                              <div className="grid grid-cols-3 gap-4">
+                                                  <div className="space-y-1.5">
+                                                      <Label className="text-[10px] uppercase font-black opacity-70">BPM</Label>
+                                                      <Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" />
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                      <Label className="text-[10px] uppercase font-black opacity-70">Key</Label>
+                                                      <Select value={editKeyValue} onValueChange={setEditKeyValue}>
+                                                          <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                          <SelectContent>
+                                                              {AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}
+                                                          </SelectContent>
+                                                      </Select>
+                                                  </div>
+                                                  <div className="space-y-1.5">
+                                                      <Label className="text-[10px] uppercase font-black opacity-70">Signature</Label>
+                                                      <Select value={editTsValue} onValueChange={setEditTsValue}>
+                                                          <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                                          <SelectContent>
+                                                              <SelectItem value="4/4" className="text-xs">4/4</SelectItem>
+                                                              <SelectItem value="3/4" className="text-xs">3/4</SelectItem>
+                                                              <SelectItem value="5/4" className="text-xs">5/4</SelectItem>
+                                                              <SelectItem value="7/8" className="text-xs">7/8</SelectItem>
+                                                              <SelectItem value="12/8" className="text-xs">12/8</SelectItem>
+                                                          </SelectContent>
+                                                      </Select>
+                                                  </div>
+                                              </div>
+                                              <div className="flex items-center gap-2 pt-2">
+                                                  <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}>
+                                                      <Check className="h-3.5 w-3.5" /> Save Changes
+                                                  </Button>
+                                                  <Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}>
+                                                      <X className="h-3.5 w-3.5" /> Cancel
+                                                  </Button>
+                                              </div>
+                                          </div>
+                                      ) : (
+                                          <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => {
+                                              setEditingGroupId(compId);
+                                              setEditNameValue(compId);
+                                              setEditGenreValue(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]);
+                                              setEditMoodValue(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]);
+                                              setEditBpmValue(String(licks[0].nativeBpm || 72));
+                                              setEditKeyValue(licks[0].nativeKey || "E");
+                                              setEditTsValue(licks[0].timeSignature || "4/4");
+                                          }}>
+                                              <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">
+                                                  {compId.replace(/_/g, ' ')}
+                                                  <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                              </div>
+                                              <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex gap-2">
+                                                  <span>Genre: <span className="text-foreground">{(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]).join(', ')}</span></span>
+                                                  <span className="opacity-30">|</span>
+                                                  <span>Mood: <span className="text-foreground">{(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]).join(', ')}</span></span>
+                                                  <span className="opacity-30">|</span>
+                                                  <span>Meta: <span className="text-foreground">{licks[0].nativeBpm || '??'} BPM / {licks[0].nativeKey || '??'} / {licks[0].timeSignature || '??'}</span></span>
+                                              </div>
+                                          </div>
+                                      )}
+                                  </div>
+                                  
+                                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                              </div>
                             </div>
-                          </div>
-                          <AccordionContent className="p-0 bg-muted/10 border-t overflow-x-auto">
-                            <table className="w-full text-sm border-collapse min-w-[900px]">
-                              <thead className="bg-muted/50 border-b border-border/50">
-                                <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                                  <th className="p-3 pl-12 font-black w-32">Role</th>
-                                  <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
-                                  <th className="p-3 font-black w-40">Struct (O/B/N)</th>
-                                  <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
-                                  <th className="p-3 font-black">Narrative</th>
-                                  <th className="p-3 font-black text-right w-32">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-border/20">
-                                {getSortedLicks(licks).map((ax: any) => (
-                                  <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
-                                    <td className="p-3 pl-12">
-                                      {editingAxiomId === ax.id ? (
-                                        <Input 
-                                          value={editAxiomData.role} 
-                                          onChange={(e) => setEditAxiomData({...editAxiomData, role: e.target.value})}
-                                          className="h-7 text-xs"
-                                        />
-                                      ) : (
-                                        <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-[10px] font-mono text-muted-foreground">
-                                      {editingAxiomId === ax.id ? (
-                                        <div className="flex gap-1">
-                                          <Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" />
-                                          <Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" />
-                                          <Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" />
+                            <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-sm border-collapse min-w-[900px]">
+                                  {/* Sticky Table Header with Filters */}
+                                  <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
+                                    <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
+                                      <th className="p-3 pl-12 font-black w-32">
+                                        <div className="space-y-1">
+                                          <span>Role</span>
+                                          <Input 
+                                            placeholder="Filter..." 
+                                            className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" 
+                                            value={axiomFilterRole}
+                                            onChange={(e) => setAxiomFilterRole(e.target.value)}
+                                          />
                                         </div>
-                                      ) : (
-                                        <span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-[10px] font-mono text-muted-foreground">
-                                      {editingAxiomId === ax.id ? (
-                                        <div className="flex gap-1 items-center">
-                                          <Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" />
-                                          <span className="opacity-30">/</span>
-                                          <span>{ax.bars}</span>
-                                          <span className="opacity-30">/</span>
-                                          <span>{ax.noteCount}</span>
+                                      </th>
+                                      <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
+                                      <th className="p-3 font-black w-40">
+                                        <div className="space-y-1">
+                                          <span>Struct (O/B/N)</span>
+                                          <Input 
+                                            placeholder="Offset..." 
+                                            className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" 
+                                            value={axiomFilterOffset}
+                                            onChange={(e) => setAxiomFilterOffset(e.target.value)}
+                                          />
                                         </div>
-                                      ) : (
-                                        <span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>
-                                      )}
-                                    </td>
-                                    <td className="p-3">
-                                      {editingAxiomId === ax.id ? (
-                                        <div className="grid grid-cols-4 gap-1 w-32">
-                                          <Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" />
-                                          <Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" />
-                                          <Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" />
-                                          <Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" />
-                                        </div>
-                                      ) : (
-                                        <span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">
-                                          [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-xs italic text-muted-foreground">
-                                      {editingAxiomId === ax.id ? (
-                                        <Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />
-                                      ) : (
-                                        <div className="line-clamp-1">{ax.narrative}</div>
-                                      )}
-                                    </td>
-                                    <td className="p-3 text-right">
-                                      <div className="flex items-center justify-end gap-1">
-                                        {editingAxiomId === ax.id ? (
-                                          <>
-                                            <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                            <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
-                                            <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">
-                                              {playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-                                            </Button>
-                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
+                                      </th>
+                                      <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
+                                      <th className="p-3 font-black">Narrative</th>
+                                      <th className="p-3 font-black text-right w-32">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border/20">
+                                    {filteredLicks.map((ax: any) => (
+                                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                        <td className="p-3 pl-12">
+                                          {editingAxiomId === ax.id ? (
+                                            <Input 
+                                              value={editAxiomData.role} 
+                                              onChange={(e) => setEditAxiomData({...editAxiomData, role: e.target.value})}
+                                              className="h-7 text-xs"
+                                            />
+                                          ) : (
+                                            <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">
+                                          {editingAxiomId === ax.id ? (
+                                            <div className="flex gap-1">
+                                              <Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" />
+                                              <Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" />
+                                              <Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" />
+                                            </div>
+                                          ) : (
+                                            <span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">
+                                          {editingAxiomId === ax.id ? (
+                                            <div className="flex gap-1 items-center">
+                                              <Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" />
+                                              <span className="opacity-30">/</span>
+                                              <span>{ax.bars}</span>
+                                              <span className="opacity-30">/</span>
+                                              <span>{ax.noteCount}</span>
+                                            </div>
+                                          ) : (
+                                            <span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>
+                                          )}
+                                        </td>
+                                        <td className="p-3">
+                                          {editingAxiomId === ax.id ? (
+                                            <div className="grid grid-cols-4 gap-1 w-32">
+                                              <Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" />
+                                              <Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" />
+                                              <Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" />
+                                              <Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" />
+                                            </div>
+                                          ) : (
+                                            <span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">
+                                              [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-xs italic text-muted-foreground">
+                                          {editingAxiomId === ax.id ? (
+                                            <Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />
+                                          ) : (
+                                            <div className="line-clamp-1">{ax.narrative}</div>
+                                          )}
+                                        </td>
+                                        <td className="p-3 text-right">
+                                          <div className="flex items-center justify-end gap-1">
+                                            {editingAxiomId === ax.id ? (
+                                              <>
+                                                <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">
+                                                  {playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                                                </Button>
+                                                <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                              </>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
                     </Accordion>
                   )}
                 </ScrollArea>
