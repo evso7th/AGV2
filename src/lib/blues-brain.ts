@@ -26,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V170.0 — "Triple Heritage Symbiosis".
- * #ЧТО: ПЛАН №691 — Активировано использование аксиом аккомпанемента из облака.
+ * #ЗАЧЕМ: Блюзовый Мозг V171.0 — "Intelligent Mood Convergence".
+ * #ЧТО: ПЛАН №693 — Внедрена многоступенчатая фильтрация настроения внутри Анкоров.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -207,7 +207,6 @@ export class BluesBrain {
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
     } else if (hints.accompaniment) {
-        // #ЗАЧЕМ: Приоритет облачного аккомпанемента над "одинаковой фигней".
         accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch));
     }
 
@@ -273,31 +272,40 @@ export class BluesBrain {
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          const cloudPool = this.config.cloudAxioms.filter(ax => {
+          
+          // 1. Фильтруем по Роли и Жанру
+          const basePool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
-              
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-              if (!genreArr.includes(this.config.genre)) return false;
+              return genreArr.includes(this.config.genre);
+          });
 
-              if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
-              
-              if (!targetAnchor) {
-                  const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+          // 2. Фильтруем по Анкору (если есть)
+          const anchorPool = targetAnchor 
+              ? basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor)
+              : basePool;
+
+          if (anchorPool.length > 0) {
+              // 3. #ЗАЧЕМ: Интеллектуальная фильтрация по настроению ВНУТРИ трека.
+              // #ЧТО: ПЛАН №693 — Сначала ищем совпадение по mood или commonMood.
+              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+              const moodMatched = anchorPool.filter(ax => {
                   const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                   const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                   return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
-              }
-              return true;
-          });
+              });
 
-          if (cloudPool.length > 0) {
-              let freshPool = cloudPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              // Если есть подходящие по настроению — берем их. Иначе берем любые из Анкора.
+              const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
+              
+              let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
               if (freshPool.length === 0) {
-                  const cloudPoolIds = new Set(cloudPool.map(ax => ax.id));
-                  this.state.recentLicks = this.state.recentLicks.filter(id => !cloudPoolIds.has(id));
-                  freshPool = cloudPool;
+                  const poolIds = new Set(finalPool.map(ax => ax.id));
+                  this.state.recentLicks = this.state.recentLicks.filter(id => !poolIds.has(id));
+                  freshPool = finalPool;
               }
               const selected = freshPool[this.random.nextInt(freshPool.length)];
+              
               this.currentLickId = selected.id;
               this.currentTrackName = selected.compositionId; 
               this.currentMelodyAxiomObj = selected;
@@ -306,7 +314,6 @@ export class BluesBrain {
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
               
-              // #ЗАЧЕМ: Поиск басового сиблинга.
               const bassSibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
@@ -316,7 +323,6 @@ export class BluesBrain {
                   this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
               }
 
-              // #ЗАЧЕМ: Поиск сиблинга аккомпанемента для полноты ансамбля.
               const accompSibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'accomp' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
@@ -506,10 +512,6 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: Рендеринг аккомпанемента на основе Наследия (ПЛАН №691).
-   * #ЧТО: Если есть облачная аксиома 'accomp', она исполняется приоритетно.
-   */
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number): FractalEvent[] {
       if (this.currentAccompAxiom.length > 0) {
           const barInPhrase = epoch % 4;
@@ -527,7 +529,6 @@ export class BluesBrain {
               phrasing: 'legato'
           }));
       }
-      // Fallback к процедурному патерну
       return this.renderAdaptiveAccompaniment(epoch, chord);
   }
 

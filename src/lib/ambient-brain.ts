@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v22.4 — "Universal Heritage Synergy".
- * #ЗАЧЕМ: Реализация полной синергии ансамбля для Эмбиента.
- * #ЧТО: ПЛАН №692 — Аккомпанемент теперь тоже ищется в облачных аксиомах.
+ * @fileOverview Ambient Brain v22.5 — "Intelligent Mood Convergence".
+ * #ЗАЧЕМ: Устранение музыкальных нестыковок внутри Анкоров.
+ * #ЧТО: ПЛАН №693 — Внедрена фильтрация по настроению аксиомы даже при активном фильтре трека.
  */
 
 import type { 
@@ -157,24 +157,30 @@ export class AmbientBrain {
                     const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
                     const commonMoodFilter = MOOD_TO_COMMON[this.mood];
 
-                    const cloudPool = poolToUse.filter(ax => {
+                    // 1. Фильтруем по Роли и Жанру
+                    const basePool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
-                        
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                        if (!genreArr.includes(this.genre)) return false;
+                        return genreArr.includes(this.genre);
+                    });
 
-                        if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
-                        
-                        if (!targetAnchor) {
+                    // 2. Фильтруем по Анкору (если есть)
+                    const anchorPool = targetAnchor 
+                        ? basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor)
+                        : basePool;
+
+                    // 3. #ЗАЧЕМ: Интеллектуальная фильтрация по настроению ВНУТРИ трека.
+                    // #ЧТО: ПЛАН №693 — Сначала ищем точное совпадение настроения Аксиомы.
+                    if (anchorPool.length > 0) {
+                        const moodMatched = anchorPool.filter(ax => {
                             const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                             const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                             return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
-                        }
-                        return true;
-                    });
-                    
-                    if (cloudPool.length > 0) {
-                        cloudAxiom = cloudPool[this.random.nextInt(cloudPool.length)];
+                        });
+
+                        // Если есть подходящие по настроению — берем их. Иначе берем любые из Анкора.
+                        const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
+                        cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
                     }
                 }
 
@@ -192,7 +198,6 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                     
-                    // --- SIBLING SEARCH (BASS & ACCOMP) ---
                     const bassSibling = poolToUse.find(ax => 
                         ax.role === 'bass' && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
@@ -211,7 +216,6 @@ export class AmbientBrain {
                         this.currentBassTheme = null;
                     }
 
-                    // #ЗАЧЕМ: Поиск сиблинга для аккомпанемента в Эмбиенте.
                     const accompSibling = poolToUse.find(ax => 
                         ax.role === 'accomp' && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
@@ -262,7 +266,6 @@ export class AmbientBrain {
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        // #ЗАЧЕМ: Выбор между Наследием и Процедурным падом.
         if (hints.accompaniment && this.currentAccompTheme && epoch < this.currentAccompTheme.endBar) {
             events.push(...this.renderHeritageAccompaniment(yogaChord, epoch));
         } else {
@@ -324,7 +327,7 @@ export class AmbientBrain {
                 melodyTrack: narrativeSource,
                 ensemble: this.ensembleStatus,
                 bass: this.currentBassTheme ? 'Sibling' : 'Steady',
-                accompaniment: this.currentAccompTheme ? 'Heritage' : 'Adaptive',
+                accompaniment: this.currentAccompAxiom.length > 0 ? 'Heritage' : 'Adaptive',
                 harmony: hints.harmony || 'none'
             },
             narrative
@@ -431,9 +434,6 @@ export class AmbientBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Рендеринг аккомпанемента из Наследия для Эмбиента.
-     */
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number): FractalEvent[] {
         if (!this.currentAccompTheme) return [];
         const barInPhrase = epoch % 4;
@@ -513,7 +513,7 @@ export class AmbientBrain {
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
-        const isMinor = chord.chordType === 'minor' || chord.chordType === 'dimнished';
+        const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const pattern = [
             { t: 0, n: root, d: 0.7, w: 0.85 },
             { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },
@@ -589,7 +589,7 @@ export class AmbientBrain {
         };
     }
 
-    private renderSfx(tension: number, rules?: any): FractalEvent[] {
+    private renderSfx(tension: number, options?: any): FractalEvent[] {
         return [{
             type: 'sfx',
             note: 60,
@@ -599,7 +599,7 @@ export class AmbientBrain {
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'staccato',
-            params: { mood: this.mood, genre: this.genre, rules }
+            params: { mood: this.mood, genre: this.genre, options }
         }];
     }
 
