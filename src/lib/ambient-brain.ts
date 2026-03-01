@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain v22.3 — "Metadata Sovereignty".
- * #ЗАЧЕМ: Реализация закона Строгого Маппинга и суверенитета пользователя.
- * #ЧТО: ПЛАН №690 — Аксиомы фильтруются строго по жанру. Нарратив исправлен.
+ * @fileOverview Ambient Brain v22.4 — "Universal Heritage Synergy".
+ * #ЗАЧЕМ: Реализация полной синергии ансамбля для Эмбиента.
+ * #ЧТО: ПЛАН №692 — Аккомпанемент теперь тоже ищется в облачных аксиомах.
  */
 
 import type { 
@@ -66,6 +66,7 @@ export class AmbientBrain {
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
+    private currentAccompTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     
     private currentTrackName: string = '';
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
@@ -146,7 +147,6 @@ export class AmbientBrain {
         // --- MELODY THEME LOGIC ---
         if (epoch >= this.soloistBusyUntilBar) {
             const hasAnchor = !!this.activeAnchorId;
-            // #ЗАЧЕМ: Если Анкор задан, поиск обязателен.
             const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.60 : 0.40) + localTension * 0.25;
             
             if (this.random.next() < developmentChance) {
@@ -160,14 +160,11 @@ export class AmbientBrain {
                     const cloudPool = poolToUse.filter(ax => {
                         if (ax.role !== 'melody') return false;
                         
-                        // #ЗАЧЕМ: Metadata Sovereignty. Жанр - первичный фильтр.
                         const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                         if (!genreArr.includes(this.genre)) return false;
 
-                        // Если Анкор задан — ищем только внутри него.
                         if (targetAnchor && this.normalize(ax.compositionId || '') !== targetAnchor) return false;
                         
-                        // Mood filter (если нет Анкора)
                         if (!targetAnchor) {
                             const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                             const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
@@ -195,25 +192,43 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                     
-                    const sibling = poolToUse.find(ax => 
+                    // --- SIBLING SEARCH (BASS & ACCOMP) ---
+                    const bassSibling = poolToUse.find(ax => 
                         ax.role === 'bass' && 
                         this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
                         ax.barOffset === cloudAxiom.barOffset
                     );
                     
-                    if (sibling) {
-                        const rawBass = decompressCompactPhrase(sibling.phrase);
+                    if (bassSibling) {
+                        const rawBass = decompressCompactPhrase(bassSibling.phrase);
                         this.currentBassTheme = {
                             phrase: stretchToNarrativeLength(rawBass, 48, this.random),
                             startBar: epoch,
                             endBar: epoch + phraseBars
                         };
                         this.bassBusyUntilBar = epoch + phraseBars;
-                        this.ensembleStatus = 'SIBLING';
                     } else {
                         this.currentBassTheme = null;
-                        this.ensembleStatus = 'ADAPTIVE';
                     }
+
+                    // #ЗАЧЕМ: Поиск сиблинга для аккомпанемента в Эмбиенте.
+                    const accompSibling = poolToUse.find(ax => 
+                        ax.role === 'accomp' && 
+                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
+                        ax.barOffset === cloudAxiom.barOffset
+                    );
+                    if (accompSibling) {
+                        const rawAccomp = decompressCompactPhrase(accompSibling.phrase);
+                        this.currentAccompTheme = {
+                            phrase: stretchToNarrativeLength(rawAccomp, 48, this.random),
+                            startBar: epoch,
+                            endBar: epoch + phraseBars
+                        };
+                    } else {
+                        this.currentAccompTheme = null;
+                    }
+
+                    this.ensembleStatus = (bassSibling || accompSibling) ? 'SIBLING' : 'ADAPTIVE';
                 } else if (!hasAnchor) {
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
@@ -232,6 +247,8 @@ export class AmbientBrain {
                     this.currentTrackName = 'Ambient Legacy';
                     this.soloistBusyUntilBar = epoch + phraseBars + (this.mood === 'enthusiastic' ? 0 : 1);
                     this.ensembleStatus = 'LOCAL';
+                    this.currentBassTheme = null;
+                    this.currentAccompTheme = null;
                 }
             } else {
                 this.currentTheme = null;
@@ -245,7 +262,12 @@ export class AmbientBrain {
         hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
         hints.bass = hints.bass || 'bass_jazz_warm';
 
-        events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
+        // #ЗАЧЕМ: Выбор между Наследием и Процедурным падом.
+        if (hints.accompaniment && this.currentAccompTheme && epoch < this.currentAccompTheme.endBar) {
+            events.push(...this.renderHeritageAccompaniment(yogaChord, epoch));
+        } else {
+            events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
+        }
         
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
@@ -302,7 +324,7 @@ export class AmbientBrain {
                 melodyTrack: narrativeSource,
                 ensemble: this.ensembleStatus,
                 bass: this.currentBassTheme ? 'Sibling' : 'Steady',
-                accompaniment: hints.accompaniment,
+                accompaniment: this.currentAccompTheme ? 'Heritage' : 'Adaptive',
                 harmony: hints.harmony || 'none'
             },
             narrative
@@ -409,6 +431,28 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: Рендеринг аккомпанемента из Наследия для Эмбиента.
+     */
+    private renderHeritageAccompaniment(chord: GhostChord, epoch: number): FractalEvent[] {
+        if (!this.currentAccompTheme) return [];
+        const barInPhrase = epoch % 4;
+        const barOffset = barInPhrase * 12;
+        const barNotes = this.currentAccompTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+
+        return barNotes.map(n => ({
+            type: 'accompaniment',
+            note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
+            time: (n.t % 12) / 3,
+            duration: n.d / 3,
+            weight: 0.55,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { attack: 1.5, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
+        }));
+    }
+
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         return [{
             type: 'melody',
@@ -482,8 +526,8 @@ export class AmbientBrain {
         }));
     }
 
-    private renderRitualWalkingBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
-        const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR);
+    private renderRitualWalkingBass(yogaChord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
+        const root = Math.max(yogaChord.rootNote - 12, this.BASS_FLOOR);
         const ritualPattern = [
             { t: 0, n: root, w: 0.85 }, { t: 1.0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 6, w: 0.8 }, { t: 2.5, n: root, w: 0.8 }
         ];
