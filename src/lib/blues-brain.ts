@@ -26,8 +26,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V169.2 — "Metadata Sovereignty".
- * #ЧТО: ПЛАН №690 — Реализован строгий жанровый фильтр.
+ * #ЗАЧЕМ: Блюзовый Мозг V170.0 — "Triple Heritage Symbiosis".
+ * #ЧТО: ПЛАН №691 — Активировано использование аксиом аккомпанемента из облака.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -66,6 +66,7 @@ export class BluesBrain {
   private currentMelodyAxiomObj: any | null = null;
   private currentAxiom: any[] = [];
   private currentBassAxiom: any[] = [];
+  private currentAccompAxiom: any[] = [];
   
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
@@ -206,7 +207,8 @@ export class BluesBrain {
     if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
     } else if (hints.accompaniment) {
-        accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord));
+        // #ЗАЧЕМ: Приоритет облачного аккомпанемента над "одинаковой фигней".
+        accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch));
     }
 
     events.push(...accompanimentEvents);
@@ -238,6 +240,7 @@ export class BluesBrain {
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
             drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
+            accompaniment: this.currentAccompAxiom.length > 0 ? 'Heritage' : 'Adaptive',
             harmony: harAxiom
         },
         narrative: `Bar ${epoch % 12 + 1}/12. Ensemble synergy active.`
@@ -265,6 +268,7 @@ export class BluesBrain {
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
       this.currentBassAxiom = []; 
+      this.currentAccompAxiom = [];
       this.ensembleStatus = 'ADAPTIVE';
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
@@ -272,7 +276,6 @@ export class BluesBrain {
           const cloudPool = this.config.cloudAxioms.filter(ax => {
               if (ax.role !== 'melody') return false;
               
-              // #ЗАЧЕМ: Strict Genre Check.
               const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               if (!genreArr.includes(this.config.genre)) return false;
 
@@ -302,15 +305,31 @@ export class BluesBrain {
               if (this.state.recentLicks.length > 50) this.state.recentLicks.shift();
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
-              const sibling = this.config.cloudAxioms.find(ax => 
+              
+              // #ЗАЧЕМ: Поиск басового сиблинга.
+              const bassSibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
               );
-              if (sibling) {
-                  const rawBass = decompressCompactPhrase(sibling.phrase);
+              if (bassSibling) {
+                  const rawBass = decompressCompactPhrase(bassSibling.phrase);
                   this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
+              }
+
+              // #ЗАЧЕМ: Поиск сиблинга аккомпанемента для полноты ансамбля.
+              const accompSibling = this.config.cloudAxioms.find(ax => 
+                  ax.role === 'accomp' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
+                  ax.barOffset === selected.barOffset
+              );
+              if (accompSibling) {
+                  const rawAccomp = decompressCompactPhrase(accompSibling.phrase);
+                  this.currentAccompAxiom = stretchToNarrativeLength(rawAccomp, 48, this.random);
+              }
+
+              if (bassSibling || accompSibling) {
                   this.ensembleStatus = 'SIBLING';
               }
+
               return;
           }
       }
@@ -445,7 +464,8 @@ export class BluesBrain {
 
   private renderWalkingBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12;
-    const nextRoot = getNextChordRoot(epoch % 12, chord.rootNote) - 12;
+    const nextBar = (epoch + 1) % 12;
+    const nextRoot = (this.config.rootNote + BLUES_PROGRESSION_OFFSETS[nextBar]) - 12;
     return [root, root + 7, root + 10, nextRoot - 1].map((p, i) => ({ 
         type: 'bass', note: this.constrainBassOctave(p), time: i, duration: 0.9, 
         weight: 0.85, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' 
@@ -484,6 +504,31 @@ export class BluesBrain {
           events.push({ type: tomTypes[i % tomTypes.length] as any, note: 45 + i, time: t / 3, duration: 0.5, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       });
       return events;
+  }
+
+  /**
+   * #ЗАЧЕМ: Рендеринг аккомпанемента на основе Наследия (ПЛАН №691).
+   * #ЧТО: Если есть облачная аксиома 'accomp', она исполняется приоритетно.
+   */
+  private renderHeritageAccompaniment(chord: GhostChord, epoch: number): FractalEvent[] {
+      if (this.currentAccompAxiom.length > 0) {
+          const barInPhrase = epoch % 4;
+          const barOffset = barInPhrase * 12;
+          const barNotes = this.currentAccompAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+          
+          return barNotes.map(n => ({
+              type: 'accompaniment',
+              note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+              time: (n.t % 12) / 3,
+              duration: n.d / 3,
+              weight: 0.55,
+              technique: 'swell',
+              dynamics: 'p',
+              phrasing: 'legato'
+          }));
+      }
+      // Fallback к процедурному патерну
+      return this.renderAdaptiveAccompaniment(epoch, chord);
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord): FractalEvent[] {
