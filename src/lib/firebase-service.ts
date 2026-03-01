@@ -1,3 +1,4 @@
+
 import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -40,7 +41,7 @@ export function saveMasterpiece(db: Firestore, data: {
 }
 
 /**
- * #ЗАЧЕМ: Генерация уникального, но детерминированного ID для аксиомы.
+ * #ЗАЧЕМ: Генерирую уникальный, но детерминированный ID для аксиомы.
  * #ЧТО: Предотвращает дубликаты на уровне базы данных.
  */
 function generateAxiomId(compositionId: string, role: string, phrase: number[]): string {
@@ -56,7 +57,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: ПЛАН №685 — Тотальная защита от undefined. Все поля проверяются перед setDoc.
+ * #ЧТО: ПЛАН №696 — Добавлена поддержка полей bars и noteCount.
  */
 export function saveHeritageAxiom(db: Firestore, data: any) {
     const compositionId = data.compositionId || 'Unknown_Heritage';
@@ -66,7 +67,6 @@ export function saveHeritageAxiom(db: Firestore, data: any) {
     const axiomId = generateAxiomId(compositionId, role, phrase);
     const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
-    // #ЗАЧЕМ: Firestore не принимает undefined. Обеспечиваем наличие всех полей.
     const payload = {
         phrase: phrase,
         role: role,
@@ -75,6 +75,8 @@ export function saveHeritageAxiom(db: Firestore, data: any) {
         mood: Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []),
         compositionId: compositionId,
         barOffset: data.barOffset ?? 0,
+        bars: data.bars ?? null,
+        noteCount: data.noteCount ?? null,
         vector: data.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
         origin: data.origin || 'Manual_Forge',
         tags: Array.isArray(data.tags) ? data.tags : [],

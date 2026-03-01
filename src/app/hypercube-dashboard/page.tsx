@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -319,7 +320,18 @@ export default function HypercubeDashboard() {
         
         const processAxiom = (ax: any, idx: number, compId: string) => {
             const role = ax.role || 'melody';
-            const repairedPhrase = repairLegacyPhrase(ax.phrase || []);
+            const phrase = ax.phrase || [];
+            
+            // #ЗАЧЕМ: Автоматический расчет Bars и NoteCount для прозрачности.
+            let maxTick = 0;
+            for(let i=0; i<phrase.length; i+=4) {
+                const end = (phrase[i] || 0) + (phrase[i+1] || 0);
+                if(end > maxTick) maxTick = end;
+            }
+            const calculatedBars = Math.max(1, Math.ceil(maxTick / 12));
+            const calculatedNoteCount = Math.floor(phrase.length / 4);
+
+            const repairedPhrase = repairLegacyPhrase(phrase);
             const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
             const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
             
@@ -337,7 +349,10 @@ export default function HypercubeDashboard() {
                 narrative: ax.narrative || "Heritage component.",
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || null,
-                timeSignature: ax.timeSignature || ax.ts || null
+                timeSignature: ax.timeSignature || ax.ts || null,
+                barOffset: ax.barOffset ?? 0,
+                bars: ax.bars || calculatedBars,
+                noteCount: ax.noteCount || calculatedNoteCount
             };
         };
 
@@ -416,7 +431,7 @@ export default function HypercubeDashboard() {
           genre: selectedGenre, 
           mood: newMoods,
           commonMood: newCommons,
-          barOffset: 0,
+          barOffset: ax.barOffset ?? 0,
           origin: `Manual_Forge_Injection_${currentFileName}`,
           timestamp: new Date().toISOString() as any,
           narrative: ax.narrative || "Heritage component.",
@@ -553,7 +568,8 @@ export default function HypercubeDashboard() {
             commonMood: newCommons,
             nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
             nativeKey: editAxiomData.nativeKey,
-            timeSignature: editAxiomData.timeSignature
+            timeSignature: editAxiomData.timeSignature,
+            barOffset: editAxiomData.barOffset ?? 0
         });
         toast({ title: "Axiom Updated" });
         setEditingAxiomId(null);
@@ -861,12 +877,13 @@ export default function HypercubeDashboard() {
                             </div>
                           </div>
                           <AccordionContent className="p-0 bg-muted/10 border-t overflow-x-auto">
-                            <table className="w-full text-sm border-collapse min-w-[800px]">
+                            <table className="w-full text-sm border-collapse min-w-[900px]">
                               <thead className="bg-muted/50 border-b border-border/50">
                                 <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
                                   <th className="p-3 pl-12 font-black w-32">Role</th>
-                                  <th className="p-3 font-black w-48">Meta (BPM/Key/TS)</th>
-                                  <th className="p-3 font-black w-48">Vector (t,b,e,h)</th>
+                                  <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
+                                  <th className="p-3 font-black w-40">Struct (O/B/N)</th>
+                                  <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
                                   <th className="p-3 font-black">Narrative</th>
                                   <th className="p-3 font-black text-right w-32">Actions</th>
                                 </tr>
@@ -894,6 +911,19 @@ export default function HypercubeDashboard() {
                                         </div>
                                       ) : (
                                         <span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-[10px] font-mono text-muted-foreground">
+                                      {editingAxiomId === ax.id ? (
+                                        <div className="flex gap-1 items-center">
+                                          <Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" />
+                                          <span className="opacity-30">/</span>
+                                          <span>{ax.bars}</span>
+                                          <span className="opacity-30">/</span>
+                                          <span>{ax.noteCount}</span>
+                                        </div>
+                                      ) : (
+                                        <span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>
                                       )}
                                     </td>
                                     <td className="p-3">
@@ -1126,9 +1156,9 @@ export default function HypercubeDashboard() {
                           </th>
                           <th className="p-4 font-black">Source</th>
                           <th className="p-4 font-black">Role</th>
+                          <th className="p-4 font-black">Struct (O/B/N)</th>
                           <th className="p-4 font-black">Native Meta</th>
                           <th className="p-4 font-black">Vector (t,b,e,h)</th>
-                          <th className="p-4 font-black">Narrative</th>
                           <th className="p-4 font-black text-right">Preview</th>
                         </tr>
                       </thead>
@@ -1144,13 +1174,15 @@ export default function HypercubeDashboard() {
                             </td>
                             <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId.replace(/_/g, ' ')}</td>
                             <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
+                            <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">
+                                {ax.barOffset} / {ax.bars} / {ax.noteCount}
+                            </td>
                             <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">
                                 {ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}
                             </td>
                             <td className="p-4 font-mono text-[10px] text-muted-foreground">
                               [{ax.vector?.t?.toFixed(1) || 0}, {ax.vector?.b?.toFixed(1) || 0}, {ax.vector?.e?.toFixed(1) || 0}, {ax.vector?.h?.toFixed(1) || 0}]
                             </td>
-                            <td className="p-4 text-xs italic text-muted-foreground line-clamp-2">{ax.narrative}</td>
                             <td className="p-4 text-right">
                               <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">
                                 {playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}
