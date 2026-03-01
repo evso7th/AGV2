@@ -40,7 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -388,35 +388,48 @@ export default function HypercubeDashboard() {
     if (phrase.length === 0) return;
 
     const minTick = Math.min(...phrase.map(n => n.t));
+    const rawRole = (axiom.role || 'melody').toLowerCase();
+    
+    // #ЗАЧЕМ: Умное определение типа инструмента для предпрослушивания.
+    let type: any = 'melody';
+    if (rawRole === 'bass') type = 'bass';
+    else if (rawRole === 'drums') type = 'drums';
+    else if (rawRole.startsWith('accomp')) type = 'accompaniment';
 
-    const roleToType: Record<string, string> = {
-        'melody': 'melody',
-        'bass': 'bass',
-        'accomp': 'accompaniment',
-        'drums': 'drums'
-    };
-    const type = roleToType[axiom.role] || 'melody';
+    const events: FractalEvent[] = phrase.map((n: any) => {
+      let eventType: string = type;
+      if (rawRole === 'drums') {
+          // #ЗАЧЕМ: Маппинг ступеней на реальные сэмплы для аудита барабанов.
+          const deg = String(n.deg);
+          if (deg === 'R' || deg === '0') eventType = 'drum_kick_reso';
+          else if (deg === 'b3' || deg === '3' || deg === '4') eventType = 'drum_snare';
+          else if (deg === '5' || deg === '7') eventType = 'drum_25693__walter_odington__hackney-hat-1';
+          else eventType = 'drum_lowtom_soft';
+      }
 
-    const events: FractalEvent[] = phrase.map((n: any) => ({
-      type: type,
-      note: (axiom.role === 'bass' ? 31 : (axiom.role === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
-      time: (n.t - minTick) / 3, 
-      duration: n.d / 3,
-      weight: 0.8,
-      technique: n.tech as any,
-      dynamics: 'p',
-      phrasing: 'legato',
-      params: { barCount: 0 },
-      chordName: axiom.role === 'accomp' ? 'Am' : undefined
-    }));
+      return {
+        type: eventType,
+        note: (rawRole === 'bass' ? 31 : (rawRole === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
+        time: (n.t - minTick) / 3, 
+        duration: n.d / 3,
+        weight: 0.8,
+        technique: n.tech as any,
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { barCount: 0 },
+        chordName: rawRole.startsWith('accomp') ? 'Am' : undefined
+      };
+    });
 
-    const hints: InstrumentHints = {
-        [type]: axiom.role === 'melody' ? 'blackAcoustic' : 
-                (axiom.role === 'bass' ? 'bass_jazz_warm' : 
-                (axiom.role === 'drums' ? 'melancholic' : 'organ_soft_jazz'))
-    };
+    const hints: InstrumentHints = {};
+    if (type === 'melody') hints.melody = 'blackAcoustic';
+    else if (type === 'bass') hints.bass = 'bass_jazz_warm';
+    else if (type === 'drums') hints.drums = 'melancholic'; 
+    else if (type === 'accompaniment') {
+        // #ЗАЧЕМ: Семантический выбор тембра для предпрослушивания.
+        hints.accompaniment = rawRole.includes('piano') ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+    }
 
-    // #ЗАЧЕМ: Уважение нативного темпа при прослушивании.
     const tempo = axiom.nativeBpm || 72;
     playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
@@ -706,7 +719,7 @@ export default function HypercubeDashboard() {
 
         {/* Main Interface */}
         <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 h-12 bg-muted/30 p-1 border border-border/50">
+          <TabsList className="grid grid-cols-3 h-12 bg-muted/30 p-1 border border-border/50">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card">
               <Globe className="h-4 w-4 mr-2" /> Explore
             </TabsTrigger>
