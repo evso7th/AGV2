@@ -185,7 +185,7 @@ export default function HypercubeDashboard() {
   const [editTsValue, setEditTsValue] = useState<string>("4/4");
 
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
-  const [editNarrativeValue, setEditNarrativeValue] = useState("");
+  const [editAxiomData, setEditAxiomData] = useState<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -317,7 +317,6 @@ export default function HypercubeDashboard() {
         const json = JSON.parse(event.target?.result as string);
         const flattened: any[] = [];
         
-        // #ЗАЧЕМ: Очистка и нормализация данных при импорте.
         const processAxiom = (ax: any, idx: number, compId: string) => {
             const role = ax.role || 'melody';
             const repairedPhrase = repairLegacyPhrase(ax.phrase || []);
@@ -409,7 +408,6 @@ export default function HypercubeDashboard() {
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (const ax of toInject) {
-        // #ЗАЧЕМ: Гарантия целостности данных при инъекции.
         const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
         
@@ -539,15 +537,31 @@ export default function HypercubeDashboard() {
     }
   };
 
-  const handleUpdateNarrative = async (axiomId: string, newNarrative: string) => {
+  const handleSaveAxiomEdits = async () => {
+    if (!editAxiomData) return;
+    setIsProcessing(true);
     try {
-        const ref = doc(db, 'heritage_axioms', axiomId);
-        await updateDoc(ref, { narrative: newNarrative });
-        toast({ title: "Narrative Updated" });
-    } catch (e) {
-        toast({ variant: "destructive", title: "Update Failed" });
-    } finally {
+        const ref = doc(db, 'heritage_axioms', editAxiomData.id);
+        const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
+        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
+        
+        await updateDoc(ref, { 
+            role: editAxiomData.role,
+            narrative: editAxiomData.narrative,
+            vector: editAxiomData.vector,
+            mood: newMoods,
+            commonMood: newCommons,
+            nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
+            nativeKey: editAxiomData.nativeKey,
+            timeSignature: editAxiomData.timeSignature
+        });
+        toast({ title: "Axiom Updated" });
         setEditingAxiomId(null);
+        setEditAxiomData(null);
+    } catch (e) {
+        toast({ variant: "destructive", title: "Update Failed", description: String(e) });
+    } finally {
+        setIsProcessing(false);
     }
   };
 
@@ -739,7 +753,12 @@ export default function HypercubeDashboard() {
                                         onClick={(e) => e.stopPropagation()}
                                         className="border-primary/30"
                                     />
-                                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
+                                    
+                                    <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent [&>svg]:ml-2">
+                                        <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black cursor-pointer hover:bg-primary/20 transition-colors shrink-0">
+                                            {licks.length}
+                                        </Badge>
+                                    </AccordionTrigger>
                                     
                                     {editingGroupId === compId ? (
                                         <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
@@ -836,60 +855,90 @@ export default function HypercubeDashboard() {
                                     )}
                                 </div>
                                 
-                                <AccordionTrigger className="hover:no-underline w-auto px-4" />
-                                
                                 <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                           </div>
-                          <AccordionContent className="p-0 bg-muted/10 border-t">
-                            <div className="divide-y divide-border/20">
-                              {licks.map((ax: any, idx: number) => (
-                                <div key={ax.id} className="flex items-center gap-4 p-3 pl-12 hover:bg-primary/5 transition-colors group/row">
-                                  <Badge variant="outline" className="text-[10px] uppercase font-black w-16 justify-center bg-background/50">{ax.role}</Badge>
-                                  
-                                  <div className="flex-grow min-w-0">
-                                    {editingAxiomId === ax.id ? (
-                                        <div className="flex items-center gap-2">
-                                            <Input 
-                                                value={editNarrativeValue} 
-                                                onChange={(e) => setEditNarrativeValue(e.target.value)}
-                                                className="h-7 text-xs w-full"
-                                                autoFocus
-                                            />
-                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => handleUpdateNarrative(ax.id, editNarrativeValue)}>
-                                                <Check className="h-3.5 w-3.5" />
-                                            </Button>
-                                            <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingAxiomId(null)}>
-                                                <X className="h-3.5 w-3.5" />
-                                            </Button>
+                          <AccordionContent className="p-0 bg-muted/10 border-t overflow-x-auto">
+                            <table className="w-full text-sm border-collapse min-w-[800px]">
+                              <thead className="bg-muted/50 border-b border-border/50">
+                                <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
+                                  <th className="p-3 pl-12 font-black w-32">Role</th>
+                                  <th className="p-3 font-black w-48">Meta (BPM/Key/TS)</th>
+                                  <th className="p-3 font-black w-48">Vector (t,b,e,h)</th>
+                                  <th className="p-3 font-black">Narrative</th>
+                                  <th className="p-3 font-black text-right w-32">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/20">
+                                {licks.map((ax: any) => (
+                                  <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                    <td className="p-3 pl-12">
+                                      {editingAxiomId === ax.id ? (
+                                        <Input 
+                                          value={editAxiomData.role} 
+                                          onChange={(e) => setEditAxiomData({...editAxiomData, role: e.target.value})}
+                                          className="h-7 text-xs"
+                                        />
+                                      ) : (
+                                        <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-[10px] font-mono text-muted-foreground">
+                                      {editingAxiomId === ax.id ? (
+                                        <div className="flex gap-1">
+                                          <Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" />
+                                          <Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" />
+                                          <Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" />
                                         </div>
-                                    ) : (
-                                        <div className="cursor-pointer" onClick={() => {
-                                            setEditingAxiomId(ax.id);
-                                            setEditNarrativeValue(ax.narrative || "");
-                                        }}>
-                                            <div className="text-xs italic text-muted-foreground line-clamp-1 opacity-80 flex items-center gap-2">
-                                                {ax.narrative}
-                                                <Edit2 className="h-2.5 w-2.5 opacity-0 group-hover/row:opacity-100 transition-opacity" />
-                                            </div>
-                                            <div className="text-[9px] font-mono text-muted-foreground mt-0.5">Vector: [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</div>
+                                      ) : (
+                                        <span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>
+                                      )}
+                                    </td>
+                                    <td className="p-3">
+                                      {editingAxiomId === ax.id ? (
+                                        <div className="grid grid-cols-4 gap-1 w-32">
+                                          <Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" />
+                                          <Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" />
+                                          <Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" />
+                                          <Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" />
                                         </div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-8 w-8 hover:bg-primary/20">
-                                      {playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}
-                                    </Button>
-                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
+                                      ) : (
+                                        <span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">
+                                          [{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-xs italic text-muted-foreground">
+                                      {editingAxiomId === ax.id ? (
+                                        <Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />
+                                      ) : (
+                                        <div className="line-clamp-1">{ax.narrative}</div>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        {editingAxiomId === ax.id ? (
+                                          <>
+                                            <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
+                                            <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
+                                            <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">
+                                              {playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                                            </Button>
+                                            <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </AccordionContent>
                         </AccordionItem>
                       ))}
