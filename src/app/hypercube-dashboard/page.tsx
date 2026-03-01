@@ -62,9 +62,9 @@ import {
   PolarAngleAxis, 
   PolarRadiusAxis, 
   ResponsiveContainer, 
-  RechartsTooltip,
-  RechartsLegend
-} from '@/components/ui/chart'; // Corrected import based on common project structure or mock
+  Tooltip as RechartsTooltip,
+  Legend as RechartsLegend
+} from 'recharts'; 
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -273,6 +273,15 @@ export default function HypercubeDashboard() {
         };
     }).sort((a, b) => b.count - a.count);
   }, [globalAxioms]);
+
+  const radarData = useMemo(() => {
+    return [
+      { subject: 'Tension', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.t * 100])) },
+      { subject: 'Brightness', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.b * 100])) },
+      { subject: 'Entropy', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.e * 100])) },
+      { subject: 'Stability', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.h * 100])) },
+    ];
+  }, [dynastyStats]);
 
   const resetStaging = () => {
     setStagedAxioms([]);
