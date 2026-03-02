@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №710 — Отключено дублирование транзиентов для обеспечения 1-в-1 звучания аксиом.
+ * #ЧТО: ПЛАН №711 — Восстановлены транзиенты (Ear-Trick) для реалистичности атак.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -130,11 +130,11 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Устранение "частивости" и double-hit эффекта. 
-        // #ЧТО: Сэмплированные транзиенты теперь НЕ накладываются на синтезатор в меланхолии.
-        // if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
-        //    this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
-        // }
+        // #ЗАЧЕМ: "Обман слуха" восстановлен (ПЛАН №711).
+        // #ЧТО: Сэмплированные транзиенты снова накладываются на синтезатор для реализма атаки.
+        if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        }
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
