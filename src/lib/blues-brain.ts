@@ -29,8 +29,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V173.3 — "Persistence Protocol".
- * #ОБНОВЛЕНО (ПЛАН №708): Полное устранение тишины. Выбор аксиомы теперь гарантирован.
+ * #ЗАЧЕМ: Блюзовый Мозг V174.0 — "1-to-1 Fidelity".
+ * #ОБНОВЛЕНО (ПЛАН №710): Устранена "частивость" (double speed). Исправлен расчет длительности и циклов.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -70,6 +70,7 @@ export class BluesBrain {
   
   private currentMelodyAxiomObj: any | null = null;
   private currentAxiom: any[] = [];
+  private currentAxiomMaxTick: number = 0;
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
   
@@ -195,7 +196,8 @@ export class BluesBrain {
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) this.selectGrandAxiom(tension);
 
-    if (epoch >= this.soloistBusyUntilBar || epoch % 4 === 0 || navInfo.isPartTransition) {
+    // #ЧТО: Логика выбора новой аксиомы теперь срабатывает ТОЛЬКО после окончания предыдущей.
+    if (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
 
@@ -355,18 +357,19 @@ export class BluesBrain {
 
               normalizePhraseGroup(phrasesToNormalize);
 
-              this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+              const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+              this.currentAxiomMaxTick = phraseBars * 12;
+              this.currentAxiom = rawPhrase; // #ЧТО: Отказ от принудительного растягивания до 48. Используем реальную длину.
               
-              const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
               this.soloistBusyUntilBar = epoch + phraseBars;
 
               if (rawBass) {
-                  this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
+                  this.currentBassAxiom = rawBass;
               }
 
               if (rawAccomps.length > 0) {
                   this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
-                      phrase: stretchToNarrativeLength(p, 48, this.random),
+                      phrase: p,
                       role: accompSiblings[idx].role
                   }));
               }
@@ -397,9 +400,11 @@ export class BluesBrain {
           const rawPhrase = [...phrase];
           normalizePhraseGroup([rawPhrase]);
 
-          this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+          const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+          this.currentAxiom = rawPhrase;
+          this.currentAxiomMaxTick = phraseBars * 12;
           this.currentLickId = this.currentGrandMelody.id;
-          this.soloistBusyUntilBar = epoch + 1;
+          this.soloistBusyUntilBar = epoch + phraseBars;
           return;
       }
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
@@ -409,14 +414,17 @@ export class BluesBrain {
       const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       normalizePhraseGroup([rawPhrase]);
 
-      this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
-      this.soloistBusyUntilBar = epoch + 1;
+      const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+      this.currentAxiom = rawPhrase;
+      this.currentAxiomMaxTick = phraseBars * 12;
+      this.soloistBusyUntilBar = epoch + phraseBars;
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       if (this.currentBassAxiom.length > 0) {
-          const barInPhrase = epoch % 4;
-          const barOffset = barInPhrase * 12;
+          const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
+          const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+          const barOffset = barInAxiom * 12;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
           return barNotes.map(n => ({
               type: 'bass',
@@ -485,9 +493,12 @@ export class BluesBrain {
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord): FractalEvent[] {
-    const barInPhrase = epoch % 4;
-    const barOffset = barInPhrase * 12;
+    const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
+    // #ЧТО: Определение текущего такта внутри длинной фразы (например, 48-тактовой).
+    const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+    const barOffset = barInAxiom * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+    
     return barNotes.map(n => ({
         type: 'melody',
         note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
@@ -563,8 +574,9 @@ export class BluesBrain {
   }
 
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart): FractalEvent[] {
-      const barInPhrase = epoch % 4;
-      const barOffset = barInPhrase * 12;
+      const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
+      const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+      const barOffset = barInAxiom * 12;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
       
       return barNotes.map(n => ({

@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.3 — "Sonic Equilibrium & Human Flow".
- * #ОБНОВЛЕНО (ПЛАН №708): Устранение пауз ("одинокого баса"). Порог вступления поднят до 0.8.
+ * @fileOverview Ambient Brain v24.4 — "1-to-1 Fidelity".
+ * #ОБНОВЛЕНО (ПЛАН №710): Убрано искажение длительности (был множитель 1.6). Исправлено зацикливание длинных фраз.
  */
 
 import type { 
@@ -74,6 +74,7 @@ export class AmbientBrain {
     private readonly BASS_FLOOR = 31; 
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
+    private currentThemeMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
     
@@ -156,7 +157,6 @@ export class AmbientBrain {
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
             const hasAnchor = !!this.activeAnchorId;
-            // #ЗАЧЕМ: Устранение пустот. Порог вероятности вступления фраз поднят.
             const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.85 : 0.70) + localTension * 0.15;
             
             if (this.random.next() < developmentChance) {
@@ -220,11 +220,11 @@ export class AmbientBrain {
 
                     normalizePhraseGroup(phrasesToNormalize);
 
-                    const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
-                    const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
+                    const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+                    this.currentThemeMaxTick = phraseBars * 12;
                     
                     this.currentTheme = {
-                        phrase: narrativePhrase,
+                        phrase: rawPhrase,
                         startBar: epoch,
                         endBar: epoch + phraseBars,
                         id: cloudAxiom.id,
@@ -235,7 +235,7 @@ export class AmbientBrain {
                     
                     if (rawBass) {
                         this.currentBassTheme = {
-                            phrase: stretchToNarrativeLength(rawBass, 48, this.random),
+                            phrase: rawBass,
                             startBar: epoch,
                             endBar: epoch + phraseBars
                         };
@@ -243,7 +243,7 @@ export class AmbientBrain {
                     }
 
                     this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
-                        phrase: stretchToNarrativeLength(p, 48, this.random),
+                        phrase: p,
                         role: accompSiblings[idx].role,
                         endBar: epoch + phraseBars
                     }));
@@ -258,11 +258,11 @@ export class AmbientBrain {
                     const rawPhrase = [...lick.phrase]; 
                     normalizePhraseGroup([rawPhrase]); 
 
-                    const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
-                    const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
+                    const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+                    this.currentThemeMaxTick = phraseBars * 12;
                     
                     this.currentTheme = {
-                        phrase: narrativePhrase,
+                        phrase: rawPhrase,
                         startBar: epoch,
                         endBar: epoch + phraseBars,
                         id: `${groupKey}_${lickIdx}`,
@@ -474,8 +474,9 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart): FractalEvent[] {
-        const barInPhrase = epoch % 4;
-        const barOffset = barInPhrase * 12;
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+        const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+        const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         return barNotes.map(n => ({
@@ -507,7 +508,9 @@ export class AmbientBrain {
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const barOffset = (epoch - this.currentTheme.startBar) * 12;
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+        const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+        const barOffset = barInAxiom * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         const events: FractalEvent[] = [];
@@ -516,7 +519,7 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
-                duration: (n.d / 3) * 1.6, 
+                duration: n.d / 3, // #ЧТО: Удален множитель 1.6 для честного 1-в-1 звучания.
                 weight: 0.85,
                 technique: n.tech || 'pick',
                 dynamics: 'p',
@@ -530,7 +533,9 @@ export class AmbientBrain {
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const barOffset = (epoch - this.currentBassTheme.startBar) * 12;
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+        const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
+        const barOffset = barInAxiom * 12;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         return barNotes.map(n => {
@@ -658,7 +663,7 @@ export class AmbientBrain {
         const stageCount = stages.length || 1;
         const partsPerStage = Math.ceil(shuffledParts.length / stageCount);
         stages.forEach((_, i) => {
-            const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * partsPerStage);
+            const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * participantsMap.size); // Safety cap
             const stageInstr: Partial<Record<InstrumentPart, any>> = {};
             stageParts.forEach(part => { stageInstr[part] = participantsMap.get(part); });
             this.introLotteryMap.set(i, stageInstr);

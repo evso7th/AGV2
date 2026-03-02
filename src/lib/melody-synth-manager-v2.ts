@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №665 — Удален внутренний преамп. Громкость теперь управляется системным узлом контекста.
+ * #ЧТО: ПЛАН №710 — Отключено дублирование транзиентов для обеспечения 1-в-1 звучания аксиом.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -129,9 +130,11 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
-            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
-        }
+        // #ЗАЧЕМ: Устранение "частивости" и double-hit эффекта. 
+        // #ЧТО: Сэмплированные транзиенты теперь НЕ накладываются на синтезатор в меланхолии.
+        // if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
+        //    this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        // }
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
@@ -165,10 +168,6 @@ export class MelodySynthManagerV2 {
        } else {
            this.activePresetName = instrumentName;
        }
-    }
-
-    public setPreampGain(gain: number) {
-        // #ЗАЧЕМ: Заглушка. Громкость теперь управляется в AudioEngineContext.
     }
 
     public allNotesOff() {
