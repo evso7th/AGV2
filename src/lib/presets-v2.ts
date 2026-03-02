@@ -112,17 +112,20 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     type: 'guitar',
-    name: 'Velvet Lead', 
-    volume: 0.11, 
-    osc: { width: 0.42 }, // #ЗАЧЕМ: Устранение "расстроенности". Ширина пульса зафиксирована, детюн удален.
-    pickup: { cutoff: 1650, q: 0.7 }, // #ЗАЧЕМ: Смягчение тембра (убираем "хрип").
-    drive: { type: 'soft', amount: 0.08 }, // #ЗАЧЕМ: Снижение искажений для чистоты.
-    comp: { threshold: -24, ratio: 3, attack: 0.02, release: 0.2, makeup: 1 }, 
-    post: { lpf: 2800 }, // #ЗАЧЕМ: Обрезаем лишний "песок" на верхах.
+    name: 'Crystal Lead', 
+    volume: 0.12, 
+    // #ЗАЧЕМ: Узкий пульс (0.22) убирает "зуд" и делает звук стеклянным и чистым.
+    osc: { width: 0.22 }, 
+    // #ЗАЧЕМ: Высокие частоты среза (4200/6200) возвращают воздущность и прозрачность.
+    pickup: { cutoff: 4200, q: 0.4 }, 
+    // #ЗАЧЕМ: Драйв 0.01 — это практически "Straight Wire", отсутствие грязи.
+    drive: { type: 'soft', amount: 0.01 }, 
+    comp: { threshold: -20, ratio: 2, attack: 0.01, release: 0.2, makeup: 1 }, 
+    post: { lpf: 6200 }, 
     phaser: { on: false }, 
-    delayA: { on: true, time: 0.42, fb: 0.28, mix: 0.15 },
-    adsr: { a: 0.02, d: 0.45, s: 0.75, r: 0.8 }, 
-    reverbMix: 0.24
+    delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.15 },
+    adsr: { a: 0.015, d: 0.35, s: 0.7, r: 1.0 }, 
+    reverbMix: 0.30
   },
 
   guitar_muffLead: {
