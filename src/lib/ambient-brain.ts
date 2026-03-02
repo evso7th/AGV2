@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.1 — "Sonic Equilibrium & Human Flow".
- * #ЗАЧЕМ: Повышение плотности ансамбля и точности BPM.
- * #ЧТО: ПЛАН №704 — Усилена стабильность ударных и сокращены паузы.
+ * @fileOverview Ambient Brain v24.2 — "Sonic Equilibrium & Human Flow".
+ * #ОБНОВЛЕНО (ПЛАН №705): Улучшен алгоритмический бас (Fallback) при отсутствии сиблингов.
  */
 
 import type { 
@@ -183,7 +182,7 @@ export class AmbientBrain {
                 if (cloudAxiom) {
                     const rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
                     const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
-                    const phraseBars = Math.ceil(Math.max(...narrativePhrase.map(n => n.t + n.d)) / 12);
+                    const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
                     this.currentTheme = {
                         phrase: narrativePhrase,
                         startBar: epoch,
@@ -231,7 +230,7 @@ export class AmbientBrain {
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
                     const lick = group.licks[lickIdx];
                     const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
-                    const phraseBars = Math.ceil(Math.max(...narrativePhrase.map(n => n.t + n.d)) / 12);
+                    const phraseBars = Math.ceil(Math.max(...lick.phrase.map(n => n.t + n.d), 0) / 12);
                     
                     this.currentTheme = {
                         phrase: narrativePhrase,
@@ -274,7 +273,6 @@ export class AmbientBrain {
             });
         }
         
-        // #ЗАЧЕМ: Удержание фона. Пад играет ВСЕГДА, если нет сиблингов.
         if (hints.accompaniment && (this.currentAccompAxioms.length === 0 || localTension > 0.7)) {
             events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         }
@@ -287,12 +285,17 @@ export class AmbientBrain {
             events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
         }
 
+        const melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna));
+                const mel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna);
+                melodyEvents.push(...mel);
+                events.push(...mel);
             }
         }
+
+        const accompanimentEvents = events.filter(e => e.type === 'accompaniment' || e.type === 'harmony');
 
         if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
             events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
@@ -303,7 +306,7 @@ export class AmbientBrain {
             if (this.random.next() < harmonyChance) {
                 const timbre = localTension > 0.55 ? 'violin' : 'guitarChords';
                 hints.harmony = timbre as any; 
-                events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
+                events.push(...this.renderOrche orchestralHarmony(yogaChord, epoch, hints, localTension));
             }
         }
 
@@ -378,7 +381,7 @@ export class AmbientBrain {
         let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
 
         if (part.id === 'INTRO' && this.introLotteryMap.size > 0) {
-            const partBars = navInfo.currentPartEndBar - navInfo.currentStartBar + 1;
+            const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
             const progress = (epoch - navInfo.currentPartStartBar) / (partBars || 1);
             const stageIndex = Math.floor(progress * (stages?.length || 1));
             currentInstructions = this.introLotteryMap.get(Math.min(stageIndex, (stages?.length || 1) - 1));
@@ -520,10 +523,13 @@ export class AmbientBrain {
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
+        
+        // #ЗАЧЕМ: Улучшенный адаптивный паттерн баса.
         const pattern = [
             { t: 0, n: root, d: 0.7, w: 0.85 },
+            { t: 1.5, n: root + 7, d: 0.4, w: 0.75 }, // Квинта на слабую долю
             { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },
-            { t: 3.0, n: Math.max(root + 7, this.BASS_FLOOR), d: 0.7, w: 0.8 }
+            { t: 3.5, n: root + 7, d: 0.7, w: 0.8 }
         ];
         return pattern.map(p => ({
             type: 'bass', note: p.n, time: p.t, duration: p.d, 
@@ -532,7 +538,7 @@ export class AmbientBrain {
         }));
     }
 
-    private renderRitualWalkingBass(yogaChord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
+    private renderRitualWalkingBass(yogaChord: GhostChord, localTension: number, timbre: string, epoch: number): FractalEvent[] {
         const root = Math.max(yogaChord.rootNote - 12, this.BASS_FLOOR);
         const ritualPattern = [
             { t: 0, n: root, w: 0.85 }, { t: 1.0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 6, w: 0.8 }, { t: 2.5, n: root, w: 0.8 }
@@ -581,6 +587,27 @@ export class AmbientBrain {
         }));
     }
 
+    private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
+        if (melodyEvents.length > 0 && this.random.next() < 0.6) {
+            return melodyEvents.slice(0, 2).map(me => ({ ...me, type: 'pianoAccompaniment', weight: 0.3, technique: 'hit', phrasing: 'staccato' }));
+        }
+        return accompanimentEvents.map(ae => ({ ...ae, type: 'pianoAccompaniment', weight: 0.25, technique: 'hit', phrasing: 'staccato' }));
+    }
+
+    private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const heartbeatProb = 0.95; 
+        if (this.random.next() < heartbeatProb) {
+            events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            
+            if (this.random.next() < 0.5) {
+                events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: 2.0, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            }
+        }
+        return events;
+    }
+
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
         return {
             type: 'sparkle',
@@ -607,21 +634,6 @@ export class AmbientBrain {
             phrasing: 'staccato',
             params: { mood: this.mood, genre: this.genre, options }
         }];
-    }
-
-    private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Усиление стабильности ритма.
-        const heartbeatProb = 0.95; 
-        if (this.random.next() < heartbeatProb) {
-            events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-            events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-            
-            if (this.random.next() < 0.5) {
-                events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: 2.0, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-            }
-        }
-        return events;
     }
 
     private performIntroLottery(stages: any[]) {

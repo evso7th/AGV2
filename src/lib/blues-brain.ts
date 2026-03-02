@@ -28,8 +28,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V173.0 — "Ensemble Persistence & Sonic Polish".
- * #ЧТО: ПЛАН №702 — Устранение «одинокого баса» и мгновенный запуск новых фраз.
+ * #ЗАЧЕМ: Блюзовый Мозг V173.1 — "Ensemble Persistence & Ghost Siblings".
+ * #ЧТО: ПЛАН №705 — Улучшен адаптивный бас при отсутствии сиблингов в Якоре.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -194,7 +194,6 @@ export class BluesBrain {
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) this.selectGrandAxiom(tension);
 
-    // #ЗАЧЕМ: Устранение длинных пауз. Новая аксиома ищется сразу.
     if (epoch >= this.soloistBusyUntilBar || epoch % 4 === 0 || navInfo.isPartTransition) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
@@ -328,7 +327,6 @@ export class BluesBrain {
               const rawPhrase = decompressCompactPhrase(selected.phrase);
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
               
-              // Назначение длительности занятости
               const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
               this.soloistBusyUntilBar = epoch + phraseBars;
 
@@ -405,6 +403,8 @@ export class BluesBrain {
               phrasing: 'legato'
           }));
       }
+      // #ЗАЧЕМ: Улучшенный адаптивный бас при отсутствии сиблинга.
+      // #ЧТО: Если напряжение высокое — волкинг, иначе — развитый рифф.
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
 
@@ -480,11 +480,13 @@ export class BluesBrain {
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12;
     const barInRiff = epoch % 4;
+    
+    // #ЗАЧЕМ: Более "певучий" и разнообразный рифф для Fallback-режима.
     const riff = [ 
-        [{ t: 0, n: root }, { t: 2.0, n: root + 7 }], 
         [{ t: 0, n: root }, { t: 1.5, n: root }, { t: 2.5, n: root + 7 }], 
         [{ t: 0, n: root }, { t: 2.0, n: root + 7 }, { t: 3.5, n: root + 10 }], 
-        [{ t: 0, n: root + 7 }, { t: 1.5, n: root + 5 }, { t: 2.5, n: root }] 
+        [{ t: 0, n: root + 7 }, { t: 1.5, n: root + 5 }, { t: 2.5, n: root }],
+        [{ t: 0, n: root }, { t: 1.5, n: root + 3 }, { t: 2.5, n: root + 4 }, { t: 3.5, n: root + 7 }] 
     ];
     return riff[barInRiff].map(p => ({ 
         type: 'bass', note: this.constrainBassOctave(p.n), time: p.t, duration: 1.2, 
@@ -496,7 +498,9 @@ export class BluesBrain {
     const root = chord.rootNote - 12;
     const nextBar = (epoch + 1) % 12;
     const nextRoot = (this.config.rootNote + BLUES_PROGRESSION_OFFSETS[nextBar]) - 12;
-    return [root, root + 7, root + 10, nextRoot - 1].map((p, i) => ({ 
+    
+    // #ЗАЧЕМ: Классический хроматический подвод к следующему аккорду (True Walking).
+    return [root, root + 4, root + 7, nextRoot - 1].map((p, i) => ({ 
         type: 'bass', note: this.constrainBassOctave(p), time: i, duration: 0.9, 
         weight: 0.85, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' 
     }));
