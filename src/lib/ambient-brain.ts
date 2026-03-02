@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.4 — "1-to-1 Fidelity".
- * #ОБНОВЛЕНО (ПЛАН №710): Убрано искажение длительности (был множитель 1.6). Исправлено зацикливание длинных фраз.
+ * @fileOverview Ambient Brain v24.5 — "DNA Integrity".
+ * #ОБНОВЛЕНО (ПЛАН №712): Исправлено игнорирование облачных аксиом при отсутствии тегов жанра. Реализован приоритет Якоря.
  */
 
 import type { 
@@ -165,26 +165,33 @@ export class AmbientBrain {
 
                 if (poolToUse.length > 0) {
                     const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
-                    const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                    
+                    // #ЗАЧЕМ: Anchor-First Search. Сначала ищем мелодии из залоченного трека.
+                    let basePool = [];
+                    if (targetAnchor) {
+                        basePool = poolToUse.filter(ax => 
+                            ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
+                        );
+                    }
 
-                    const basePool = poolToUse.filter(ax => {
-                        if (ax.role !== 'melody') return false;
-                        const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                        return genreArr.includes(this.genre);
-                    });
+                    // Если якоря нет или в нем пусто - фильтруем по жанру
+                    if (basePool.length === 0) {
+                        basePool = poolToUse.filter(ax => {
+                            if (ax.role !== 'melody') return false;
+                            const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                            return genreArr.includes(this.genre);
+                        });
+                    }
 
-                    const anchorPool = targetAnchor 
-                        ? basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor)
-                        : basePool;
-
-                    if (anchorPool.length > 0) {
-                        const moodMatched = anchorPool.filter(ax => {
+                    if (basePool.length > 0) {
+                        const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                        const moodMatched = basePool.filter(ax => {
                             const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                             const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                             return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
                         });
 
-                        const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
+                        const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
                         cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
                     }
                 }
@@ -307,11 +314,11 @@ export class AmbientBrain {
         }
         
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            events.push(...this.renderThemeBass(yogaChord, epoch, localTension));
+            events.push(...this.constrainBass(this.renderThemeBass(yogaChord, epoch, localTension)));
         } else if (this.mood === 'anxious') {
-            events.push(...this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch));
+            events.push(...this.constrainBass(this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch)));
         } else {
-            events.push(...this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch));
+            events.push(...this.constrainBass(this.renderRhythmicBass(yogaChord, localTension, hints.bass as string, epoch)));
         }
 
         const melodyEvents: FractalEvent[] = [];
@@ -371,6 +378,17 @@ export class AmbientBrain {
             },
             narrative
         };
+    }
+
+    private constrainBass(events: FractalEvent[]): FractalEvent[] {
+        const BASS_FLOOR = 31;
+        const BASS_CEILING = 47;
+        return events.map(e => {
+            let note = e.note;
+            while (note > BASS_CEILING) note -= 12;
+            while (note < BASS_FLOOR) note += 12;
+            return { ...e, note };
+        });
     }
 
     private applyGeography(epoch: number, dna: SuiteDNA, forceShift: boolean = false) {
@@ -519,7 +537,7 @@ export class AmbientBrain {
                 type: 'melody',
                 note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
-                duration: n.d / 3, // #ЧТО: Удален множитель 1.6 для честного 1-в-1 звучания.
+                duration: n.d / 3, 
                 weight: 0.85,
                 technique: n.tech || 'pick',
                 dynamics: 'p',
@@ -539,7 +557,7 @@ export class AmbientBrain {
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         return barNotes.map(n => {
-            const pitch = Math.max(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.BASS_FLOOR);
+            const pitch = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
             return {
                 type: 'bass',
                 note: pitch,
@@ -555,13 +573,13 @@ export class AmbientBrain {
     }
 
     private renderRhythmicBass(chord: GhostChord, tension: number, timbre: string, epoch: number): FractalEvent[] {
-        const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
+        const root = chord.rootNote - 12; 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
         const pattern = [
             { t: 0, n: root, d: 0.7, w: 0.85 },
             { t: 1.5, n: root + 7, d: 0.4, w: 0.75 }, 
-            { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },
+            { t: 2.0, n: root + (isMinor ? 3 : 4), d: 0.4, w: 0.75 },
             { t: 3.5, n: root + 7, d: 0.7, w: 0.8 }
         ];
         return pattern.map(p => ({
@@ -572,7 +590,7 @@ export class AmbientBrain {
     }
 
     private renderRitualWalkingBass(yogaChord: GhostChord, localTension: number, timbre: string, epoch: number): FractalEvent[] {
-        const root = Math.max(yogaChord.rootNote - 12, this.BASS_FLOOR);
+        const root = yogaChord.rootNote - 12;
         const ritualPattern = [
             { t: 0, n: root, w: 0.85 }, { t: 1.0, n: root + 7, w: 0.75 }, { t: 1.5, n: root + 6, w: 0.8 }, { t: 2.5, n: root, w: 0.8 }
         ];
@@ -663,7 +681,7 @@ export class AmbientBrain {
         const stageCount = stages.length || 1;
         const partsPerStage = Math.ceil(shuffledParts.length / stageCount);
         stages.forEach((_, i) => {
-            const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * participantsMap.size); // Safety cap
+            const stageParts = shuffledParts.slice(i * partsPerStage, (i + 1) * participantsMap.size); 
             const stageInstr: Partial<Record<InstrumentPart, any>> = {};
             stageParts.forEach(part => { stageInstr[part] = participantsMap.get(part); });
             this.introLotteryMap.set(i, stageInstr);

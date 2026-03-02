@@ -29,8 +29,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V174.0 — "1-to-1 Fidelity".
- * #ОБНОВЛЕНО (ПЛАН №710): Устранена "частивость" (double speed). Исправлен расчет длительности и циклов.
+ * #ЗАЧЕМ: Блюзовый Мозг V175.0 — "DNA Integrity".
+ * #ОБНОВЛЕНО (ПЛАН №712): Реализован протокол Anchor-First. Облачные аксиомы теперь подхватываются даже без тегов жанра.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -196,7 +196,6 @@ export class BluesBrain {
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) this.selectGrandAxiom(tension);
 
-    // #ЧТО: Логика выбора новой аксиомы теперь срабатывает ТОЛЬКО после окончания предыдущей.
     if (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
@@ -295,25 +294,33 @@ export class BluesBrain {
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          const basePool = this.config.cloudAxioms.filter(ax => {
-              if (ax.role !== 'melody') return false;
-              const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-              return genreArr.includes(this.config.genre);
-          });
+          
+          // #ЗАЧЕМ: Anchor-First Protocol. Сначала ищем мелодии из целевого трека.
+          let basePool = [];
+          if (targetAnchor) {
+              basePool = this.config.cloudAxioms.filter(ax => 
+                  ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
+              );
+          }
 
-          const anchorPool = targetAnchor 
-              ? basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor)
-              : basePool;
+          // Если якоря нет или в нем нет мелодий - фильтруем по жанру
+          if (basePool.length === 0) {
+              basePool = this.config.cloudAxioms.filter(ax => {
+                  if (ax.role !== 'melody') return false;
+                  const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                  return genreArr.includes(this.config.genre);
+              });
+          }
 
-          if (anchorPool.length > 0) {
+          if (basePool.length > 0) {
               const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-              const moodMatched = anchorPool.filter(ax => {
+              const moodMatched = basePool.filter(ax => {
                   const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                   const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                   return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
               });
 
-              const finalPool = moodMatched.length > 0 ? moodMatched : anchorPool;
+              const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
               let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
               if (freshPool.length === 0) {
                   const poolIds = new Set(finalPool.map(ax => ax.id));
@@ -359,7 +366,7 @@ export class BluesBrain {
 
               const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
               this.currentAxiomMaxTick = phraseBars * 12;
-              this.currentAxiom = rawPhrase; // #ЧТО: Отказ от принудительного растягивания до 48. Используем реальную длину.
+              this.currentAxiom = rawPhrase; 
               
               this.soloistBusyUntilBar = epoch + phraseBars;
 
@@ -376,6 +383,8 @@ export class BluesBrain {
 
               if (bassSibling || accompSiblings.length > 0) {
                   this.ensembleStatus = 'SIBLING';
+              } else {
+                  this.ensembleStatus = 'ADAPTIVE';
               }
 
               return;
@@ -494,7 +503,6 @@ export class BluesBrain {
 
   private renderMelodicSegment(epoch: number, chord: GhostChord): FractalEvent[] {
     const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
-    // #ЧТО: Определение текущего такта внутри длинной фразы (например, 48-тактовой).
     const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
     const barOffset = barInAxiom * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
