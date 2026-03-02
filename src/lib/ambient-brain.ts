@@ -306,7 +306,7 @@ export class AmbientBrain {
             if (this.random.next() < harmonyChance) {
                 const timbre = localTension > 0.55 ? 'violin' : 'guitarChords';
                 hints.harmony = timbre as any; 
-                events.push(...this.renderOrche orchestralHarmony(yogaChord, epoch, hints, localTension));
+                events.push(...this.renderOrchestralHarmony(yogaChord, epoch, hints, localTension));
             }
         }
 
@@ -335,7 +335,7 @@ export class AmbientBrain {
                 melody: this.currentTheme?.id || 'Atmospheric',
                 melodyTrack: narrativeSource,
                 ensemble: this.ensembleStatus,
-                bass: this.currentBassTheme ? 'Sibling' : (localTension > 0.7 ? 'Walking' : 'Steady'),
+                bass: this.currentBassTheme ? 'Sibling' : (localTension > 0.7 ? 'Walking' : 'Riff'),
                 drums: 'Consistent',
                 accompaniment: this.currentAccompAxioms.length > 0 ? `${this.currentAccompAxioms.length} layers` : 'Adaptive',
                 harmony: hints.harmony || 'none'
