@@ -1,23 +1,35 @@
-import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
+
+import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import type { BlackGuitarSampler } from './black-guitar-sampler';
+import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №665 — Удален внутренний преамп для предотвращения нелинейности громкости.
+ * #ЧТО: ПЛАН №704 — Добавлена поддержка гитарных сэмплеров для аутентичного звучания Heritage.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
     public isInitialized = false;
     private instrument: any | null = null; 
-    
     private activePresetName: string = 'none';
 
-    constructor(audioContext: AudioContext, destination: AudioNode) {
+    private telecasterSampler: TelecasterGuitarSampler;
+    private blackAcousticSampler: BlackGuitarSampler;
+
+    constructor(
+        audioContext: AudioContext, 
+        destination: AudioNode,
+        telecasterSampler: TelecasterGuitarSampler,
+        blackAcousticSampler: BlackGuitarSampler
+    ) {
         this.audioContext = audioContext;
         this.destination = destination;
+        this.telecasterSampler = telecasterSampler;
+        this.blackAcousticSampler = blackAcousticSampler;
     }
 
     async init() {
@@ -49,11 +61,20 @@ export class AccompanimentSynthManagerV2 {
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         const beatDuration = 60 / tempo;
-        const notesToPlay = events.filter(e => e.type === 'accompaniment').map(e => ({
+        
+        // #ЗАЧЕМ: Фильтрация по типам. Слышит все виды аккомпанемента.
+        const filtered = events.filter(e => 
+            e.type === 'accompaniment' || 
+            e.type === 'pianoAccompaniment' || 
+            e.type === 'harmony'
+        );
+
+        const notesToPlay = filtered.map(e => ({
             midi: e.note,
             time: e.time * beatDuration,
             duration: e.duration * beatDuration,
             velocity: e.weight,
+            technique: e.technique,
             params: e.params
         }));
 
@@ -66,8 +87,20 @@ export class AccompanimentSynthManagerV2 {
             }
         }
 
-        if (this.activePresetName === 'none' || !this.instrument) return;
+        if (this.activePresetName === 'none') return;
         if (notesToPlay.length === 0) return;
+
+        // #ЗАЧЕМ: Умная маршрутизация на сэмплеры.
+        if (this.activePresetName === 'blackAcoustic') {
+            this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
+            return;
+        }
+        if (this.activePresetName === 'telecaster') {
+            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+            return;
+        }
+
+        if (!this.instrument) return;
 
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
@@ -92,12 +125,11 @@ export class AccompanimentSynthManagerV2 {
             return;
        }
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
-       if (!newPreset) return;
-       await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
-    }
-
-    public setPreampGain(gain: number) {
-        // #ЗАЧЕМ: Громкость теперь полностью управляется в AudioEngineContext.
+       if (newPreset) {
+           await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
+       } else {
+           this.activePresetName = instrumentName; // Might be a sampler name
+       }
     }
 
     public allNotesOff() {

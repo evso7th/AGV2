@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №700): Реализована система Генетического Замка (Anchor Locking) для Автопилота.
+ * #ОБНОВЛЕНО (ПЛАН №704): Реализована синхронизация темпа (BPM_SYNC) с UI.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -78,7 +78,6 @@ const Scheduler = {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
-        // #ЗАЧЕМ: ПЛАН №700 — Фиксация трека-лидера (Genetic Lock).
         const activeAnchorId = this.pickActiveAnchor();
 
         const finalSettings = {
@@ -95,7 +94,14 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
         
-        this.settings.bpm = fractalMusicEngine.config.tempo;
+        // #ЗАЧЕМ: Синхронизация темпа.
+        // #ЧТО: Обновляем системный BPM и отправляем сигнал в UI.
+        const inheritedBpm = fractalMusicEngine.config.tempo;
+        if (inheritedBpm !== this.settings.bpm) {
+            this.settings.bpm = inheritedBpm;
+            self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
+        }
+        
         this.barCount = 0;
     },
 

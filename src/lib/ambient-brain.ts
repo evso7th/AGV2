@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain v24.0 — "Ensemble Continuity & Human Breath".
- * #ЗАЧЕМ: Устранение «одинокого баса» и сокращение пауз между фразами.
- * #ЧТО: ПЛАН №702 — Внедрен Sticky Ensemble и мгновенный перезапуск тем.
+ * @fileOverview Ambient Brain v24.1 — "Sonic Equilibrium & Human Flow".
+ * #ЗАЧЕМ: Повышение плотности ансамбля и точности BPM.
+ * #ЧТО: ПЛАН №704 — Усилена стабильность ударных и сокращены паузы.
  */
 
 import type { 
@@ -145,7 +145,6 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // #ЗАЧЕМ: Устранение длинных пауз. Теперь новая аксиома ищется сразу после конца старой.
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
             const hasAnchor = !!this.activeAnchorId;
@@ -193,7 +192,6 @@ export class AmbientBrain {
                         tags: cloudAxiom.tags || ['cloud']
                     };
                     this.currentTrackName = cloudAxiom.compositionId;
-                    // #ЗАЧЕМ: Убрана лишняя задержка (+1). Вздох стал коротким и человечным.
                     this.soloistBusyUntilBar = epoch + phraseBars;
                     
                     const bassSibling = poolToUse.find(ax => 
@@ -216,7 +214,7 @@ export class AmbientBrain {
 
                     const accompSiblings = poolToUse.filter(ax => 
                         ax.role?.startsWith('accomp') && 
-                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
+                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) && 
                         ax.barOffset === cloudAxiom.barOffset
                     ).slice(0, 3);
 
@@ -274,8 +272,10 @@ export class AmbientBrain {
                     events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType));
                 }
             });
-        } else if (hints.accompaniment) {
-            // #ЗАЧЕМ: Защита от пустоты. Если сиблингов нет, играем стандартный пэд.
+        }
+        
+        // #ЗАЧЕМ: Удержание фона. Пад играет ВСЕГДА, если нет сиблингов.
+        if (hints.accompaniment && (this.currentAccompAxioms.length === 0 || localTension > 0.7)) {
             events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
         }
         
@@ -295,7 +295,7 @@ export class AmbientBrain {
         }
 
         if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
-            events.push(...this.renderPianoDrops(yogaChord, epoch, localTension));
+            events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
         }
 
         if (hints.harmony && this.currentAccompAxioms.filter(a => a.role.includes('strings') || a.role.includes('violin')).length === 0) {
@@ -437,7 +437,7 @@ export class AmbientBrain {
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { attack: 2.0, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
+            params: { attack: 0.8, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
         }));
     }
 
@@ -455,7 +455,7 @@ export class AmbientBrain {
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { attack: 1.5, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
+            params: { attack: 0.8, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
         }));
     }
 
@@ -507,7 +507,7 @@ export class AmbientBrain {
                 type: 'bass',
                 note: pitch,
                 time: (n.t % 12) / 3,
-                duration: n.d / 3,
+                duration: 3.5, 
                 weight: 0.85,
                 technique: 'pluck',
                 dynamics: 'p',
@@ -611,13 +611,12 @@ export class AmbientBrain {
 
     private renderAmbientPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Усиление стабильности ритма. Теперь ударные более постоянны.
-        const heartbeatProb = 0.85; 
+        // #ЗАЧЕМ: Усиление стабильности ритма.
+        const heartbeatProb = 0.95; 
         if (this.random.next() < heartbeatProb) {
             events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 40, time: 0, duration: 1.0, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             
-            // Дополнительный тихий хэт для «дыхания»
             if (this.random.next() < 0.5) {
                 events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: 2.0, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             }

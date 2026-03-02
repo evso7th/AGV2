@@ -248,7 +248,7 @@ export function generateSuiteDNA(
         if (activeAnchorId && cloudAxioms) {
             const normalizedAnchor = activeAnchorId.toLowerCase().replace(/[^a-z0-9]/g, '');
             pool = cloudAxioms
-                .filter(ax => ax.role === 'melody' && ax.compositionId.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedAnchor)
+                .filter(ax => ax.role === 'melody' && (ax.compositionId || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedAnchor)
                 .map(ax => ax.id);
         }
 
@@ -270,8 +270,10 @@ export function generateSuiteDNA(
 
     let inheritedBpm: number | null = null;
     if (cloudAxioms && cloudAxioms.length > 0) {
+        const normalizeStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (activeAnchorId) {
-            const anchorAxiom = cloudAxioms.find(ax => ax.compositionId === activeAnchorId && ax.nativeBpm);
+            const target = normalizeStr(activeAnchorId);
+            const anchorAxiom = cloudAxioms.find(ax => normalizeStr(ax.compositionId) === target && ax.nativeBpm);
             if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
         } else {
             const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);

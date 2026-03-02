@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V12.2 — "Dynamic Audition".
- * #ЧТО: ПЛАН №698 — Исправлен хардкод темпа (72) в playRawEvents. Теперь уважает nativeBpm.
+ * #ЗАЧЕМ: Audio Engine Context V12.3 — "BPM Synchronization".
+ * #ЧТО: ПЛАН №704 — Добавлена поддержка BPM_SYNC для автоматического обновления UI.
  */
 'use client';
 
@@ -70,7 +70,7 @@ export const useAudioEngine = () => {
   return context;
 };
 
-export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
+export const AudioEngineProvider = ({ children }: { children: React.SetStateAction<React.ReactNode> }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
@@ -142,7 +142,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     
-    // Dispatch to managers
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
@@ -190,7 +189,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment);
+        // #ЗАЧЕМ: Усиление аккомпанемента гитарными сэмплерами.
+        accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!);
+        
         melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
         bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
         harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
@@ -212,6 +213,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
+                } else if (type === 'BPM_SYNC' && payload) {
+                    // #ЗАЧЕМ: Проброс события синхронизации темпа в UI.
+                    window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
                 } else if (type === 'sfx' && payload) {

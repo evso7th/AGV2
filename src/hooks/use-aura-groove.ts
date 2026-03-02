@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.1 — "State Integrity Fix".
- * #ЧТО: ПЛАН №675 — Инициализировано состояние эквалайзера для предотвращения краша .toFixed().
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.2 — "BPM Synchronization".
+ * #ЧТО: ПЛАН №704 — Добавлен слушатель AG_BPM_SYNC для обновления UI при наследовании темпа.
  */
 'use client';
 
@@ -104,11 +105,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
 
-  // #ЗАЧЕМ: Состояние эквалайзера для предотвращения крашей в UI.
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
 
   useEffect(() => { initialize(); }, [initialize]);
+
+  // #ЗАЧЕМ: Синхронизация темпа из ДНК обратно в UI.
+  // #ЧТО: Ловим событие AG_BPM_SYNC, отправленное из Context (который получил его от Worker).
+  useEffect(() => {
+    const handleBpmSync = (e: any) => {
+        if (e.detail && e.detail.bpm) {
+            setBpm(e.detail.bpm);
+        }
+    };
+    window.addEventListener('AG_BPM_SYNC', handleBpmSync);
+    return () => window.removeEventListener('AG_BPM_SYNC', handleBpmSync);
+  }, []);
 
   const updateAllVolumes = useCallback(() => {
     if (!isInitialized) return;
