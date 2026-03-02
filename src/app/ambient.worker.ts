@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №713): Реализована строгая семантическая фильтрация Якоря (Semantic Anchor Selection).
+ * #ОБНОВЛЕНО (ПЛАН №714): Добавлена трассировка подбора Якоря.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -61,8 +61,8 @@ const Scheduler = {
     },
 
     /**
-     * #ЗАЧЕМ: Семантический подбор Якоря (ПЛАН №713).
-     * #ЧТО: Если нет ручного фильтра, выбирает треки, чьи Genre/Mood совпадают с UI.
+     * #ЗАЧЕМ: Семантический подбор Якоря.
+     * #ЧТО: ПЛАН №714. Добавлена трассировка в консоль для отладки пула.
      */
     pickActiveAnchor(): string | null {
         const manualFilter = this.settings.selectedCompositionIds || [];
@@ -75,7 +75,8 @@ const Scheduler = {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
 
-            // Собираем все треки, которые соответствуют текущему контексту UI
+            console.log(`${getTimestamp()} [Sync] Scanning ${this.cloudAxiomPool.length} axioms for context: ${uiGenre}/${uiMood}...`);
+
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -84,8 +85,11 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
+                console.log(`${getTimestamp()} [Sync] Success. Found ${uniqueIds.length} matching tracks.`);
                 const randIdx = Math.floor(Math.random() * uniqueIds.length);
                 return uniqueIds[randIdx];
+            } else {
+                console.log(`${getTimestamp()} [Sync] No matching DNA found. Standard engine active.`);
             }
         }
         return null;

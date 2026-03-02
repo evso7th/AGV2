@@ -29,8 +29,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V175.0 — "DNA Integrity".
- * #ОБНОВЛЕНО (ПЛАН №712): Реализован протокол Anchor-First. Облачные аксиомы теперь подхватываются даже без тегов жанра.
+ * #ЗАЧЕМ: Блюзовый Мозг V176.0 — "Strict Context Rigor".
+ * #ОБНОВЛЕНО (ПЛАН №714): Удален мягкий поиск по жанру. Только Anchor или Local.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -295,21 +295,14 @@ export class BluesBrain {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           
-          // #ЗАЧЕМ: Anchor-First Protocol. Сначала ищем мелодии из целевого трека.
+          // #ЗАЧЕМ: Strict Semantic Search (ПЛАН №714).
+          // #ЧТО: Если Якорь не выбран или не найден — мы НЕ ищем случайные треки того же жанра.
+          //       Это гарантирует, что играется ТОЛЬКО семантически верное Наследие.
           let basePool = [];
           if (targetAnchor) {
               basePool = this.config.cloudAxioms.filter(ax => 
                   ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
               );
-          }
-
-          // Если якоря нет или в нем нет мелодий - фильтруем по жанру
-          if (basePool.length === 0) {
-              basePool = this.config.cloudAxioms.filter(ax => {
-                  if (ax.role !== 'melody') return false;
-                  const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                  return genreArr.includes(this.config.genre);
-              });
           }
 
           if (basePool.length > 0) {

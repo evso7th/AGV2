@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V12.3 — "BPM Synchronization".
- * #ЧТО: ПЛАН №704 — Добавлена поддержка BPM_SYNC для автоматического обновления UI.
+ * #ЗАЧЕМ: Audio Engine Context V12.4 — "Automatic DNA Sync".
+ * #ЧТО: ПЛАН №714 — Добавлен автоматический вызов refreshCloudAxioms при инициализации для наполнения пула Воркера.
  */
 'use client';
 
@@ -25,7 +25,6 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 
 const VOICE_BALANCE: Record<string, number> = {
-  // #ЗАЧЕМ: Системное снижение громкости баса в 2 раза по требованию (ПЛАН №706).
   bass: 0.30, 
   melody: 0.70, 
   accompaniment: 0.55, 
@@ -225,6 +224,10 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             };
         }
 
+        // #ЗАЧЕМ: Принудительная загрузка ДНК сразу после инициализации.
+        // #ЧТО: ПЛАН №714. Гарантирует наличие пула в Воркере до начала игры.
+        await refreshCloudAxioms();
+
         setIsInitialized(true);
         return true;
     } catch (e) {
@@ -234,7 +237,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         setIsInitializing(false); 
         initializationInFlightRef.current = false;
     }
-  }, [toast, scheduleEvents, auth]);
+  }, [toast, scheduleEvents, auth, refreshCloudAxioms]);
 
   return (
     <AudioEngineContext.Provider value={{

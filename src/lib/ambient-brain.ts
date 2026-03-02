@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.5 — "DNA Integrity".
- * #ОБНОВЛЕНО (ПЛАН №712): Исправлено игнорирование облачных аксиом при отсутствии тегов жанра. Реализован приоритет Якоря.
+ * @fileOverview Ambient Brain v24.6 — "Strict Context Rigor".
+ * #ОБНОВЛЕНО (ПЛАН №714): Удален мягкий фильтр по жанру. Только Anchor или Local.
  */
 
 import type { 
@@ -156,8 +156,7 @@ export class AmbientBrain {
 
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
-            const hasAnchor = !!this.activeAnchorId;
-            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.85 : 0.70) + localTension * 0.15;
+            const developmentChance = 0.85; // Строго ищем наследие
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
@@ -166,21 +165,13 @@ export class AmbientBrain {
                 if (poolToUse.length > 0) {
                     const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
                     
-                    // #ЗАЧЕМ: Anchor-First Search. Сначала ищем мелодии из залоченного трека.
+                    // #ЗАЧЕМ: Strict Semantic Integrity. 
+                    // #ЧТО: ПЛАН №714. Если нет залоченного Якоря, мы НЕ ищем случайные треки.
                     let basePool = [];
                     if (targetAnchor) {
                         basePool = poolToUse.filter(ax => 
                             ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
                         );
-                    }
-
-                    // Если якоря нет или в нем пусто - фильтруем по жанру
-                    if (basePool.length === 0) {
-                        basePool = poolToUse.filter(ax => {
-                            if (ax.role !== 'melody') return false;
-                            const genreArr = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                            return genreArr.includes(this.genre);
-                        });
                     }
 
                     if (basePool.length > 0) {
@@ -256,7 +247,8 @@ export class AmbientBrain {
                     }));
 
                     this.ensembleStatus = (bassSibling || accompSiblings.length > 0) ? 'SIBLING' : 'ADAPTIVE';
-                } else if (!hasAnchor) {
+                } else if (!this.activeAnchorId) {
+                    // Только если семантического совпадения в базе нет — используем локальное наследие
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
@@ -378,6 +370,23 @@ export class AmbientBrain {
             },
             narrative
         };
+    }
+
+    private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
+        const root = chord.rootNote; 
+        const notes = [root, root + 7];
+        return notes.map((n, i) => ({
+            type: 'harmony',
+            note: n + 12 + this.registerShift, 
+            time: i * 0.5,
+            duration: 8.0,
+            weight: 0.55, 
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato',
+            chordName: chord.chordType === 'minor' ? 'Am' : 'E',
+            params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.8 }
+        }));
     }
 
     private constrainBass(events: FractalEvent[]): FractalEvent[] {
@@ -598,23 +607,6 @@ export class AmbientBrain {
             type: 'bass', note: p.n, time: p.t, duration: 0.4,
             weight: p.w, technique: 'pluck', dynamics: 'p', phrasing: 'staccato',
             params: { attack: 0.05, release: 0.4, filterCutoff: 400 }
-        }));
-    }
-
-    private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {
-        const root = chord.rootNote; 
-        const notes = [root, root + 7];
-        return notes.map((n, i) => ({
-            type: 'harmony',
-            note: n + 12 + this.registerShift, 
-            time: i * 0.5,
-            duration: 8.0,
-            weight: 0.55, 
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            chordName: chord.chordType === 'minor' ? 'Am' : 'E',
-            params: { barCount: epoch, filterCutoff: this.solistCutoff * 0.8 }
         }));
     }
 
