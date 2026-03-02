@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Ambient Brain v24.2 — "Sonic Equilibrium & Human Flow".
- * #ОБНОВЛЕНО (ПЛАН №705): Улучшен алгоритмический бас (Fallback) при отсутствии сиблингов.
+ * #ОБНОВЛЕНО (ПЛАН №707): Реализован протокол Zero-Tick для мгновенного старта фраз.
  */
 
 import type { 
@@ -15,7 +15,16 @@ import type {
     Genre,
     CommonMood
 } from '@/types/music';
-import { calculateMusiNum, DEGREE_TO_SEMITONE, pickWeightedDeterministic, GEO_ATLAS, LIGHT_ATLAS, stretchToNarrativeLength, decompressCompactPhrase } from './music-theory';
+import { 
+    calculateMusiNum, 
+    DEGREE_TO_SEMITONE, 
+    pickWeightedDeterministic, 
+    GEO_ATLAS, 
+    LIGHT_ATLAS, 
+    stretchToNarrativeLength, 
+    decompressCompactPhrase,
+    normalizePhraseGroup 
+} from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
@@ -181,8 +190,40 @@ export class AmbientBrain {
 
                 if (cloudAxiom) {
                     const rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+                    const phrasesToNormalize = [rawPhrase];
+                    
+                    const bassSibling = poolToUse.find(ax => 
+                        ax.role === 'bass' && 
+                        this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) &&
+                        ax.barOffset === cloudAxiom.barOffset
+                    );
+                    
+                    let rawBass: any[] | null = null;
+                    if (bassSibling) {
+                        rawBass = decompressCompactPhrase(bassSibling.phrase);
+                        phrasesToNormalize.push(rawBass);
+                    }
+
+                    const accompSiblings = poolToUse.filter(ax => 
+                        ax.role?.startsWith('accomp') && 
+                        this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) && 
+                        ax.barOffset === cloudAxiom.barOffset
+                    ).slice(0, 3);
+
+                    const rawAccomps: any[][] = [];
+                    accompSiblings.forEach(ax => {
+                        const p = decompressCompactPhrase(ax.phrase);
+                        rawAccomps.push(p);
+                        phrasesToNormalize.push(p);
+                    });
+
+                    // #ЗАЧЕМ: Протокол Zero-Tick.
+                    // #ЧТО: Сдвигаем все фразы группы к началу, игнорируя пустоту.
+                    normalizePhraseGroup(phrasesToNormalize);
+
                     const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
                     const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
+                    
                     this.currentTheme = {
                         phrase: narrativePhrase,
                         startBar: epoch,
@@ -193,33 +234,18 @@ export class AmbientBrain {
                     this.currentTrackName = cloudAxiom.compositionId;
                     this.soloistBusyUntilBar = epoch + phraseBars;
                     
-                    const bassSibling = poolToUse.find(ax => 
-                        ax.role === 'bass' && 
-                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) &&
-                        ax.barOffset === cloudAxiom.barOffset
-                    );
-                    
-                    if (bassSibling) {
-                        const rawBass = decompressCompactPhrase(bassSibling.phrase);
+                    if (rawBass) {
                         this.currentBassTheme = {
                             phrase: stretchToNarrativeLength(rawBass, 48, this.random),
                             startBar: epoch,
                             endBar: epoch + phraseBars
                         };
                         this.bassBusyUntilBar = epoch + phraseBars;
-                    } else {
-                        this.currentBassTheme = null;
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => 
-                        ax.role?.startsWith('accomp') && 
-                        this.normalize(ax.compositionId || '') === this.normalize(this.currentTrackName) && 
-                        ax.barOffset === cloudAxiom.barOffset
-                    ).slice(0, 3);
-
-                    this.currentAccompAxioms = accompSiblings.map(ax => ({
-                        phrase: stretchToNarrativeLength(decompressCompactPhrase(ax.phrase), 48, this.random),
-                        role: ax.role,
+                    this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
+                        phrase: stretchToNarrativeLength(p, 48, this.random),
+                        role: accompSiblings[idx].role,
                         endBar: epoch + phraseBars
                     }));
 
@@ -229,8 +255,12 @@ export class AmbientBrain {
                     const group = AMBIENT_LEGACY[groupKey];
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
                     const lick = group.licks[lickIdx];
-                    const narrativePhrase = stretchToNarrativeLength(lick.phrase, 48, this.random);
-                    const phraseBars = Math.ceil(Math.max(...lick.phrase.map(n => n.t + n.d), 0) / 12);
+                    
+                    const rawPhrase = [...lick.phrase]; // Copy to avoid mutation of assets
+                    normalizePhraseGroup([rawPhrase]); // Normalize legacy just in case
+
+                    const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
+                    const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
                     
                     this.currentTheme = {
                         phrase: narrativePhrase,
@@ -524,10 +554,9 @@ export class AmbientBrain {
         const root = Math.max(chord.rootNote - 12, this.BASS_FLOOR); 
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         
-        // #ЗАЧЕМ: Улучшенный адаптивный паттерн баса.
         const pattern = [
             { t: 0, n: root, d: 0.7, w: 0.85 },
-            { t: 1.5, n: root + 7, d: 0.4, w: 0.75 }, // Квинта на слабую долю
+            { t: 1.5, n: root + 7, d: 0.4, w: 0.75 }, 
             { t: 2.0, n: Math.max(root + (isMinor ? 3 : 4), this.BASS_FLOOR), d: 0.4, w: 0.75 },
             { t: 3.5, n: root + 7, d: 0.7, w: 0.8 }
         ];
@@ -548,26 +577,6 @@ export class AmbientBrain {
             weight: p.w, technique: 'pluck', dynamics: 'p', phrasing: 'staccato',
             params: { attack: 0.05, release: 0.4, filterCutoff: 400 }
         }));
-    }
-
-    private renderPianoDrops(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const beats = [1.2, 2.5, 3.7]; 
-        beats.forEach(beat => {
-            if (this.random.next() < 0.3) { 
-                events.push({
-                    type: 'pianoAccompaniment',
-                    note: Math.min(chord.rootNote + 24 + this.registerShift + [0, 3, 7, 12][this.random.nextInt(4)], this.MELODY_CEILING),
-                    time: beat,
-                    duration: 1.5, 
-                    weight: 0.4, 
-                    technique: 'hit',
-                    dynamics: 'p',
-                    phrasing: 'staccato'
-                });
-            }
-        });
-        return events;
     }
 
     private renderOrchestralHarmony(chord: GhostChord, epoch: number, hints: InstrumentHints, tension: number): FractalEvent[] {

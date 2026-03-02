@@ -16,7 +16,8 @@ import {
     DEGREE_TO_SEMITONE,
     decompressCompactPhrase,
     stretchToNarrativeLength,
-    calculateMusiNum
+    calculateMusiNum,
+    normalizePhraseGroup
 } from './music-theory';
 import { 
     getNextChordRoot, 
@@ -29,7 +30,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
  * #ЗАЧЕМ: Блюзовый Мозг V173.2 — "Melancholic Resonance".
- * #ЧТО: ПЛАН №706 — Ювелирная настройка меланхоличного блюза: регистр, плотность и тембр.
+ * #ОБНОВЛЕНО (ПЛАН №707): Реализован протокол Zero-Tick для мгновенного старта фраз.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -239,8 +240,6 @@ export class BluesBrain {
 
     events.push(...melodyEvents);
 
-    // #ЗАЧЕМ: Устранение "частит" (over-density) в меланхоличном блюзе.
-    // #ЧТО: Ритмические текстуры отключены для сохранения чистоты и пространства меланхолии.
     if (hints.melody && this.currentGuitarRiff && this.mood !== 'melancholic') {
         events.push(...this.renderRhythmicTextureFromRiff(epoch));
     }
@@ -326,31 +325,50 @@ export class BluesBrain {
               this.currentMelodyAxiomObj = selected;
               this.state.recentLicks.push(selected.id);
               if (this.state.recentLicks.length > 50) this.state.recentLicks.shift();
-              const rawPhrase = decompressCompactPhrase(selected.phrase);
-              this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
               
-              const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
-              this.soloistBusyUntilBar = epoch + phraseBars;
+              const rawPhrase = decompressCompactPhrase(selected.phrase);
+              const phrasesToNormalize = [rawPhrase];
 
               const bassSibling = this.config.cloudAxioms.find(ax => 
                   ax.role === 'bass' && this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
               );
+              
+              let rawBass: any[] | null = null;
               if (bassSibling) {
-                  const rawBass = decompressCompactPhrase(bassSibling.phrase);
-                  this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
+                  rawBass = decompressCompactPhrase(bassSibling.phrase);
+                  phrasesToNormalize.push(rawBass);
               }
 
+              const rawAccomps: any[][] = [];
               const accompSiblings = this.config.cloudAxioms.filter(ax => 
                   ax.role?.startsWith('accomp') && 
                   this.normalize(ax.compositionId || '') === this.normalize(selected.compositionId) && 
                   ax.barOffset === selected.barOffset
               ).slice(0, 3);
 
-              if (accompSiblings.length > 0) {
-                  this.currentAccompAxioms = accompSiblings.map(ax => ({
-                      phrase: stretchToNarrativeLength(decompressCompactPhrase(ax.phrase), 48, this.random),
-                      role: ax.role
+              accompSiblings.forEach(ax => {
+                  const p = decompressCompactPhrase(ax.phrase);
+                  rawAccomps.push(p);
+                  phrasesToNormalize.push(p);
+              });
+
+              // #ЗАЧЕМ: Протокол Zero-Tick.
+              normalizePhraseGroup(phrasesToNormalize);
+
+              this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
+              
+              const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);
+              this.soloistBusyUntilBar = epoch + phraseBars;
+
+              if (rawBass) {
+                  this.currentBassAxiom = stretchToNarrativeLength(rawBass, 48, this.random);
+              }
+
+              if (rawAccomps.length > 0) {
+                  this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
+                      phrase: stretchToNarrativeLength(p, 48, this.random),
+                      role: accompSiblings[idx].role
                   }));
               }
 
@@ -376,7 +394,11 @@ export class BluesBrain {
               else if (chord.startsWith('iv')) phrase = this.currentGrandMelody.phraseIV!;
               else phrase = this.currentGrandMelody.phraseV!;
           }
-          this.currentAxiom = stretchToNarrativeLength(phrase, 48, this.random);
+          
+          const rawPhrase = [...phrase];
+          normalizePhraseGroup([rawPhrase]);
+
+          this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
           this.currentLickId = this.currentGrandMelody.id;
           this.soloistBusyUntilBar = epoch + 1;
           return;
@@ -384,7 +406,10 @@ export class BluesBrain {
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
+      
       const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
+      normalizePhraseGroup([rawPhrase]);
+
       this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);
       this.soloistBusyUntilBar = epoch + 1;
   }
@@ -466,11 +491,8 @@ export class BluesBrain {
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     return barNotes.map(n => ({
         type: 'melody',
-        // #ЗАЧЕМ: Понижение регистра соло на одну октаву для бархатного звучания.
-        // #ЧТО: Сдвиг изменен с +24 на +12.
         note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
         time: (n.t % 12) / 3,
-        // #ЗАЧЕМ: Использование честной длительности аксиомы для устранения "переуплотнения".
         duration: n.d / 3,
         weight: 0.85,
         technique: n.tech || 'pick',
@@ -587,7 +609,6 @@ export class BluesBrain {
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.bass) (hints as any).bass = tension > 0.8 ? 'bass_808' : (this.mood === 'dark' || this.mood === 'gloomy' ? 'bass_ambient_dark' : 'bass_jazz_warm');
     
-    // #ЗАЧЕМ: ПЛАН №706 — Меланхоличный блюз теперь жестко закреплен за CS80 и ShineOn.
     if (hints.melody) {
         if (this.mood === 'melancholic') {
             (hints as any).melody = tension >= 0.7 ? 'guitar_shineOn' : 'cs80';

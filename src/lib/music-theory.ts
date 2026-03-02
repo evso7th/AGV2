@@ -2,6 +2,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities V2.2 — "Genetic Anchor Integrity".
  * #ЗАЧЕМ: Реализация ПЛАНА №700 — Жесткая блокировка трека (Genetic Lock) для Сиблингов.
+ * #ОБНОВЛЕНО (ПЛАН №707): Добавлена нормализация фраз для мгновенного старта.
  */
 
 import type { 
@@ -95,6 +96,26 @@ export function repairLegacyPhrase(compact: number[]): number[] {
         repaired.push(t, d, degIdx, techIdx);
     }
     return repaired;
+}
+
+/**
+ * #ЗАЧЕМ: Удаление пустого пространства в начале группы фраз.
+ * #ЧТО: Сдвигает все ноты в группе так, чтобы самая первая нота начиналась на тике 0.
+ * #СВЯЗИ: ПЛАН №707. Используется в Brains при выборе темы.
+ */
+export function normalizePhraseGroup(phrases: any[][]): void {
+    let minT = Infinity;
+    phrases.forEach(p => {
+        p.forEach(n => {
+            if (n.t < minT) minT = n.t;
+        });
+    });
+    
+    if (minT !== Infinity && minT > 0) {
+        phrases.forEach(p => {
+            p.forEach(n => { n.t -= minT; });
+        });
+    }
 }
 
 export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
@@ -244,7 +265,6 @@ export function generateSuiteDNA(
         const dynasty = getDynastyForMood(mood, finalSeed);
         let pool: string[] = [];
         
-        // #ЗАЧЕМ: ПЛАН №700 — Реализация Генетического Замка для блюзовых ликов.
         if (activeAnchorId && cloudAxioms) {
             const normalizedAnchor = activeAnchorId.toLowerCase().replace(/[^a-z0-9]/g, '');
             pool = cloudAxioms
