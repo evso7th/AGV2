@@ -28,8 +28,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V173.1 — "Ensemble Persistence & Ghost Siblings".
- * #ЧТО: ПЛАН №705 — Улучшен адаптивный бас при отсутствии сиблингов в Якоре.
+ * #ЗАЧЕМ: Блюзовый Мозг V173.2 — "Melancholic Resonance".
+ * #ЧТО: ПЛАН №706 — Ювелирная настройка меланхоличного блюза: регистр, плотность и тембр.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -239,7 +239,9 @@ export class BluesBrain {
 
     events.push(...melodyEvents);
 
-    if (hints.melody && this.currentGuitarRiff) {
+    // #ЗАЧЕМ: Устранение "частит" (over-density) в меланхоличном блюзе.
+    // #ЧТО: Ритмические текстуры отключены для сохранения чистоты и пространства меланхолии.
+    if (hints.melody && this.currentGuitarRiff && this.mood !== 'melancholic') {
         events.push(...this.renderRhythmicTextureFromRiff(epoch));
     }
     
@@ -403,8 +405,6 @@ export class BluesBrain {
               phrasing: 'legato'
           }));
       }
-      // #ЗАЧЕМ: Улучшенный адаптивный бас при отсутствии сиблинга.
-      // #ЧТО: Если напряжение высокое — волкинг, иначе — развитый рифф.
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
 
@@ -466,9 +466,12 @@ export class BluesBrain {
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     return barNotes.map(n => ({
         type: 'melody',
-        note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
+        // #ЗАЧЕМ: Понижение регистра соло на одну октаву для бархатного звучания.
+        // #ЧТО: Сдвиг изменен с +24 на +12.
+        note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
         time: (n.t % 12) / 3,
-        duration: 2.0,
+        // #ЗАЧЕМ: Использование честной длительности аксиомы для устранения "переуплотнения".
+        duration: n.d / 3,
         weight: 0.85,
         technique: n.tech || 'pick',
         dynamics: 'p',
@@ -481,7 +484,6 @@ export class BluesBrain {
     const root = chord.rootNote - 12;
     const barInRiff = epoch % 4;
     
-    // #ЗАЧЕМ: Более "певучий" и разнообразный рифф для Fallback-режима.
     const riff = [ 
         [{ t: 0, n: root }, { t: 1.5, n: root }, { t: 2.5, n: root + 7 }], 
         [{ t: 0, n: root }, { t: 2.0, n: root + 7 }, { t: 3.5, n: root + 10 }], 
@@ -499,7 +501,6 @@ export class BluesBrain {
     const nextBar = (epoch + 1) % 12;
     const nextRoot = (this.config.rootNote + BLUES_PROGRESSION_OFFSETS[nextBar]) - 12;
     
-    // #ЗАЧЕМ: Классический хроматический подвод к следующему аккорду (True Walking).
     return [root, root + 4, root + 7, nextRoot - 1].map((p, i) => ({ 
         type: 'bass', note: this.constrainBassOctave(p), time: i, duration: 0.9, 
         weight: 0.85, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' 
@@ -585,7 +586,16 @@ export class BluesBrain {
 
   private evaluateTimbralDramaturgy(tension: number, hints: InstrumentHints) {
     if (hints.bass) (hints as any).bass = tension > 0.8 ? 'bass_808' : (this.mood === 'dark' || this.mood === 'gloomy' ? 'bass_ambient_dark' : 'bass_jazz_warm');
-    if (hints.melody) (hints as any).melody = tension > 0.8 ? 'cs80' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
+    
+    // #ЗАЧЕМ: ПЛАН №706 — Меланхоличный блюз теперь жестко закреплен за CS80 и ShineOn.
+    if (hints.melody) {
+        if (this.mood === 'melancholic') {
+            (hints as any).melody = tension >= 0.7 ? 'guitar_shineOn' : 'cs80';
+        } else {
+            (hints as any).melody = tension > 0.8 ? 'cs80' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');
+        }
+    }
+    
     if (hints.accompaniment) (hints as any).accompaniment = tension > 0.75 ? 'ep_rhodes_warm' : 'organ_soft_jazz';
     if (hints.harmony) (hints as any).harmony = (tension > 0.88 || tension < 0.15) ? 'violin' : 'guitarChords';
   }

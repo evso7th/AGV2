@@ -25,7 +25,8 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.60, 
+  // #ЗАЧЕМ: Системное снижение громкости баса в 2 раза по требованию (ПЛАН №706).
+  bass: 0.30, 
   melody: 0.70, 
   accompaniment: 0.55, 
   drums: 0.65, 
@@ -189,7 +190,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
-        // #ЗАЧЕМ: Усиление аккомпанемента гитарными сэмплерами.
         accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!);
         
         melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
@@ -214,7 +214,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                 } else if (type === 'BPM_SYNC' && payload) {
-                    // #ЗАЧЕМ: Проброс события синхронизации темпа в UI.
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
