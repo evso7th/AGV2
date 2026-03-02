@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V12.4 — "Automatic DNA Sync".
- * #ЧТО: ПЛАН №714 — Добавлен автоматический вызов refreshCloudAxioms при инициализации для наполнения пула Воркера.
+ * #ЗАЧЕМ: Audio Engine Context V13.0 — "Context-Driven Lazy Loading".
+ * #ЧТО: ПЛАН №716 — Отказ от полной загрузки базы. Внедрен хирургический контекстный синхрон.
  */
 'use client';
 
@@ -21,7 +21,7 @@ import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, getDocs, query } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 
 const VOICE_BALANCE: Record<string, number> = {
@@ -115,20 +115,61 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
     }
   }, []);
 
+  /**
+   * #ЗАЧЕМ: Хирургическая загрузка ДНК.
+   * #ЧТО: ПЛАН №716. Загружает только аксиомы, соответствующие текущему контексту (Genre/Mood).
+   */
+  const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
+    if (!db || !workerRef.current) return;
+    
+    console.log(`%c[Sync] Requesting targeted DNA for: ${genre}/${mood}...`, 'color: #00ced1;');
+    
+    try {
+      let axiomsQuery;
+      
+      if (manualFilter.length > 0) {
+          // Если есть ручной фильтр треков - грузим их напрямую
+          axiomsQuery = query(collection(db, 'heritage_axioms'), where('compositionId', 'in', manualFilter.slice(0, 10)));
+      } else {
+          // Иначе грузим по жанру (Firestore limit: 1 array-contains per query)
+          axiomsQuery = query(collection(db, 'heritage_axioms'), where('genre', 'array-contains', genre), limit(500));
+      }
+
+      const snapshot = await getDocs(axiomsQuery);
+      let axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // Дополнительная фильтрация по настроению на клиенте (чтобы не плодить индексы)
+      if (manualFilter.length === 0) {
+          axioms = axioms.filter((ax: any) => {
+              const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+              return moods.includes(mood);
+          });
+      }
+
+      console.log(`%c[Sync] Pushing ${axioms.length} context axioms to Worker.`, 'color: #32CD32;');
+      workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+    } catch (e) {
+      console.error('[Sync] Contextual fetch failed:', e);
+    }
+  }, [db]);
+
+  /**
+   * #ЗАЧЕМ: Легковесная инвентаризация для фильтров UI.
+   */
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
+      // Здесь мы все еще грузим все документы, но только для получения имен треков. 
+      // В будущем стоит иметь отдельную коллекцию 'catalog' для этого.
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
-      const axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       const counts: Record<string, number> = {};
-      axioms.forEach(ax => {
-          const compId = (ax as any).compositionId;
+      snapshot.docs.forEach(d => {
+          const compId = d.data().compositionId;
           if (compId) counts[compId] = (counts[compId] || 0) + 1;
       });
       const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
       setAvailableCompositions(meta);
-      if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-    } catch (e) { console.error('[CloudSync] Failed:', e); }
+    } catch (e) { console.error('[CloudSync] Metadata failed:', e); }
   }, [db]);
 
   const stopAllSounds = useCallback(() => {
@@ -224,8 +265,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             };
         }
 
-        // #ЗАЧЕМ: Принудительная загрузка ДНК сразу после инициализации.
-        // #ЧТО: ПЛАН №714. Гарантирует наличие пула в Воркере до начала игры.
+        // ПЛАН №716: Грузим только метаданные при старте
         await refreshCloudAxioms();
 
         setIsInitialized(true);
@@ -242,17 +282,29 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
   return (
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize,
-        setIsPlaying: (playing) => {
-            setIsPlayingState(playing);
+        setIsPlaying: async (playing) => {
             const context = audioContextRef.current;
             if (!context || !workerRef.current) return;
+            
             if (playing) {
-                if (context.state === 'suspended') context.resume();
+                if (context.state === 'suspended') await context.resume();
+                
+                // ПЛАН №716: Синхронизируем ДНК только перед началом игры
+                if (settingsRef.current) {
+                    await syncContextDNA(
+                        settingsRef.current.genre, 
+                        settingsRef.current.mood, 
+                        settingsRef.current.selectedCompositionIds
+                    );
+                }
+
+                setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
                 stopAllSounds(); 
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
+                setIsPlayingState(false);
                 masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
                 workerRef.current.postMessage({ command: 'stop' });
                 setTimeout(() => stopAllSounds(), 50); 
@@ -262,6 +314,15 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as any;
                 workerRef.current.postMessage({ command: 'update_settings', data: s });
+                
+                // Если жанр/настроение изменились во время игры - догружаем ДНК
+                if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) {
+                    syncContextDNA(
+                        settingsRef.current!.genre, 
+                        settingsRef.current!.mood, 
+                        settingsRef.current!.selectedCompositionIds
+                    );
+                }
             }
         },
         refreshCloudAxioms,

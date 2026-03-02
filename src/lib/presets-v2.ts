@@ -111,23 +111,23 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    // #ЗАЧЕМ: Тотальная очистка звука (ПЛАН №715).
-    // #ЧТО: Перевод на Synth Engine для исключения "песка" и "хрипа" гитарного WaveShaper.
+    // #ЗАЧЕМ: ПЛАН №716. Дополнительная полировка "Crystal Lead".
+    // #ЧТО: Смягчение фильтра и атаки для устранения остаточной резкости.
     type: 'synth',
     name: 'Crystal Lead', 
     volume: 0.14, 
     osc: [
-      { type: 'sine', detune: 0, octave: 0, gain: 0.75 },
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.25 },
-      { type: 'sine', detune: 0, octave: 1, gain: 0.1 }
+      { type: 'sine', detune: 0, octave: 0, gain: 0.8 },
+      { type: 'triangle', detune: 0, octave: 0, gain: 0.2 },
+      { type: 'sine', detune: 0, octave: 1, gain: 0.05 }
     ],
     noise: { on: false, gain: 0 },
-    adsr: { a: 0.015, d: 0.4, s: 0.8, r: 1.2 },
-    lpf: { cutoff: 3200, q: 0.7, mode: '24dB' },
-    lfo: { shape: 'sine', rate: 4.5, amount: 3, target: 'pitch' }, // Subtle vibrato
-    chorus: { on: true, rate: 0.25, depth: 0.004, mix: 0.2 },
-    delay: { on: true, time: 0.42, fb: 0.25, hc: 3500, mix: 0.18 },
-    reverbMix: 0.30
+    adsr: { a: 0.025, d: 0.5, s: 0.85, r: 1.5 }, // Более плавная атака
+    lpf: { cutoff: 2800, q: 0.6, mode: '24dB' }, // Более мягкий срез
+    lfo: { shape: 'sine', rate: 4.2, amount: 2.5, target: 'pitch' },
+    chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.15 },
+    delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
+    reverbMix: 0.25
   },
 
   guitar_muffLead: {
