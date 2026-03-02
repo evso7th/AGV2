@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №704): Реализована синхронизация темпа (BPM_SYNC) с UI.
+ * #ОБНОВЛЕНО (ПЛАН №713): Реализована строгая семантическая фильтрация Якоря (Semantic Anchor Selection).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -60,16 +60,33 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
+    /**
+     * #ЗАЧЕМ: Семантический подбор Якоря (ПЛАН №713).
+     * #ЧТО: Если нет ручного фильтра, выбирает треки, чьи Genre/Mood совпадают с UI.
+     */
     pickActiveAnchor(): string | null {
-        const filter = this.settings.selectedCompositionIds || [];
-        if (filter.length > 0) {
-            const idx = this.filterRotationIndex % filter.length;
-            return filter[idx];
+        const manualFilter = this.settings.selectedCompositionIds || [];
+        if (manualFilter.length > 0) {
+            const idx = this.filterRotationIndex % manualFilter.length;
+            return manualFilter[idx];
         }
+
         if (this.cloudAxiomPool.length > 0) {
-            const uniqueIds = Array.from(new Set(this.cloudAxiomPool.map(ax => ax.compositionId)));
-            const randIdx = Math.floor(Math.random() * uniqueIds.length);
-            return uniqueIds[randIdx];
+            const uiGenre = this.settings.genre;
+            const uiMood = this.settings.mood;
+
+            // Собираем все треки, которые соответствуют текущему контексту UI
+            const matchingAxioms = this.cloudAxiomPool.filter(ax => {
+                const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                return genres.includes(uiGenre) && moods.includes(uiMood);
+            });
+
+            if (matchingAxioms.length > 0) {
+                const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
+                const randIdx = Math.floor(Math.random() * uniqueIds.length);
+                return uniqueIds[randIdx];
+            }
         }
         return null;
     },
@@ -88,14 +105,12 @@ const Scheduler = {
             cloudAxioms: this.cloudAxiomPool 
         };
 
-        const lockLog = activeAnchorId ? ` | [Genetic Lock: ${activeAnchorId.toUpperCase()}]` : '';
+        const lockLog = activeAnchorId ? ` | [Genetic Lock: ${activeAnchorId.toUpperCase()}]` : ' | [Mode: LOCAL GENERATION]';
         console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})${lockLog}`, 'color: #FFD700; font-weight:bold;');
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
         
-        // #ЗАЧЕМ: Синхронизация темпа.
-        // #ЧТО: Обновляем системный BPM и отправляем сигнал в UI.
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
