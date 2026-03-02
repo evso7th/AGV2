@@ -111,20 +111,22 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    type: 'guitar',
+    // #ЗАЧЕМ: Тотальная очистка звука (ПЛАН №715).
+    // #ЧТО: Перевод на Synth Engine для исключения "песка" и "хрипа" гитарного WaveShaper.
+    type: 'synth',
     name: 'Crystal Lead', 
-    volume: 0.12, 
-    // #ЗАЧЕМ: Узкий пульс (0.22) убирает "зуд" и делает звук стеклянным и чистым.
-    osc: { width: 0.22 }, 
-    // #ЗАЧЕМ: Высокие частоты среза (4200/6200) возвращают воздущность и прозрачность.
-    pickup: { cutoff: 4200, q: 0.4 }, 
-    // #ЗАЧЕМ: Драйв 0.01 — это практически "Straight Wire", отсутствие грязи.
-    drive: { type: 'soft', amount: 0.01 }, 
-    comp: { threshold: -20, ratio: 2, attack: 0.01, release: 0.2, makeup: 1 }, 
-    post: { lpf: 6200 }, 
-    phaser: { on: false }, 
-    delayA: { on: true, time: 0.42, fb: 0.25, mix: 0.15 },
-    adsr: { a: 0.015, d: 0.35, s: 0.7, r: 1.0 }, 
+    volume: 0.14, 
+    osc: [
+      { type: 'sine', detune: 0, octave: 0, gain: 0.75 },
+      { type: 'triangle', detune: 0, octave: 0, gain: 0.25 },
+      { type: 'sine', detune: 0, octave: 1, gain: 0.1 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.015, d: 0.4, s: 0.8, r: 1.2 },
+    lpf: { cutoff: 3200, q: 0.7, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 4.5, amount: 3, target: 'pitch' }, // Subtle vibrato
+    chorus: { on: true, rate: 0.25, depth: 0.004, mix: 0.2 },
+    delay: { on: true, time: 0.42, fb: 0.25, hc: 3500, mix: 0.18 },
     reverbMix: 0.30
   },
 

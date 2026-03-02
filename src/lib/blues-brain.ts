@@ -30,7 +30,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
  * #ЗАЧЕМ: Блюзовый Мозг V176.0 — "Strict Context Rigor".
- * #ОБНОВЛЕНО (ПЛАН №714): Удален мягкий поиск по жанру. Только Anchor или Local.
+ * #ОБНОВЛЕНО (ПЛАН №715): Устранены "пустые" такты (гарантированный выбор аксиомы).
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -241,6 +241,8 @@ export class BluesBrain {
 
     events.push(...melodyEvents);
 
+    // #ЗАЧЕМ: Чистота Меланхолии (ПЛАН №706).
+    // #ЧТО: Отключено наслоение ритмических текстур для меланхоличного настроения.
     if (hints.melody && this.currentGuitarRiff && this.mood !== 'melancholic') {
         events.push(...this.renderRhythmicTextureFromRiff(epoch));
     }
@@ -295,9 +297,6 @@ export class BluesBrain {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           
-          // #ЗАЧЕМ: Strict Semantic Search (ПЛАН №714).
-          // #ЧТО: Если Якорь не выбран или не найден — мы НЕ ищем случайные треки того же жанра.
-          //       Это гарантирует, что играется ТОЛЬКО семантически верное Наследие.
           let basePool = [];
           if (targetAnchor) {
               basePool = this.config.cloudAxioms.filter(ax => 
@@ -384,6 +383,8 @@ export class BluesBrain {
           }
       }
 
+      // #ЗАЧЕМ: Устранение "дыр" в соло.
+      // #ЧТО: Если облако пустое или не подходит - ГАРАНТИРОВАННЫЙ переход на локальные лики.
       this.currentTrackName = 'Local Fallback';
       this.ensembleStatus = 'LOCAL';
       if (this.currentGrandMelody) {
@@ -502,8 +503,12 @@ export class BluesBrain {
     
     return barNotes.map(n => ({
         type: 'melody',
+        // #ЗАЧЕМ: Бархатный регистр (ПЛАН №706).
+        // #ЧТО: Сдвиг октавы изменен с +24 на +12.
         note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
         time: (n.t % 12) / 3,
+        // #ЗАЧЕМ: Стандарт 1-в-1 (ПЛАН №710).
+        // #ЧТО: Длительность строго соответствует аксиоме.
         duration: n.d / 3,
         weight: 0.85,
         technique: n.tech || 'pick',
@@ -623,6 +628,8 @@ export class BluesBrain {
     
     if (hints.melody) {
         if (this.mood === 'melancholic') {
+            // #ЗАЧЕМ: Тембральный дуализм меланхолии (ПЛАН №706).
+            // #ЧТО: CS80 для спокойствия, ShineOn для пиков.
             (hints as any).melody = tension >= 0.7 ? 'guitar_shineOn' : 'cs80';
         } else {
             (hints as any).melody = tension > 0.8 ? 'cs80' : (tension > 0.45 ? 'telecaster' : 'blackAcoustic');

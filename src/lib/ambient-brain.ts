@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Ambient Brain v24.6 — "Strict Context Rigor".
- * #ОБНОВЛЕНО (ПЛАН №714): Удален мягкий фильтр по жанру. Только Anchor или Local.
+ * #ОБНОВЛЕНО (ПЛАН №715): Устранены паузы между фразами (developmentChance = 1.0).
  */
 
 import type { 
@@ -156,17 +156,17 @@ export class AmbientBrain {
 
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
-            const developmentChance = 0.85; // Строго ищем наследие
+            // #ЗАЧЕМ: Исключение пауз в повествовании.
+            // #ЧТО: developmentChance поднят до 1.0. Система всегда ищет новую фразу.
+            const developmentChance = 1.0; 
             
-            if (this.random.next() < developmentChance) {
+            if (this.random.next() <= developmentChance) {
                 let cloudAxiom: any = null;
                 const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
 
                 if (poolToUse.length > 0) {
                     const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
                     
-                    // #ЗАЧЕМ: Strict Semantic Integrity. 
-                    // #ЧТО: ПЛАН №714. Если нет залоченного Якоря, мы НЕ ищем случайные треки.
                     let basePool = [];
                     if (targetAnchor) {
                         basePool = poolToUse.filter(ax => 
@@ -248,7 +248,6 @@ export class AmbientBrain {
 
                     this.ensembleStatus = (bassSibling || accompSiblings.length > 0) ? 'SIBLING' : 'ADAPTIVE';
                 } else if (!this.activeAnchorId) {
-                    // Только если семантического совпадения в базе нет — используем локальное наследие
                     let groupKey = dna.ambientLegacyGroup || 'BUDD';
                     const group = AMBIENT_LEGACY[groupKey];
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
