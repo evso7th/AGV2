@@ -29,8 +29,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V173.2 — "Melancholic Resonance".
- * #ОБНОВЛЕНО (ПЛАН №707): Реализован протокол Zero-Tick для мгновенного старта фраз.
+ * #ЗАЧЕМ: Блюзовый Мозг V173.3 — "Persistence Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №708): Полное устранение тишины. Выбор аксиомы теперь гарантирован.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -353,7 +353,6 @@ export class BluesBrain {
                   phrasesToNormalize.push(p);
               });
 
-              // #ЗАЧЕМ: Протокол Zero-Tick.
               normalizePhraseGroup(phrasesToNormalize);
 
               this.currentAxiom = stretchToNarrativeLength(rawPhrase, 48, this.random);

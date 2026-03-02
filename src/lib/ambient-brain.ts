@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.2 — "Sonic Equilibrium & Human Flow".
- * #ОБНОВЛЕНО (ПЛАН №707): Реализован протокол Zero-Tick для мгновенного старта фраз.
+ * @fileOverview Ambient Brain v24.3 — "Sonic Equilibrium & Human Flow".
+ * #ОБНОВЛЕНО (ПЛАН №708): Устранение пауз ("одинокого баса"). Порог вступления поднят до 0.8.
  */
 
 import type { 
@@ -156,7 +156,8 @@ export class AmbientBrain {
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
             const hasAnchor = !!this.activeAnchorId;
-            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.70 : 0.50) + localTension * 0.25;
+            // #ЗАЧЕМ: Устранение пустот. Порог вероятности вступления фраз поднят.
+            const developmentChance = hasAnchor ? 1.0 : (isPositive ? 0.85 : 0.70) + localTension * 0.15;
             
             if (this.random.next() < developmentChance) {
                 let cloudAxiom: any = null;
@@ -217,8 +218,6 @@ export class AmbientBrain {
                         phrasesToNormalize.push(p);
                     });
 
-                    // #ЗАЧЕМ: Протокол Zero-Tick.
-                    // #ЧТО: Сдвигаем все фразы группы к началу, игнорируя пустоту.
                     normalizePhraseGroup(phrasesToNormalize);
 
                     const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
@@ -256,8 +255,8 @@ export class AmbientBrain {
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
                     const lick = group.licks[lickIdx];
                     
-                    const rawPhrase = [...lick.phrase]; // Copy to avoid mutation of assets
-                    normalizePhraseGroup([rawPhrase]); // Normalize legacy just in case
+                    const rawPhrase = [...lick.phrase]; 
+                    normalizePhraseGroup([rawPhrase]); 
 
                     const narrativePhrase = stretchToNarrativeLength(rawPhrase, 48, this.random);
                     const phraseBars = Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12);

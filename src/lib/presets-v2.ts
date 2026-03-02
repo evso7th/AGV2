@@ -1,3 +1,4 @@
+
 // V2 Presets — совместимы with buildMultiInstrument()
 // Проверено на соответствие фабрике от 2024-12
 
@@ -112,15 +113,15 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Velvet Lead', 
-    volume: 0.11, // #ЗАЧЕМ: Снижение громкости в 2 раза для чистоты микса.
-    osc: { width: 0.38, detune: 3, mainGain: 0.9, detGain: 0.12, subGain: 0.35 },
-    pickup: { cutoff: 1850, q: 0.9 },
-    drive: { type: 'soft', amount: 0.12 }, // #ЗАЧЕМ: Уменьшение дисторшна (0.22 -> 0.12)
-    comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 2 }, // #ЗАЧЕМ: Снижение makeup для предотвращения клиппинга.
-    post: { lpf: 3200 },
+    volume: 0.11, 
+    osc: { width: 0.42 }, // #ЗАЧЕМ: Устранение "расстроенности". Ширина пульса зафиксирована, детюн удален.
+    pickup: { cutoff: 1650, q: 0.7 }, // #ЗАЧЕМ: Смягчение тембра (убираем "хрип").
+    drive: { type: 'soft', amount: 0.08 }, // #ЗАЧЕМ: Снижение искажений для чистоты.
+    comp: { threshold: -24, ratio: 3, attack: 0.02, release: 0.2, makeup: 1 }, 
+    post: { lpf: 2800 }, // #ЗАЧЕМ: Обрезаем лишний "песок" на верхах.
     phaser: { on: false }, 
     delayA: { on: true, time: 0.42, fb: 0.28, mix: 0.15 },
-    adsr: { a: 0.015, d: 0.45, s: 0.75, r: 0.8 }, 
+    adsr: { a: 0.02, d: 0.45, s: 0.75, r: 0.8 }, 
     reverbMix: 0.24
   },
 
