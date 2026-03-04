@@ -1175,7 +1175,7 @@ export default function HypercubeDashboard() {
           {/* TAB: INJECT */}
           <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner">
-              <input type="file" min-h-screen ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+              <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider">
                 <Upload className="mr-3 h-5 w-5" /> Load Local DNA
               </Button>
