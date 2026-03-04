@@ -37,14 +37,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select";
+import { Label } from "@/label";
+import { Input } from "@/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
+import { ScrollArea } from "@/scroll-area";
+import { Progress } from "@/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+} from "@/alert-dialog";
 import { 
   Radar, 
   RadarChart, 
@@ -353,7 +353,12 @@ export default function HypercubeDashboard() {
             json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
-                (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
+                if (Array.isArray(licks)) {
+                    (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
+                } else {
+                    // #ЗАЧЕМ: Поддержка одиночных гигантских объектов (Мега-Аксиом).
+                    flattened.push(processAxiom(licks, 0, trackName));
+                }
             });
         }
 
@@ -1170,7 +1175,7 @@ export default function HypercubeDashboard() {
           {/* TAB: INJECT */}
           <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500">
             <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner">
-              <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
+              <input type="file" min-h-screen ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider">
                 <Upload className="mr-3 h-5 w-5" /> Load Local DNA
               </Button>
