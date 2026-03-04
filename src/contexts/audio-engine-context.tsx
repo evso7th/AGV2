@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V13.0 — "Context-Driven Lazy Loading".
- * #ЧТО: ПЛАН №716 — Отказ от полной загрузки базы. Внедрен хирургический контекстный синхрон.
+ * #ЗАЧЕМ: Audio Engine Context V14.0 — "Broadcast Integrity Update".
+ * #ЧТО: ПЛАН №717 — Внедрено принудительное глушение Speaker-узла при активном Радио.
  */
 'use client';
 
@@ -115,30 +115,20 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
     }
   }, []);
 
-  /**
-   * #ЗАЧЕМ: Хирургическая загрузка ДНК.
-   * #ЧТО: ПЛАН №716. Загружает только аксиомы, соответствующие текущему контексту (Genre/Mood).
-   */
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
     if (!db || !workerRef.current) return;
     
-    console.log(`%c[Sync] Requesting targeted DNA for: ${genre}/${mood}...`, 'color: #00ced1;');
-    
     try {
       let axiomsQuery;
-      
       if (manualFilter.length > 0) {
-          // Если есть ручной фильтр треков - грузим их напрямую
           axiomsQuery = query(collection(db, 'heritage_axioms'), where('compositionId', 'in', manualFilter.slice(0, 10)));
       } else {
-          // Иначе грузим по жанру (Firestore limit: 1 array-contains per query)
           axiomsQuery = query(collection(db, 'heritage_axioms'), where('genre', 'array-contains', genre), limit(500));
       }
 
       const snapshot = await getDocs(axiomsQuery);
       let axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       
-      // Дополнительная фильтрация по настроению на клиенте (чтобы не плодить индексы)
       if (manualFilter.length === 0) {
           axioms = axioms.filter((ax: any) => {
               const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -146,21 +136,15 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
           });
       }
 
-      console.log(`%c[Sync] Pushing ${axioms.length} context axioms to Worker.`, 'color: #32CD32;');
       workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
     } catch (e) {
       console.error('[Sync] Contextual fetch failed:', e);
     }
   }, [db]);
 
-  /**
-   * #ЗАЧЕМ: Легковесная инвентаризация для фильтров UI.
-   */
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
-      // Здесь мы все еще грузим все документы, но только для получения имен треков. 
-      // В будущем стоит иметь отдельную коллекцию 'catalog' для этого.
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
       const counts: Record<string, number> = {};
       snapshot.docs.forEach(d => {
@@ -211,6 +195,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             speakerGainNodeRef.current = context.createGain();
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
+            
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
@@ -231,7 +216,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         
         accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!);
-        
         melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
         bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
         harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
@@ -265,9 +249,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             };
         }
 
-        // ПЛАН №716: Грузим только метаданные при старте
         await refreshCloudAxioms();
-
         setIsInitialized(true);
         return true;
     } catch (e) {
@@ -288,16 +270,9 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
-                
-                // ПЛАН №716: Синхронизируем ДНК только перед началом игры
                 if (settingsRef.current) {
-                    await syncContextDNA(
-                        settingsRef.current.genre, 
-                        settingsRef.current.mood, 
-                        settingsRef.current.selectedCompositionIds
-                    );
+                    await syncContextDNA(settingsRef.current.genre, settingsRef.current.mood, settingsRef.current.selectedCompositionIds);
                 }
-
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
                 stopAllSounds(); 
@@ -314,14 +289,8 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as any;
                 workerRef.current.postMessage({ command: 'update_settings', data: s });
-                
-                // Если жанр/настроение изменились во время игры - догружаем ДНК
                 if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) {
-                    syncContextDNA(
-                        settingsRef.current!.genre, 
-                        settingsRef.current!.mood, 
-                        settingsRef.current!.selectedCompositionIds
-                    );
+                    syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds);
                 }
             }
         },
@@ -342,10 +311,19 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         },
         setEQGain: () => {}, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {},
         toggleBroadcast: () => {
-            if (broadcastEngineRef.current) {
-                if (isBroadcastActive) broadcastEngineRef.current.stop();
-                else broadcastEngineRef.current.start();
-                setIsBroadcastActive(!isBroadcastActive);
+            if (broadcastEngineRef.current && audioContextRef.current) {
+                const now = audioContextRef.current.currentTime;
+                if (isBroadcastActive) {
+                    broadcastEngineRef.current.stop();
+                    // #ЗАЧЕМ: Плавное включение прямого выхода.
+                    speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.5);
+                    setIsBroadcastActive(false);
+                } else {
+                    broadcastEngineRef.current.start();
+                    // #ЗАЧЕМ: Плавное глушение прямого выхода (защита от удвоения).
+                    speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, now, 0.5);
+                    setIsBroadcastActive(true);
+                }
             }
         }, 
         getWorker: () => workerRef.current, 
