@@ -29,8 +29,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V177.0 — "Full Track Persistence".
- * #ОБНОВЛЕНО (ПЛАН №718): Поддержка "Мега-Аксиом" (целых MIDI-треков без разрывов).
+ * #ЗАЧЕМ: Блюзовый Мозг V178.0 — "Harmonic Lock Update".
+ * #ОБНОВЛЕНО (ПЛАН №720): Внедрен Transposition Bypass для точного воспроизведения MIDI.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -52,6 +52,7 @@ export interface BluesBrainConfig {
   cloudAxioms?: any[];
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 
+  activeAnchorRoot?: number | null;
   genre: string;
 }
 
@@ -168,10 +169,11 @@ export class BluesBrain {
       return s.toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null) {
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null) {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
+      if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
   }
 
   private constrainBassOctave(note: number): number {
@@ -203,11 +205,11 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord) : [];
+    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna) : [];
 
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, melodyEvents));
 
-    const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents) : [];
+    const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents, dna) : [];
 
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
@@ -225,7 +227,7 @@ export class BluesBrain {
             else if (idx === 2) targetType = 'pianoAccompaniment';
 
             if ((navInfo.currentPart.layers as any)[targetType]) {
-                accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType));
+                accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna));
             }
         });
     } else if (hints.accompaniment) {
@@ -354,8 +356,6 @@ export class BluesBrain {
 
               normalizePhraseGroup(phrasesToNormalize);
 
-              // #ЗАЧЕМ: Поддержка любой длины фразы (Мега-Аксиомы).
-              // #ЧТО: phraseBars теперь точно отражает реальный объем данных.
               const phraseBars = selected.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
               this.currentAxiomMaxTick = phraseBars * 12;
               this.currentAxiom = rawPhrase; 
@@ -421,15 +421,19 @@ export class BluesBrain {
       this.soloistBusyUntilBar = epoch + phraseBars;
   }
 
-  private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+  private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[], dna: SuiteDNA): FractalEvent[] {
       if (this.currentBassAxiom.length > 0) {
           const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
           const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
           const barOffset = barInAxiom * 12;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+
+          // #ЗАЧЕМ: Harmonic Lock Protocol.
+          const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
           return barNotes.map(n => ({
               type: 'bass',
-              note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+              note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t % 12) / 3,
               duration: 3.5, 
               weight: 0.85,
@@ -493,16 +497,19 @@ export class BluesBrain {
       return events;
   }
 
-  private renderMelodicSegment(epoch: number, chord: GhostChord): FractalEvent[] {
+  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA): FractalEvent[] {
     const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
     const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
     const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
     const barOffset = barInAxiom * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
+    // #ЗАЧЕМ: Harmonic Lock Protocol.
+    const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
     return barNotes.map(n => ({
         type: 'melody',
-        note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
+        note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
         time: (n.t % 12) / 3,
         duration: n.d / 3,
         weight: 0.85,
@@ -574,16 +581,19 @@ export class BluesBrain {
       return events;
   }
 
-  private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart): FractalEvent[] {
+  private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA): FractalEvent[] {
       const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
       const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
       const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
       const barOffset = barInAxiom * 12;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
       
+      // #ЗАЧЕМ: Harmonic Lock Protocol.
+      const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
       return barNotes.map(n => ({
           type: type,
-          note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+          note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
           time: (n.t % 12) / 3,
           duration: n.d / 3,
           weight: 0.55,

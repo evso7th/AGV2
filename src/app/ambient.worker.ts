@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №714): Добавлена трассировка подбора Якоря.
+ * #ОБНОВЛЕНО (ПЛАН №720): Внедрена поддержка Harmonic Lock для точного воспроизведения MIDI.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -60,22 +60,15 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Семантический подбор Якоря.
-     * #ЧТО: ПЛАН №714. Добавлена трассировка в консоль для отладки пула.
-     */
-    pickActiveAnchor(): string | null {
+    pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         const manualFilter = this.settings.selectedCompositionIds || [];
-        if (manualFilter.length > 0) {
-            const idx = this.filterRotationIndex % manualFilter.length;
-            return manualFilter[idx];
-        }
+        let pickedId: string | null = null;
 
-        if (this.cloudAxiomPool.length > 0) {
+        if (manualFilter.length > 0) {
+            pickedId = manualFilter[this.filterRotationIndex % manualFilter.length];
+        } else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
-
-            console.log(`${getTimestamp()} [Sync] Scanning ${this.cloudAxiomPool.length} axioms for context: ${uiGenre}/${uiMood}...`);
 
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
@@ -85,31 +78,41 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                console.log(`${getTimestamp()} [Sync] Success. Found ${uniqueIds.length} matching tracks.`);
-                const randIdx = Math.floor(Math.random() * uniqueIds.length);
-                return uniqueIds[randIdx];
-            } else {
-                console.log(`${getTimestamp()} [Sync] No matching DNA found. Standard engine active.`);
+                pickedId = uniqueIds[Math.floor(Math.random() * uniqueIds.length)];
             }
         }
-        return null;
+
+        if (pickedId) {
+            // #ЗАЧЕМ: Harmonic Lock Protocol.
+            // #ЧТО: Ищем nativeKey в первом попавшемся фрагменте этого трека.
+            const anchorAxiom = this.cloudAxiomPool.find(ax => ax.compositionId === pickedId && ax.nativeKey);
+            if (anchorAxiom) {
+                const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
+                const rootName = anchorAxiom.nativeKey.match(/^[A-G][#b]?/)?.[0] || 'C';
+                return { id: pickedId, nativeRoot: 48 + (noteMap[rootName] || 0) }; // Base C3
+            }
+            return { id: pickedId, nativeRoot: null };
+        }
+
+        return { id: null, nativeRoot: null };
     },
 
     initializeEngine(settings: WorkerSettings) {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
-        const activeAnchorId = this.pickActiveAnchor();
+        const anchorInfo = this.pickActiveAnchor();
 
         const finalSettings = {
             ...settings,
             seed: seed,
-            activeAnchorId, 
+            activeAnchorId: anchorInfo.id, 
+            activeAnchorRoot: anchorInfo.nativeRoot, // #ЗАЧЕМ: Проброс тональности в ДНК.
             sessionLickHistory: this.sessionLickHistory,
             cloudAxioms: this.cloudAxiomPool 
         };
 
-        const lockLog = activeAnchorId ? ` | [Genetic Lock: ${activeAnchorId.toUpperCase()}]` : ' | [Mode: LOCAL GENERATION]';
+        const lockLog = anchorInfo.id ? ` | [Genetic Lock: ${anchorInfo.id.toUpperCase()}]` : ' | [Mode: LOCAL GENERATION]';
         console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})${lockLog}`, 'color: #FFD700; font-weight:bold;');
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
@@ -177,7 +180,7 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        if (this.barCount >= fractalMusicEngine.navigator!.totalBars) {
+        if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage...`, 'color: #4ade80; font-weight: bold;');
              this.filterRotationIndex++;
              this.settings.seed = generateTrueSeed(); 

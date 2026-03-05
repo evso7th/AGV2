@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V2.2 — "Genetic Anchor Integrity".
- * #ЗАЧЕМ: Реализация ПЛАНА №700 — Жесткая блокировка трека (Genetic Lock) для Сиблингов.
- * #ОБНОВЛЕНО (ПЛАН №707): Добавлена нормализация фраз для мгновенного старта.
+ * @fileOverview Universal Music Theory Utilities V2.3 — "Harmonic Lock Update".
+ * #ЗАЧЕМ: Реализация ПЛАНА №720 — Внедрение activeAnchorRoot для точности MIDI.
  */
 
 import type { 
@@ -98,11 +97,6 @@ export function repairLegacyPhrase(compact: number[]): number[] {
     return repaired;
 }
 
-/**
- * #ЗАЧЕМ: Удаление пустого пространства в начале группы фраз.
- * #ЧТО: Сдвигает все ноты в группе так, чтобы самая первая нота начиналась на тике 0.
- * #СВЯЗИ: ПЛАН №707. Используется в Brains при выборе темы.
- */
 export function normalizePhraseGroup(phrases: any[][]): void {
     let minT = Infinity;
     phrases.forEach(p => {
@@ -247,7 +241,8 @@ export function generateSuiteDNA(
     bpmConfig?: { base: number, range: [number, number], modifier: number },
     masterpieces?: any[],
     cloudAxioms?: any[], 
-    activeAnchorId?: string | null
+    activeAnchorId?: string | null,
+    activeAnchorRoot?: number | null
 ): SuiteDNA {
     let finalSeed = initialSeed;
     if (masterpieces && masterpieces.length > 0) {
@@ -321,7 +316,8 @@ export function generateSuiteDNA(
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
         seedLickId, partLickMap, sessionHistory,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
-        cloudAxioms, activeAnchorId
+        cloudAxioms, activeAnchorId,
+        activeAnchorRoot: activeAnchorRoot || null // #ЗАЧЕМ: Сохранение тональности якоря.
     };
 }
 

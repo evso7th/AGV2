@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v24.7 — "Full Track Persistence".
- * #ОБНОВЛЕНО (ПЛАН №718): Поддержка длинных аксиом (Мега-Аксиом).
+ * @fileOverview Ambient Brain v24.8 — "Harmonic Lock Update".
+ * #ОБНОВЛЕНО (ПЛАН №720): Внедрен Transposition Bypass для точного воспроизведения MIDI.
  */
 
 import type { 
@@ -83,6 +83,7 @@ export class AmbientBrain {
     
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
+    private activeAnchorRoot: number | null = null;
     
     private usedThemeHistory: string[] = [];
     private stagnationCounter: number = 0;
@@ -115,9 +116,10 @@ export class AmbientBrain {
         return s.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, activeAnchorRoot?: number | null) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
+        if (activeAnchorRoot !== undefined) this.activeAnchorRoot = activeAnchorRoot;
     }
 
     public generateBar(
@@ -216,7 +218,6 @@ export class AmbientBrain {
 
                     normalizePhraseGroup(phrasesToNormalize);
 
-                    // #ЗАЧЕМ: Поддержка Мега-Аксиом в Амбиенте.
                     const phraseBars = cloudAxiom.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
                     this.currentThemeMaxTick = phraseBars * 12;
                     
@@ -291,7 +292,7 @@ export class AmbientBrain {
                 else if (idx === 2) targetType = 'pianoAccompaniment';
 
                 if ((navInfo.currentPart.layers as any)[targetType]) {
-                    events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType));
+                    events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType, dna));
                 }
             });
         }
@@ -301,7 +302,7 @@ export class AmbientBrain {
         }
         
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            events.push(...this.constrainBass(this.renderThemeBass(yogaChord, epoch, localTension)));
+            events.push(...this.constrainBass(this.renderThemeBass(yogaChord, epoch, localTension, dna)));
         } else if (this.mood === 'anxious') {
             events.push(...this.constrainBass(this.renderRitualWalkingBass(yogaChord, localTension, hints.bass as string, epoch)));
         } else {
@@ -495,16 +496,20 @@ export class AmbientBrain {
         }));
     }
 
-    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart): FractalEvent[] {
+    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA): FractalEvent[] {
         const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
         const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
+        // #ЗАЧЕМ: Harmonic Lock Protocol.
+        // #ЧТО: Если залочен Якорь — используем его родную тонику для всех слоев.
+        const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
         return barNotes.map(n => ({
             type: type,
-            note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
+            note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
             time: (n.t % 12) / 3,
             duration: n.d / 3,
             weight: 0.55,
@@ -537,11 +542,14 @@ export class AmbientBrain {
         const barOffset = barInAxiom * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
+        // #ЗАЧЕМ: Harmonic Lock Protocol.
+        const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
         const events: FractalEvent[] = [];
         barNotes.forEach((n, i) => {
             events.push({
                 type: 'melody',
-                note: Math.min(chord.rootNote + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                note: Math.min(effectiveRoot + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: n.d / 3, 
                 weight: 0.85,
@@ -555,7 +563,7 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderThemeBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
@@ -563,8 +571,11 @@ export class AmbientBrain {
         const barOffset = barInAxiom * 12;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
+        // #ЗАЧЕМ: Harmonic Lock Protocol.
+        const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
         return barNotes.map(n => {
-            const pitch = chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
+            const pitch = effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
             return {
                 type: 'bass',
                 note: pitch,
