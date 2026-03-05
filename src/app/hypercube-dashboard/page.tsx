@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -68,7 +69,7 @@ import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
-import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase } from '@/lib/music-theory';
+import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -347,11 +348,55 @@ export default function HypercubeDashboard() {
             };
         };
 
-        if (Array.isArray(json)) {
+        // --- #ЗАЧЕМ: Поддержка сырых MIDI-JSON дампов (ПЛАН №719) ---
+        if (json.header && json.tracks && Array.isArray(json.tracks)) {
+            const targetId = json.header.name || cleanFileName || "MIDI_Export";
+            const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
+            const timeSig = json.header.timeSignatures?.[0] ? `${json.header.timeSignatures[0].numerator}/${json.header.timeSignatures[0].denominator}` : '4/4';
+
+            json.tracks.forEach((track: any, tIdx: number) => {
+                if (!track.notes || track.notes.length === 0) return;
+                
+                // Convert MIDI time/dur to 12/8 ticks (1 beat = 3 ticks)
+                const phrase: number[] = [];
+                track.notes.forEach((note: any) => {
+                    const tick = Math.round(note.time * 3); 
+                    const duration = Math.max(1, Math.round(note.duration * 3));
+                    const semitone = note.midi % 12;
+                    const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
+                    const degIdx = DEGREE_KEYS.indexOf(degName);
+                    const techIdx = TECHNIQUE_KEYS.indexOf('pick');
+                    phrase.push(tick, duration, degIdx, techIdx);
+                });
+
+                let role = 'melody';
+                const lowerName = (track.name || "").toLowerCase();
+                if (lowerName.includes('bass')) role = 'bass';
+                else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion)) role = 'drums';
+                else if (lowerName.includes('piano') || lowerName.includes('accomp')) role = 'accomp piano';
+
+                flattened.push(processAxiom({
+                    phrase,
+                    role,
+                    nativeBpm: bpm,
+                    nativeKey: 'C', 
+                    timeSignature: timeSig,
+                    narrative: `Imported from track: ${track.name || 'Unnamed'}`
+                }, tIdx, targetId));
+            });
+        } else if (Array.isArray(json)) {
             const targetId = cleanFileName || "Unknown_Heritage";
             json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
+                // Skip internal metadata keys if they are not arrays
+                if (trackName === 'header' || trackName === 'tracks') {
+                    if (Array.isArray(licks)) {
+                        (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, cleanFileName)));
+                    }
+                    return;
+                }
+                
                 if (Array.isArray(licks)) {
                     (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
                 } else {
@@ -360,10 +405,16 @@ export default function HypercubeDashboard() {
             });
         }
 
+        if (flattened.length === 0) {
+            toast({ variant: "destructive", title: "Empty Payload", description: "No valid music data found in JSON." });
+            return;
+        }
+
         setStagedAxioms(flattened);
         setSelectedIds(new Set(flattened.map(a => a.id)));
         setCurrentFileName(file.name);
       } catch (err) {
+        console.error("[Parser] Error:", err);
         toast({ variant: "destructive", title: "Parse Error", description: "Invalid AuraGroove DNA format." });
       }
     };
