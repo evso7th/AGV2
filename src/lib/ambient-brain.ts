@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v25.1 — "The Living Ensemble".
- * #ОБНОВЛЕНО (ПЛАН №723-FIX): Добавлено логирование смены мутаций.
+ * @fileOverview Ambient Brain v25.2 — "The Living Ensemble Master".
+ * #ОБНОВЛЕНО (ПЛАН №724-POLISH): Оживление пианиста в локальном режиме и расширенная ротация органов.
  */
 
 import type { 
@@ -163,7 +163,6 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // #ЗАЧЕМ: Логирование смены мутации для отладки "Свободного режима".
         if (epoch % 12 === 0) {
             if (!this.activeAnchorId) {
                 const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
@@ -311,12 +310,19 @@ export class AmbientBrain {
                     this.ensembleStatus = 'LOCAL';
                     this.currentBassTheme = null;
                     this.currentAccompAxioms = [];
+
+                    // #ЗАЧЕМ: Оживляем пианиста в локальном режиме.
+                    const secondIdx = (lickIdx + 1) % group.licks.length;
+                    const secPhrase = [...group.licks[secondIdx].phrase];
+                    normalizePhraseGroup([secPhrase]);
+                    this.secondaryTheme = { phrase: secPhrase, maxTick: 48 };
                 }
             }
         }
 
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         
+        // #ЗАЧЕМ: ПЛАН №724. Ротация аккомпанемента в зависимости от Tension.
         if (hints.accompaniment) {
             if (localTension < 0.4) hints.accompaniment = 'organ_soft_jazz';
             else if (localTension < 0.7) hints.accompaniment = 'synth_ambient_pad_lush';
@@ -363,11 +369,12 @@ export class AmbientBrain {
             }
         }
 
+        // #ЗАЧЕМ: Оживленный пианист исполняет вторую линию.
         if (hints.pianoAccompaniment && this.secondaryTheme && epoch < this.soloistBusyUntilBar) {
             const secMel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'pianoAccompaniment', this.secondaryTheme.phrase, this.secondaryTheme.maxTick);
             events.push(...secMel.map(e => ({ ...e, weight: e.weight * 0.5 })));
         } else if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
-            events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
+            events.push(...this.renderShadowPiano(epoch, melodyEvents, events.filter(e => e.type === 'accompaniment')));
         }
 
         if (hints.harmony && this.currentAccompAxioms.filter(a => a.role.includes('strings') || a.role.includes('violin')).length === 0) {

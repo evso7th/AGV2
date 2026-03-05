@@ -31,8 +31,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V185.1 — "The Living Ensemble".
- * #ЧТО: ПЛАН №723-FIX — Добавлено логирование смены мутаций.
+ * @fileOverview Blues Brain V186.0 — "The Living Ensemble Master".
+ * #ОБНОВЛЕНО (ПЛАН №724-POLISH): Оживление пианиста в локальном режиме и расширенная ротация органов.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -203,6 +203,7 @@ export class BluesBrain {
 
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
     
+    // #ЗАЧЕМ: ПЛАН №722. Бас и Ударные всегда за пределами интро.
     const forceRhythm = !isIntro;
     if (forceRhythm) {
         if (!hints.drums) hints.drums = 'melancholic'; 
@@ -210,15 +211,12 @@ export class BluesBrain {
     }
 
     const isChorusBoundary = epoch % 12 === 0;
-    // #ЗАЧЕМ: Логирование смены мутации для отладки "Свободного режима".
     if (isChorusBoundary) {
         this.selectGrandAxiom(tension);
         if (!this.config.activeAnchorId) {
             const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
             this.state.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
-            if (this.state.currentMutationType !== 'none') {
-                console.log(`%c[Improviser] Blues Chorus Boundary. New Mutation: ${this.state.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
-            }
+            console.log(`%c[Improviser] Blues Chorus Boundary. New Mutation: ${this.state.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
         } else {
             this.state.currentMutationType = 'none';
         }
@@ -232,6 +230,8 @@ export class BluesBrain {
     this.evaluateTimbralDramaturgy(tension, hints);
 
     const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick) : [];
+    
+    // #ЗАЧЕМ: ПЛАН №724. Оживший пианист исполняет вторую линию Heritage.
     const pianoMeaningfulEvents = (hints.pianoAccompaniment && this.secondaryAxiom.length > 0 && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, currentChord, dna, 'pianoAccompaniment', this.secondaryAxiom, this.secondaryAxiomMaxTick) 
         : [];
@@ -454,8 +454,15 @@ export class BluesBrain {
           this.currentAxiomMaxTick = phraseBars * 12;
           this.currentLickId = this.currentGrandMelody.id;
           this.soloistBusyUntilBar = epoch + phraseBars;
+
+          // #ЗАЧЕМ: Пианист получает "брата" основной мелодии для полноценного дуэта.
+          const allLicks = Object.keys(BLUES_SOLO_LICKS);
+          const secondId = allLicks[this.random.nextInt(allLicks.length)];
+          this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
+          this.secondaryAxiomMaxTick = 48;
           return;
       }
+      
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
@@ -472,6 +479,11 @@ export class BluesBrain {
       this.currentAxiom = rawPhrase;
       this.currentAxiomMaxTick = phraseBars * 12;
       this.soloistBusyUntilBar = epoch + phraseBars;
+
+      // #ЗАЧЕМ: Оживляем пианиста и здесь.
+      const secondId = allLickIds.filter(id => id !== nextId)[this.random.nextInt(allLickIds.length - 1)];
+      this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
+      this.secondaryAxiomMaxTick = 48;
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[], dna: SuiteDNA): FractalEvent[] {
@@ -657,6 +669,7 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
+    // #ЗАЧЕМ: Ритмическое компандирование при высоком напряжении.
     const isStabMode = tension > 0.75;
     
     if (isStabMode) {
@@ -699,10 +712,12 @@ export class BluesBrain {
         }
     }
     
+    // #ЗАЧЕМ: ПЛАН №724. Ротация органов и пэда в зависимости от Tension.
     if (hints.accompaniment) {
         if (tension < 0.4) (hints as any).accompaniment = 'organ_soft_jazz';
         else if (tension < 0.75) (hints as any).accompaniment = 'synth_ambient_pad_lush';
-        else (hints as any).accompaniment = 'organ'; 
+        else if (tension < 0.88) (hints as any).accompaniment = 'organ'; 
+        else (hints as any).accompaniment = 'organ_prog'; 
     }
 
     if (hints.harmony) (hints as any).harmony = (tension > 0.88 || tension < 0.15) ? 'violin' : 'guitarChords';
