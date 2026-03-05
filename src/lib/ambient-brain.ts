@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v25.0 — "The Living Ensemble".
- * #ОБНОВЛЕНО (ПЛАН №724): Внедрена ротация органов и пианиста.
+ * @fileOverview Ambient Brain v25.1 — "The Living Ensemble".
+ * #ОБНОВЛЕНО (ПЛАН №723-FIX): Добавлено логирование смены мутаций.
  */
 
 import type { 
@@ -78,7 +78,6 @@ export class AmbientBrain {
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentThemeMaxTick: number = 0;
     
-    // #ЗАЧЕМ: Вторичная мелодия для пианиста.
     private secondaryTheme: { phrase: any[], maxTick: number } | null = null;
 
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
@@ -164,10 +163,14 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
+        // #ЗАЧЕМ: Логирование смены мутации для отладки "Свободного режима".
         if (epoch % 12 === 0) {
             if (!this.activeAnchorId) {
                 const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
                 this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+                if (this.currentMutationType !== 'none') {
+                    console.log(`%c[Improviser] Chorus Boundary. New Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
+                }
             } else {
                 this.currentMutationType = 'none';
             }
@@ -203,7 +206,6 @@ export class AmbientBrain {
                         const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
                         cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
 
-                        // #ЗАЧЕМ: Поиск вторичной мелодии для пианиста в Амбиенте.
                         const others = finalPool.filter(ax => ax.id !== cloudAxiom.id && ax.barOffset === cloudAxiom.barOffset);
                         if (others.length > 0) {
                             const sec = others[this.random.nextInt(others.length)];
@@ -315,7 +317,6 @@ export class AmbientBrain {
 
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         
-        // #ЗАЧЕМ: Ротация аккомпанемента по Tension (ПЛАН №724).
         if (hints.accompaniment) {
             if (localTension < 0.4) hints.accompaniment = 'organ_soft_jazz';
             else if (localTension < 0.7) hints.accompaniment = 'synth_ambient_pad_lush';
@@ -362,12 +363,10 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: Пианист играет вторичную мелодию Heritage.
         if (hints.pianoAccompaniment && this.secondaryTheme && epoch < this.soloistBusyUntilBar) {
             const secMel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'pianoAccompaniment', this.secondaryTheme.phrase, this.secondaryTheme.maxTick);
             events.push(...secMel.map(e => ({ ...e, weight: e.weight * 0.5 })));
         } else if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
-            const accompanimentEvents = events.filter(e => e.type === 'accompaniment' || e.type === 'harmony');
             events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
         }
 

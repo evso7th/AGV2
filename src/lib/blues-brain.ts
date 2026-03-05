@@ -31,8 +31,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V185.0 — "The Living Ensemble".
- * #ЧТО: ПЛАН №724 — Внедрена ротация органов по Tension и активация Пианиста через вторичные аксиомы.
+ * #ЗАЧЕМ: Блюзовый Мозг V185.1 — "The Living Ensemble".
+ * #ЧТО: ПЛАН №723-FIX — Добавлено логирование смены мутаций.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -75,7 +75,6 @@ export class BluesBrain {
   private currentAxiom: any[] = [];
   private currentAxiomMaxTick: number = 0;
   
-  // #ЗАЧЕМ: Оживление пианиста через "второй голос" наследия.
   private secondaryAxiom: any[] = [];
   private secondaryAxiomMaxTick: number = 0;
 
@@ -204,7 +203,6 @@ export class BluesBrain {
 
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
     
-    // #ЗАЧЕМ: Принудительный ритм для блюза (ПЛАН №722).
     const forceRhythm = !isIntro;
     if (forceRhythm) {
         if (!hints.drums) hints.drums = 'melancholic'; 
@@ -212,11 +210,15 @@ export class BluesBrain {
     }
 
     const isChorusBoundary = epoch % 12 === 0;
+    // #ЗАЧЕМ: Логирование смены мутации для отладки "Свободного режима".
     if (isChorusBoundary) {
         this.selectGrandAxiom(tension);
         if (!this.config.activeAnchorId) {
             const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
             this.state.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+            if (this.state.currentMutationType !== 'none') {
+                console.log(`%c[Improviser] Blues Chorus Boundary. New Mutation: ${this.state.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
+            }
         } else {
             this.state.currentMutationType = 'none';
         }
@@ -229,7 +231,6 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    // #ЗАЧЕМ: Рендеринг основного и вторичного голоса мелодии.
     const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick) : [];
     const pianoMeaningfulEvents = (hints.pianoAccompaniment && this.secondaryAxiom.length > 0 && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, currentChord, dna, 'pianoAccompaniment', this.secondaryAxiom, this.secondaryAxiomMaxTick) 
@@ -259,14 +260,12 @@ export class BluesBrain {
             }
         });
     } else if (hints.accompaniment) {
-        // #ЗАЧЕМ: Диверсификация манеры игры органа в зависимости от Tension.
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension));
     }
 
     events.push(...accompanimentEvents);
     events.push(...bassEvents);
 
-    // #ЗАЧЕМ: Пианист играет осмысленные фразы Heritage, если они доступны.
     if (pianoMeaningfulEvents.length > 0) {
         events.push(...pianoMeaningfulEvents.map(e => ({ ...e, weight: e.weight * 0.6 }))); 
     } else if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
@@ -364,7 +363,6 @@ export class BluesBrain {
               let rawPhrase = decompressCompactPhrase(selected.phrase);
               const phrasesToNormalize = [rawPhrase];
 
-              // #ЗАЧЕМ: Поиск вторичных мелодий для оживления пианиста.
               const otherMelodies = finalPool.filter(ax => ax.id !== selected.id && ax.barOffset === selected.barOffset);
               if (otherMelodies.length > 0) {
                   const secAx = otherMelodies[this.random.nextInt(otherMelodies.length)];
@@ -659,7 +657,6 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    // #ЗАЧЕМ: При высоком напряжении переходим на ритмические удары (Stabs).
     const isStabMode = tension > 0.75;
     
     if (isStabMode) {
@@ -702,11 +699,10 @@ export class BluesBrain {
         }
     }
     
-    // #ЗАЧЕМ: Органная ротация (ПЛАН №724).
     if (hints.accompaniment) {
         if (tension < 0.4) (hints as any).accompaniment = 'organ_soft_jazz';
         else if (tension < 0.75) (hints as any).accompaniment = 'synth_ambient_pad_lush';
-        else (hints as any).accompaniment = 'organ'; // Cathedral
+        else (hints as any).accompaniment = 'organ'; 
     }
 
     if (hints.harmony) (hints as any).harmony = (tension > 0.88 || tension < 0.15) ? 'violin' : 'guitarChords';

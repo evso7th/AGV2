@@ -50,8 +50,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.5 — "Anchor Synchronization".
- * #ЧТО: ПЛАН №682 — Обеспечена передача облачных аксиом и Анкоров в AmbientBrain.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.6 — "Mutation Link Fix".
+ * #ЧТО: ПЛАН №723 (ФИКС) — Исправлен пропуск поля mutationType в Ambient-ветке метода evolve.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -88,7 +88,6 @@ export class FractalMusicEngine {
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
       if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined) {
-          // #ЗАЧЕМ: Синхронизация облачных данных со специализированными мозгами.
           if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
               this.config.cloudAxioms, 
               this.config.selectedCompositionIds,
@@ -174,7 +173,6 @@ export class FractalMusicEngine {
         this.ambientBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre);
-        // #ЗАЧЕМ: Начальная передача облачных данных в Эмбиент-мозг.
         this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId);
         this.bluesBrain = null;
     }
@@ -210,6 +208,7 @@ export class FractalMusicEngine {
         const ambientResult = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA);
         const beautyScore = this.calculateBeautyScore(ambientResult.events);
 
+        // #ЗАЧЕМ: Фикс проброса типа мутации в Воркер.
         return { 
             events: ambientResult.events, 
             instrumentHints: ambientResult.instrumentHints, 
@@ -218,7 +217,8 @@ export class FractalMusicEngine {
             navInfo,
             dynasty: this.suiteDNA.dynasty,
             activeAxioms: ambientResult.activeAxioms,
-            narrative: ambientResult.narrative
+            narrative: ambientResult.narrative,
+            mutationType: ambientResult.mutationType
         };
     }
 

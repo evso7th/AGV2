@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №723): Внедрена поддержка мутаций в центральное логирование.
+ * #ОБНОВЛЕНО (ПЛАН №723-FIX): Улучшено форматирование логов мутаций.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -208,7 +208,11 @@ const Scheduler = {
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
-        const mutationStr = payload.mutationType && payload.mutationType !== 'none' ? `[Mutation: ${payload.mutationType.toUpperCase()}]` : '';
+        
+        // #ЗАЧЕМ: Улучшенное отображение мутаций в такт-логе.
+        const mutType = payload.mutationType || 'none';
+        const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
+        const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
         
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
@@ -219,6 +223,7 @@ const Scheduler = {
             `%c  ↳ ${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${narration}`,
             'color: #888;', 
+            mutColor,
             'color: #4ade80; font-weight: bold;',
             'color: #DA70D6;',
             'color: #ADD8E6; font-style: italic;'
