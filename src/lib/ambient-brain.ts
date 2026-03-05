@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v24.9 — "Mutation Protocol".
- * #ОБНОВЛЕНО (ПЛАН №723): Внедрена поддержка мутаций и Jazz Mode.
+ * @fileOverview Ambient Brain v25.0 — "The Living Ensemble".
+ * #ОБНОВЛЕНО (ПЛАН №724): Внедрена ротация органов и пианиста.
  */
 
 import type { 
@@ -77,6 +77,10 @@ export class AmbientBrain {
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentThemeMaxTick: number = 0;
+    
+    // #ЗАЧЕМ: Вторичная мелодия для пианиста.
+    private secondaryTheme: { phrase: any[], maxTick: number } | null = null;
+
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
     
@@ -160,7 +164,6 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
-        // #ЗАЧЕМ: Выбор мутации каждые 12 тактов в свободном режиме.
         if (epoch % 12 === 0) {
             if (!this.activeAnchorId) {
                 const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
@@ -172,6 +175,7 @@ export class AmbientBrain {
 
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
+            this.secondaryTheme = null;
             const developmentChance = 1.0; 
             
             if (this.random.next() <= developmentChance) {
@@ -198,12 +202,21 @@ export class AmbientBrain {
 
                         const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
                         cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
+
+                        // #ЗАЧЕМ: Поиск вторичной мелодии для пианиста в Амбиенте.
+                        const others = finalPool.filter(ax => ax.id !== cloudAxiom.id && ax.barOffset === cloudAxiom.barOffset);
+                        if (others.length > 0) {
+                            const sec = others[this.random.nextInt(others.length)];
+                            const rawSec = decompressCompactPhrase(sec.phrase);
+                            this.secondaryTheme = { phrase: rawSec, maxTick: (sec.bars || 1) * 12 };
+                        }
                     }
                 }
 
                 if (cloudAxiom) {
                     let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
                     const phrasesToNormalize = [rawPhrase];
+                    if (this.secondaryTheme) phrasesToNormalize.push(this.secondaryTheme.phrase);
                     
                     const bassSibling = poolToUse.find(ax => 
                         ax.role === 'bass' && 
@@ -232,9 +245,7 @@ export class AmbientBrain {
 
                     normalizePhraseGroup(phrasesToNormalize);
 
-                    // #ЗАЧЕМ: Применение мутации к Heritage в свободном режиме.
                     if (!this.activeAnchorId && this.currentMutationType !== 'none') {
-                        console.log(`%c[Ambient Improviser] Mutating: ${this.currentMutationType}`, 'color: #00ced1');
                         if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
                         else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
                         else if (this.currentMutationType === 'jitter') rawPhrase = applyRhythmicJitter(rawPhrase);
@@ -278,7 +289,6 @@ export class AmbientBrain {
                     let rawPhrase = [...lick.phrase]; 
                     normalizePhraseGroup([rawPhrase]); 
 
-                    // Mutation for local licks
                     if (this.currentMutationType !== 'none') {
                         if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
                         else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
@@ -304,10 +314,15 @@ export class AmbientBrain {
         }
 
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
-        const events: FractalEvent[] = [];
+        
+        // #ЗАЧЕМ: Ротация аккомпанемента по Tension (ПЛАН №724).
+        if (hints.accompaniment) {
+            if (localTension < 0.4) hints.accompaniment = 'organ_soft_jazz';
+            else if (localTension < 0.7) hints.accompaniment = 'synth_ambient_pad_lush';
+            else hints.accompaniment = 'organ'; 
+        }
 
-        hints.accompaniment = hints.accompaniment || 'synth_ambient_pad_lush';
-        hints.bass = hints.bass || 'bass_jazz_warm';
+        const events: FractalEvent[] = [];
 
         if (this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax, idx) => {
@@ -341,15 +356,18 @@ export class AmbientBrain {
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                const mel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna);
+                const mel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick);
                 melodyEvents.push(...mel);
                 events.push(...mel);
             }
         }
 
-        const accompanimentEvents = events.filter(e => e.type === 'accompaniment' || e.type === 'harmony');
-
-        if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
+        // #ЗАЧЕМ: Пианист играет вторичную мелодию Heritage.
+        if (hints.pianoAccompaniment && this.secondaryTheme && epoch < this.soloistBusyUntilBar) {
+            const secMel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'pianoAccompaniment', this.secondaryTheme.phrase, this.secondaryTheme.maxTick);
+            events.push(...secMel.map(e => ({ ...e, weight: e.weight * 0.5 })));
+        } else if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
+            const accompanimentEvents = events.filter(e => e.type === 'accompaniment' || e.type === 'harmony');
             events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
         }
 
@@ -390,7 +408,7 @@ export class AmbientBrain {
                 ensemble: this.ensembleStatus,
                 bass: this.currentBassTheme ? 'Sibling' : (localTension > 0.7 ? 'Walking' : 'Riff'),
                 drums: 'Consistent',
-                accompaniment: this.currentAccompAxioms.length > 0 ? `${this.currentAccompAxioms.length} layers` : 'Adaptive',
+                accompaniment: hints.accompaniment || 'none',
                 harmony: hints.harmony || 'none'
             },
             narrative
@@ -561,20 +579,19 @@ export class AmbientBrain {
         }];
     }
 
-    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA): FractalEvent[] {
-        if (!this.currentTheme) return [];
-        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number): FractalEvent[] {
+        const barCountInPhrase = Math.ceil(maxTick / 12);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
         const barOffset = barInAxiom * 12;
-        const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
         const events: FractalEvent[] = [];
         barNotes.forEach((n, i) => {
             events.push({
-                type: 'melody',
+                type: type as any,
                 note: Math.min(effectiveRoot + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t % 12) / 3,
                 duration: n.d / 3, 
