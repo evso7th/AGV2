@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -31,8 +32,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V186.0 — "The Living Ensemble Master".
- * #ОБНОВЛЕНО (ПЛАН №724-POLISH): Оживление пианиста в локальном режиме и расширенная ротация органов.
+ * @fileOverview Blues Brain V187.0 — "The Epic Chronos Master".
+ * #ОБНОВЛЕНО (ПЛАН №726): Реализация протокола Epic Half-Time для растягивания мелодий.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -222,18 +223,23 @@ export class BluesBrain {
         }
     }
 
-    if (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition) {
+    // #ЗАЧЕМ: Учет растягивания времени (timeScale).
+    const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+    const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
+
+    // Если используется timeScale, проверяем границу "виртуального такта"
+    const effectiveSoloistEpoch = Math.floor(epoch / melodyScale);
+    if (epoch % melodyScale === 0 && (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition)) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
 
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick) : [];
+    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, melodyScale) : [];
     
-    // #ЗАЧЕМ: ПЛАН №724. Оживший пианист исполняет вторую линию Heritage.
     const pianoMeaningfulEvents = (hints.pianoAccompaniment && this.secondaryAxiom.length > 0 && epoch < this.soloistBusyUntilBar) 
-        ? this.renderMelodicSegment(epoch, currentChord, dna, 'pianoAccompaniment', this.secondaryAxiom, this.secondaryAxiomMaxTick) 
+        ? this.renderMelodicSegment(epoch, currentChord, dna, 'pianoAccompaniment', this.secondaryAxiom, this.secondaryAxiomMaxTick, pianoScale) 
         : [];
 
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, melodyEvents));
@@ -409,7 +415,7 @@ export class BluesBrain {
               this.currentAxiomMaxTick = phraseBars * 12;
               this.currentAxiom = rawPhrase; 
               
-              this.soloistBusyUntilBar = epoch + phraseBars;
+              this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
               if (rawBass) {
                   this.currentBassAxiom = rawBass;
@@ -453,7 +459,7 @@ export class BluesBrain {
           this.currentAxiom = rawPhrase;
           this.currentAxiomMaxTick = phraseBars * 12;
           this.currentLickId = this.currentGrandMelody.id;
-          this.soloistBusyUntilBar = epoch + phraseBars;
+          this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
           // #ЗАЧЕМ: Пианист получает "брата" основной мелодии для полноценного дуэта.
           const allLicks = Object.keys(BLUES_SOLO_LICKS);
@@ -478,7 +484,7 @@ export class BluesBrain {
       const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
       this.currentAxiom = rawPhrase;
       this.currentAxiomMaxTick = phraseBars * 12;
-      this.soloistBusyUntilBar = epoch + phraseBars;
+      this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
       // #ЗАЧЕМ: Оживляем пианиста и здесь.
       const secondId = allLickIds.filter(id => id !== nextId)[this.random.nextInt(allLickIds.length - 1)];
@@ -561,26 +567,47 @@ export class BluesBrain {
       return events;
   }
 
-  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string = 'melody', phrase: any[], maxTick: number): FractalEvent[] {
+  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string = 'melody', phrase: any[], maxTick: number, timeScale: number = 1): FractalEvent[] {
     const barCountInPhrase = Math.ceil(maxTick / 12);
-    const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-    const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
-    const barOffset = barInAxiom * 12;
-    const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+    // soloistBusyUntilBar установлен при выборе аксиомы с учетом timeScale
+    const phraseBarsStretched = barCountInPhrase * timeScale;
+    const startEpoch = this.soloistBusyUntilBar - phraseBarsStretched;
+    
+    // relativeBar — номер такта внутри растянутой фразы
+    const relativeBar = epoch - startEpoch;
+    
+    // Вычисляем, какие оригинальные тики (0-11) соответствуют текущему такту
+    // При timeScale=2: такт 0 -> тики 0-5.99, такт 1 -> тики 6-11.99
+    const originalTicksPerBar = 12 / timeScale;
+    const barInCycle = relativeBar % phraseBarsStretched;
+    
+    const startOriginalTickInCycle = barInCycle * originalTicksPerBar;
+    const endOriginalTickInCycle = startOriginalTickInCycle + originalTicksPerBar;
+
+    // Фильтруем ноты, которые попадают в это временное окно
+    const barNotes = phrase.filter(n => {
+        const cycleTick = n.t % maxTick;
+        return cycleTick >= startOriginalTickInCycle && cycleTick < endOriginalTickInCycle;
+    });
     
     const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-    return barNotes.map(n => ({
-        type: type,
-        note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
-        time: (n.t % 12) / 3,
-        duration: n.d / 3,
-        weight: 0.85,
-        technique: n.tech || 'pick',
-        dynamics: 'p',
-        phrasing: 'legato',
-        params: { barCount: epoch }
-    }));
+    return barNotes.map(n => {
+        const cycleTick = n.t % maxTick;
+        const tickInBar = (cycleTick - startOriginalTickInCycle) * timeScale;
+        
+        return {
+            type: type,
+            note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
+            time: tickInBar / 3,
+            duration: (n.d * timeScale) / 3,
+            weight: 0.85,
+            technique: n.tech || 'pick',
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { barCount: epoch }
+        };
+    });
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {

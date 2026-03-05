@@ -215,6 +215,7 @@ export type InstrumentBehaviorRules = {
     style?: 'solo' | 'fingerstyle' | 'chord-melody'; 
     techniques?: { value: string; weight: number }[];
     unisonType?: 'strict' | 'octave' | 'harmonized' | 'none';
+    timeScale?: number; // #ЗАЧЕМ: ПЛАН №726. Коэффициент растягивания фразы во времени.
      ride?: {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];

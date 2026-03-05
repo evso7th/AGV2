@@ -1,8 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.2 - Continuity Fix).
- * #ЧТО: Внедрены правила призыва Harmony во все секции для предотвращения тишины.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.3 - Epic Chronos).
+ * #ЧТО: ПЛАН №726 — Внедрен множитель времени timeScale: 2 для мелодии и пианино.
+ *       Это создает эффект "Широкого Дыхания" (half-time соло).
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -58,7 +60,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
-                    melody: { source: 'blues_solo', register: { preferred: 'low' } }
+                    // #ЗАЧЕМ: Растягиваем интро-мелодии для торжественности.
+                    melody: { source: 'blues_solo', register: { preferred: 'low' }, timeScale: 2 },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'INTRO_B', name: 'Birth', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -71,11 +75,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'blackAcoustic', weight: 1.0 }] },
-                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] } // #ЗАЧЕМ: Гарантия призыва Harmony.
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] } 
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 } },
-                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 } }
+                    // #ЗАЧЕМ: Соло в 2 раза медленнее основного ритма.
+                    melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, timeScale: 2 },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'M1_B', name: 'Establishment', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -101,7 +107,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
-                    melody: { source: 'blues_solo' }
+                    melody: { source: 'blues_solo', timeScale: 2 },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'M2_B', name: 'Exchange', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -126,7 +133,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', kitName: 'blues_melancholic' },
-                    melody: { source: 'blues_solo', density: { min: 0.4, max: 0.6 } }
+                    melody: { source: 'blues_solo', density: { min: 0.4, max: 0.6 }, timeScale: 2 },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'M3_B', name: 'Deep Sea', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -151,7 +159,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },
-                    melody: { source: 'blues_solo', density: { min: 0.8, max: 1.0 } }
+                    melody: { source: 'blues_solo', density: { min: 0.8, max: 1.0 }, timeScale: 2 },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'M4_B', name: 'The Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -174,7 +183,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
-                    harmony: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
+                    harmony: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
+                    pianoAccompaniment: { timeScale: 2 }
                 },
                 bundles: [{ id: 'OUT_B', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

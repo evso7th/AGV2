@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain v25.2 — "The Living Ensemble Master".
- * #ОБНОВЛЕНО (ПЛАН №724-POLISH): Оживление пианиста в локальном режиме и расширенная ротация органов.
+ * @fileOverview Ambient Brain v25.3 — "The Epic Chronos Master".
+ * #ОБНОВЛЕНО (ПЛАН №726): Реализация протокола Epic Half-Time для растягивания мелодий.
  */
 
 import type { 
@@ -175,7 +176,11 @@ export class AmbientBrain {
             }
         }
 
-        if (epoch >= this.soloistBusyUntilBar) {
+        // #ЗАЧЕМ: Учет растягивания времени (timeScale).
+        const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+        const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
+
+        if (epoch % melodyScale === 0 && (epoch >= this.soloistBusyUntilBar)) {
             this.currentAccompAxioms = []; 
             this.secondaryTheme = null;
             const developmentChance = 1.0; 
@@ -258,26 +263,26 @@ export class AmbientBrain {
                     this.currentTheme = {
                         phrase: rawPhrase,
                         startBar: epoch,
-                        endBar: epoch + phraseBars,
+                        endBar: epoch + (phraseBars * melodyScale),
                         id: cloudAxiom.id,
                         tags: cloudAxiom.tags || ['cloud']
                     };
                     this.currentTrackName = cloudAxiom.compositionId;
-                    this.soloistBusyUntilBar = epoch + phraseBars;
+                    this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
                     
                     if (rawBass) {
                         this.currentBassTheme = {
                             phrase: rawBass,
                             startBar: epoch,
-                            endBar: epoch + phraseBars
+                            endBar: epoch + (phraseBars * melodyScale)
                         };
-                        this.bassBusyUntilBar = epoch + phraseBars;
+                        this.bassBusyUntilBar = epoch + (phraseBars * melodyScale);
                     }
 
                     this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
                         phrase: p,
                         role: accompSiblings[idx].role,
-                        endBar: epoch + phraseBars
+                        endBar: epoch + (phraseBars * melodyScale)
                     }));
 
                     this.ensembleStatus = (bassSibling || accompSiblings.length > 0) ? 'SIBLING' : 'ADAPTIVE';
@@ -301,17 +306,16 @@ export class AmbientBrain {
                     this.currentTheme = {
                         phrase: rawPhrase,
                         startBar: epoch,
-                        endBar: epoch + phraseBars,
+                        endBar: epoch + (phraseBars * melodyScale),
                         id: `${groupKey}_${lickIdx}`,
                         tags: lick.tags
                     };
                     this.currentTrackName = 'Ambient Legacy';
-                    this.soloistBusyUntilBar = epoch + phraseBars;
+                    this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
                     this.ensembleStatus = 'LOCAL';
                     this.currentBassTheme = null;
                     this.currentAccompAxioms = [];
 
-                    // #ЗАЧЕМ: Оживляем пианиста в локальном режиме.
                     const secondIdx = (lickIdx + 1) % group.licks.length;
                     const secPhrase = [...group.licks[secondIdx].phrase];
                     normalizePhraseGroup([secPhrase]);
@@ -322,7 +326,6 @@ export class AmbientBrain {
 
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         
-        // #ЗАЧЕМ: ПЛАН №724. Ротация аккомпанемента в зависимости от Tension.
         if (hints.accompaniment) {
             if (localTension < 0.4) hints.accompaniment = 'organ_soft_jazz';
             else if (localTension < 0.7) hints.accompaniment = 'synth_ambient_pad_lush';
@@ -363,15 +366,14 @@ export class AmbientBrain {
         if (hints.melody) {
             events.push(...this.renderMelodicPadBase(yogaChord, epoch, localTension));
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                const mel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick);
+                const mel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, melodyScale);
                 melodyEvents.push(...mel);
                 events.push(...mel);
             }
         }
 
-        // #ЗАЧЕМ: Оживленный пианист исполняет вторую линию.
         if (hints.pianoAccompaniment && this.secondaryTheme && epoch < this.soloistBusyUntilBar) {
-            const secMel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'pianoAccompaniment', this.secondaryTheme.phrase, this.secondaryTheme.maxTick);
+            const secMel = this.renderThemeMelody(yogaChord, epoch, localTension, hints, dna, 'pianoAccompaniment', this.secondaryTheme.phrase, this.secondaryTheme.maxTick, pianoScale);
             events.push(...secMel.map(e => ({ ...e, weight: e.weight * 0.5 })));
         } else if (hints.pianoAccompaniment && this.currentAccompAxioms.filter(a => a.role.includes('piano')).length === 0) {
             events.push(...this.renderShadowPiano(epoch, melodyEvents, events.filter(e => e.type === 'accompaniment')));
@@ -585,31 +587,40 @@ export class AmbientBrain {
         }];
     }
 
-    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number): FractalEvent[] {
+    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number = 1): FractalEvent[] {
         const barCountInPhrase = Math.ceil(maxTick / 12);
-        const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-        const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
-        const barOffset = barInAxiom * 12;
-        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+        const phraseBarsStretched = barCountInPhrase * timeScale;
+        const startEpoch = this.soloistBusyUntilBar - phraseBarsStretched;
+        
+        const relativeBar = epoch - startEpoch;
+        const barInCycle = relativeBar % phraseBarsStretched;
+        const originalTicksPerBar = 12 / timeScale;
+        const startOriginalTickInCycle = barInCycle * originalTicksPerBar;
+        const endOriginalTickInCycle = startOriginalTickInCycle + originalTicksPerBar;
+
+        const barNotes = phrase.filter(n => {
+            const cycleTick = n.t % maxTick;
+            return cycleTick >= startOriginalTickInCycle && cycleTick < endOriginalTickInCycle;
+        });
 
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-        const events: FractalEvent[] = [];
-        barNotes.forEach((n, i) => {
-            events.push({
+        return barNotes.map(n => {
+            const cycleTick = n.t % maxTick;
+            const tickInBar = (cycleTick - startOriginalTickInCycle) * timeScale;
+            
+            return {
                 type: type as any,
                 note: Math.min(effectiveRoot + 36 + (n.octShift || 0) + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-                time: (n.t % 12) / 3,
-                duration: n.d / 3, 
+                time: tickInBar / 3,
+                duration: (n.d * timeScale) / 3, 
                 weight: 0.85,
                 technique: n.tech || 'pick',
                 dynamics: 'p',
                 phrasing: 'legato', 
                 params: { filterCutoff: this.solistCutoff, barCount: epoch } 
-            });
+            };
         });
-
-        return events;
     }
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
