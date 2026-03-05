@@ -131,7 +131,7 @@ export class AmbientBrain {
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
         dna: SuiteDNA
-    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number, activeAxioms?: any, narrative?: string } {
+    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string } {
         
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
@@ -383,6 +383,7 @@ export class AmbientBrain {
             instrumentHints: hints, 
             tension: localTension, 
             beautyScore: 0.5,
+            mutationType: this.currentMutationType,
             activeAxioms: {
                 melody: this.currentTheme?.id || 'Atmospheric',
                 melodyTrack: narrativeSource,

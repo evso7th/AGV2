@@ -1,7 +1,6 @@
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №720): Внедрена поддержка Harmonic Lock для точного воспроизведения MIDI.
+ * #ОБНОВЛЕНО (ПЛАН №723): Внедрена поддержка мутаций в центральное логирование.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -83,8 +82,6 @@ const Scheduler = {
         }
 
         if (pickedId) {
-            // #ЗАЧЕМ: Harmonic Lock Protocol.
-            // #ЧТО: Ищем nativeKey в первом попавшемся фрагменте этого трека.
             const anchorAxiom = this.cloudAxiomPool.find(ax => ax.compositionId === pickedId && ax.nativeKey);
             if (anchorAxiom) {
                 const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
@@ -107,7 +104,7 @@ const Scheduler = {
             ...settings,
             seed: seed,
             activeAnchorId: anchorInfo.id, 
-            activeAnchorRoot: anchorInfo.nativeRoot, // #ЗАЧЕМ: Проброс тональности в ДНК.
+            activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
             cloudAxioms: this.cloudAxiomPool 
         };
@@ -211,12 +208,13 @@ const Scheduler = {
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
+        const mutationStr = payload.mutationType && payload.mutationType !== 'none' ? `[Mutation: ${payload.mutationType.toUpperCase()}]` : '';
         
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
 
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ${mutationStr} ` +
             `%c${ensembleStr}\n` +
             `%c  ↳ ${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${narration}`,
