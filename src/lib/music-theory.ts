@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Universal Music Theory Utilities V2.3 — "Harmonic Lock Update".
- * #ЗАЧЕМ: Реализация ПЛАНА №720 — Внедрение activeAnchorRoot для точности MIDI.
+ * @fileOverview Universal Music Theory Utilities V2.4 — "Mutation Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №723 — Внедрение функций музыкальной трансформации.
  */
 
 import type { 
@@ -39,6 +38,56 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Безопасный перевод полутонов в ступень (Mutation Helper).
+ */
+export function safeSemitoneToDegree(s: number): string {
+    const norm = ((s % 12) + 12) % 12;
+    const base = SEMITONE_TO_DEGREE[norm] || 'R';
+    if (s >= 12 && base === 'R') return 'R+8';
+    return base;
+}
+
+// --- MUTATION FUNCTIONS ---
+
+/**
+ * #ЗАЧЕМ: Зеркальное отражение мелодии (Инверсия).
+ */
+export function invertPhrase(phrase: any[]): any[] {
+    if (phrase.length === 0) return [];
+    const firstSemitone = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
+    return phrase.map(n => {
+        const current = DEGREE_TO_SEMITONE[n.deg] || 0;
+        const diff = current - firstSemitone;
+        const inverted = firstSemitone - diff;
+        return { ...n, deg: safeSemitoneToDegree(inverted) };
+    });
+}
+
+/**
+ * #ЗАЧЕМ: Проигрывание фразы задом наперед (Реверс).
+ */
+export function retrogradePhrase(phrase: any[]): any[] {
+    if (phrase.length === 0) return [];
+    const maxT = Math.max(...phrase.map(n => n.t));
+    return phrase.map(n => ({
+        ...n,
+        t: maxT - n.t
+    })).sort((a, b) => a.t - b.t);
+}
+
+/**
+ * #ЗАЧЕМ: Микро-ритмическое "очеловечивание" (Джиттер).
+ */
+export function applyRhythmicJitter(phrase: any[], amount: number = 1): any[] {
+    return phrase.map(n => ({
+        ...n,
+        t: Math.max(0, n.t + (Math.random() > 0.5 ? amount : -amount))
+    }));
+}
+
+// --- EXISTING UTILS ---
 
 const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
     ambient: [
@@ -317,7 +366,7 @@ export function generateSuiteDNA(
         seedLickId, partLickMap, sessionHistory,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
         cloudAxioms, activeAnchorId,
-        activeAnchorRoot: activeAnchorRoot || null // #ЗАЧЕМ: Сохранение тональности якоря.
+        activeAnchorRoot: activeAnchorRoot || null 
     };
 }
 

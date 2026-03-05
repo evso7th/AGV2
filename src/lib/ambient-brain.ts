@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Ambient Brain v24.8 — "Harmonic Lock Update".
- * #ОБНОВЛЕНО (ПЛАН №720): Внедрен Transposition Bypass для точного воспроизведения MIDI.
+ * @fileOverview Ambient Brain v24.9 — "Mutation Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №723): Внедрена поддержка мутаций и Jazz Mode.
  */
 
 import type { 
@@ -23,7 +22,10 @@ import {
     LIGHT_ATLAS, 
     stretchToNarrativeLength, 
     decompressCompactPhrase,
-    normalizePhraseGroup 
+    normalizePhraseGroup,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter
 } from './music-theory';
 import { AMBIENT_LEGACY } from './assets/ambient-legacy';
 
@@ -80,6 +82,7 @@ export class AmbientBrain {
     
     private currentTrackName: string = '';
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
+    private currentMutationType: string = 'none';
     
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
@@ -109,7 +112,8 @@ export class AmbientBrain {
             }
             return arr;
         };
-        return { next, nextInt: (max: number) => Math.floor(next() * max), shuffle };
+        const nextInt = (max: number) => Math.floor(next() * max);
+        return { next, nextInt, shuffle };
     }
 
     private normalize(s: string): string {
@@ -156,6 +160,16 @@ export class AmbientBrain {
         if (this.mood === 'epic') yogaChord.chordType = 'dominant'; 
         else if (this.mood === 'joyful') yogaChord.chordType = 'major'; 
 
+        // #ЗАЧЕМ: Выбор мутации каждые 12 тактов в свободном режиме.
+        if (epoch % 12 === 0) {
+            if (!this.activeAnchorId) {
+                const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
+                this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+            } else {
+                this.currentMutationType = 'none';
+            }
+        }
+
         if (epoch >= this.soloistBusyUntilBar) {
             this.currentAccompAxioms = []; 
             const developmentChance = 1.0; 
@@ -188,7 +202,7 @@ export class AmbientBrain {
                 }
 
                 if (cloudAxiom) {
-                    const rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+                    let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
                     const phrasesToNormalize = [rawPhrase];
                     
                     const bassSibling = poolToUse.find(ax => 
@@ -217,6 +231,14 @@ export class AmbientBrain {
                     });
 
                     normalizePhraseGroup(phrasesToNormalize);
+
+                    // #ЗАЧЕМ: Применение мутации к Heritage в свободном режиме.
+                    if (!this.activeAnchorId && this.currentMutationType !== 'none') {
+                        console.log(`%c[Ambient Improviser] Mutating: ${this.currentMutationType}`, 'color: #00ced1');
+                        if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+                        else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+                        else if (this.currentMutationType === 'jitter') rawPhrase = applyRhythmicJitter(rawPhrase);
+                    }
 
                     const phraseBars = cloudAxiom.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
                     this.currentThemeMaxTick = phraseBars * 12;
@@ -253,8 +275,14 @@ export class AmbientBrain {
                     let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
                     const lick = group.licks[lickIdx];
                     
-                    const rawPhrase = [...lick.phrase]; 
+                    let rawPhrase = [...lick.phrase]; 
                     normalizePhraseGroup([rawPhrase]); 
+
+                    // Mutation for local licks
+                    if (this.currentMutationType !== 'none') {
+                        if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+                        else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+                    }
 
                     const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
                     this.currentThemeMaxTick = phraseBars * 12;
@@ -385,15 +413,15 @@ export class AmbientBrain {
         }));
     }
 
+    private constrainBassOctave(note: number): number {
+        let finalNote = note;
+        while (finalNote > 47) finalNote -= 12;
+        while (finalNote < 31) finalNote += 12;
+        return finalNote;
+    }
+
     private constrainBass(events: FractalEvent[]): FractalEvent[] {
-        const BASS_FLOOR = 31;
-        const BASS_CEILING = 47;
-        return events.map(e => {
-            let note = e.note;
-            while (note > BASS_CEILING) note -= 12;
-            while (note < BASS_FLOOR) note += 12;
-            return { ...e, note };
-        });
+        return events.map(e => ({ ...e, note: this.constrainBassOctave(e.note) }));
     }
 
     private applyGeography(epoch: number, dna: SuiteDNA, forceShift: boolean = false) {
@@ -503,8 +531,6 @@ export class AmbientBrain {
         const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-        // #ЗАЧЕМ: Harmonic Lock Protocol.
-        // #ЧТО: Если залочен Якорь — используем его родную тонику для всех слоев.
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
         return barNotes.map(n => ({
@@ -542,7 +568,6 @@ export class AmbientBrain {
         const barOffset = barInAxiom * 12;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-        // #ЗАЧЕМ: Harmonic Lock Protocol.
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
         const events: FractalEvent[] = [];
@@ -571,7 +596,6 @@ export class AmbientBrain {
         const barOffset = barInAxiom * 12;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-        // #ЗАЧЕМ: Harmonic Lock Protocol.
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
         return barNotes.map(n => {

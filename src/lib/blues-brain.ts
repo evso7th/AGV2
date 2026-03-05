@@ -16,7 +16,10 @@ import {
     decompressCompactPhrase,
     stretchToNarrativeLength,
     calculateMusiNum,
-    normalizePhraseGroup
+    normalizePhraseGroup,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter
 } from './music-theory';
 import { 
     getNextChordRoot, 
@@ -28,8 +31,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V179.0 — "Permanent Rhythm Section".
- * #ЧТО: ПЛАН №722 — Бас и Ударные теперь гарантированно звучат вне интро.
+ * #ЗАЧЕМ: Блюзовый Мозг V180.0 — "The Jazz Improviser".
+ * #ЧТО: ПЛАН №723 — Внедрена поддержка мутаций (Инверсия, Реверс, Джиттер).
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -145,7 +148,7 @@ export class BluesBrain {
       emotion: { ...this.config.emotion },
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
       introBassStyle: introStyles[this.random.nextInt(introStyles.length)],
-      currentMutationType: 'jitter',
+      currentMutationType: 'none',
       lastTension: 0.5,
       tensionMomentum: 0,
       activeAccompTimbre: 'organ_soft_jazz',
@@ -194,8 +197,6 @@ export class BluesBrain {
     this.state.tensionMomentum = tension - this.state.lastTension;
     this.state.lastTension = tension;
 
-    // #ЗАЧЕМ: ПЛАН №722 — Обеспечение непрерывности ритм-секции в блюзе.
-    // #ЧТО: Вне интро/пролога Бас и Ударные принудительно включены.
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
     const forceRhythm = !isIntro;
     if (forceRhythm) {
@@ -204,7 +205,16 @@ export class BluesBrain {
     }
 
     const isChorusBoundary = epoch % 12 === 0;
-    if (isChorusBoundary) this.selectGrandAxiom(tension);
+    if (isChorusBoundary) {
+        this.selectGrandAxiom(tension);
+        // #ЗАЧЕМ: Выбор новой мутации на границе хоруса в свободном режиме.
+        if (!this.config.activeAnchorId) {
+            const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
+            this.state.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+        } else {
+            this.state.currentMutationType = 'none';
+        }
+    }
 
     if (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition) {
         this.selectNextAxiom(navInfo, dna, epoch);
@@ -265,6 +275,7 @@ export class BluesBrain {
     return { 
         events, 
         lickId: this.currentLickId, 
+        mutationType: this.state.currentMutationType,
         activeAxioms: {
             melody: this.currentLickId,
             melodyTrack: this.currentTrackName,
@@ -335,7 +346,7 @@ export class BluesBrain {
               this.state.recentLicks.push(selected.id);
               if (this.state.recentLicks.length > 50) this.state.recentLicks.shift();
               
-              const rawPhrase = decompressCompactPhrase(selected.phrase);
+              let rawPhrase = decompressCompactPhrase(selected.phrase);
               const phrasesToNormalize = [rawPhrase];
 
               const bassSibling = this.config.cloudAxioms.find(ax => 
@@ -363,6 +374,14 @@ export class BluesBrain {
               });
 
               normalizePhraseGroup(phrasesToNormalize);
+
+              // #ЗАЧЕМ: Применение мутаций в свободном режиме.
+              if (!this.config.activeAnchorId && this.state.currentMutationType !== 'none') {
+                  console.log(`%c[Improviser] Mutating Heritage: ${this.state.currentMutationType} | Track: ${this.currentTrackName}`, 'color: #FFD700');
+                  if (this.state.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+                  else if (this.state.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+                  else if (this.state.currentMutationType === 'jitter') rawPhrase = applyRhythmicJitter(rawPhrase);
+              }
 
               const phraseBars = selected.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
               this.currentAxiomMaxTick = phraseBars * 12;
@@ -406,8 +425,14 @@ export class BluesBrain {
               else phrase = this.currentGrandMelody.phraseV!;
           }
           
-          const rawPhrase = [...phrase];
+          let rawPhrase = [...phrase];
           normalizePhraseGroup([rawPhrase]);
+
+          // Apply mutations to local licks too
+          if (this.state.currentMutationType !== 'none') {
+              if (this.state.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+              else if (this.state.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+          }
 
           const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
           this.currentAxiom = rawPhrase;
@@ -420,8 +445,13 @@ export class BluesBrain {
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
       
-      const rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
+      let rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       normalizePhraseGroup([rawPhrase]);
+
+      if (this.state.currentMutationType !== 'none') {
+          if (this.state.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+          else if (this.state.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+      }
 
       const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
       this.currentAxiom = rawPhrase;
@@ -436,7 +466,6 @@ export class BluesBrain {
           const barOffset = barInAxiom * 12;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
-          // #ЗАЧЕМ: Harmonic Lock Protocol.
           const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
           return barNotes.map(n => ({
@@ -512,7 +541,6 @@ export class BluesBrain {
     const barOffset = barInAxiom * 12;
     const barNotes = this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
     
-    // #ЗАЧЕМ: Harmonic Lock Protocol.
     const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
     return barNotes.map(n => ({
@@ -596,7 +624,6 @@ export class BluesBrain {
       const barOffset = barInAxiom * 12;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
       
-      // #ЗАЧЕМ: Harmonic Lock Protocol.
       const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
       return barNotes.map(n => ({
