@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v25.4 — "Heritage Priority Restoration".
- * #ОБНОВЛЕНО (ПЛАН №727): Исправлен приоритет выбора аксиом. Облако теперь в приоритете всегда.
+ * @fileOverview Ambient Brain v25.5 — "Anti-Hang Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №728): Ритмическое оживление падов и органа.
  */
 
 import type { 
@@ -13,7 +13,8 @@ import type {
     InstrumentHints,
     InstrumentPart,
     Genre,
-    CommonMood
+    CommonMood,
+    Technique
 } from '@/types/music';
 import { 
     calculateMusiNum, 
@@ -180,144 +181,139 @@ export class AmbientBrain {
         if (epoch % melodyScale === 0 && (epoch >= this.soloistBusyUntilBar)) {
             this.currentAccompAxioms = []; 
             this.secondaryTheme = null;
-            const developmentChance = 1.0; 
             
-            if (this.random.next() <= developmentChance) {
-                let cloudAxiom: any = null;
-                const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
+            let cloudAxiom: any = null;
+            const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
 
-                if (poolToUse.length > 0) {
-                    const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
-                    
-                    // #ЗАЧЕМ: ПЛАН №727. Начинаем со всех мелодий облака.
-                    let basePool = poolToUse.filter(ax => ax.role === 'melody');
-                    
-                    if (targetAnchor) {
-                        basePool = basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor);
-                    }
-
-                    if (basePool.length > 0) {
-                        const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-                        const moodMatched = basePool.filter(ax => {
-                            const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                            const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                            return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
-                        });
-
-                        const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-                        cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
-
-                        const others = finalPool.filter(ax => ax.id !== cloudAxiom.id && ax.barOffset === cloudAxiom.barOffset);
-                        if (others.length > 0) {
-                            const sec = others[this.random.nextInt(others.length)];
-                            const rawSec = decompressCompactPhrase(sec.phrase);
-                            this.secondaryTheme = { phrase: rawSec, maxTick: (sec.bars || 1) * 12 };
-                        }
-                    }
+            if (poolToUse.length > 0) {
+                const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
+                let basePool = poolToUse.filter(ax => ax.role === 'melody');
+                
+                if (targetAnchor) {
+                    basePool = basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor);
                 }
 
-                if (cloudAxiom) {
-                    let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
-                    const phrasesToNormalize = [rawPhrase];
-                    if (this.secondaryTheme) phrasesToNormalize.push(this.secondaryTheme.phrase);
-                    
-                    const bassSibling = poolToUse.find(ax => 
-                        ax.role === 'bass' && 
-                        this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) &&
-                        ax.barOffset === cloudAxiom.barOffset
-                    );
-                    
-                    let rawBass: any[] | null = null;
-                    if (bassSibling) {
-                        rawBass = decompressCompactPhrase(bassSibling.phrase);
-                        phrasesToNormalize.push(rawBass);
-                    }
-
-                    const accompSiblings = poolToUse.filter(ax => 
-                        ax.role?.startsWith('accomp') && 
-                        this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) && 
-                        ax.barOffset === cloudAxiom.barOffset
-                    ).slice(0, 3);
-
-                    const rawAccomps: any[][] = [];
-                    accompSiblings.forEach(ax => {
-                        const p = decompressCompactPhrase(ax.phrase);
-                        rawAccomps.push(p);
-                        phrasesToNormalize.push(p);
+                if (basePool.length > 0) {
+                    const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                    const moodMatched = basePool.filter(ax => {
+                        const moodArr = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                        const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                        return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
                     });
 
-                    normalizePhraseGroup(phrasesToNormalize);
+                    const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
+                    cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
 
-                    if (!this.activeAnchorId && this.currentMutationType !== 'none') {
-                        if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
-                        else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
-                        else if (this.currentMutationType === 'jitter') rawPhrase = applyRhythmicJitter(rawPhrase);
+                    const others = finalPool.filter(ax => ax.id !== cloudAxiom.id && ax.barOffset === cloudAxiom.barOffset);
+                    if (others.length > 0) {
+                        const sec = others[this.random.nextInt(others.length)];
+                        const rawSec = decompressCompactPhrase(sec.phrase);
+                        this.secondaryTheme = { phrase: rawSec, maxTick: (sec.bars || 1) * 12 };
                     }
-
-                    const phraseBars = cloudAxiom.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
-                    this.currentThemeMaxTick = phraseBars * 12;
-                    
-                    this.currentTheme = {
-                        phrase: rawPhrase,
-                        startBar: epoch,
-                        endBar: epoch + (phraseBars * melodyScale),
-                        id: cloudAxiom.id,
-                        tags: cloudAxiom.tags || ['cloud']
-                    };
-                    this.currentTrackName = cloudAxiom.compositionId;
-                    this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
-                    
-                    if (rawBass) {
-                        this.currentBassTheme = {
-                            phrase: rawBass,
-                            startBar: epoch,
-                            endBar: epoch + (phraseBars * melodyScale)
-                        };
-                        this.bassBusyUntilBar = epoch + (phraseBars * melodyScale);
-                    }
-
-                    this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
-                        phrase: p,
-                        role: accompSiblings[idx].role,
-                        endBar: epoch + (phraseBars * melodyScale)
-                    }));
-
-                    this.ensembleStatus = (bassSibling || accompSiblings.length > 0) ? 'SIBLING' : 'ADAPTIVE';
-                } else if (!this.activeAnchorId) {
-                    let groupKey = dna.ambientLegacyGroup || 'BUDD';
-                    const group = AMBIENT_LEGACY[groupKey];
-                    let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
-                    const lick = group.licks[lickIdx];
-                    
-                    let rawPhrase = [...lick.phrase]; 
-                    normalizePhraseGroup([rawPhrase]); 
-
-                    if (this.currentMutationType !== 'none') {
-                        if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
-                        else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
-                    }
-
-                    const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
-                    this.currentThemeMaxTick = phraseBars * 12;
-                    
-                    this.currentTheme = {
-                        phrase: rawPhrase,
-                        startBar: epoch,
-                        endBar: epoch + (phraseBars * melodyScale),
-                        id: `${groupKey}_${lickIdx}`,
-                        tags: lick.tags
-                    };
-                    this.currentTrackName = 'Ambient Legacy';
-                    this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
-                    this.ensembleStatus = 'LOCAL';
-                    this.currentBassTheme = null;
-                    this.currentAccompAxioms = [];
-
-                    const secondIdx = (lickIdx + 1) % group.licks.length;
-                    const secPhrase = [...group.licks[secondIdx].phrase];
-                    normalizePhraseGroup([secPhrase]);
-                    this.secondaryTheme = { phrase: secPhrase, maxTick: 48 };
                 }
+            }
+
+            if (cloudAxiom) {
+                let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+                const phrasesToNormalize = [rawPhrase];
+                if (this.secondaryTheme) phrasesToNormalize.push(this.secondaryTheme.phrase);
+                
+                const bassSibling = poolToUse.find(ax => 
+                    ax.role === 'bass' && 
+                    this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) &&
+                    ax.barOffset === cloudAxiom.barOffset
+                );
+                
+                let rawBass: any[] | null = null;
+                if (bassSibling) {
+                    rawBass = decompressCompactPhrase(bassSibling.phrase);
+                    phrasesToNormalize.push(rawBass);
+                }
+
+                const accompSiblings = poolToUse.filter(ax => 
+                    ax.role?.startsWith('accomp') && 
+                    this.normalize(ax.compositionId || '') === this.normalize(cloudAxiom.compositionId) && 
+                    ax.barOffset === cloudAxiom.barOffset
+                ).slice(0, 3);
+
+                const rawAccomps: any[][] = [];
+                accompSiblings.forEach(ax => {
+                    const p = decompressCompactPhrase(ax.phrase);
+                    rawAccomps.push(p);
+                    phrasesToNormalize.push(p);
+                });
+
+                normalizePhraseGroup(phrasesToNormalize);
+
+                if (!this.activeAnchorId && this.currentMutationType !== 'none') {
+                    if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+                    else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+                    else if (this.currentMutationType === 'jitter') rawPhrase = applyRhythmicJitter(rawPhrase);
+                }
+
+                const phraseBars = cloudAxiom.bars || Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+                this.currentThemeMaxTick = phraseBars * 12;
+                
+                this.currentTheme = {
+                    phrase: rawPhrase,
+                    startBar: epoch,
+                    endBar: epoch + (phraseBars * melodyScale),
+                    id: cloudAxiom.id,
+                    tags: cloudAxiom.tags || ['cloud']
+                };
+                this.currentTrackName = cloudAxiom.compositionId;
+                this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
+                
+                if (rawBass) {
+                    this.currentBassTheme = {
+                        phrase: rawBass,
+                        startBar: epoch,
+                        endBar: epoch + (phraseBars * melodyScale)
+                    };
+                    this.bassBusyUntilBar = epoch + (phraseBars * melodyScale);
+                }
+
+                this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
+                    phrase: p,
+                    role: accompSiblings[idx].role,
+                    endBar: epoch + (phraseBars * melodyScale)
+                }));
+
+                this.ensembleStatus = (bassSibling || accompSiblings.length > 0) ? 'SIBLING' : 'ADAPTIVE';
+            } else if (!this.activeAnchorId) {
+                let groupKey = dna.ambientLegacyGroup || 'BUDD';
+                const group = AMBIENT_LEGACY[groupKey];
+                let lickIdx = calculateMusiNum(epoch, 7, this.seed, group.licks.length);
+                const lick = group.licks[lickIdx];
+                
+                let rawPhrase = [...lick.phrase]; 
+                normalizePhraseGroup([rawPhrase]); 
+
+                if (this.currentMutationType !== 'none') {
+                    if (this.currentMutationType === 'inversion') rawPhrase = invertPhrase(rawPhrase);
+                    else if (this.currentMutationType === 'retrograde') rawPhrase = retrogradePhrase(rawPhrase);
+                }
+
+                const phraseBars = Math.max(1, Math.ceil(Math.max(...rawPhrase.map(n => n.t + n.d), 0) / 12));
+                this.currentThemeMaxTick = phraseBars * 12;
+                
+                this.currentTheme = {
+                    phrase: rawPhrase,
+                    startBar: epoch,
+                    endBar: epoch + (phraseBars * melodyScale),
+                    id: `${groupKey}_${lickIdx}`,
+                    tags: lick.tags
+                };
+                this.currentTrackName = 'Ambient Legacy';
+                this.soloistBusyUntilBar = epoch + (phraseBars * melodyScale);
+                this.ensembleStatus = 'LOCAL';
+                this.currentBassTheme = null;
+                this.currentAccompAxioms = [];
+
+                const secondIdx = (lickIdx + 1) % group.licks.length;
+                const secPhrase = [...group.licks[secondIdx].phrase];
+                normalizePhraseGroup([secPhrase]);
+                this.secondaryTheme = { phrase: secPhrase, maxTick: 48 };
             }
         }
 
@@ -342,13 +338,13 @@ export class AmbientBrain {
                 else if (idx === 2) targetType = 'pianoAccompaniment';
 
                 if ((navInfo.currentPart.layers as any)[targetType]) {
-                    events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType, dna));
+                    events.push(...this.renderHeritageAccompaniment(yogaChord, epoch, ax.phrase, targetType, dna, localTension));
                 }
             });
         }
         
         if (hints.accompaniment && (this.currentAccompAxioms.length === 0 || localTension > 0.7)) {
-            events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string));
+            events.push(...this.renderPad(yogaChord, epoch, hints.accompaniment as string, localTension));
         }
         
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
@@ -530,15 +526,16 @@ export class AmbientBrain {
         return hints;
     }
 
-    private renderPad(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
+    private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift;
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 
+        // #ЗАЧЕМ: ПЛАН №728. Оживление падов через внутреннее ритмическое смещение.
         return notes.map((n, i) => ({
             type: 'accompaniment',
             note: n,
-            time: i * 0.2,
+            time: (i * 0.2) + (this.random.next() * 0.1),
             duration: 12.0, 
             weight: 0.5,
             technique: 'swell',
@@ -548,7 +545,7 @@ export class AmbientBrain {
         }));
     }
 
-    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA): FractalEvent[] {
+    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
         const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
@@ -557,17 +554,45 @@ export class AmbientBrain {
 
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-        return barNotes.map(n => ({
-            type: type,
-            note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
-            time: (n.t % 12) / 3,
-            duration: n.d / 3,
-            weight: 0.55,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 0.8, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
-        }));
+        const events: FractalEvent[] = [];
+
+        barNotes.forEach(n => {
+            let tech: Technique = 'swell';
+            const isLong = n.d >= 12;
+            
+            // #ЗАЧЕМ: Anti-Hang Protocol. Дробим скучные висячие ноты в амбиенте.
+            if (isLong && tension > 0.6 && this.random.next() < 0.5 && type === 'accompaniment') {
+                const pulses = [0, 6]; 
+                pulses.forEach(p => {
+                    events.push({
+                        type: type,
+                        note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
+                        time: ((n.t % 12) + p) / 3,
+                        duration: 1.5,
+                        weight: 0.55,
+                        technique: 'hit',
+                        dynamics: 'p',
+                        phrasing: 'staccato',
+                        params: { attack: 0.1, release: 2.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
+                    });
+                });
+            } else {
+                if (n.d < 6) tech = 'hit';
+                events.push({
+                    type: type,
+                    note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
+                    time: (n.t % 12) / 3,
+                    duration: n.d / 3,
+                    weight: 0.55,
+                    technique: tech,
+                    dynamics: 'p',
+                    phrasing: 'legato',
+                    params: { attack: 0.8, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
+                });
+            }
+        });
+
+        return events;
     }
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {

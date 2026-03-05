@@ -10,7 +10,8 @@ import {
   BluesMelody,
   BluesCognitiveState,
   CommonMood,
-  InstrumentPart
+  InstrumentPart,
+  Technique
 } from '@/types/music';
 import { 
     DEGREE_TO_SEMITONE,
@@ -32,8 +33,9 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V188.0 — "Heritage Priority Restoration".
- * #ОБНОВЛЕНО (ПЛАН №727): Исправлен приоритет выбора аксиом. Облако теперь в приоритете всегда.
+ * @fileOverview Blues Brain V189.0 — "Anti-Hang Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №728): Внедрено ритмическое дробление длинных нот органа.
+ * Теперь орган играет "stabs" при росте Tension, а не просто тянет ноту.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -204,7 +206,6 @@ export class BluesBrain {
 
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
     
-    // #ЗАЧЕМ: ПЛАН №722. Бас и Ударные всегда за пределами интро.
     const forceRhythm = !isIntro;
     if (forceRhythm) {
         if (!hints.drums) hints.drums = 'melancholic'; 
@@ -259,7 +260,7 @@ export class BluesBrain {
             else if (idx === 2) targetType = 'pianoAccompaniment';
 
             if ((navInfo.currentPart.layers as any)[targetType]) {
-                accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna));
+                accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna, tension));
             }
         });
     } else if (hints.accompaniment) {
@@ -332,8 +333,6 @@ export class BluesBrain {
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          
-          // #ЗАЧЕМ: ПЛАН №727. Инициализация пула всеми мелодиями облака, если Якорь не задан.
           let basePool = this.config.cloudAxioms.filter(ax => ax.role === 'melody');
           
           if (targetAnchor) {
@@ -660,7 +659,7 @@ export class BluesBrain {
       return events;
   }
 
-  private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA): FractalEvent[] {
+  private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
       const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
       const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
       const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
@@ -669,28 +668,61 @@ export class BluesBrain {
       
       const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-      return barNotes.map(n => ({
-          type: type,
-          note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-          time: (n.t % 12) / 3,
-          duration: n.d / 3,
-          weight: 0.55,
-          technique: 'swell',
-          dynamics: 'p',
-          phrasing: 'legato'
-      }));
+      const events: FractalEvent[] = [];
+
+      barNotes.forEach(n => {
+          const isLong = n.d >= 12;
+          const needsPulse = isLong && tension > 0.5 && this.random.next() < 0.7;
+          
+          let tech: Technique = 'swell';
+          if (tension > 0.7 || n.d < 6) tech = 'hit';
+
+          if (needsPulse && type === 'accompaniment') {
+              // #ЗАЧЕМ: ПЛАН №728. Дробим висячую ноту на ритмические удары (stabs).
+              const pulses = [0, 3, 6, 9]; // Syncopated quarter notes in 12/8
+              pulses.forEach(p => {
+                  events.push({
+                      type: type,
+                      note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                      time: ((n.t % 12) + p) / 3,
+                      duration: 0.4,
+                      weight: 0.55,
+                      technique: 'hit',
+                      dynamics: 'p',
+                      phrasing: 'staccato'
+                  });
+              });
+          } else {
+              events.push({
+                  type: type,
+                  note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                  time: (n.t % 12) / 3,
+                  duration: n.d / 3,
+                  weight: 0.55,
+                  technique: tech,
+                  dynamics: 'p',
+                  phrasing: tech === 'hit' ? 'staccato' : 'legato'
+              });
+          }
+      });
+
+      return events;
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    const isStabMode = tension > 0.75;
+    // #ЗАЧЕМ: Усиление ритмичности при росте напряжения.
+    const isStabMode = tension > 0.65;
     
     if (isStabMode) {
-        return [root, third].map((p, i) => ({
-            type: 'accompaniment', note: p, time: i * 1.5, duration: 0.4, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-        }));
+        // Syncopated rhythm for meaningful comping
+        const rhythm = [0, 1.5, 3.0]; 
+        return rhythm.flatMap((t, i) => [
+            { type: 'accompaniment', note: root, time: t, duration: 0.3, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' },
+            { type: 'accompaniment', note: third, time: t + 0.05, duration: 0.3, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }
+        ]);
     }
 
     return [root, third].map((p, i) => ({
