@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -1205,7 +1204,7 @@ export default function HypercubeDashboard() {
                     </Button>
                   </div>
                 </CardHeader>
-                <Content className="p-0">
+                <CardContent className="p-0">
                   <div className="overflow-x-auto max-h-[550px]">
                     <table className="w-full text-sm">
                       <thead className="bg-muted sticky top-0 z-10 border-b">
@@ -1255,7 +1254,7 @@ export default function HypercubeDashboard() {
                       </tbody>
                     </table>
                   </div>
-                </Content>
+                </CardContent>
               </Card>
             )}
           </TabsContent>
