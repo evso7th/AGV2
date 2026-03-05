@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v25.3 — "The Epic Chronos Master".
- * #ОБНОВЛЕНО (ПЛАН №726): Реализация протокола Epic Half-Time для растягивания мелодий.
+ * @fileOverview Ambient Brain v25.4 — "Heritage Priority Restoration".
+ * #ОБНОВЛЕНО (ПЛАН №727): Исправлен приоритет выбора аксиом. Облако теперь в приоритете всегда.
  */
 
 import type { 
@@ -168,15 +168,12 @@ export class AmbientBrain {
             if (!this.activeAnchorId) {
                 const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
                 this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
-                if (this.currentMutationType !== 'none') {
-                    console.log(`%c[Improviser] Chorus Boundary. New Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
-                }
+                console.log(`%c[Improviser] Ambient Chorus Boundary. New Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
             } else {
                 this.currentMutationType = 'none';
             }
         }
 
-        // #ЗАЧЕМ: Учет растягивания времени (timeScale).
         const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
         const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
 
@@ -192,11 +189,11 @@ export class AmbientBrain {
                 if (poolToUse.length > 0) {
                     const targetAnchor = this.activeAnchorId ? this.normalize(this.activeAnchorId) : null;
                     
-                    let basePool = [];
+                    // #ЗАЧЕМ: ПЛАН №727. Начинаем со всех мелодий облака.
+                    let basePool = poolToUse.filter(ax => ax.role === 'melody');
+                    
                     if (targetAnchor) {
-                        basePool = poolToUse.filter(ax => 
-                            ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
-                        );
+                        basePool = basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor);
                     }
 
                     if (basePool.length > 0) {

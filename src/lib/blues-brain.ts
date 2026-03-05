@@ -32,8 +32,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V187.0 — "The Epic Chronos Master".
- * #ОБНОВЛЕНО (ПЛАН №726): Реализация протокола Epic Half-Time для растягивания мелодий.
+ * @fileOverview Blues Brain V188.0 — "Heritage Priority Restoration".
+ * #ОБНОВЛЕНО (ПЛАН №727): Исправлен приоритет выбора аксиом. Облако теперь в приоритете всегда.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -223,12 +223,9 @@ export class BluesBrain {
         }
     }
 
-    // #ЗАЧЕМ: Учет растягивания времени (timeScale).
     const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
     const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
 
-    // Если используется timeScale, проверяем границу "виртуального такта"
-    const effectiveSoloistEpoch = Math.floor(epoch / melodyScale);
     if (epoch % melodyScale === 0 && (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition)) {
         this.selectNextAxiom(navInfo, dna, epoch);
     }
@@ -336,11 +333,11 @@ export class BluesBrain {
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           
-          let basePool = [];
+          // #ЗАЧЕМ: ПЛАН №727. Инициализация пула всеми мелодиями облака, если Якорь не задан.
+          let basePool = this.config.cloudAxioms.filter(ax => ax.role === 'melody');
+          
           if (targetAnchor) {
-              basePool = this.config.cloudAxioms.filter(ax => 
-                  ax.role === 'melody' && this.normalize(ax.compositionId || '') === targetAnchor
-              );
+              basePool = basePool.filter(ax => this.normalize(ax.compositionId || '') === targetAnchor);
           }
 
           if (basePool.length > 0) {
@@ -461,7 +458,6 @@ export class BluesBrain {
           this.currentLickId = this.currentGrandMelody.id;
           this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
-          // #ЗАЧЕМ: Пианист получает "брата" основной мелодии для полноценного дуэта.
           const allLicks = Object.keys(BLUES_SOLO_LICKS);
           const secondId = allLicks[this.random.nextInt(allLicks.length)];
           this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
@@ -472,6 +468,7 @@ export class BluesBrain {
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
+      this.currentTrackName = 'Local';
       
       let rawPhrase = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       normalizePhraseGroup([rawPhrase]);
@@ -486,7 +483,6 @@ export class BluesBrain {
       this.currentAxiomMaxTick = phraseBars * 12;
       this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
-      // #ЗАЧЕМ: Оживляем пианиста и здесь.
       const secondId = allLickIds.filter(id => id !== nextId)[this.random.nextInt(allLickIds.length - 1)];
       this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
       this.secondaryAxiomMaxTick = 48;
@@ -569,22 +565,15 @@ export class BluesBrain {
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string = 'melody', phrase: any[], maxTick: number, timeScale: number = 1): FractalEvent[] {
     const barCountInPhrase = Math.ceil(maxTick / 12);
-    // soloistBusyUntilBar установлен при выборе аксиомы с учетом timeScale
     const phraseBarsStretched = barCountInPhrase * timeScale;
     const startEpoch = this.soloistBusyUntilBar - phraseBarsStretched;
     
-    // relativeBar — номер такта внутри растянутой фразы
     const relativeBar = epoch - startEpoch;
-    
-    // Вычисляем, какие оригинальные тики (0-11) соответствуют текущему такту
-    // При timeScale=2: такт 0 -> тики 0-5.99, такт 1 -> тики 6-11.99
-    const originalTicksPerBar = 12 / timeScale;
     const barInCycle = relativeBar % phraseBarsStretched;
-    
+    const originalTicksPerBar = 12 / timeScale;
     const startOriginalTickInCycle = barInCycle * originalTicksPerBar;
     const endOriginalTickInCycle = startOriginalTickInCycle + originalTicksPerBar;
 
-    // Фильтруем ноты, которые попадают в это временное окно
     const barNotes = phrase.filter(n => {
         const cycleTick = n.t % maxTick;
         return cycleTick >= startOriginalTickInCycle && cycleTick < endOriginalTickInCycle;
@@ -696,7 +685,6 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    // #ЗАЧЕМ: Ритмическое компандирование при высоком напряжении.
     const isStabMode = tension > 0.75;
     
     if (isStabMode) {
@@ -739,7 +727,6 @@ export class BluesBrain {
         }
     }
     
-    // #ЗАЧЕМ: ПЛАН №724. Ротация органов и пэда в зависимости от Tension.
     if (hints.accompaniment) {
         if (tension < 0.4) (hints as any).accompaniment = 'organ_soft_jazz';
         else if (tension < 0.75) (hints as any).accompaniment = 'synth_ambient_pad_lush';
