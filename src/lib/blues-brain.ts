@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -29,8 +28,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Блюзовый Мозг V178.0 — "Harmonic Lock Update".
- * #ОБНОВЛЕНО (ПЛАН №720): Внедрен Transposition Bypass для точного воспроизведения MIDI.
+ * #ЗАЧЕМ: Блюзовый Мозг V179.0 — "Permanent Rhythm Section".
+ * #ЧТО: ПЛАН №722 — Бас и Ударные теперь гарантированно звучат вне интро.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -194,6 +193,15 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.tensionMomentum = tension - this.state.lastTension;
     this.state.lastTension = tension;
+
+    // #ЗАЧЕМ: ПЛАН №722 — Обеспечение непрерывности ритм-секции в блюзе.
+    // #ЧТО: Вне интро/пролога Бас и Ударные принудительно включены.
+    const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
+    const forceRhythm = !isIntro;
+    if (forceRhythm) {
+        if (!hints.drums) hints.drums = 'melancholic'; 
+        if (!hints.bass) hints.bass = 'bass_jazz_warm';
+    }
 
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) this.selectGrandAxiom(tension);
