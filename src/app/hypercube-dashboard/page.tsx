@@ -37,14 +37,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/select";
-import { Label } from "@/label";
-import { Input } from "@/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
-import { ScrollArea } from "@/scroll-area";
-import { Progress } from "@/progress";
-import { Popover, PopoverContent, PopoverTrigger } from "@/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,7 +54,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/alert-dialog";
+} from "@/components/ui/alert-dialog";
 import { 
   Radar, 
   RadarChart, 
@@ -356,7 +356,6 @@ export default function HypercubeDashboard() {
                 if (Array.isArray(licks)) {
                     (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
                 } else {
-                    // #ЗАЧЕМ: Поддержка одиночных гигантских объектов (Мега-Аксиом).
                     flattened.push(processAxiom(licks, 0, trackName));
                 }
             });
@@ -921,7 +920,7 @@ export default function HypercubeDashboard() {
                                   {/* Sticky Table Header with Filters */}
                                   <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
                                     <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                                      <th className="p-3 pl-12 font-black w-32">
+                                      <th className="p-3 font-black w-32">
                                         <div className="space-y-1">
                                           <span>Role</span>
                                           <Input 
@@ -1206,7 +1205,7 @@ export default function HypercubeDashboard() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0">
+                <Content className="p-0">
                   <div className="overflow-x-auto max-h-[550px]">
                     <table className="w-full text-sm">
                       <thead className="bg-muted sticky top-0 z-10 border-b">
@@ -1256,7 +1255,7 @@ export default function HypercubeDashboard() {
                       </tbody>
                     </table>
                   </div>
-                </CardContent>
+                </Content>
               </Card>
             )}
           </TabsContent>
