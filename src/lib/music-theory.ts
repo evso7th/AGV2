@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.4 — "Mutation Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №723 — Внедрение функций музыкальной трансформации.
+ * @fileOverview Universal Music Theory Utilities V2.5 — "Tempo Inheritance".
+ * #ЗАЧЕМ: Реализация ПЛАНА №732 — Наследование темпа из Heritage DNA.
  */
 
 import type { 
@@ -116,6 +116,7 @@ const GENRE_STATES: Record<string, number[]> = {
 
 export function decompressCompactPhrase(compact: number[]): any[] {
     const result = [];
+    if (!compact) return [];
     for (let i = 0; i < compact.length; i += 4) {
         result.push({
             t: compact[i],
@@ -278,6 +279,10 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     return track;
 }
 
+/**
+ * #ЗАЧЕМ: Генерация ДНК сюиты V3.0 — "Genetic Synchronization".
+ * #ЧТО: ПЛАН №732 — Реализовано наследование темпа из Облачного Наследия.
+ */
 export function generateSuiteDNA(
     totalBars: number, 
     mood: Mood, 
@@ -332,6 +337,9 @@ export function generateSuiteDNA(
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
     const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
 
+    // #ЗАЧЕМ: Наследование темпа из Облачного Наследия.
+    // #ЧТО: Если есть активный якорь, берем BPM прямо из него. 
+    //       Иначе выбираем случайный "лидерский" BPM из пула подходящих аксиом.
     let inheritedBpm: number | null = null;
     if (cloudAxioms && cloudAxioms.length > 0) {
         const normalizeStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -340,6 +348,7 @@ export function generateSuiteDNA(
             const anchorAxiom = cloudAxioms.find(ax => normalizeStr(ax.compositionId) === target && ax.nativeBpm);
             if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
         } else {
+            // Пытаемся найти характерный темп для жанра/настроения в облаке
             const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);
             if (leaders.length > 0) {
                 const picked = leaders[calculateMusiNum(finalSeed, 29, 0, leaders.length)];

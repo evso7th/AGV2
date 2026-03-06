@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.6 — "Stability Restoration".
- * #ЧТО: Внедрены защитные проверки для EQ и ворм-ап модалки.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.7 — "BPM Lock".
+ * #ЧТО: Слайдер BPM теперь disabled во время игры, так как темп наследуется из DNA.
  */
 'use client';
 
@@ -149,7 +149,6 @@ export function AuraGrooveV2({
                   <DialogHeader><DialogTitle>System Equalizer</DialogTitle></DialogHeader>
                   <div className="flex justify-around items-end pt-4 h-48">
                     {EQ_BANDS.map((band, index) => {
-                      // #ЗАЧЕМ: Защита от undefined при рендеринге полос EQ.
                       const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
                       return (
                         <div key={index} className="flex flex-col items-center justify-end space-y-2">
@@ -378,6 +377,7 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
+                    {/* #ЗАЧЕМ: Слайдер BPM теперь заблокирован, так как темп диктуется DNA. */}
                     <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} className="col-span-1" disabled={true}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>

@@ -1,6 +1,6 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №723-FIX): Улучшено форматирование логов мутаций.
+ * #ОБНОВЛЕНО (ПЛАН №732): Реализована синхронизация BPM обратно в UI при наследовании ДНК.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -115,6 +115,8 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
         
+        // #ЗАЧЕМ: Синхронизация темпа.
+        // #ЧТО: Если ДНК наследовало BPM из Облака, мы должны сказать об этом UI.
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
@@ -209,7 +211,6 @@ const Scheduler = {
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
         
-        // #ЗАЧЕМ: Улучшенное отображение мутаций в такт-логе.
         const mutType = payload.mutationType || 'none';
         const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
         const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';

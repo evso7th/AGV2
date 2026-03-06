@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V15.0 — "Fidelity & Latency Update".
- * #ЧТО: ПЛАН №729 — Увеличен Lookahead Buffer до 0.5с для устранения спотыканий.
+ * #ЗАЧЕМ: Audio Engine Context V15.1 — "BPM Synchronization".
+ * #ЧТО: ПЛАН №732 — Добавлен проброс события BPM_SYNC из Воркера в UI.
  */
 'use client';
 
@@ -238,6 +237,8 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                 } else if (type === 'BPM_SYNC' && payload) {
+                    // #ЗАЧЕМ: Синхронизация BPM.
+                    // #ЧТО: Пробрасываем событие из Воркера в UI через кастомный Window Event.
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
@@ -276,7 +277,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
                 stopAllSounds(); 
-                // #ЗАЧЕМ: ПЛАН №729. Увеличен буфер до 0.5с для плавной синхронизации.
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
