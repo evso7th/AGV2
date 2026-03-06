@@ -33,9 +33,11 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V190.0 — "Axiom Fidelity Update".
- * #ОБНОВЛЕНО (ПЛАН №729): Полный отказ от modulo 12 при выборе нот.
- * Теперь фразы из 4-8-12 тактов играются последовательно, без "схлопывания".
+ * @fileOverview Blues Brain V191.0 — "The Human Touch Update".
+ * #ОБНОВЛЕНО (ПЛАН №730): 
+ * 1. Внедрена пунктуация (Breath) — паузы между аксиомами.
+ * 2. Динамическое приглушение drawbars органа.
+ * 3. Басовые слайды на переходах.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -96,6 +98,7 @@ export class BluesBrain {
   private readonly BASS_CEILING = 47; 
 
   private soloistBusyUntilBar: number = -1;
+  private soloistRestingUntilBar: number = -1; // #ЗАЧЕМ: Реализация "Вдоха" (ПЛАН №730)
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -225,24 +228,40 @@ export class BluesBrain {
     }
 
     const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
-    const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
+    
+    // #ЗАЧЕМ: Логика "Вдоха" (Breath). Пауза между аксиомами.
+    const isSoloistFree = epoch >= this.soloistBusyUntilBar;
+    const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
-    if (epoch % melodyScale === 0 && (epoch >= this.soloistBusyUntilBar || navInfo.isPartTransition)) {
-        this.selectNextAxiom(navInfo, dna, epoch);
+    if (isSoloistFree && !isSoloistResting) {
+        if (this.random.next() < 0.45) { // 45% шанс на паузу
+            this.soloistRestingUntilBar = epoch + 1 + (this.random.next() > 0.7 ? 1 : 0);
+            console.log(`%c[Musician] Taking a breath until bar ${this.soloistRestingUntilBar}`, 'color: #ADD8E6; font-style: italic;');
+        } else {
+            this.selectNextAxiom(navInfo, dna, epoch);
+        }
     }
 
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    const melodyEvents = (hints.melody && epoch < this.soloistBusyUntilBar) ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, melodyScale) : [];
+    // Приглушение органа (Drawbars)
+    if (hints.accompaniment && hints.accompaniment.startsWith('organ')) {
+        this.applyOrganMuffling(tension, hints);
+    }
+
+    const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
+        ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, melodyScale) 
+        : [];
     
-    const pianoMeaningfulEvents = (hints.pianoAccompaniment && this.secondaryAxiom.length > 0 && epoch < this.soloistBusyUntilBar) 
+    const pianoScale = navInfo.currentPart.instrumentRules?.pianoAccompaniment?.timeScale || 1;
+    const pianoMeaningfulEvents = (hints.pianoAccompaniment && this.secondaryAxiom.length > 0 && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, currentChord, dna, 'pianoAccompaniment', this.secondaryAxiom, this.secondaryAxiomMaxTick, pianoScale) 
         : [];
 
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, melodyEvents));
 
-    const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents, dna) : [];
+    const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, melodyEvents, dna, navInfo) : [];
 
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
@@ -294,16 +313,25 @@ export class BluesBrain {
         lickId: this.currentLickId, 
         mutationType: this.state.currentMutationType,
         activeAxioms: {
-            melody: this.currentLickId,
-            melodyTrack: this.currentTrackName,
+            melody: isSoloistResting ? 'Breath' : this.currentLickId,
+            melodyTrack: isSoloistResting ? 'Silence' : this.currentTrackName,
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
             drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
             accompaniment: hints.accompaniment || 'none',
             harmony: harAxiom
         },
-        narrative: `Bar ${epoch % 12 + 1}/12. Ensemble chemistry: ${this.ensembleStatus}.`
+        narrative: isSoloistResting ? 'Taking a breath...' : `Bar ${epoch % 12 + 1}/12. Ensemble chemistry: ${this.ensembleStatus}.`
     };
+  }
+
+  private applyOrganMuffling(tension: number, hints: InstrumentHints) {
+      // #ЗАЧЕМ: Динамическое приглушение футажей (ПЛАН №730).
+      // #ЧТО: Чем ниже напряжение, тем меньше высоких гармоник в drawbars.
+      //       Пронзительные звуки (tension > 0.8) ограничены.
+      const muffleFactor = clamp(tension * 1.2, 0.3, 0.8);
+      const drawbars = [8, 0, 8, Math.round(5 * muffleFactor), 0, Math.round(3 * muffleFactor), 0, 0, 0];
+      (hints as any).drawbars = drawbars;
   }
 
   private selectGrandAxiom(tension: number) {
@@ -487,12 +515,11 @@ export class BluesBrain {
       this.secondaryAxiomMaxTick = 48;
   }
 
-  private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[], dna: SuiteDNA): FractalEvent[] {
+  private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[], dna: SuiteDNA, navInfo: NavigationInfo): FractalEvent[] {
       if (this.currentBassAxiom.length > 0) {
           const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
           const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
           const barOffset = barInAxiom * 12;
-          // #ЗАЧЕМ: ПЛАН №729. Фильтруем только ноты текущего такта. Без Modulo 12!
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
           const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
@@ -500,15 +527,24 @@ export class BluesBrain {
           return barNotes.map(n => ({
               type: 'bass',
               note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-              time: (n.t - barOffset) / 3, // #ЗАЧЕМ: Локальное время в такте.
-              duration: n.d / 3, // #ЗАЧЕМ: Оригинальная длительность.
+              time: (n.t - barOffset) / 3, 
+              duration: n.d / 3, 
               weight: 0.85,
               technique: 'pluck',
               dynamics: 'p',
               phrasing: 'legato'
           }));
       }
-      return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
+      
+      const baseEvents = tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
+      
+      // #ЗАЧЕМ: Басовые Слайды (ПЛАН №730).
+      // #ЧТО: Если это переход между частями или начало фразы, применяем технику slide.
+      if (navInfo.isPartTransition && baseEvents.length > 0) {
+          baseEvents[0].technique = 'slide';
+      }
+
+      return baseEvents;
   }
 
   private renderUnisonAccompaniment(bassEvents: FractalEvent[], chord: GhostChord, type: string): FractalEvent[] {
@@ -665,7 +701,6 @@ export class BluesBrain {
       const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
       const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
       const barOffset = barInAxiom * 12;
-      // #ЗАЧЕМ: ПЛАН №729. Строгое следование тактам в длинной аксиоме.
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
       
       const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
@@ -685,7 +720,7 @@ export class BluesBrain {
                   events.push({
                       type: type,
                       note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                      time: ((n.t - barOffset) + p) / 3, // #ЗАЧЕМ: Локальное время без Modulo 12.
+                      time: ((n.t - barOffset) + p) / 3,
                       duration: 0.4,
                       weight: 0.55,
                       technique: 'hit',
