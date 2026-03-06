@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V14.0 — "Broadcast Integrity Update".
- * #ЧТО: ПЛАН №717 — Внедрено принудительное глушение Speaker-узла при активном Радио.
+ * #ЗАЧЕМ: Audio Engine Context V15.0 — "Fidelity & Latency Update".
+ * #ЧТО: ПЛАН №729 — Увеличен Lookahead Buffer до 0.5с для устранения спотыканий.
  */
 'use client';
 
@@ -276,6 +276,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
                 stopAllSounds(); 
+                // #ЗАЧЕМ: ПЛАН №729. Увеличен буфер до 0.5с для плавной синхронизации.
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
@@ -315,12 +316,10 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 const now = audioContextRef.current.currentTime;
                 if (isBroadcastActive) {
                     broadcastEngineRef.current.stop();
-                    // #ЗАЧЕМ: Плавное включение прямого выхода.
                     speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.5);
                     setIsBroadcastActive(false);
                 } else {
                     broadcastEngineRef.current.start();
-                    // #ЗАЧЕМ: Плавное глушение прямого выхода (защита от удвоения).
                     speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, now, 0.5);
                     setIsBroadcastActive(true);
                 }

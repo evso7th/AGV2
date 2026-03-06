@@ -33,9 +33,9 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V189.0 — "Anti-Hang Protocol".
- * #ОБНОВЛЕНО (ПЛАН №728): Внедрено ритмическое дробление длинных нот органа.
- * Теперь орган играет "stabs" при росте Tension, а не просто тянет ноту.
+ * @fileOverview Blues Brain V190.0 — "Axiom Fidelity Update".
+ * #ОБНОВЛЕНО (ПЛАН №729): Полный отказ от modulo 12 при выборе нот.
+ * Теперь фразы из 4-8-12 тактов играются последовательно, без "схлопывания".
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -492,6 +492,7 @@ export class BluesBrain {
           const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / 12);
           const barInAxiom = (epoch - (this.soloistBusyUntilBar - barCountInPhrase)) % barCountInPhrase;
           const barOffset = barInAxiom * 12;
+          // #ЗАЧЕМ: ПЛАН №729. Фильтруем только ноты текущего такта. Без Modulo 12!
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
           const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
@@ -499,8 +500,8 @@ export class BluesBrain {
           return barNotes.map(n => ({
               type: 'bass',
               note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-              time: (n.t % 12) / 3,
-              duration: 3.5, 
+              time: (n.t - barOffset) / 3, // #ЗАЧЕМ: Локальное время в такте.
+              duration: n.d / 3, // #ЗАЧЕМ: Оригинальная длительность.
               weight: 0.85,
               technique: 'pluck',
               dynamics: 'p',
@@ -664,6 +665,7 @@ export class BluesBrain {
       const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
       const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
       const barOffset = barInAxiom * 12;
+      // #ЗАЧЕМ: ПЛАН №729. Строгое следование тактам в длинной аксиоме.
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
       
       const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
@@ -678,13 +680,12 @@ export class BluesBrain {
           if (tension > 0.7 || n.d < 6) tech = 'hit';
 
           if (needsPulse && type === 'accompaniment') {
-              // #ЗАЧЕМ: ПЛАН №728. Дробим висячую ноту на ритмические удары (stabs).
-              const pulses = [0, 3, 6, 9]; // Syncopated quarter notes in 12/8
+              const pulses = [0, 3, 6, 9]; 
               pulses.forEach(p => {
                   events.push({
                       type: type,
                       note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                      time: ((n.t % 12) + p) / 3,
+                      time: ((n.t - barOffset) + p) / 3, // #ЗАЧЕМ: Локальное время без Modulo 12.
                       duration: 0.4,
                       weight: 0.55,
                       technique: 'hit',
@@ -696,7 +697,7 @@ export class BluesBrain {
               events.push({
                   type: type,
                   note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                  time: (n.t % 12) / 3,
+                  time: (n.t - barOffset) / 3,
                   duration: n.d / 3,
                   weight: 0.55,
                   technique: tech,
@@ -713,11 +714,9 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    // #ЗАЧЕМ: Усиление ритмичности при росте напряжения.
     const isStabMode = tension > 0.65;
     
     if (isStabMode) {
-        // Syncopated rhythm for meaningful comping
         const rhythm = [0, 1.5, 3.0]; 
         return rhythm.flatMap((t, i) => [
             { type: 'accompaniment', note: root, time: t, duration: 0.3, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' },

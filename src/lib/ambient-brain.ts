@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain v25.5 — "Anti-Hang Protocol".
- * #ОБНОВЛЕНО (ПЛАН №728): Ритмическое оживление падов и органа.
+ * @fileOverview Ambient Brain v25.6 — "Axiom Fidelity Update".
+ * #ОБНОВЛЕНО (ПЛАН №729): Устранено "схлопывание" многотактовых аксиом.
+ * Теперь время нот в такте рассчитывается как (n.t - barOffset).
  */
 
 import type { 
@@ -531,7 +532,6 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 
-        // #ЗАЧЕМ: ПЛАН №728. Оживление падов через внутреннее ритмическое смещение.
         return notes.map((n, i) => ({
             type: 'accompaniment',
             note: n,
@@ -550,6 +550,7 @@ export class AmbientBrain {
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
         const barOffset = barInAxiom * 12;
+        // #ЗАЧЕМ: ПЛАН №729. Фильтрация строго по текущему такту.
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
 
         const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
@@ -560,14 +561,13 @@ export class AmbientBrain {
             let tech: Technique = 'swell';
             const isLong = n.d >= 12;
             
-            // #ЗАЧЕМ: Anti-Hang Protocol. Дробим скучные висячие ноты в амбиенте.
             if (isLong && tension > 0.6 && this.random.next() < 0.5 && type === 'accompaniment') {
                 const pulses = [0, 6]; 
                 pulses.forEach(p => {
                     events.push({
                         type: type,
                         note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
-                        time: ((n.t % 12) + p) / 3,
+                        time: ((n.t - barOffset) + p) / 3, // #ЗАЧЕМ: Локальное время без Modulo 12.
                         duration: 1.5,
                         weight: 0.55,
                         technique: 'hit',
@@ -581,7 +581,7 @@ export class AmbientBrain {
                 events.push({
                     type: type,
                     note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
-                    time: (n.t % 12) / 3,
+                    time: (n.t - barOffset) / 3,
                     duration: n.d / 3,
                     weight: 0.55,
                     technique: tech,
@@ -660,7 +660,7 @@ export class AmbientBrain {
             return {
                 type: 'bass',
                 note: pitch,
-                time: (n.t % 12) / 3,
+                time: (n.t - barOffset) / 3, // #ЗАЧЕМ: Локальное время.
                 duration: 3.5, 
                 weight: 0.85,
                 technique: 'pluck',
@@ -782,18 +782,16 @@ export class AmbientBrain {
     }
 
     private computeTensionWaves(timeSec: number): number[] {
-        const waves = [];
-        for (let n = 0; n < 4; n++) {
-            const base = Math.sin(2 * Math.PI * timeSec / PERIODS[n] + PHI[n]);
-            const mod = Math.sin(2 * Math.PI * timeSec / (PERIODS[n] / BETA) + PSI[n]);
+        for (var waves = [], n = 0; n < 4; n++) {
+            var base = Math.sin(2 * Math.PI * timeSec / PERIODS[n] + PHI[n]),
+                mod = Math.sin(2 * Math.PI * timeSec / (PERIODS[n] / BETA) + PSI[n]);
             waves.push(base * (1 + MOD_DEPTH[n] * mod));
         }
         return waves;
     }
 
     private computeGlobalTension(waves: number[]): number {
-        let t = 0;
-        for (let n = 0; n < 4; n++) t += WEIGHTS[n] * waves[n];
+        for (var t = 0, n = 0; n < 4; n++) t += WEIGHTS[n] * waves[n];
         return (t + 1) / 2;
     }
 

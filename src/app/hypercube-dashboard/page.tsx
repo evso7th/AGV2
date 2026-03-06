@@ -111,6 +111,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   gloomy: 'dark'
 };
 
+const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums'];
+
 function MultiSelector<T extends string>({ 
   options, 
   values, 
@@ -348,7 +350,6 @@ export default function HypercubeDashboard() {
             };
         };
 
-        // --- #ЗАЧЕМ: Поддержка сырых MIDI-JSON дампов (ПЛАН №719) ---
         if (json.header && json.tracks && Array.isArray(json.tracks)) {
             const targetId = json.header.name || cleanFileName || "MIDI_Export";
             const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
@@ -357,7 +358,6 @@ export default function HypercubeDashboard() {
             json.tracks.forEach((track: any, tIdx: number) => {
                 if (!track.notes || track.notes.length === 0) return;
                 
-                // Convert MIDI time/dur to 12/8 ticks (1 beat = 3 ticks)
                 const phrase: number[] = [];
                 track.notes.forEach((note: any) => {
                     const tick = Math.round(note.time * 3); 
@@ -389,7 +389,6 @@ export default function HypercubeDashboard() {
             json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
         } else {
             Object.entries(json).forEach(([trackName, licks]) => {
-                // Skip internal metadata keys if they are not arrays
                 if (trackName === 'header' || trackName === 'tracks') {
                     if (Array.isArray(licks)) {
                         (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, cleanFileName)));
@@ -712,7 +711,7 @@ export default function HypercubeDashboard() {
           if (a.barOffset !== b.barOffset) return a.barOffset - b.barOffset;
           const roleOrder = ['melody', 'bass', 'drums', 'accomp'];
           const getRoleWeight = (r: string) => {
-              const base = r.split(' ')[0].toLowerCase(); 
+              const base = String(r).split(' ')[0].toLowerCase(); 
               const idx = roleOrder.indexOf(base);
               return idx === -1 ? 99 : idx;
           };
@@ -1003,11 +1002,15 @@ export default function HypercubeDashboard() {
                                       <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
                                         <td className="p-3 pl-12">
                                           {editingAxiomId === ax.id ? (
-                                            <Input 
-                                              value={editAxiomData.role} 
-                                              onChange={(e) => setEditAxiomData({...editAxiomData, role: e.target.value})}
-                                              className="h-7 text-xs"
-                                            />
+                                            // #ЗАЧЕМ: ПЛАН №729. Переопределение роли аксиомы.
+                                            <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}>
+                                                <SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
                                           ) : (
                                             <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
                                           )}
@@ -1284,7 +1287,7 @@ export default function HypercubeDashboard() {
                                   setSelectedIds(next);
                               }} />
                             </td>
-                            <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId.replace(/_/g, ' ')}</td>
+                            <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td>
                             <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
                             <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">
                                 {ax.barOffset} / {ax.bars} / {ax.noteCount}
