@@ -33,11 +33,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V191.0 — "The Human Touch Update".
- * #ОБНОВЛЕНО (ПЛАН №730): 
- * 1. Внедрена пунктуация (Breath) — паузы между аксиомами.
- * 2. Динамическое приглушение drawbars органа.
- * 3. Басовые слайды на переходах.
+ * @fileOverview Blues Brain V192.0 — "Total Anti-Hum Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №731): 
+ * 1. Forced rhythmic redivision for all accompaniment notes > 6 ticks.
+ * 2. Accompaniment "Breath" logic - periodic silences to prevent auditory fatigue.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -70,6 +69,8 @@ export const DEFAULT_CONFIG: BluesBrainConfig = {
   genre: 'blues'
 };
 
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
 export class BluesBrain {
   private config: BluesBrainConfig;
   private seed: number;
@@ -98,7 +99,8 @@ export class BluesBrain {
   private readonly BASS_CEILING = 47; 
 
   private soloistBusyUntilBar: number = -1;
-  private soloistRestingUntilBar: number = -1; // #ЗАЧЕМ: Реализация "Вдоха" (ПЛАН №730)
+  private soloistRestingUntilBar: number = -1;
+  private accompanimentRestingUntilBar: number = -1; // #ЗАЧЕМ: Паузы в аккомпанементе
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -229,12 +231,11 @@ export class BluesBrain {
 
     const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
     
-    // #ЗАЧЕМ: Логика "Вдоха" (Breath). Пауза между аксиомами.
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
     if (isSoloistFree && !isSoloistResting) {
-        if (this.random.next() < 0.45) { // 45% шанс на паузу
+        if (this.random.next() < 0.45) { 
             this.soloistRestingUntilBar = epoch + 1 + (this.random.next() > 0.7 ? 1 : 0);
             console.log(`%c[Musician] Taking a breath until bar ${this.soloistRestingUntilBar}`, 'color: #ADD8E6; font-style: italic;');
         } else {
@@ -245,7 +246,6 @@ export class BluesBrain {
     const events: FractalEvent[] = [];
     this.evaluateTimbralDramaturgy(tension, hints);
 
-    // Приглушение органа (Drawbars)
     if (hints.accompaniment && hints.accompaniment.startsWith('organ')) {
         this.applyOrganMuffling(tension, hints);
     }
@@ -266,7 +266,11 @@ export class BluesBrain {
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
     
-    if (hints.accompaniment && unisonType !== 'none') {
+    // #ЗАЧЕМ: "Вдох" аккомпанемента. Каждые несколько тактов орган может замолчать для прозрачности.
+    const isAccompResting = epoch < this.accompanimentRestingUntilBar;
+    if (isAccompResting) {
+        // Silence for pads
+    } else if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
     } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
         this.currentAccompAxioms.forEach((ax, idx) => {
@@ -284,6 +288,11 @@ export class BluesBrain {
         });
     } else if (hints.accompaniment) {
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension));
+    }
+
+    // Редкие паузы в аккомпанементе (раз в 8-12 тактов)
+    if (epoch > 0 && epoch % 12 === 11 && this.random.next() < 0.3) {
+        this.accompanimentRestingUntilBar = epoch + 1 + (this.random.next() > 0.5 ? 1 : 0);
     }
 
     events.push(...accompanimentEvents);
@@ -318,7 +327,7 @@ export class BluesBrain {
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling' : (tension > 0.7 ? 'Walking' : 'Riff'),
             drums: epoch % 12 === 8 || epoch % 12 === 9 ? 'Stop-Time' : (epoch % 4 === 3 ? 'Fill' : 'Main Beat'),
-            accompaniment: hints.accompaniment || 'none',
+            accompaniment: isAccompResting ? 'Breath' : (hints.accompaniment || 'none'),
             harmony: harAxiom
         },
         narrative: isSoloistResting ? 'Taking a breath...' : `Bar ${epoch % 12 + 1}/12. Ensemble chemistry: ${this.ensembleStatus}.`
@@ -326,9 +335,6 @@ export class BluesBrain {
   }
 
   private applyOrganMuffling(tension: number, hints: InstrumentHints) {
-      // #ЗАЧЕМ: Динамическое приглушение футажей (ПЛАН №730).
-      // #ЧТО: Чем ниже напряжение, тем меньше высоких гармоник в drawbars.
-      //       Пронзительные звуки (tension > 0.8) ограничены.
       const muffleFactor = clamp(tension * 1.2, 0.3, 0.8);
       const drawbars = [8, 0, 8, Math.round(5 * muffleFactor), 0, Math.round(3 * muffleFactor), 0, 0, 0];
       (hints as any).drawbars = drawbars;
@@ -486,7 +492,7 @@ export class BluesBrain {
           this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
           const allLicks = Object.keys(BLUES_SOLO_LICKS);
-          const secondId = allLicks[this.random.nextInt(allLicks.length)];
+          const secondId = allLicks[this.random.nextInt(allLickIds.length)];
           this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
           this.secondaryAxiomMaxTick = 48;
           return;
@@ -538,8 +544,6 @@ export class BluesBrain {
       
       const baseEvents = tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
       
-      // #ЗАЧЕМ: Басовые Слайды (ПЛАН №730).
-      // #ЧТО: Если это переход между частями или начало фразы, применяем технику slide.
       if (navInfo.isPartTransition && baseEvents.length > 0) {
           baseEvents[0].technique = 'slide';
       }
@@ -558,7 +562,7 @@ export class BluesBrain {
               type: 'accompaniment',
               note: type === 'strict' ? bass.note : bass.note + 12,
               weight: 0.55,
-              technique: 'swell',
+              technique: 'hit',
               phrasing: 'legato'
           });
           events.push({
@@ -567,7 +571,7 @@ export class BluesBrain {
               time: bass.time + 0.02,
               duration: bass.duration * 0.8,
               weight: 0.45,
-              technique: 'swell',
+              technique: 'hit',
               dynamics: 'p',
               phrasing: 'legato'
           });
@@ -708,36 +712,41 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          const isLong = n.d >= 12;
-          const needsPulse = isLong && tension > 0.5 && this.random.next() < 0.7;
+          // #ЗАЧЕМ: Устранение бесконечного гудения (ПЛАН №731).
+          // #ЧТО: Любая нота длиннее половины такта дробится на синкопированные удары.
+          const isLong = n.d >= 6; 
           
-          let tech: Technique = 'swell';
-          if (tension > 0.7 || n.d < 6) tech = 'hit';
-
-          if (needsPulse && type === 'accompaniment') {
-              const pulses = [0, 3, 6, 9]; 
-              pulses.forEach(p => {
-                  events.push({
-                      type: type,
-                      note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                      time: ((n.t - barOffset) + p) / 3,
-                      duration: 0.4,
-                      weight: 0.55,
-                      technique: 'hit',
-                      dynamics: 'p',
-                      phrasing: 'staccato'
-                  });
+          if (isLong && type === 'accompaniment') {
+              // Forced rhythmic comping pattern
+              const compingRhythm = [0, 4.5, 9]; // Beats 1, 2.5, 4 in 12/8
+              compingRhythm.forEach(p => {
+                  const tick = (n.t - barOffset) + p;
+                  if (tick < 12) {
+                      events.push({
+                          type: type,
+                          note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                          time: tick / 3,
+                          duration: 0.8,
+                          weight: 0.55 * (p === 0 ? 1.2 : 0.85), // Accent on start
+                          technique: 'hit',
+                          dynamics: 'p',
+                          phrasing: 'staccato',
+                          params: { barCount: epoch }
+                      });
+                  }
               });
           } else {
+              // Стандартный рендеринг для коротких нот
               events.push({
                   type: type,
                   note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
                   time: (n.t - barOffset) / 3,
                   duration: n.d / 3,
                   weight: 0.55,
-                  technique: tech,
+                  technique: tension > 0.7 ? 'hit' : 'swell',
                   dynamics: 'p',
-                  phrasing: tech === 'hit' ? 'staccato' : 'legato'
+                  phrasing: 'legato',
+                  params: { barCount: epoch }
               });
           }
       });
@@ -749,19 +758,12 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    const isStabMode = tension > 0.65;
-    
-    if (isStabMode) {
-        const rhythm = [0, 1.5, 3.0]; 
-        return rhythm.flatMap((t, i) => [
-            { type: 'accompaniment', note: root, time: t, duration: 0.3, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' },
-            { type: 'accompaniment', note: third, time: t + 0.05, duration: 0.3, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }
-        ]);
-    }
-
-    return [root, third].map((p, i) => ({
-        type: 'accompaniment', note: p, time: i * 2.0, duration: 1.8, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-    }));
+    // #ЗАЧЕМ: Адаптивный аккомпанемент теперь всегда имеет ритм.
+    const rhythm = [0, 4.5, 9]; 
+    return rhythm.flatMap((t, i) => [
+        { type: 'accompaniment', note: root, time: t / 3, duration: 0.3, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' },
+        { type: 'accompaniment', note: third, time: (t + 0.5) / 3, duration: 0.3, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }
+    ]);
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {

@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v25.7 — "The Human Touch Update".
- * #ОБНОВЛЕНО (ПЛАН №730): 
- * 1. Внедрена пунктуация (Breath) — паузы между аксиомами.
- * 2. Динамическое приглушение drawbars органа.
+ * @fileOverview Ambient Brain v25.8 — "Total Anti-Hum Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №731): 
+ * 1. Forced rhythmic redivision for all accompaniment notes > 6 ticks.
+ * 2. Enhanced "Breath" logic for pads and piano layers.
  */
 
 import type { 
@@ -77,7 +77,8 @@ export class AmbientBrain {
     private introLotteryMap: Map<number, Partial<Record<InstrumentPart, any>>> = new Map();
 
     private soloistBusyUntilBar: number = -1;
-    private soloistRestingUntilBar: number = -1; // #ЗАЧЕМ: Реализация "Вдоха" (ПЛАН №730)
+    private soloistRestingUntilBar: number = -1; 
+    private accompanimentRestingUntilBar: number = -1; // #ЗАЧЕМ: Паузы в аккомпанементе
     
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
@@ -169,12 +170,10 @@ export class AmbientBrain {
 
         const melodyScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
         
-        // #ЗАЧЕМ: Логика "Вдоха" (Breath).
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
         const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
         if (isSoloistFree && !isSoloistResting) {
-            // Шанс на паузу в амбиенте чуть выше (60%), чем в блюзе.
             if (this.random.next() < 0.6) {
                 this.soloistRestingUntilBar = epoch + 1 + (this.random.next() > 0.5 ? 1 : 0);
                 console.log(`%c[Ambience] Taking a breath until bar ${this.soloistRestingUntilBar}`, 'color: #DA70D6; font-style: italic;');
@@ -185,15 +184,17 @@ export class AmbientBrain {
 
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         
-        // #ЗАЧЕМ: Динамическое приглушение органа (ПЛАН №730).
         if (hints.accompaniment && hints.accompaniment.startsWith('organ')) {
-            const muffleFactor = clamp(localTension * 1.3, 0.25, 0.75); // Верх зажат
+            const muffleFactor = clamp(localTension * 1.3, 0.25, 0.75); 
             (hints as any).drawbars = [8, 0, 8, Math.round(5 * muffleFactor), 0, Math.round(2 * muffleFactor), 0, 0, 0];
         }
 
         const events: FractalEvent[] = [];
 
-        if (this.currentAccompAxioms.length > 0) {
+        // #ЗАЧЕМ: "Вдох" аккомпанемента в амбиенте.
+        const isAccompResting = epoch < this.accompanimentRestingUntilBar;
+
+        if (!isAccompResting && this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax, idx) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = 'accompaniment';
@@ -209,8 +210,13 @@ export class AmbientBrain {
             });
         }
         
-        if (hints.accompaniment && (this.currentAccompAxioms.length === 0 || localTension > 0.7)) {
+        if (!isAccompResting && hints.accompaniment && (this.currentAccompAxioms.length === 0 || localTension > 0.7)) {
             events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string, localTension));
+        }
+
+        // Периодические паузы в аккомпанементе для "воздуха"
+        if (epoch > 0 && epoch % 16 === 15 && this.random.next() < 0.2) {
+            this.accompanimentRestingUntilBar = epoch + 1;
         }
         
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
@@ -278,7 +284,7 @@ export class AmbientBrain {
                 ensemble: this.ensembleStatus,
                 bass: this.currentBassTheme ? 'Sibling' : (localTension > 0.7 ? 'Walking' : 'Riff'),
                 drums: 'Consistent',
-                accompaniment: hints.accompaniment || 'none',
+                accompaniment: isAccompResting ? 'Breath' : (hints.accompaniment || 'none'),
                 harmony: hints.harmony || 'none'
             },
             narrative
@@ -374,7 +380,6 @@ export class AmbientBrain {
                     startBar: epoch,
                     endBar: epoch + (phraseBars * melodyScale)
                 };
-                this.bassBusyUntilBar = epoch + (phraseBars * melodyScale);
             }
 
             this.currentAccompAxioms = rawAccomps.map((p, idx) => ({
@@ -536,17 +541,32 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 
-        return notes.map((n, i) => ({
-            type: 'accompaniment',
-            note: n,
-            time: (i * 0.2) + (this.random.next() * 0.1),
-            duration: 12.0, 
-            weight: 0.5,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 0.8, release: 6.0, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
-        }));
+        // #ЗАЧЕМ: Устранение гудения в пэдах.
+        // #ЧТО: Дробление пэда на два перекрывающихся вступления.
+        return notes.flatMap((n, i) => [
+            {
+                type: 'accompaniment',
+                note: n,
+                time: (i * 0.2),
+                duration: 6.0, 
+                weight: 0.45,
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 0.8, release: 2.0, filterCutoff: this.solistCutoff * 0.6, barCount: epoch }
+            },
+            {
+                type: 'accompaniment',
+                note: n,
+                time: 2.0 + (i * 0.1),
+                duration: 6.0,
+                weight: 0.4,
+                technique: 'swell',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { attack: 1.2, release: 3.0, filterCutoff: this.solistCutoff * 0.55, barCount: epoch }
+            }
+        ]);
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
@@ -561,33 +581,33 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
-            let tech: Technique = 'swell';
-            const isLong = n.d >= 12;
+            // #ЗАЧЕМ: Устранение бесконечного гудения (ПЛАН №731).
+            // #ЧТО: Любая нота длиннее 6 тиков дробится на ритмические "капли".
+            const isLong = n.d >= 6;
             
-            if (isLong && tension > 0.7 && this.random.next() < 0.5 && type === 'accompaniment') {
-                const pulses = [0, 6]; 
-                pulses.forEach(p => {
+            if (isLong && type === 'accompaniment') {
+                const compingPattern = [0, 6]; 
+                compingPattern.forEach(p => {
                     events.push({
                         type: type,
                         note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
-                        time: ((n.t - barOffset) + p) / 3, 
+                        time: ((n.t - barOffset) + p) / 3,
                         duration: 1.5,
-                        weight: 0.55,
+                        weight: 0.5,
                         technique: 'hit',
                         dynamics: 'p',
                         phrasing: 'staccato',
-                        params: { attack: 0.1, release: 2.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
+                        params: { attack: 0.1, release: 2.5, filterCutoff: this.solistCutoff * 0.7, barCount: epoch }
                     });
                 });
             } else {
-                if (tension > 0.7 || n.d < 6) tech = 'hit';
                 events.push({
                     type: type,
                     note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
                     time: (n.t - barOffset) / 3,
                     duration: n.d / 3,
                     weight: 0.55,
-                    technique: tech,
+                    technique: n.d < 4 ? 'hit' : 'swell',
                     dynamics: 'p',
                     phrasing: 'legato',
                     params: { attack: 0.8, release: 4.0, filterCutoff: this.solistCutoff * 0.75, barCount: epoch }
