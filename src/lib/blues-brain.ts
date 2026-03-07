@@ -33,11 +33,11 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V198.0 — "Melodic Comping".
- * #ОБНОВЛЕНО (ПЛАН №751): 
- * 1. Внедрен Melodic Wanderer для аккомпанемента. Никаких бесконечных нот.
- * 2. Жесткий лимит длительности — 1 такт (12 тиков).
- * 3. Автоматическое дробление длинных фраз Heritage с прогулкой по ступеням (Walking Pitch).
+ * @fileOverview Blues Brain V199.0 — "Ensemble Purification".
+ * #ОБНОВЛЕНО (ПЛАН №753): 
+ * 1. Искоренен эффект "второго сонного игрока".
+ * 2. Слой Harmony теперь тоже подчиняется законам дробления и прогулки (Walking Pitch).
+ * 3. Порог застоя снижен до 4-х тиков.
  */
 
 const TICKS_PER_BAR = 12;
@@ -295,7 +295,10 @@ export class BluesBrain {
     }
     
     let harAxiom = 'none';
-    if (hints.harmony && this.currentAccompAxioms.filter(a => a.role.includes('strings') || a.role.includes('violin')).length === 0) {
+    // #ЗАЧЕМ: Проверка, нет ли в Наследии уже партии для Гармонии.
+    const hasHeritageHarmony = this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'));
+    
+    if (hints.harmony && !hasHeritageHarmony) {
         const harEvents = this.renderDerivativeHarmony(currentChord, epoch);
         events.push(...harEvents);
         harAxiom = harEvents[0]?.chordName || 'Active';
@@ -472,18 +475,18 @@ export class BluesBrain {
               note: type === 'strict' ? bass.note : bass.note + 12,
               weight: 0.55,
               technique: 'hit',
-              phrasing: 'legato',
-              duration: Math.min(bass.duration, 1.0 * BEATS_PER_BAR) // 1 bar limit
+              phrasing: 'staccato', // #ЗАЧЕМ: Убираем "давилово". Пэд пульсирует вместе с басом.
+              duration: 0.8 * TICK_TO_BEAT // Короткий импульс, длинный хвост
           });
           events.push({
               type: 'accompaniment',
               note: (bass.note || 0) + 24 + third,
-              time: bass.time + (1 * TICK_TO_BEAT), // 1 tick micro-offset
-              duration: Math.min(bass.duration * 0.8, 1.0 * BEATS_PER_BAR),
+              time: bass.time + (1 * TICK_TO_BEAT), 
+              duration: 0.5 * TICK_TO_BEAT,
               weight: 0.45,
               technique: 'hit',
               dynamics: 'p',
-              phrasing: 'legato'
+              phrasing: 'staccato'
           });
           count++;
       }
@@ -550,7 +553,6 @@ export class BluesBrain {
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12;
     const barInRiff = epoch % 4;
-    // #ЗАЧЕМ: ПЛАН №750 — Риффы квантованы по триольной сетке тиков (0, 3, 6, 9).
     const riff = [ 
         [{ t: 0, n: root }, { t: 4, n: root }, { t: 8, n: root + 7 }], 
         [{ t: 0, n: root }, { t: 6, n: root + 7 }, { t: 9, n: root + 10 }], 
@@ -567,7 +569,6 @@ export class BluesBrain {
     const root = chord.rootNote - 12;
     const nextBar = (epoch + 1) % 12;
     const nextRoot = (this.config.rootNote + BLUES_PROGRESSION_OFFSETS[nextBar]) - 12;
-    // 0, 3, 6, 9 ticks = 0, 1, 2, 3 beats
     return [root, root + 4, root + 7, nextRoot - 1].map((p, i) => ({ 
         type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, 
         weight: 0.85, technique: 'pluck', dynamics: i === 0 ? 'mf' : 'p', phrasing: 'legato' 
@@ -617,21 +618,23 @@ export class BluesBrain {
       const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
       const events: FractalEvent[] = [];
 
+      // #ЗАЧЕМ: ПЛАН №753 — Принудительное дробление для всех пэдо-подобных слоев (Accompaniment & Harmony).
+      const isCompingLayer = type === 'accompaniment' || type === 'harmony';
+
       barNotes.forEach(n => {
-          const isLong = n.d >= 6; 
-          // #ЗАЧЕМ: "Melodic Wanderer" для Блюза (ПЛАН №751).
-          // #ЧТО: Длинные ноты дробятся на 3 удара с прогулкой по ступеням (Walking Pitch).
-          if (isLong && type === 'accompaniment') {
+          // #ЗАЧЕМ: Порог застоя снижен до 4-х тиков. Даже четвертные ноты будут дробиться.
+          const isLong = n.d >= 4; 
+          
+          if (isLong && isCompingLayer) {
               [0, 4, 8].forEach((p, idx) => {
                   const tickInBar = (n.t - barOffset) + p;
                   if (tickInBar < TICKS_PER_BAR) {
-                      // Прогулка: Тоника -> Квинта -> Тоника
                       const walker = idx === 1 ? 7 : 0; 
                       events.push({
                           type: type,
-                          note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + walker, 64), // Pad Ceiling
+                          note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + walker, 64),
                           time: tickInBar * TICK_TO_BEAT,
-                          duration: 0.8 * TICK_TO_BEAT, // Short hit, long tail
+                          duration: 0.8 * TICK_TO_BEAT, 
                           weight: 0.55 * (p === 0 ? 1.2 : 0.85), 
                           technique: 'hit',
                           dynamics: 'p',
@@ -648,7 +651,7 @@ export class BluesBrain {
                   type: type,
                   note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), 64),
                   time: (n.t - barOffset) * TICK_TO_BEAT,
-                  duration: Math.min(n.d, TICKS_PER_BAR) * TICK_TO_BEAT, // 1 bar limit
+                  duration: Math.min(n.d, TICKS_PER_BAR) * TICK_TO_BEAT, 
                   weight: 0.55,
                   technique: tension > 0.7 ? 'hit' : 'swell',
                   dynamics: 'p',
@@ -683,12 +686,12 @@ export class BluesBrain {
               weight: 0.3, technique: 'hit', phrasing: 'staccato', duration: 0.5 
           }));
       }
-      const t = this.random.nextInt(4) * 3; // Aligned to beats 0, 3, 6, 9
+      const t = this.random.nextInt(4) * 3; 
       return [{
           type: 'pianoAccompaniment',
           note: Math.min(root + shift, 72),
           time: t * TICK_TO_BEAT,
-          duration: 1.0, // Short piano stabs
+          duration: 1.0, 
           weight: 0.3,
           technique: 'hit',
           dynamics: 'p',
@@ -696,13 +699,30 @@ export class BluesBrain {
       }];
   }
 
+  /**
+   * #ЗАЧЕМ: Генерирует слой гармонии (скрипки/пэды) V2.
+   * #ЧТО: ПЛАН №753 — Полный отказ от длинных "давимых" нот. Слой пульсирует и гуляет.
+   */
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number): FractalEvent[] {
       const root = currentChord.rootNote;
       const isMin = currentChord.chordType === 'minor';
       const inversion = epoch % 16 < 8 ? 0 : 12;
-      return [root + 12 + inversion, root + (isMin ? 15 : 16) + inversion].map((n, i) => ({ 
-          type: 'harmony', note: Math.min(n + 12, 64), time: (i * 1) * TICK_TO_BEAT, duration: 4.0, weight: 0.55,
-          technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { barCount: epoch } 
+      
+      // #ЗАЧЕМ: Детерминированная прогулка по гармонии.
+      const walkingShift = getWalkingDegree(epoch, this.seed + 50);
+      
+      // #ЗАЧЕМ: Ритмическая сетка вместо бесконечной ноты.
+      return [0, 6].map((t, i) => ({ 
+          type: 'harmony', 
+          note: Math.min(root + 12 + inversion + walkingShift + (i === 1 ? 7 : 0), 64), 
+          time: t * TICK_TO_BEAT, 
+          duration: 2.0 * TICK_TO_BEAT, 
+          weight: 0.45,
+          technique: 'swell', 
+          dynamics: 'p', 
+          phrasing: 'legato', 
+          params: { barCount: epoch },
+          chordName: isMin ? 'Am' : 'A'
       }));
   }
 }
