@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №704 — Добавлена поддержка гитарных сэмплеров для аутентичного звучания Heritage.
+ * #ЧТО: ПЛАН №765 — Реализован бесшовный переход. Пэды больше не обрываются при смене тембра.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -39,8 +39,12 @@ export class AccompanimentSynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
+        // #ЗАЧЕМ: ПЛАН №765. Позволяем старому пэду раствориться естественным образом.
         if (this.instrument) {
-            this.instrument.disconnect();
+            const oldInst = this.instrument;
+            setTimeout(() => {
+                try { oldInst.disconnect(); } catch (e) {}
+            }, 10000); 
             this.instrument = null;
         }
         
@@ -62,7 +66,6 @@ export class AccompanimentSynthManagerV2 {
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         const beatDuration = 60 / tempo;
         
-        // #ЗАЧЕМ: Фильтрация по типам. Слышит все виды аккомпанемента.
         const filtered = events.filter(e => 
             e.type === 'accompaniment' || 
             e.type === 'pianoAccompaniment' || 
@@ -90,7 +93,6 @@ export class AccompanimentSynthManagerV2 {
         if (this.activePresetName === 'none') return;
         if (notesToPlay.length === 0) return;
 
-        // #ЗАЧЕМ: Умная маршрутизация на сэмплеры.
         if (this.activePresetName === 'blackAcoustic') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
             return;
@@ -116,19 +118,17 @@ export class AccompanimentSynthManagerV2 {
     
     public async setInstrument(instrumentName: string) {
        if (instrumentName === this.activePresetName) return;
-       if (this.instrument) {
-           this.instrument.disconnect();
-           this.instrument = null;
-       }
-       if (instrumentName === 'none') {
-            this.activePresetName = 'none';
-            return;
-       }
+       
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
        if (newPreset) {
            await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
        } else {
-           this.activePresetName = instrumentName; // Might be a sampler name
+           if (this.instrument) {
+               const oldInst = this.instrument;
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 10000);
+               this.instrument = null;
+           }
+           this.activePresetName = instrumentName; 
        }
     }
 

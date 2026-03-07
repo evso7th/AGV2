@@ -11,7 +11,8 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №764 — Внедрена специфическая калибровка громкости для Органа в роли Мелодии.
+ * #ЧТО: ПЛАН №765 — Реализован бесшовный переход между инструментами. 
+ *       Старые синтезаторы теперь дозвукивают свои хвосты при смене пресета.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -53,8 +54,15 @@ export class MelodySynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
+        // #ЗАЧЕМ: ПЛАН №765. Сохраняем хвосты при смене инструмента.
         if (this.synth) {
-            this.synth.disconnect();
+            const fadingSynth = this.synth;
+            // Позволяем текущим нотам дозвучать (Eternal Tail)
+            setTimeout(() => {
+                try { 
+                    fadingSynth.disconnect(); 
+                } catch (e) {}
+            }, 10000); // 10 секунд — безопасный запас для любого релиза
             this.synth = null;
         }
         
@@ -130,11 +138,8 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Умное управление балансом (ПЛАН №764).
-        // Если орган играет мелодию, снижаем его громкость в 2 раза.
         const volumeMultiplier = (this.partName === 'melody' && currentActive.includes('organ')) ? 0.5 : 1.0;
 
-        // #ЗАЧЕМ: "Обман слуха" восстановлен.
         if (this.partName === 'melody' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
@@ -153,14 +158,7 @@ export class MelodySynthManagerV2 {
     
     public async setInstrument(instrumentName: string) {
        if (instrumentName === this.activePresetName) return;
-       if (this.synth) {
-           this.synth.disconnect();
-           this.synth = null;
-       }
-       if (instrumentName === 'none') {
-            this.activePresetName = 'none';
-            return;
-       }
+       
        const isBassPart = this.partName === 'bass';
        const preset = isBassPart
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
@@ -169,6 +167,13 @@ export class MelodySynthManagerV2 {
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
+           // Для сэмплеров (которые общие) мы можем гасить синтезатор сразу, 
+           // но для единообразия тоже дадим ему 10 секунд
+           if (this.synth) {
+               const oldSynth = this.synth;
+               setTimeout(() => { try { oldSynth.disconnect(); } catch(e) {} }, 10000);
+               this.synth = null;
+           }
            this.activePresetName = instrumentName;
        }
     }
