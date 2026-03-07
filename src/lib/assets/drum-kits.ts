@@ -1,7 +1,8 @@
 
 /**
+ * @fileOverview Drum Arsenal Protocol V2.0.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №735): Наборы Ambient переведены в текстурный режим (wet rides, Sonor toms).
+ * #ОБНОВЛЕНО (ПЛАН №736): Реализовано обязательное использование расширенной перкуссии (perc-001..015, tube, bongo).
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -24,11 +25,17 @@ const ALL_BELLS: InstrumentType[] = [
     'drum_Bell_-_Deep', 'drum_Bell_-_Soft', 'drum_Bell_-_Wind'
 ];
 
+/**
+ * #ЗАЧЕМ: Полный набор "Текстурной Перкуссии" (ПЛАН №736).
+ * #ЧТО: Все 15 perc сэмплов + трубки + бонго.
+ */
 const ALL_PERC: InstrumentType[] = [
-    ...ALL_TOMS, 
     ...ALL_BELLS,
-    'drum_bongo_pvc-tube-01', 'drum_bongo_pc-01',
-    'perc-012', 'perc-013', 'perc-014', 'perc-015'
+    'perc-001', 'perc-002', 'perc-003', 'perc-004', 'perc-005', 
+    'perc-006', 'perc-007', 'perc-008', 'perc-009', 'perc-010',
+    'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015',
+    'bongo_pvc-tube-01', 'bongo_pvc-tube-02', 'bongo_pvc-tube-03',
+    'bongo_pc-01', 'bongo_pc-02', 'bongo_pc-03'
 ];
 
 export const DRUM_KITS: DrumKitLibrary = {
@@ -45,7 +52,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: [],
-            perc: ['drum_lowtom_soft', 'drum_Bell_-_Soft']
+            perc: ['perc-003', 'bongo_pvc-tube-01', 'drum_Bell_-_Soft']
         },
         calm: {
             kick: ['drum_kick_soft'],
@@ -59,7 +66,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             snare: ['drum_snare_off'],
             hihat: [],
             ride: [],
-            perc: ['drum_Sonor_Classix_Low_Tom', 'drum_Bell_-_Gong']
+            perc: ['perc-012', 'bongo_pvc-tube-03', 'drum_Bell_-_Gong']
         }
     },
 

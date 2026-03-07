@@ -230,8 +230,10 @@ export class DrumMachine {
             }
 
             let velocity = event.weight;
-            if (eventType.startsWith('perc-')) {
-                velocity *= 0.5;
+            
+            // #ЗАЧЕМ: Балансировка громкости по категориям (ПЛАН №736).
+            if (eventType.startsWith('perc-') || eventType.includes('bongo') || eventType.includes('tube')) {
+                velocity *= 0.6; // Перкуссия чуть тише барабанов
             } else if ((eventType as string).includes('ride')) {
                 velocity *= 0.7;
             }
