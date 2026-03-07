@@ -1,10 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v43.0).
- * #ЧТО: 1. Техника баса изменена на 'walking' для получения риффового движения.
- *       2. Аккомпанемент переведен на 'synth_ambient_pad_lush'.
- *       3. Гарантированный старт ударных и фундамента.
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v44.0).
+ * #ЧТО: ПЛАН №752 — Реализована ротация тембров и поддержка гитары в гармонии.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -65,7 +64,6 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
         ],
         instrumentRules: {
           drums: { kitName: 'melancholic', pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },
-          // #ЗАЧЕМ: Риффовый бас вместо статичной педали.
           bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
           accompaniment: { activationChance: 1.0 } 
         },
@@ -82,8 +80,14 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
                 { name: 'organ_prog', weight: 0.2 },
                 { name: 'ep_rhodes_warm', weight: 0.1 }
             ]},
-            accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-            harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
+            accompaniment: { strategy: 'weighted', v2Options: [
+                { name: 'synth_ambient_pad_lush', weight: 0.6 },
+                { name: 'synth', weight: 0.4 }
+            ]},
+            harmony: { strategy: 'weighted', options: [
+                { name: 'violin', weight: 0.5 }, 
+                { name: 'guitarChords', weight: 0.5 }
+            ]}
         },
         instrumentRules: {
           drums: { kitName: 'melancholic', pattern: 'composer', density: { min: 0.4, max: 0.6 } },

@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -196,13 +197,7 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
-        // #ЗАЧЕМ: Категорический запрет голосов в меланхолии.
-        // #ЧТО: Если настроение меланхоличное, 'voice' заменяется на 'dark' или 'common'.
-        if (mood === 'melancholic') {
-            const rand = Math.random();
-            return rand < 0.7 ? 'dark' : 'common';
-        }
-
+        // #ЗАЧЕМ: Повышена доступность голосов.
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
@@ -215,13 +210,13 @@ export class SfxSynthManager {
         
         const rand = Math.random();
         if (genre === 'blues') {
-            if (rand < 0.1) return 'voice'; 
+            if (rand < 0.15) return 'voice'; 
             if (rand < 0.7) return 'dark';  
             return 'common';
         }
-        if (genre === 'trance' || genre === 'house' || genre === 'progressive') {
-            if (rand < 0.5) return 'laser';
-            if (rand < 0.8) return 'voice';
+        if (genre === 'trance' || genre === 'house' || genre === 'progressive' || genre === 'ambient') {
+            if (rand < 0.4) return 'voice'; // Голоса теперь слышны чаще в Амбиенте
+            if (rand < 0.7) return 'laser';
             return 'common';
         }
         if (mood === 'dark' || mood === 'anxious') {

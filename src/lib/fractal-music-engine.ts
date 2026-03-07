@@ -51,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V27.1 — "Smart Imperative".
- * #ЧТО: ПЛАН №746 — Улучшена логика выбора инструментов по умолчанию (Smarter Fallbacks).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V28.0 — "Timbre Rotation".
+ * #ЧТО: ПЛАН №752 — Реализована периодическая смена тембров в MAIN секциях.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -204,6 +204,13 @@ export class FractalMusicEngine {
     let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
+    // #ЗАЧЕМ: Timbre Rotation (ПЛАН №752).
+    // #ЧТО: Сбрасываем тембры каждые 8 тактов в MAIN частях для динамики.
+    if (this.epoch % 8 === 0 && navInfo.currentPart.id.startsWith('MAIN')) {
+        this.activeTimbres = {};
+        this.activatedParts.clear();
+    }
+
     if (navInfo.currentPart.id === 'INTRO' && stages && stages.length > 0) {
         if (this.introLotteryMap.size === 0) this.performIntroLottery(stages);
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
@@ -233,7 +240,6 @@ export class FractalMusicEngine {
                 this.activatedParts.add(part);
                 const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
                 
-                // #ЗАЧЕМ: Умные дефолты для Генеративного Императива.
                 let defaultInst = 'synth';
                 if (part === 'bass') defaultInst = 'bass_jazz_warm';
                 else if (part === 'melody') defaultInst = 'organ_soft_jazz';

@@ -1,10 +1,10 @@
 
 /**
- * @fileOverview Ambient Brain v35.0 — "Absolute Chronos Sync".
- * #ОБНОВЛЕНО (ПЛАН №750): 
- * 1. Внедрена константа TICKS_PER_BAR = 12 для 1:1 синхронизации с DNA.
- * 2. renderThemeBass теперь проигрывает ВСЕ ноты такта из Наследия (fix find -> filter).
- * 3. Все генеративные тайминги (sparkles, passages) квантованы по сетке тиков.
+ * @fileOverview Ambient Brain v36.0 — "Dynamic Textures".
+ * #ОБНОВЛЕНО (ПЛАН №752): 
+ * 1. Повышена частота Спарклов (0.6) и SFX (0.2 каждый такт).
+ * 2. Harmony научилась играть гитарные аккорды (Guitar Chords).
+ * 3. Все генеративные тайминги квантованы.
  */
 
 import type { 
@@ -30,7 +30,8 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
-    safeSemitoneToDegree
+    safeSemitoneToDegree,
+    getWalkingDegree
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -153,7 +154,7 @@ export class AmbientBrain {
 
         const events: FractalEvent[] = [];
 
-        // --- 1. ACCOMPANIMENT & HARMONY (Generative Imperative) ---
+        // --- 1. ACCOMPANIMENT & HARMONY ---
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
             if (this.currentAccompAxioms.length > 0) {
@@ -172,19 +173,19 @@ export class AmbientBrain {
             if (hints.pianoAccompaniment && !this.currentAccompAxioms.some(a => a.role.includes('piano'))) {
                 events.push(...this.renderGenerativePiano(currentChord, epoch, localTension));
             }
-            if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin'))) {
-                events.push(...this.renderGenerativeHarmony(currentChord, epoch, localTension));
+            if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
+                events.push(...this.renderGenerativeHarmony(currentChord, epoch, localTension, hints.harmony));
             }
         }
 
-        // --- 2. BASS (Drone Policy with Scale Walking) ---
+        // --- 2. BASS ---
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(currentChord, epoch, localTension, dna)));
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(currentChord, epoch, localTension)));
         }
 
-        // --- 3. MELODY (Passage Policy) ---
+        // --- 3. MELODY ---
         if (hints.melody && !isSoloistResting) {
             const isBoundary = navInfo.isPartTransition || navInfo.isBundleTransition;
             if (isBoundary && this.random.next() < 0.7) {
@@ -196,16 +197,16 @@ export class AmbientBrain {
             }
         }
 
-        // --- 4. DRUMS (Percussion Priority) ---
+        // --- 4. DRUMS ---
         if (hints.drums) {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
 
-        // --- 5. TEXTURES ---
-        if (hints.sparkles && this.random.next() < 0.3) {
+        // --- 5. TEXTURES (Boosted Frequency) ---
+        if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord, isPositive));
         }
-        if (hints.sfx && epoch % 16 === 0 && this.random.next() < 0.3) {
+        if (hints.sfx && this.random.next() < 0.2) {
             events.push(...this.renderSfx(localTension));
         }
 
@@ -385,7 +386,7 @@ export class AmbientBrain {
             events.push({
                 type: 'melody',
                 note: Math.min(root + scale[noteIdx], this.MELODY_CEILING),
-                time: i * 1.0, // Aligned to 3 ticks (1 beat)
+                time: i * 1.0, 
                 duration: 2.0,
                 weight: 0.45,
                 technique: 'pick',
@@ -419,9 +420,20 @@ export class AmbientBrain {
         }];
     }
 
-    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number, timbre?: string): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
+        
+        // #ЗАЧЕМ: Harmony Guitar Chords (ПЛАН №752).
+        if (timbre === 'guitarChords') {
+            const t1 = 0;
+            const t2 = 6;
+            return [
+                { type: 'harmony', note: root, time: t1 * TICK_TO_BEAT, duration: 2.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' },
+                { type: 'harmony', note: root + colorDegree, time: t2 * TICK_TO_BEAT, duration: 2.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }
+            ];
+        }
+
         return [{
             type: 'harmony',
             note: Math.min(root + colorDegree, this.PAD_CEILING),
@@ -444,7 +456,7 @@ export class AmbientBrain {
         return degrees.map((n, i) => ({
             type: 'accompaniment',
             note: Math.min(root + n, this.PAD_CEILING + 12), 
-            time: (i * 1) * TICK_TO_BEAT, // 1 tick offset for spread
+            time: (i * 1) * TICK_TO_BEAT, 
             duration: 5.0,
             weight: 0.4,
             technique: 'swell',
@@ -535,8 +547,6 @@ export class AmbientBrain {
         const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const barInAxiom = epoch % barCountInPhrase;
         const barOffset = barInAxiom * TICKS_PER_BAR;
-        
-        // #ЗАЧЕМ: ПЛАН №750 — Проигрывание ВСЕХ нот баса из ДНК (fix find -> filter).
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         
         if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);
@@ -594,7 +604,7 @@ export class AmbientBrain {
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        const t = this.random.nextInt(6); // Keep SFX in the first half usually
+        const t = this.random.nextInt(12); 
         return [{
             type: 'sfx', note: 60, time: t * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre }
         }];
