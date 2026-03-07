@@ -311,7 +311,7 @@ export default function HypercubeDashboard() {
     reader.onload = (event) => {
       try {
         const json = JSON.parse(event.target?.result as string);
-        const flattened: any[] = [];
+        let flattened: any[] = [];
         
         const processAxiom = (ax: any, idx: number, compId: string) => {
             const role = (ax.role || 'melody').toLowerCase();
@@ -409,6 +409,46 @@ export default function HypercubeDashboard() {
             return;
         }
 
+        // --- #ЗАЧЕМ: Normalization Protocol - Silence Trimming (ПЛАН №739) ---
+        // Группируем аксиомы по CompositionId, чтобы найти общую тишину в начале произведения.
+        const compGroups = new Map<string, any[]>();
+        flattened.forEach(ax => {
+            if (!compGroups.has(ax.compositionId)) compGroups.set(ax.compositionId, []);
+            compGroups.get(ax.compositionId)!.push(ax);
+        });
+
+        compGroups.forEach((licks, compId) => {
+            let globalMinT = Infinity;
+            licks.forEach(lick => {
+                const phrase = lick.phrase || [];
+                for (let i = 0; i < phrase.length; i += 4) {
+                    if (phrase[i] < globalMinT) globalMinT = phrase[i];
+                }
+            });
+
+            if (globalMinT !== Infinity && globalMinT > 0) {
+                console.log(`%c[Normalization] Composition "${compId}" has ${globalMinT} ticks of leading silence. Trimming...`, 'color: #FFD700; font-weight: bold;');
+                const barShift = Math.floor(globalMinT / 12);
+                
+                licks.forEach(lick => {
+                    const phrase = lick.phrase || [];
+                    for (let i = 0; i < phrase.length; i += 4) {
+                        phrase[i] -= globalMinT;
+                    }
+                    // Корректируем смещение тактов, если оно было указано
+                    lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
+                    
+                    // Пересчитываем длительность в тактах после сдвига
+                    let maxTick = 0;
+                    for (let i = 0; i < phrase.length; i += 4) {
+                        const end = phrase[i] + phrase[i+1];
+                        if (end > maxTick) maxTick = end;
+                    }
+                    lick.bars = Math.max(1, Math.ceil(maxTick / 12));
+                });
+            }
+        });
+
         setStagedAxioms(flattened);
         setSelectedIds(new Set(flattened.map(a => a.id)));
         setCurrentFileName(file.name);
@@ -460,7 +500,7 @@ export default function HypercubeDashboard() {
         technique: n.tech as any,
         dynamics: 'p',
         phrasing: 'legato',
-        params: { barCount: 0 },
+        params: { attack: 0.05, release: 0.5, barCount: 0 },
         chordName: rawRole.startsWith('accomp') ? 'Am' : undefined
       };
     });
@@ -1002,7 +1042,6 @@ export default function HypercubeDashboard() {
                                       <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
                                         <td className="p-3 pl-12">
                                           {editingAxiomId === ax.id ? (
-                                            // #ЗАЧЕМ: ПЛАН №729. Переопределение роли аксиомы.
                                             <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}>
                                                 <SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background">
                                                     <SelectValue />
