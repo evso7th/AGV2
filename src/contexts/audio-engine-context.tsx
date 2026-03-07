@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V17.0 — "Imperial Balance".
- * #ЧТО: ПЛАН №757 — Уточнение уровней громкости и баланса ансамбля.
+ * #ЗАЧЕМ: Audio Engine Context V18.0 — "Session Capture".
+ * #ЧТО: ПЛАН №759 — Реализована полноценная запись аудио через MediaRecorder.
  */
 'use client';
 
@@ -27,7 +27,7 @@ import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35, 
   melody: 0.65, 
-  accompaniment: 0.40, // Снижено с 0.55 для устранения "лупежки"
+  accompaniment: 0.40, 
   drums: 0.60, 
   sparkles: 0.45, 
   sfx: 0.55, 
@@ -83,6 +83,11 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
   const lastSavedArbiterSeedRef = useRef<number | null>(null);
+  
+  // --- Recording System ---
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
@@ -179,15 +184,21 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
+        
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
             speakerGainNodeRef.current = context.createGain();
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
+            
+            // #ЗАЧЕМ: Инициализация потока для записи и трансляции.
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
+            recDestRef.current = recDest;
+            
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
+        
         const parts = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'];
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
@@ -195,6 +206,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                 gainNodesRef.current[p].connect(masterGainNodeRef.current!);
             }
         });
+        
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
@@ -207,12 +219,14 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
+        
         await Promise.all([
             drumMachineRef.current.init(), blackGuitarSamplerRef.current.init(), telecasterSamplerRef.current.init(), 
             darkTelecasterSamplerRef.current.init(), cs80SamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), harmonyManagerRef.current.init(), 
             pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
         ]);
+        
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (e) => {
@@ -248,6 +262,56 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         initializationInFlightRef.current = false;
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
+
+  // --- Recording Logic ---
+  const startRecording = useCallback(() => {
+    if (!isInitialized || !recDestRef.current) {
+        toast({ variant: "destructive", title: "Recording Failed", description: "Engine not ready." });
+        return;
+    }
+
+    try {
+        recordedChunksRef.current = [];
+        const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType: 'audio/webm' });
+        
+        recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+                recordedChunksRef.current.push(e.data);
+            }
+        };
+
+        recorder.onstop = () => {
+            const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `AuraGroove_Session_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+            toast({ title: "Recording Saved", description: "Your session has been downloaded." });
+        };
+
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+        setIsRecording(true);
+        toast({ title: "Recording Started", description: "Capturing master audio stream..." });
+    } catch (e) {
+        console.error('[Recording] Failed to start:', e);
+        toast({ variant: "destructive", title: "Recording Error" });
+    }
+  }, [isInitialized, toast]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+    }
+  }, []);
 
   return (
     <AudioEngineContext.Provider value={{
@@ -312,8 +376,8 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, t || 72, 0, h)
         },
         stopAllSounds,
-        startRecording: () => setIsRecording(true),
-        stopRecording: () => setIsRecording(false)
+        startRecording,
+        stopRecording
     }}>
       {children}
     </AudioEngineContext.Provider>
