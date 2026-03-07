@@ -1,9 +1,11 @@
 
 /**
- * @fileOverview Ambient Brain v30.0 — "The Ensemble Synchronizer".
- * #ОБНОВЛЕНО (ПЛАН №740): 
- * 1. Метод generateBar теперь принимает вычисленные hints от движка.
- * 2. Исправлена логика выбора аксиом при активном якоре (учетaccomp как темы).
+ * @fileOverview Ambient Brain v31.0 — "Generative Imperative & Texture Flow".
+ * #ОБНОВЛЕНО (ПЛАН №742): 
+ * 1. Реализован Генеративный Императив: если нет Heritage, играем алгоритмы.
+ * 2. Бас переведен на 1-тактные дроны.
+ * 3. Ударные переработаны: редкий кик/железо + плотная перкуссия (perc, tube, bongo).
+ * 4. Внедрены красивые медленные пассажи на границах частей.
  */
 
 import type { 
@@ -113,7 +115,7 @@ export class AmbientBrain {
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
         dna: SuiteDNA,
-        hints: InstrumentHints // #ЗАЧЕМ: Принимаем hints от движка (ПЛАН №740).
+        hints: InstrumentHints
     ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string } {
         
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
@@ -141,9 +143,10 @@ export class AmbientBrain {
 
         const events: FractalEvent[] = [];
 
-        // --- 1. ACCOMPANIMENT ---
+        // --- 1. ACCOMPANIMENT & HARMONY (Generative Imperative) ---
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
+            // Heritage Priority
             if (this.currentAccompAxioms.length > 0) {
                 this.currentAccompAxioms.forEach((ax) => {
                     const role = ax.role.toLowerCase();
@@ -152,34 +155,48 @@ export class AmbientBrain {
                         events.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna, localTension));
                     }
                 });
-            } else if (hints.accompaniment) {
+            }
+            
+            // Generative Fallbacks if DNA missing roles
+            if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
                 events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string, localTension));
+            }
+            if (hints.pianoAccompaniment && !this.currentAccompAxioms.some(a => a.role.includes('piano'))) {
+                events.push(...this.renderGenerativePiano(currentChord, epoch, localTension));
+            }
+            if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin'))) {
+                events.push(...this.renderGenerativeHarmony(currentChord, epoch, localTension));
             }
         }
 
-        // --- 2. BASS ---
+        // --- 2. BASS (Drone Policy) ---
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(currentChord, epoch, localTension, dna)));
         } else if (hints.bass) {
+            // #ЗАЧЕМ: Принудительный дрон, если нет DNA.
             events.push(...this.constrainBass(this.renderDroneBass(currentChord, localTension)));
         }
 
-        // --- 3. MELODY ---
+        // --- 3. MELODY (Passage Policy) ---
         if (hints.melody && !isSoloistResting) {
-            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+            const isBoundary = navInfo.isPartTransition || navInfo.isBundleTransition;
+            if (isBoundary && this.random.next() < 0.7) {
+                // #ЗАЧЕМ: Красивые медленные пассажи на стыках.
+                events.push(...this.renderBeautifulPassage(currentChord, localTension));
+            } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, 1));
             } else {
                 events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
             }
         }
 
-        // --- 4. DRUMS ---
+        // --- 4. DRUMS (Percussion Priority) ---
         if (hints.drums) {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
 
         // --- 5. TEXTURES ---
-        if (hints.sparkles && this.random.next() < 0.25) {
+        if (hints.sparkles && this.random.next() < 0.3) {
             events.push(this.renderSparkle(currentChord, isPositive));
         }
         if (hints.sfx && epoch % 16 === 0 && this.random.next() < 0.3) {
@@ -192,12 +209,12 @@ export class AmbientBrain {
             beautyScore: 0.5,
             mutationType: this.currentMutationType,
             activeAxioms: {
-                melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Textural'),
+                melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
                 ensemble: this.ensembleStatus,
-                bass: 'Drone',
+                bass: this.currentBassTheme ? 'Sibling' : 'Static Drone',
                 drums: 'Sonic Cube'
             },
-            narrative: `Texture Flow: ${this.currentTrackName || 'Evolving'}`
+            narrative: `Ambient Texture: ${this.currentTrackName || 'Algorithmic Cloud'}`
         };
     }
 
@@ -209,8 +226,6 @@ export class AmbientBrain {
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
             
-            // #ЗАЧЕМ: Расширенный поиск темы (ПЛАН №740).
-            // #ЧТО: Если нет прямой роли 'melody', пробуем 'accomp' из того же трека.
             let basePool = poolToUse.filter(ax => ax.role === 'melody');
             if (targetAnchor) {
                 const anchorPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
@@ -233,12 +248,10 @@ export class AmbientBrain {
         if (cloudAxiom) {
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
             const phrasesToNormalize = [rawPhrase];
-            
-            const normalizeCID = (s: string) => this.normalizeStr(s);
-            const cid = normalizeCID(cloudAxiom.compositionId);
+            const cid = this.normalizeStr(cloudAxiom.compositionId);
 
             const bassSibling = poolToUse.find(ax => 
-                ax.role === 'bass' && normalizeCID(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
+                ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
             );
             
             let rawBass: any[] | null = null;
@@ -248,8 +261,8 @@ export class AmbientBrain {
             }
 
             const accompSiblings = poolToUse.filter(ax => 
-                ax.role?.startsWith('accomp') && normalizeCID(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
-            ).slice(0, 2);
+                ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
+            ).slice(0, 3);
 
             const rawAccomps: any[][] = [];
             accompSiblings.forEach(ax => {
@@ -277,12 +290,13 @@ export class AmbientBrain {
     }
 
     private renderDroneBass(chord: GhostChord, tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: Строго 1 нота на такт для дрона.
         return [{
             type: 'bass',
             note: this.constrainBassOctave(chord.rootNote - 12),
             time: 0,
             duration: 4.0,
-            weight: 0.7,
+            weight: 0.75,
             technique: 'drone',
             dynamics: 'p',
             phrasing: 'legato',
@@ -294,35 +308,41 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        if (this.random.next() < 0.25) {
+        // 1. Rare Drums (Kick/Toms)
+        if (this.random.next() < 0.2) {
             const kick = kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft';
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
-        if (this.random.next() < 0.3) {
+        if (this.random.next() < 0.25) {
             const tomPool = ['drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'];
             const tom = tomPool[this.random.nextInt(tomPool.length)];
-            events.push({ type: tom as any, note: 40, time: 1.5 + this.random.next(), duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: tom as any, note: 40, time: 1.5 + this.random.next() * 2, duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        if (this.random.next() < 0.6) {
-            [0, 1, 2, 3].forEach(beat => {
-                if (this.random.next() < 0.3) {
-                    events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: beat + 0.5, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-                }
-            });
+        // 2. Iron (Ghost Hats & Wet Ride)
+        if (this.random.next() < 0.4) {
+            events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: 0.5 + this.random.next() * 3, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
-        if (tension > 0.5 && this.random.next() < 0.3) {
+        if (tension > 0.6 && this.random.next() < 0.2) {
             events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         }
 
-        if (this.random.next() < 0.5) {
-            const percPool = kit.perc || [];
-            if (percPool.length > 0) {
-                const count = 1 + this.random.nextInt(2);
-                for(let i=0; i<count; i++) {
-                    const perc = percPool[this.random.nextInt(percPool.length)];
-                    events.push({ type: perc as any, note: 48, time: this.random.next() * 3.5, duration: 1.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-                }
+        // 3. Mandatory Percussion (Sonic Cube)
+        // #ЗАЧЕМ: Обязательное использование всех 15 perc, tube и bongo.
+        if (this.random.next() < 0.7) {
+            const count = 1 + this.random.nextInt(3);
+            for (let i = 0; i < count; i++) {
+                const perc = kit.perc[this.random.nextInt(kit.perc.length)];
+                events.push({ 
+                    type: perc as any, 
+                    note: 48, 
+                    time: this.random.next() * 3.8, 
+                    duration: 1.0, 
+                    weight: 0.45, 
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato' 
+                });
             }
         }
 
@@ -330,28 +350,63 @@ export class AmbientBrain {
     }
 
     private renderBeautifulPassage(chord: GhostChord, tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: Медленные красивые каскады на границах.
         const root = chord.rootNote + 24;
-        const scale = [0, 2, 4, 7, 9, 11, 12]; 
+        const scale = [0, 2, 4, 7, 9, 11, 12, 14]; 
         const events: FractalEvent[] = [];
         const count = 3 + this.random.nextInt(4);
         for(let i=0; i<count; i++) {
             events.push({
                 type: 'melody',
                 note: Math.min(root + scale[this.random.nextInt(scale.length)], this.MELODY_CEILING),
-                time: i * 0.6,
-                duration: 2.0,
-                weight: 0.4,
+                time: i * 0.8,
+                duration: 2.5,
+                weight: 0.45,
                 technique: 'pick',
                 dynamics: 'p',
                 phrasing: 'legato',
-                params: { attack: 0.2, release: 1.5 }
+                params: { attack: 0.3, release: 2.0 }
             });
         }
         return events;
     }
 
+    private renderGenerativePiano(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 24;
+        const note = root + (this.random.next() < 0.5 ? 7 : 0);
+        return [{
+            type: 'pianoAccompaniment',
+            note: Math.min(note, this.MELODY_CEILING),
+            time: this.random.next() * 3,
+            duration: 2.0,
+            weight: 0.35,
+            technique: 'hit',
+            dynamics: 'p',
+            phrasing: 'staccato',
+            params: { release: 1.5 }
+        }];
+    }
+
+    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 12 + this.registerShift;
+        return [{
+            type: 'harmony',
+            note: Math.min(root + (chord.chordType === 'minor' ? 3 : 4), this.PAD_CEILING),
+            time: 0,
+            duration: 4.0,
+            weight: 0.4,
+            technique: 'swell',
+            dynamics: 'p',
+            phrasing: 'legato'
+        }];
+    }
+
     private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
         const root = Math.min(chord.rootNote + 12 + this.registerShift, this.PAD_CEILING);
+        // #ЗАЧЕМ: Редкость органа.
+        const isOrgan = timbre.includes('organ');
+        if (isOrgan && this.random.next() > 0.15) return [];
+
         return [0, 7, 12].map((n, i) => ({
             type: 'accompaniment',
             note: Math.min(root + n, this.PAD_CEILING + 12), 
@@ -370,17 +425,40 @@ export class AmbientBrain {
         const barInAxiom = epoch % barCountInPhrase; 
         const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
-        return barNotes.map(n => ({
-            type: type,
-            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
-            time: (n.t - barOffset) / 3,
-            duration: n.d / 3,
-            weight: 0.5,
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 0.8, release: 3.0 }
-        }));
+        const events: FractalEvent[] = [];
+
+        barNotes.forEach(n => {
+            // #ЗАЧЕМ: Анти-гул. Дробление длинных нот Heritage.
+            if (n.d >= 6 && type === 'accompaniment') {
+                [0, 4.5, 9].forEach(p => {
+                    const tick = (n.t - barOffset) + p;
+                    if (tick < 12) {
+                        events.push({
+                            type: type,
+                            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
+                            time: tick / 3,
+                            duration: 0.8,
+                            weight: 0.5 * (p === 0 ? 1.1 : 0.8),
+                            technique: 'hit',
+                            dynamics: 'p',
+                            phrasing: 'staccato'
+                        });
+                    }
+                });
+            } else {
+                events.push({
+                    type: type,
+                    note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
+                    time: (n.t - barOffset) / 3,
+                    duration: n.d / 3,
+                    weight: 0.5,
+                    technique: tension > 0.7 ? 'hit' : 'swell',
+                    dynamics: 'p',
+                    phrasing: 'legato'
+                });
+            }
+        });
+        return events;
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
@@ -402,7 +480,7 @@ export class AmbientBrain {
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const barInAxiom = epoch % 4;
+        const barInAxiom = epoch % (this.currentThemeMaxTick / 12);
         const note = this.currentBassTheme.phrase.find(n => n.t >= barInAxiom * 12);
         if (!note) return this.renderDroneBass(chord, tension);
         return [{
@@ -413,8 +491,7 @@ export class AmbientBrain {
             weight: 0.8,
             technique: 'drone',
             dynamics: 'p',
-            phrasing: 'legato',
-            params: { attack: 1.0, release: 2.0 }
+            phrasing: 'legato'
         }];
     }
 
@@ -424,7 +501,7 @@ export class AmbientBrain {
             note: Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING),
             time: 0,
             duration: 4.0,
-            weight: 0.3,
+            weight: 0.35,
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato',

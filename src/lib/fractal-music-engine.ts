@@ -51,8 +51,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V26.0 — "Ensemble Sync".
- * #ЧТО: ПЛАН №740 — Унифицирован расчет hints. Теперь hints вычисляются в начале evolve и передаются в Ambient/Blues мозги.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V27.0 — "Generative Imperative".
+ * #ЧТО: ПЛАН №742 — Реализован "Генеративный Императив": если в DNA нет роли, 
+ *       принудительно активируем генеративный алгоритм для всех активных слоев.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -198,7 +199,6 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    // #ЗАЧЕМ: Унификация расчета hints (ПЛАН №740).
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
@@ -223,6 +223,24 @@ export class FractalMusicEngine {
         currentInstructions = navInfo.currentPart.instrumentation;
     }
 
+    // #ЗАЧЕМ: Генеративный Императив (ПЛАН №742).
+    // #ЧТО: Мы гарантируем активацию всех слоев, которые должны играть по Блюпринту.
+    const activeLayers = navInfo.currentPart.layers || {};
+    Object.keys(activeLayers).forEach(layer => {
+        const part = layer as InstrumentPart;
+        if (activeLayers[part] && !this.activatedParts.has(part)) {
+            // Если инструкций нет, используем дефолтный шанс 1.0 (Генеративный Императив)
+            const rule = currentInstructions ? currentInstructions[part] : null;
+            let effectiveChance = rule ? (rule.activationChance ?? 1.0) : 1.0;
+            
+            if (this.random.next() < effectiveChance) {
+                this.activatedParts.add(part);
+                const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
+                this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
+            }
+        }
+    });
+
     if (currentInstructions) {
         Object.entries(currentInstructions).forEach(([partStr, rule]: [any, any]) => {
             const part = partStr as InstrumentPart;
@@ -231,11 +249,6 @@ export class FractalMusicEngine {
                 if (this.random.next() < effectiveChance) {
                     this.activatedParts.add(part);
                     const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
-                    this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
-                }
-            } else {
-                const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
-                if (options.length > 0) {
                     this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
                 }
             }
