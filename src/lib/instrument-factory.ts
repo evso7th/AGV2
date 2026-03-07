@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.5 — "Universal Eternal Tail".
- * #ЧТО: ПЛАН №749 — Протокол сохранения хвостов теперь един для всех жанров и движков.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.6 — "Warm Organ Engine".
+ * #ЧТО: ПЛАН №761 — Добавлен фильтр и саб-басовый слой для органа.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -321,13 +320,19 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
+    
+    // #ЗАЧЕМ: ПЛАН №761. Внедрение фильтра в органный движок для мягкости.
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = currentPreset.lpf ?? 4000;
+
     const leslie = makeChorus(ctx, currentPreset.leslie || {});
     const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.2;
     const vibG = ctx.createGain(); vibG.gain.value = 3.5; vibLfo.connect(vibG); vibLfo.start();
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.1;
     const activeVoiceRecords = new Set<any>();
 
-    organSum.connect(leslie.input);
+    organSum.connect(filt).connect(leslie.input);
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
     leslie.output.connect(revSend).connect(reverb);
 
@@ -345,11 +350,27 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             enforceVoiceLimit();
             const f = midiToHz(midi);
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
+            
             const osc = ctx.createOscillator(); osc.setPeriodicWave(wave); osc.frequency.setValueAtTime(f, when);
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
+            
+            const nodes: AudioNode[] = [voiceGain, osc];
+
+            // #ЗАЧЕМ: ПЛАН №761. Саб-басовый слой для "жира" на одной ноте.
+            if (currentPreset.sub && isFinite(currentPreset.sub.gain)) {
+                const sub = ctx.createOscillator();
+                sub.type = 'sine';
+                sub.frequency.setValueAtTime(f / 2, when); // Октавой ниже
+                const subG = ctx.createGain();
+                subG.gain.value = currentPreset.sub.gain;
+                sub.connect(subG).connect(voiceGain);
+                sub.start(when);
+                nodes.push(sub, subG);
+            }
+
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-            const record = { nodes: [voiceGain, osc], voiceState, cleaned: false };
+            const record = { nodes, voiceState, cleaned: false };
             
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
@@ -365,7 +386,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
                 deepCleanup(record);
             }, totalLifeInSec * 1000);
 
-            osc.stop(finalTime + 0.5); 
+            nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
         },
         allNotesOff: () => {
             activeVoiceRecords.forEach(v => deepCleanup(v));
@@ -376,12 +397,15 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){}
             activeVoiceRecords.forEach(v => deepCleanup(v));
             activeVoiceRecords.clear();
-            [organSum, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); 
+            [organSum, filt, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); 
         },
         setPreset: (p: any) => { 
             currentPreset = p; 
             wave = getWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); 
-            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1; 
+            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1;
+            if (isFinite(p.lpf)) {
+                filt.frequency.setTargetAtTime(p.lpf, ctx.currentTime, 0.05);
+            }
         }
     };
 };

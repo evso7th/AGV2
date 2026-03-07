@@ -32,11 +32,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V203.0 — "The Elegant Silence".
- * #ОБНОВЛЕНО (ПЛАН №758): 
- * 1. Ликвидирован "дятел" (удалено дробление [0, 6]). Аккомпанемент играет 1 раз в такт.
- * 2. Уточнено понятие "длинной ноты" (>= 6 тиков).
- * 3. Гармония (скрипки) стала еще тише и короче.
+ * @fileOverview Blues Brain V204.0 — "Imperial Midrange".
+ * #ОБНОВЛЕНО (ПЛАН №761): 
+ * 1. Внедрена жесткая фильтрация диапазона аккомпанемента (3-4 октава).
+ * 2. Орган теперь звучит теплее за счет системного ограничения диапазона и поддержки суб-баса.
  */
 
 const TICKS_PER_BAR = 12;
@@ -181,6 +180,18 @@ export class BluesBrain {
       return finalNote;
   }
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №761. Фокусировка ансамбля в 3-4 октаве.
+   * #ЧТО: Жесткое ограничение диапазона для всех инструментов сопровождения.
+   */
+  private constrainAccompanimentOctave(note: number): number {
+      let finalNote = note;
+      // 3-я и 4-я октавы: C3 (48) до B4 (71)
+      while (finalNote > 71) finalNote -= 12;
+      while (finalNote < 48) finalNote += 12;
+      return finalNote;
+  }
+
   public generateBar(
     epoch: number,
     currentChord: GhostChord,
@@ -228,7 +239,6 @@ export class BluesBrain {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
             usedTargetLayers.add('accompaniment');
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
-            // COMPING SINGULARITY: Только один разум в Слое A.
             const primaryAccomp = this.currentAccompAxioms[0];
             accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, primaryAccomp.phrase, 'accompaniment', dna, tension));
             usedTargetLayers.add('accompaniment');
@@ -378,11 +388,13 @@ export class BluesBrain {
       const third = chord.chordType === 'minor' ? 3 : 4;
       bassEvents.slice(0, 2).forEach(bass => {
           events.push({
-              ...bass, type: 'accompaniment', note: type === 'strict' ? bass.note : bass.note + 12,
+              ...bass, type: 'accompaniment', 
+              note: this.constrainAccompanimentOctave(type === 'strict' ? bass.note : bass.note + 12),
               weight: 0.35, technique: 'hit', phrasing: 'staccato', duration: 0.4 * TICK_TO_BEAT
           });
           events.push({
-              type: 'accompaniment', note: (bass.note || 0) + 24 + third,
+              type: 'accompaniment', 
+              note: this.constrainAccompanimentOctave((bass.note || 0) + 24 + third),
               time: bass.time + (1.5 * TICK_TO_BEAT), duration: 0.3 * TICK_TO_BEAT,
               weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
@@ -448,15 +460,13 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          // #ЗАЧЕМ: ANTI-WOODPECKER. Длинная нота (>=6 тиков) больше не дробится.
-          //         Она играет 1 раз, но с ограниченной длительностью.
           const isLong = n.d >= 6; 
           
           events.push({
               type: type,
-              note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), 64),
+              note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t - barOffset) * TICK_TO_BEAT,
-              duration: Math.min(n.d, 12) * TICK_TO_BEAT, // 1 такт максимум
+              duration: Math.min(n.d, 12) * TICK_TO_BEAT, 
               weight: isLong ? 0.35 : 0.45, 
               technique: 'hit',
               dynamics: 'p',
@@ -467,32 +477,31 @@ export class BluesBrain {
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = chord.rootNote + 12 + getWalkingDegree(epoch, this.seed);
-    // #ЗАЧЕМ: Устранение "лупежки". Один мягкий удар в начале такта.
+    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + getWalkingDegree(epoch, this.seed));
     return [{
         type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }];
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
-      const root = accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12);
+      const root = this.constrainAccompanimentOctave(accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12));
       const degrees = [14, 17, 21, 12, 14, 0];
       const shift = degrees[calculateMusiNum(epoch, 5, this.seed + 100, degrees.length)];
       return [{
-          type: 'pianoAccompaniment', note: Math.min(root + shift, 72),
+          type: 'pianoAccompaniment', 
+          note: this.constrainAccompanimentOctave(root + shift),
           time: (this.random.nextInt(2) * 6) * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, 
           weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
       }];
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const root = currentChord.rootNote + 12 + getWalkingDegree(epoch, this.seed + 50);
+      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + getWalkingDegree(epoch, this.seed + 50));
       
       if (timbre === 'guitarChords') {
-          // #ЗАЧЕМ: Гитара в гармонии должна быть призрачной.
           return [{ 
               type: 'harmony', 
-              note: Math.min(root, 64), 
+              note: this.constrainAccompanimentOctave(root), 
               time: 0, 
               duration: 0.5 * TICK_TO_BEAT, 
               weight: 0.25, 
@@ -505,7 +514,7 @@ export class BluesBrain {
 
       return [{
           type: 'harmony',
-          note: Math.min(root + 12, 72),
+          note: this.constrainAccompanimentOctave(root + 12),
           time: 0,
           duration: 4.0, 
           weight: 0.3,

@@ -81,15 +81,20 @@ export const V2_PRESETS = {
   },
   
   organ_soft_jazz: {
+    /**
+     * #ЗАЧЕМ: ПЛАН №761. Устранение пронзительности.
+     * #ЧТО: Снижен LPF, ослаблены высокие регистры, добавлен саб-бас.
+     */
     type: 'organ',
     name: 'Soft Jazz Organ',
     volume: 0.1, 
-    drawbars: [8, 0, 8, 5, 0, 3, 0, 0, 0], 
-    lpf: 7600,
-    hpf: 90,
+    drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
+    lpf: 3200, 
+    hpf: 80,
+    sub: { gain: 0.4 }, 
     adsr: { a: 0.02, d: 0.2, s: 0.9, r: 1.2 },
-    reverbMix: 0.05, 
-    keyClick: 0.003,
+    reverbMix: 0.08, 
+    keyClick: 0.002,
     leslie: { mode: 'slow', slow: 0.65, fast: 6.3, accel: 0.7 }
   },
 
@@ -111,8 +116,6 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    // #ЗАЧЕМ: ПЛАН №716. Дополнительная полировка "Crystal Lead".
-    // #ЧТО: Смягчение фильтра и атаки для устранения остаточной резкости.
     type: 'synth',
     name: 'Crystal Lead', 
     volume: 0.14, 
@@ -122,8 +125,8 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: 1, gain: 0.05 }
     ],
     noise: { on: false, gain: 0 },
-    adsr: { a: 0.025, d: 0.5, s: 0.85, r: 1.5 }, // Более плавная атака
-    lpf: { cutoff: 2800, q: 0.6, mode: '24dB' }, // Более мягкий срез
+    adsr: { a: 0.025, d: 0.5, s: 0.85, r: 1.5 }, 
+    lpf: { cutoff: 2800, q: 0.6, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 4.2, amount: 2.5, target: 'pitch' },
     chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.15 },
     delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
