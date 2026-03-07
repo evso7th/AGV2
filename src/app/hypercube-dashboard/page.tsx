@@ -173,6 +173,8 @@ export default function HypercubeDashboard() {
   const [explorerSearch, setFilterSearchText] = useState("");
   
   // Filtering Axioms
+  const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
+  const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
   const [axiomFilterRole, setAxiomFilterRole] = useState("");
   const [axiomFilterOffset, setAxiomFilterOffset] = useState("");
 
@@ -238,9 +240,23 @@ export default function HypercubeDashboard() {
     }, {} as Record<string, any[]>);
     
     return Object.entries(groups)
-      .filter(([id]) => id.toLowerCase().includes(explorerSearch.toLowerCase()))
+      .filter(([id, licks]) => {
+        const matchesSearch = id.toLowerCase().includes(explorerSearch.toLowerCase());
+        
+        const firstLick = licks[0];
+        const lickGenres = Array.isArray(firstLick.genre) ? firstLick.genre : [firstLick.genre];
+        const lickMoods = Array.isArray(firstLick.mood) ? firstLick.mood : [firstLick.mood];
+
+        const matchesGenre = selectedFilterGenres.length === 0 || 
+          selectedFilterGenres.some(g => lickGenres.includes(g));
+          
+        const matchesMood = selectedFilterMoods.length === 0 || 
+          selectedFilterMoods.some(m => lickMoods.includes(m));
+
+        return matchesSearch && matchesGenre && matchesMood;
+      })
       .sort(([a], [b]) => a.localeCompare(b));
-  }, [globalAxioms, explorerSearch]);
+  }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
 
   const dynastyStats = useMemo(() => {
     if (!globalAxioms) return [];
@@ -293,6 +309,12 @@ export default function HypercubeDashboard() {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const clearAllFilters = () => {
+      setFilterSearchText("");
+      setSelectedFilterGenres([]);
+      setSelectedFilterMoods([]);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -409,8 +431,6 @@ export default function HypercubeDashboard() {
             return;
         }
 
-        // --- #ЗАЧЕМ: Normalization Protocol - Silence Trimming (ПЛАН №739) ---
-        // Группируем аксиомы по CompositionId, чтобы найти общую тишину в начале произведения.
         const compGroups = new Map<string, any[]>();
         flattened.forEach(ax => {
             if (!compGroups.has(ax.compositionId)) compGroups.set(ax.compositionId, []);
@@ -427,7 +447,6 @@ export default function HypercubeDashboard() {
             });
 
             if (globalMinT !== Infinity && globalMinT > 0) {
-                console.log(`%c[Normalization] Composition "${compId}" has ${globalMinT} ticks of leading silence. Trimming...`, 'color: #FFD700; font-weight: bold;');
                 const barShift = Math.floor(globalMinT / 12);
                 
                 licks.forEach(lick => {
@@ -435,10 +454,8 @@ export default function HypercubeDashboard() {
                     for (let i = 0; i < phrase.length; i += 4) {
                         phrase[i] -= globalMinT;
                     }
-                    // Корректируем смещение тактов, если оно было указано
                     lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
                     
-                    // Пересчитываем длительность в тактах после сдвига
                     let maxTick = 0;
                     for (let i = 0; i < phrase.length; i += 4) {
                         const end = phrase[i] + phrase[i+1];
@@ -759,6 +776,8 @@ export default function HypercubeDashboard() {
       });
   };
 
+  const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
+
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8 font-body">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -824,42 +843,63 @@ export default function HypercubeDashboard() {
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
+                  <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
                       <Search className="h-5 w-5" /> Cloud Inventory
                     </CardTitle>
                     <CardDescription className="text-[10px] uppercase font-bold">Inspect and Curate Heritage Axioms</CardDescription>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {selectedTrackGroups.size > 0 && (
-                        <Button variant="destructive" size="sm" onClick={handleWipeSelected} disabled={isProcessing} className="shadow-lg animate-in fade-in zoom-in duration-200">
-                            <Trash2 className="h-4 w-4 mr-2" /> Wipe Selected ({selectedTrackGroups.size})
+                  <div className="flex flex-wrap items-center gap-2">
+                    {filtersActive && (
+                        <Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold">
+                            <RotateCcw className="h-3 w-3 mr-1.5" /> Clear
                         </Button>
                     )}
                     <div className="relative group">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                       <Input 
                         placeholder="Search composition..." 
-                        className="pl-9 h-9 text-xs bg-background/50"
+                        className="pl-9 h-9 w-[180px] text-xs bg-background/50"
                         value={explorerSearch}
                         onChange={(e) => setFilterSearchText(e.target.value)}
                       />
                     </div>
-                    <Button variant="outline" size="sm" onClick={handlePurgeAll} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10">
+                    <MultiSelector 
+                        options={AVAILABLE_GENRES} 
+                        values={selectedFilterGenres} 
+                        onValuesChange={setSelectedFilterGenres}
+                        placeholder="Filter Genre"
+                        className="w-[130px] h-9"
+                    />
+                    <MultiSelector 
+                        options={AVAILABLE_MOODS} 
+                        values={selectedFilterMoods} 
+                        onValuesChange={setSelectedFilterMoods}
+                        placeholder="Filter Mood"
+                        className="w-[130px] h-9"
+                    />
+                    <Button variant="outline" size="sm" onClick={handlePurgeAll} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10 h-9">
                       <ShieldAlert className="h-4 w-4 mr-2" /> Wipe Base
                     </Button>
                   </div>
                 </div>
                 {groupedAxioms.length > 0 && (
-                    <div className="flex items-center gap-2 pt-2 px-1">
-                        <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
-                            <Check className="h-3 w-3" />
-                            {selectedTrackGroups.size === groupedAxioms.length ? "Deselect All" : "Select All Filtered"}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={invertSelection} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
-                            <RotateCcw className="h-3 w-3" />
-                            Invert Selection
-                        </Button>
+                    <div className="flex items-center justify-between pt-2 px-1">
+                        <div className="flex items-center gap-2">
+                            <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
+                                <Check className="h-3 w-3" />
+                                {selectedTrackGroups.size === groupedAxioms.length && groupedAxioms.length > 0 ? "Deselect All" : "Select All Filtered"}
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={invertSelection} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
+                                <RotateCcw className="h-3 w-3" />
+                                Invert Selection
+                            </Button>
+                        </div>
+                        {selectedTrackGroups.size > 0 && (
+                            <Button variant="destructive" size="sm" onClick={handleWipeSelected} disabled={isProcessing} className="h-7 text-[10px] font-black uppercase shadow-lg animate-in fade-in zoom-in duration-200">
+                                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Wipe Selected ({selectedTrackGroups.size})
+                            </Button>
+                        )}
                     </div>
                 )}
               </CardHeader>
@@ -873,7 +913,7 @@ export default function HypercubeDashboard() {
                   ) : groupedAxioms.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-40">
                       <Database className="h-12 w-12 mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest">No DNA Found</p>
+                      <p className="text-xs font-bold uppercase tracking-widest">{filtersActive ? "No matching DNA" : "No DNA Found"}</p>
                     </div>
                   ) : (
                     <Accordion type="multiple" className="space-y-2">
