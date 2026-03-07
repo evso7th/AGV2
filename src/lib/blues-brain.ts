@@ -33,8 +33,11 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V195.0 — "Ensemble Sync".
- * #ОБНОВЛЕНО (ПЛАН №740): Улучшена робастность hints и matching состава якоря.
+ * @fileOverview Blues Brain V196.0 — "Melodic Wanderer Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №743): 
+ * 1. Инструменты больше не зудят на одной ноте.
+ * 2. Адаптивный аккомпанемент и гармония гуляют по ступеням (1, 5, 6, 9).
+ * 3. Внедрена вариация высоты при дроблении длинных нот Heritage.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -207,8 +210,6 @@ export class BluesBrain {
     this.state.tensionMomentum = tension - this.state.lastTension;
     this.state.lastTension = tension;
 
-    const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE' || navInfo.currentPart.id === 'BIRTH';
-    
     const isChorusBoundary = epoch % 12 === 0;
     if (isChorusBoundary) {
         this.selectGrandAxiom(tension);
@@ -611,19 +612,24 @@ export class BluesBrain {
       barNotes.forEach(n => {
           const isLong = n.d >= 6; 
           if (isLong && type === 'accompaniment') {
-              [0, 4.5, 9].forEach(p => {
+              // #ЗАЧЕМ: ПЛАН №743 - Дробление с вариацией высоты (1 -> 5 -> 1).
+              [0, 4.5, 9].forEach((p, idx) => {
                   const tick = (n.t - barOffset) + p;
                   if (tick < 12) {
+                      const shift = idx === 1 ? 7 : 0;
                       events.push({
                           type: type,
-                          note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                          note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + shift,
                           time: tick / 3,
                           duration: 0.8,
                           weight: 0.55 * (p === 0 ? 1.2 : 0.85), 
                           technique: 'hit',
                           dynamics: 'p',
                           phrasing: 'staccato',
-                          params: { barCount: epoch }
+                          params: { 
+                              barCount: epoch,
+                              filterCutoff: 1200 + (tension * 1500)
+                          }
                       });
                   }
               });
@@ -637,7 +643,10 @@ export class BluesBrain {
                   technique: tension > 0.7 ? 'hit' : 'swell',
                   dynamics: 'p',
                   phrasing: 'legato',
-                  params: { barCount: epoch }
+                  params: { 
+                      barCount: epoch,
+                      filterCutoff: 1500 + (tension * 1000)
+                  }
               });
           }
       });
@@ -645,7 +654,10 @@ export class BluesBrain {
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = chord.rootNote + 12;
+    // #ЗАЧЕМ: ПЛАН №743 - Аккомпанемент гуляет по гамме.
+    const degrees = [0, 7, 9, 5];
+    const shift = degrees[calculateMusiNum(epoch, 4, this.seed, 4)];
+    const root = chord.rootNote + 12 + shift;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     const rhythm = [0, 4.5, 9]; 
     return rhythm.flatMap(t => [
@@ -655,17 +667,33 @@ export class BluesBrain {
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
+      // #ЗАЧЕМ: ПЛАН №743 - Пианино выбирает красивые ступени (9, 11, 13).
+      const root = accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12);
+      const colorDegrees = [14, 17, 21, 12]; // 9, 11, 13, Octave
+      const shift = colorDegrees[calculateMusiNum(epoch, 3, this.seed, 4)];
+
       if (melodyEvents.length > 0 && this.random.next() < 0.6) {
-          return melodyEvents.slice(0, 2).map(me => ({ ...me, type: 'pianoAccompaniment', weight: 0.3, technique: 'hit', phrasing: 'staccato' }));
+          return melodyEvents.slice(0, 2).map(me => ({ ...me, type: 'pianoAccompaniment', note: me.note + 12, weight: 0.3, technique: 'hit', phrasing: 'staccato' }));
       }
-      return accompanimentEvents.map(ae => ({ ...ae, type: 'pianoAccompaniment', weight: 0.25, technique: 'hit', phrasing: 'staccato' }));
+      return [{
+          type: 'pianoAccompaniment',
+          note: Math.min(root + shift, this.MELODY_CEILING),
+          time: this.random.next() * 3,
+          duration: 1.5,
+          weight: 0.3,
+          technique: 'hit',
+          dynamics: 'p',
+          phrasing: 'staccato'
+      }];
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number): FractalEvent[] {
+      // #ЗАЧЕМ: ПЛАН №743 - Гармония меняет вокализацию.
       const root = currentChord.rootNote;
       const isMin = currentChord.chordType === 'minor';
-      return [root + 12, root + (isMin ? 15 : 16)].map((n, i) => ({ 
-          type: 'harmony', note: n + 12, time: i * 0.1, duration: 4.0, weight: 0.55,
+      const inversion = epoch % 16 < 8 ? 0 : 12;
+      return [root + 12 + inversion, root + (isMin ? 15 : 16) + inversion].map((n, i) => ({ 
+          type: 'harmony', note: Math.min(n + 12, this.MELODY_CEILING), time: i * 0.1, duration: 4.0, weight: 0.55,
           technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { barCount: epoch } 
       }));
   }
