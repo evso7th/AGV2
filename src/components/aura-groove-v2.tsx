@@ -1,6 +1,7 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.7 — "BPM Lock".
- * #ЧТО: Слайдер BPM теперь disabled во время игры, так как темп наследуется из DNA.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.8 — "The Anchor Protocol".
+ * #ЧТО: 1. Кнопка "Cloud Filter" переименована в "DNA Anchor" для ясности.
+ *       2. Добавлен статус "DNA Locked" при выборе одного трека.
  */
 'use client';
 
@@ -10,7 +11,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar
+  Guitar, Lock
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -128,6 +129,13 @@ export function AuraGrooveV2({
     }
   };
 
+  const getAnchorButtonText = () => {
+      const count = selectedCompositionIds.length;
+      if (count === 0) return "DNA Anchor";
+      if (count === 1) return "DNA Locked";
+      return `DNA Hybrid (${count})`;
+  };
+
   return (
     <div className="w-full h-full flex flex-col p-3 bg-card">
       {/* Header */}
@@ -145,7 +153,7 @@ export function AuraGrooveV2({
                 <DialogTrigger asChild>
                   <Button variant="ghost" className="h-9 w-9 px-2" aria-label="Open Equalizer">EQ</Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md border-primary/20">
                   <DialogHeader><DialogTitle>System Equalizer</DialogTitle></DialogHeader>
                   <div className="flex justify-around items-end pt-4 h-48">
                     {EQ_BANDS.map((band, index) => {
@@ -216,25 +224,30 @@ export function AuraGrooveV2({
           
           <div className="grid">
             <TabsContent value="composition" className="space-y-1.5 pt-2 col-start-1 row-start-1 px-1">
-              <Card className="border-0 shadow-none">
+              <Card className="border-0 shadow-none bg-transparent">
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
+                    
+                    {/* #ЗАЧЕМ: DNA Anchor Selector (Genetic Lock) */}
                     <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
                         setIsFilterModalOpen(open);
                         if (open) refreshCloudAxioms();
                     }}>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter", selectedCompositionIds.length > 0 && "text-primary bg-primary/10")}>
-                                <Filter className="h-3 w-3" />
-                                {selectedCompositionIds.length > 0 ? `${selectedCompositionIds.length} Tracks` : "Cloud Filter"}
+                            <Button variant="ghost" size="sm" className={cn(
+                                "h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", 
+                                selectedCompositionIds.length > 0 ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70"
+                            )}>
+                                {selectedCompositionIds.length === 1 ? <Lock className="h-3 w-3" /> : <TowerControl className="h-3 w-3" />}
+                                {getAnchorButtonText()}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[420px] max-h-[85vh] flex flex-col p-0 overflow-hidden bg-card border-primary/20 shadow-2xl">
                             <DialogHeader className="p-4 pb-2 border-b border-primary/10">
                                 <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-base">
-                                    <Database className="h-5 w-5" /> Cloud DNA Selector
+                                    <Database className="h-5 w-5" /> DNA Selection Station
                                 </DialogTitle>
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Heritage Selection Protocol</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Define Genetic Anchor or Hybrid Mix</p>
                             </DialogHeader>
                             
                             <div className="p-3 pb-1 space-y-3 bg-muted/20">
@@ -256,10 +269,10 @@ export function AuraGrooveV2({
                                             className={cn("h-7 px-2 text-[10px] uppercase font-bold transition-all", showSelectedOnly && "bg-primary text-primary-foreground")}
                                         >
                                             {showSelectedOnly ? <Eye className="h-3 w-3 mr-1.5" /> : <EyeOff className="h-3 w-3 mr-1.5" />}
-                                            {showSelectedOnly ? "Showing Picked" : "Show All"}
+                                            {showSelectedOnly ? "Picked Only" : "All Tracks"}
                                         </Button>
                                         <span className="text-[10px] text-muted-foreground font-mono uppercase">
-                                            {filteredCompositions.length} matches
+                                            {filteredCompositions.length} units
                                         </span>
                                     </div>
                                     <Button 
@@ -268,7 +281,7 @@ export function AuraGrooveV2({
                                         onClick={clearCompositionFilters}
                                         className="h-7 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
                                     >
-                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Reset Selection
+                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Clear Anchor
                                     </Button>
                                 </div>
                             </div>
@@ -321,7 +334,7 @@ export function AuraGrooveV2({
                             </div>
                             <DialogFooter className="p-4 border-t bg-muted/30">
                                 <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="w-full h-10 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-transform">
-                                    Inject Heritage
+                                    Set Genetic Anchor
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -377,7 +390,6 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    {/* #ЗАЧЕМ: Слайдер BPM теперь заблокирован, так как темп диктуется DNA. */}
                     <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} className="col-span-1" disabled={true}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
@@ -387,8 +399,8 @@ export function AuraGrooveV2({
                   </div>
                 </CardContent>
               </Card>
-               <Card className="border-0 shadow-none mt-2">
-                <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4"/> Sleep Timer</CardTitle></CardHeader>
+               <Card className="border-0 shadow-none mt-2 bg-transparent">
+                <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4"/> Sleep Timer</CardTitle></CardHeader>
                 <CardContent className="space-y-2 p-3 pt-0">
                     <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                         <Label htmlFor="timer-slider" className="text-right text-xs">Minutes</Label>
@@ -419,8 +431,8 @@ export function AuraGrooveV2({
             </TabsContent>
 
             <TabsContent value="instruments" className="space-y-1 pt-2 col-start-1 row-start-1 px-1">
-               <Card className="border-0 shadow-none">
-                  <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
+               <Card className="border-0 shadow-none bg-transparent">
+                  <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
                           const settings = instrumentSettings[part];
@@ -440,7 +452,7 @@ export function AuraGrooveV2({
                           const isDisabled = isInitializing || isPlaying || composerControl;
 
                           return (
-                            <div key={part} className="p-2 border rounded-md space-y-2">
+                            <div key={part} className="p-2 border rounded-md space-y-2 bg-background/30 border-primary/10">
                                <div className="grid grid-cols-2 items-center gap-2">
                                     <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
                                         {getPartIcon(part as InstrumentPart)}
@@ -448,7 +460,7 @@ export function AuraGrooveV2({
                                     </Label>
                                     {part !== 'pianoAccompaniment' ? (
                                         <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
-                                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                            <SelectTrigger className="h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                                             <SelectContent>
                                                 {instrumentList.map(inst => {
                                                     const displayName = displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
@@ -473,10 +485,10 @@ export function AuraGrooveV2({
             </TabsContent>
 
             <TabsContent value="samples" className="space-y-1.5 pt-2 col-start-1 row-start-1 px-1">
-               <Card className="border-0 shadow-none">
-                  <CardHeader className="p-2"><CardTitle className="flex items-center gap-2 text-sm"><Atom className="h-4 w-4"/> Sampled Textures</CardTitle></CardHeader>
+               <Card className="border-0 shadow-none bg-transparent">
+                  <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Atom className="h-4 w-4"/> Sampled Textures</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
-                      <div className="p-2 border rounded-md">
+                      <div className="p-2 border rounded-md bg-background/30 border-primary/10">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Sparkles className="h-4 w-4"/>Sparkles</Label>
                               <Switch checked={textureSettings.sparkles.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sparkles', c)} disabled={isInitializing}/>
@@ -487,7 +499,7 @@ export function AuraGrooveV2({
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sparkles.volume * 100)}</span>
                           </div>
                       </div>
-                      <div className="p-2 border rounded-md">
+                      <div className="p-2 border rounded-md bg-background/30 border-primary/10">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Sprout className="h-4 w-4"/>SFX</Label>
                               <Switch checked={textureSettings.sfx.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sfx', c)} disabled={isInitializing}/>
@@ -498,11 +510,11 @@ export function AuraGrooveV2({
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
                           </div>
                       </div>
-                       <div className="p-2 border rounded-md">
+                       <div className="p-2 border rounded-md bg-background/30 border-primary/10">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Drum className="h-4 w-4"/>Drums</Label>
                                <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isInitializing || isPlaying}>
-                                  <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectTrigger className="w-[140px] h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="none" className="text-xs">None</SelectItem>
                                       <SelectItem value="ambient_beat" className="text-xs">Ambient</SelectItem>
