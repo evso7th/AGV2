@@ -25,11 +25,11 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V206.0 — "Narrative Arc".
- * #ОБНОВЛЕНО (ПЛАН №763): 
- * 1. Narrative Exhaustion: Длинные и сложные соло теперь требуют отдыха в 3-4 такта.
- * 2. Resolution logic: Быстрые ноты теперь стремятся к разрешению в длинную ноту, а не в тишину.
- * 3. Elastic Time Integration: Улучшена работа с timeScale для драматических финалов.
+ * @fileOverview Blues Brain V207.0 — "Groove Recovery".
+ * #ОБНОВЛЕНО (ПЛАН №766): 
+ * 1. Tom Fills: Барабанщик снова делает "пробежки" по томам каждые 4 такта.
+ * 2. Ghost Groove: Добавлены призрачные ноты для малого барабана.
+ * 3. Restraint Update: Усилена связь между паузами солиста и активностью ударных.
  */
 
 const TICKS_PER_BAR = 12;
@@ -91,7 +91,6 @@ export class BluesBrain {
   private soloistRestingUntilBar: number = -1;
   private accompanimentRestingUntilBar: number = -1;
   
-  // #ЗАЧЕМ: Система памяти для оценки "драматургической усталости".
   private lastPhraseComplexity: number = 0;
 
   private state: BluesCognitiveState & { 
@@ -200,14 +199,11 @@ export class BluesBrain {
 
     let newBpm: number | undefined;
     if (isSoloistFree && !isSoloistResting) {
-        // #ЗАЧЕМ: Решение о "выдохе" (паузе) теперь принимается на основе сложности прошлой фразы.
         const complexityThreshold = 0.6;
         if (this.lastPhraseComplexity > complexityThreshold && this.random.next() < 0.7) {
-            // Длинный отдых после серьезного соло
             this.soloistRestingUntilBar = epoch + 3 + this.random.nextInt(2);
-            this.lastPhraseComplexity = 0; // Сброс
+            this.lastPhraseComplexity = 0; 
         } else if (this.random.next() < 0.3) {
-            // Обычная пауза между фразами
             this.soloistRestingUntilBar = epoch + 1;
         } else {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
@@ -222,7 +218,7 @@ export class BluesBrain {
         : [];
     
     // --- 2. DRUMS & BASS ---
-    if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension));
+    if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
     const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
@@ -315,12 +311,9 @@ export class BluesBrain {
               this.state.recentLicks.push(selected.id);
               
               let rawPhrase = decompressCompactPhrase(selected.phrase);
-              
-              // #ЗАЧЕМ: Оценка сложности для Narrative Exhaustion.
               const shortNotes = rawPhrase.filter(n => n.d < 3).length;
               this.lastPhraseComplexity = shortNotes / Math.max(1, rawPhrase.length);
               
-              // Elastic Time
               if (this.lastPhraseComplexity > 0.4 && this.config.tempo > 85) {
                   this.currentTimeScale = 2;
               }
@@ -375,20 +368,14 @@ export class BluesBrain {
 
     return barNotes.map((n, idx) => {
         let tech = n.tech || 'pick';
-        
-        // Liquid Sound
         const nextNote = barNotes[idx + 1];
         if (nextNote) {
             const interval = Math.abs(DEGREE_TO_SEMITONE[n.deg] - DEGREE_TO_SEMITONE[nextNote.deg]);
             if (interval > 0 && interval <= 2) tech = 'sl';
         }
-
-        // Automatic Articulation
         if (n.d >= 6 && (tech === 'pick' || tech === '0')) tech = 'vb';
         if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
 
-        // #ЗАЧЕМ: Драматическое завершение пассажа.
-        // Если это последняя нота в быстром пассаже, она должна быть ярче и тягучее.
         const isEndOfShred = idx === barNotes.length - 1 && n.d < 3;
         const weight = isEndOfShred ? 0.95 : 0.85;
 
@@ -467,11 +454,48 @@ export class BluesBrain {
     }));
   }
 
-  private renderNarrativeDrums(epoch: number, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Нарративные ударные с поддержкой филлов по томам (ПЛАН №766).
+   */
+  private renderNarrativeDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
+      const isFourthBar = epoch % 4 === 3;
+      
+      // Basic Groove
       [0, 6].forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+      
+      // Ghost Snare for more flow
+      if (this.random.next() < 0.4) {
+          events.push({ type: 'drum_snare_ghost_note', note: 38, time: 4.5 * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
+          events.push({ type: 'drum_snare_ghost_note', note: 38, time: 10.5 * TICK_TO_BEAT, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
+      }
+
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+
+      // #ЗАЧЕМ: Возвращение "пробежек" по томам (ПЛАН №766).
+      // Филлы происходят на 4-й такт или когда солист молчит.
+      if (isFourthBar || (isSoloistResting && this.random.next() < 0.5)) {
+          const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+          const fillTicks = [9, 10, 11];
+          fillTicks.forEach((t, i) => {
+              events.push({
+                  type: tomTypes[i] as any,
+                  note: 40,
+                  time: t * TICK_TO_BEAT,
+                  duration: 0.5,
+                  weight: 0.6 + (i * 0.1),
+                  technique: 'hit',
+                  dynamics: 'p',
+                  phrasing: 'staccato'
+              });
+          });
+          // Crash on the transition to next bar if it's very tense
+          if (tension > 0.8) {
+              events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+          }
+      }
+
       return events;
   }
 
