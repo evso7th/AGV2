@@ -33,10 +33,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V192.0 — "Total Anti-Hum Protocol".
- * #ОБНОВЛЕНО (ПЛАН №731): 
- * 1. Forced rhythmic redivision for all accompaniment notes > 6 ticks.
- * 2. Accompaniment "Breath" logic - periodic silences to prevent auditory fatigue.
+ * @fileOverview Blues Brain V193.0 — "Eternal Ensemble Stability".
+ * #ОБНОВЛЕНО (ПЛАН №733): Внедрен протокол "Аварийного сброса истории" для предотвращения затухания музыки.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -100,7 +98,7 @@ export class BluesBrain {
 
   private soloistBusyUntilBar: number = -1;
   private soloistRestingUntilBar: number = -1;
-  private accompanimentRestingUntilBar: number = -1; // #ЗАЧЕМ: Паузы в аккомпанементе
+  private accompanimentRestingUntilBar: number = -1;
 
   private state: BluesCognitiveState & { 
       introBassStyle: 'drone' | 'riff' | 'walking',
@@ -266,7 +264,6 @@ export class BluesBrain {
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
     const accompanimentEvents: FractalEvent[] = [];
     
-    // #ЗАЧЕМ: "Вдох" аккомпанемента. Каждые несколько тактов орган может замолчать для прозрачности.
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
     if (isAccompResting) {
         // Silence for pads
@@ -290,7 +287,6 @@ export class BluesBrain {
         accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension));
     }
 
-    // Редкие паузы в аккомпанементе (раз в 8-12 тактов)
     if (epoch > 0 && epoch % 12 === 11 && this.random.next() < 0.3) {
         this.accompanimentRestingUntilBar = epoch + 1 + (this.random.next() > 0.5 ? 1 : 0);
     }
@@ -383,6 +379,9 @@ export class BluesBrain {
 
               const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
               let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              
+              // #ЗАЧЕМ: Профилактика деградации (ПЛАН №733).
+              // #ЧТО: Если свежих фраз нет, сбрасываем историю для этого пула.
               if (freshPool.length === 0) {
                   const poolIds = new Set(finalPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !poolIds.has(id));
@@ -491,8 +490,8 @@ export class BluesBrain {
           this.currentLickId = this.currentGrandMelody.id;
           this.soloistBusyUntilBar = epoch + (phraseBars * (navInfo.currentPart.instrumentRules?.melody?.timeScale || 1));
 
-          const allLicks = Object.keys(BLUES_SOLO_LICKS);
-          const secondId = allLicks[this.random.nextInt(allLickIds.length)];
+          const allLickIds = Object.keys(BLUES_SOLO_LICKS);
+          const secondId = allLickIds[this.random.nextInt(allLickIds.length)];
           this.secondaryAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[secondId].phrase as any);
           this.secondaryAxiomMaxTick = 48;
           return;
@@ -712,13 +711,10 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          // #ЗАЧЕМ: Устранение бесконечного гудения (ПЛАН №731).
-          // #ЧТО: Любая нота длиннее половины такта дробится на синкопированные удары.
           const isLong = n.d >= 6; 
           
           if (isLong && type === 'accompaniment') {
-              // Forced rhythmic comping pattern
-              const compingRhythm = [0, 4.5, 9]; // Beats 1, 2.5, 4 in 12/8
+              const compingRhythm = [0, 4.5, 9]; 
               compingRhythm.forEach(p => {
                   const tick = (n.t - barOffset) + p;
                   if (tick < 12) {
@@ -727,7 +723,7 @@ export class BluesBrain {
                           note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
                           time: tick / 3,
                           duration: 0.8,
-                          weight: 0.55 * (p === 0 ? 1.2 : 0.85), // Accent on start
+                          weight: 0.55 * (p === 0 ? 1.2 : 0.85), 
                           technique: 'hit',
                           dynamics: 'p',
                           phrasing: 'staccato',
@@ -736,7 +732,6 @@ export class BluesBrain {
                   }
               });
           } else {
-              // Стандартный рендеринг для коротких нот
               events.push({
                   type: type,
                   note: effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
@@ -758,7 +753,6 @@ export class BluesBrain {
     const root = chord.rootNote + 12;
     const third = root + (chord.chordType === 'minor' ? 3 : 4);
     
-    // #ЗАЧЕМ: Адаптивный аккомпанемент теперь всегда имеет ритм.
     const rhythm = [0, 4.5, 9]; 
     return rhythm.flatMap((t, i) => [
         { type: 'accompaniment', note: root, time: t / 3, duration: 0.3, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' },

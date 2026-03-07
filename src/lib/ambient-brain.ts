@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v25.8 — "Total Anti-Hum Protocol".
- * #ОБНОВЛЕНО (ПЛАН №731): 
- * 1. Forced rhythmic redivision for all accompaniment notes > 6 ticks.
- * 2. Enhanced "Breath" logic for pads and piano layers.
+ * @fileOverview Ambient Brain v25.9 — "Eternal Ensemble Stability".
+ * #ОБНОВЛЕНО (ПЛАН №733): 
+ * 1. Внедрена логика "recentThemes" для предотвращения затухания музыки при длительной игре.
+ * 2. Аварийный сброс истории при пустом пуле доступных фраз.
  */
 
 import type { 
@@ -78,7 +78,7 @@ export class AmbientBrain {
 
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1; 
-    private accompanimentRestingUntilBar: number = -1; // #ЗАЧЕМ: Паузы в аккомпанементе
+    private accompanimentRestingUntilBar: number = -1; 
     
     private readonly MELODY_CEILING = 75;
     private readonly BASS_FLOOR = 31; 
@@ -163,6 +163,7 @@ export class AmbientBrain {
             if (!this.activeAnchorId) {
                 const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
                 this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+                console.log(`%c[Improviser] Ambient Chorus Boundary. New Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #FFD700; font-weight: bold;');
             } else {
                 this.currentMutationType = 'none';
             }
@@ -191,7 +192,6 @@ export class AmbientBrain {
 
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: "Вдох" аккомпанемента в амбиенте.
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
 
         if (!isAccompResting && this.currentAccompAxioms.length > 0) {
@@ -214,7 +214,6 @@ export class AmbientBrain {
             events.push(...this.renderPad(currentChord, epoch, hints.accompaniment as string, localTension));
         }
 
-        // Периодические паузы в аккомпанементе для "воздуха"
         if (epoch > 0 && epoch % 16 === 15 && this.random.next() < 0.2) {
             this.accompanimentRestingUntilBar = epoch + 1;
         }
@@ -312,7 +311,17 @@ export class AmbientBrain {
                 });
 
                 const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-                cloudAxiom = finalPool[this.random.nextInt(finalPool.length)];
+                
+                // #ЗАЧЕМ: Профилактика деградации (ПЛАН №733).
+                let freshPool = finalPool.filter(ax => !this.usedThemeHistory.includes(ax.id));
+                if (freshPool.length === 0) {
+                    this.usedThemeHistory = [];
+                    freshPool = finalPool;
+                }
+                
+                cloudAxiom = freshPool[this.random.nextInt(freshPool.length)];
+                this.usedThemeHistory.push(cloudAxiom.id);
+                if (this.usedThemeHistory.length > 50) this.usedThemeHistory.shift();
 
                 const others = finalPool.filter(ax => ax.id !== cloudAxiom.id && ax.barOffset === cloudAxiom.barOffset);
                 if (others.length > 0) {
@@ -541,8 +550,6 @@ export class AmbientBrain {
         const isMinor = chord.chordType === 'minor' || chord.chordType === 'diminished';
         const notes = [root, root + (isMinor ? 3 : 4), root + 7];
 
-        // #ЗАЧЕМ: Устранение гудения в пэдах.
-        // #ЧТО: Дробление пэда на два перекрывающихся вступления.
         return notes.flatMap((n, i) => [
             {
                 type: 'accompaniment',
@@ -581,8 +588,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
-            // #ЗАЧЕМ: Устранение бесконечного гудения (ПЛАН №731).
-            // #ЧТО: Любая нота длиннее 6 тиков дробится на ритмические "капли".
             const isLong = n.d >= 6;
             
             if (isLong && type === 'accompaniment') {
@@ -682,7 +687,7 @@ export class AmbientBrain {
             const pitch = effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0);
             return {
                 type: 'bass',
-                note: pitch,
+                note: this.constrainBassOctave(pitch),
                 time: (n.t - barOffset) / 3, 
                 duration: 3.5, 
                 weight: 0.85,

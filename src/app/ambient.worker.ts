@@ -1,6 +1,7 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №732): Реализована синхронизация BPM обратно в UI при наследовании ДНК.
+ * #ОБНОВЛЕНО (ПЛАН №733): Реализована принудительная очистка истории при ротации циклов для предотвращения деградации музыки.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -115,8 +116,6 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
         
-        // #ЗАЧЕМ: Синхронизация темпа.
-        // #ЧТО: Если ДНК наследовало BPM из Облака, мы должны сказать об этом UI.
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
@@ -179,9 +178,12 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // #ЗАЧЕМ: Предотвращение деградации (ПЛАН №733).
+        // #ЧТО: Принудительная очистка истории фраз при ротации наследия.
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
-             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage...`, 'color: #4ade80; font-weight: bold;');
+             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage & Purging History...`, 'color: #4ade80; font-weight: bold;');
              this.filterRotationIndex++;
+             this.sessionLickHistory = []; // ОСНОВНОЙ ФИКС
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
         }
@@ -203,18 +205,14 @@ const Scheduler = {
 
         const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-        
         const axioms = payload.activeAxioms || {};
         const narration = payload.narrative || 'Developing story...';
-        
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
-        
         const mutType = payload.mutationType || 'none';
         const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
         const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
-        
         const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
 

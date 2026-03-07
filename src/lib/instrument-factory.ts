@@ -1,7 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.0 — "Static Volume & Imperial Headroom".
- * #ЧТО: 1. ПЛАН №679 — Полная блокировка изменения громкости внутри setPreset. 
- *       2. Лимитер зафиксирован на -6dB для защиты от суммарных искажений.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.1 — "Immortal Resource Protocol".
+ * #ЧТО: ПЛАН №733 — Внедрен "Сторожевой таймер" (Garbage Collector) для предотвращения утечек AudioNodes.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -281,18 +281,16 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
 
-            if (duration && isFinite(duration)) {
-                const finalTime = triggerRelease(ctx, voiceState, when + duration, adsr.r);
-                nodes.forEach(n => { 
-                    if(n instanceof OscillatorNode) { 
-                        n.stop(finalTime + 0.1); 
-                        n.onended = () => {
-                            activeVoiceRecords.delete(record);
-                            deepCleanup(record);
-                        }; 
-                    } 
-                });
-            }
+            const safeDuration = duration && isFinite(duration) ? duration : 1.0;
+            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            
+            // #ЗАЧЕМ: Сторожевой таймер (ПЛАН №733).
+            setTimeout(() => {
+                activeVoiceRecords.delete(record);
+                deepCleanup(record);
+            }, (safeDuration + adsr.r + 2) * 1000);
+
+            nodes.forEach(n => { if(n instanceof OscillatorNode) { n.stop(finalTime + 0.1); } });
         },
         allNotesOff: () => { 
             activeVoiceRecords.forEach(v => deepCleanup(v)); 
@@ -310,7 +308,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             filt.frequency.value = p.lpf?.cutoff ?? 2000; 
             chorus.setMix(p.chorus?.on ? (p.chorus?.mix ?? 0.3) : 0); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.18; 
-            // #ЗАЧЕМ: Устранение "прыжков" громкости. Блокируем перезапись instrumentGain.
         }
     };
 };
@@ -351,13 +348,15 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
 
-            const durValue = isFinite(duration as number) ? (duration as number) : 1.0;
-            const finalTime = triggerRelease(ctx, voiceState, when + durValue, adsr.r);
-            osc.stop(finalTime + 0.1); 
-            osc.onended = () => {
+            const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
+            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            
+            setTimeout(() => {
                 activeVoiceRecords.delete(record);
                 deepCleanup(record);
-            };
+            }, (safeDuration + adsr.r + 2) * 1000);
+
+            osc.stop(finalTime + 0.1); 
         },
         allNotesOff: () => {
             activeVoiceRecords.forEach(v => deepCleanup(v));
@@ -374,7 +373,6 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             currentPreset = p; 
             wave = getWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1; 
-            // #ЗАЧЕМ: Блокировка авто-громкости.
         }
     };
 };
@@ -409,16 +407,15 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
 
-            const finalTime = triggerRelease(ctx, voiceState, when + (isFinite(duration as number) ? (duration as number) : 1.0), adsr.r);
-            nodes.forEach(n => { 
-                if (n instanceof OscillatorNode) { 
-                    n.stop(finalTime + 0.1); 
-                    n.onended = () => {
-                        activeVoiceRecords.delete(record);
-                        deepCleanup(record);
-                    }; 
-                } 
-            });
+            const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
+            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            
+            setTimeout(() => {
+                activeVoiceRecords.delete(record);
+                deepCleanup(record);
+            }, (safeDuration + adsr.r + 2) * 1000);
+
+            nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.1); } });
         },
         allNotesOff: () => {
             activeVoiceRecords.forEach(v => deepCleanup(v));
@@ -431,7 +428,6 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         },
         setPreset: (p: any) => { 
             currentPreset = p; 
-            // #ЗАЧЕМ: Блокировка авто-громкости.
         }
     };
 };
@@ -485,14 +481,15 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
 
-            if (duration && isFinite(duration)) {
-                const stopTime = triggerRelease(ctx, voiceState, when + duration, adsr.r);
-                osc.stop(stopTime + 0.1); 
-                osc.onended = () => {
-                    activeVoiceRecords.delete(record);
-                    deepCleanup(record);
-                };
-            }
+            const safeDuration = duration && isFinite(duration) ? duration : 1.0;
+            const stopTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            
+            setTimeout(() => {
+                activeVoiceRecords.delete(record);
+                deepCleanup(record);
+            }, (safeDuration + adsr.r + 2) * 1000);
+
+            osc.stop(stopTime + 0.1); 
         },
         allNotesOff: () => { 
             activeVoiceRecords.forEach((v) => deepCleanup(v)); 
@@ -508,7 +505,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             currentPreset = p; 
             shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); 
             phaser.setMix(p.phaser?.on ? 0.2 : 0); cachedWave = null;
-            // #ЗАЧЕМ: Блокировка авто-громкости.
         }
     };
 };
@@ -522,7 +518,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     
     const master = ctx.createGain(); master.gain.value = 0.8;
     const instrumentGain = ctx.createGain(); 
-    // #ЗАЧЕМ: Установка начальной громкости только ОДИН раз.
     instrumentGain.gain.value = isFinite(preset.volume) ? preset.volume : 0.7;
     const expressionGain = ctx.createGain(); expressionGain.gain.value = 1.0;
     const reverb = ctx.createConvolver();
@@ -536,7 +531,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
 
     const limiter = ctx.createDynamicsCompressor();
-    // #ЗАЧЕМ: Увеличение запаса по громкости (Headroom).
     limiter.threshold.value = -6.0; 
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
