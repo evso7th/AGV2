@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №745): Исправлен рассинхрон загрузки DNA. Ре-инициализация при получении аксиом.
+ * #ОБНОВЛЕНО (ПЛАН №746): Оптимизирован механизм Re-Lock. Исключены двойные старты на 1-м такте.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -169,7 +169,7 @@ const Scheduler = {
        if (seedChanged || genreOrMoodChanged || filterChanged) {
            this.sessionLickHistory = []; 
            this.filterRotationIndex = 0; 
-           this.barCount = 0; // Сбрасываем счетчик при регенерации
+           this.barCount = 0; 
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
@@ -179,9 +179,10 @@ const Scheduler = {
     updateCloudAxioms(axioms: any[]) {
         this.cloudAxiomPool = axioms || [];
         
-        // #ЗАЧЕМ: ПЛАН №745. Если аксиомы пришли, когда мы еще в начале, переподключаем Якорь.
-        if (this.barCount <= 1 && (this.settings.selectedCompositionIds?.length || 0) > 0) {
-            console.log(`%c${getTimestamp()} [Sync] Cloud DNA arrived. Forcing Genetic Re-Lock...`, 'color: #00FFFF; font-weight: bold;');
+        // #ЗАЧЕМ: ПЛАН №746. Ре-лок только на самом старте.
+        // #ЧТО: Изменено с <= 1 на === 0, чтобы предотвратить двойной старт на 1-м такте.
+        if (this.barCount === 0 && (this.settings.selectedCompositionIds?.length || 0) > 0) {
+            console.log(`%c${getTimestamp()} [Sync] Cloud DNA arrived. Locking Anchor...`, 'color: #00FFFF; font-weight: bold;');
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
@@ -226,7 +227,6 @@ const Scheduler = {
         const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
         const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
         
-        // #ЗАЧЕМ: Исправлено отображение мелодии.
         const melStr = axioms.melody === 'Generative' ? 'Generative (No DNA)' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
 

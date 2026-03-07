@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v32.1 — "Sync Integrity Fix".
- * #ОБНОВЛЕНО (ПЛАН №745): Улучшена логика сопоставления Якоря и отчетности об аксиомах.
+ * @fileOverview Ambient Brain v33.0 — "Anchor Sovereignty Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №746): Жесткая фиксация якоря. Исключено переключение на чужие треки.
  */
 
 import type { 
@@ -221,6 +221,7 @@ export class AmbientBrain {
             
             let basePool = poolToUse.filter(ax => ax.role === 'melody');
             if (targetAnchor) {
+                // #ЗАЧЕМ: ПЛАН №746. Строгая фиксация якоря. 
                 const anchorPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
                 basePool = anchorPool.filter(ax => ax.role === 'melody');
                 if (basePool.length === 0) {
@@ -430,7 +431,8 @@ export class AmbientBrain {
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
         const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
-        const barInAxiom = epoch % barCountInPhrase; 
+        const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
+        const barInAxiom = (epoch - startEpoch) % barCountInPhrase; 
         const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         const events: FractalEvent[] = [];
@@ -476,7 +478,9 @@ export class AmbientBrain {
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-        const barInCycle = epoch % (maxTick / 12);
+        const barCountInPhrase = Math.ceil(maxTick / 12);
+        const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
+        const barInCycle = (epoch - startEpoch) % barCountInPhrase;
         const barOffset = barInCycle * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({

@@ -51,9 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V27.0 — "Generative Imperative".
- * #ЧТО: ПЛАН №742 — Реализован "Генеративный Императив": если в DNA нет роли, 
- *       принудительно активируем генеративный алгоритм для всех активных слоев.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V27.1 — "Smart Imperative".
+ * #ЧТО: ПЛАН №746 — Улучшена логика выбора инструментов по умолчанию (Smarter Fallbacks).
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -223,20 +222,25 @@ export class FractalMusicEngine {
         currentInstructions = navInfo.currentPart.instrumentation;
     }
 
-    // #ЗАЧЕМ: Генеративный Императив (ПЛАН №742).
-    // #ЧТО: Мы гарантируем активацию всех слоев, которые должны играть по Блюпринту.
     const activeLayers = navInfo.currentPart.layers || {};
     Object.keys(activeLayers).forEach(layer => {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
-            // Если инструкций нет, используем дефолтный шанс 1.0 (Генеративный Императив)
             const rule = currentInstructions ? currentInstructions[part] : null;
             let effectiveChance = rule ? (rule.activationChance ?? 1.0) : 1.0;
             
             if (this.random.next() < effectiveChance) {
                 this.activatedParts.add(part);
                 const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
-                this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
+                
+                // #ЗАЧЕМ: Умные дефолты для Генеративного Императива.
+                let defaultInst = 'synth';
+                if (part === 'bass') defaultInst = 'bass_jazz_warm';
+                else if (part === 'melody') defaultInst = 'organ_soft_jazz';
+                else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
+                else if (part === 'harmony') defaultInst = 'violin';
+
+                this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
             }
         }
     });
@@ -249,7 +253,14 @@ export class FractalMusicEngine {
                 if (this.random.next() < effectiveChance) {
                     this.activatedParts.add(part);
                     const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
-                    this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500);
+                    
+                    let defaultInst = 'synth';
+                    if (part === 'bass') defaultInst = 'bass_jazz_warm';
+                    else if (part === 'melody') defaultInst = 'organ_soft_jazz';
+                    else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
+                    else if (part === 'harmony') defaultInst = 'violin';
+
+                    this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
                 }
             }
         });
