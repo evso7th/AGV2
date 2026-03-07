@@ -1,7 +1,6 @@
-
 /**
- * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №747): Универсальный Re-Lock. Наследие теперь всегда доминирует над локальной генерацией.
+ * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
+ * #ОБНОВЛЕНО (ПЛАН №755): Реализовано динамическое наследование BPM из ДНК доноров.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -115,9 +114,6 @@ const Scheduler = {
             cloudAxioms: this.cloudAxiomPool 
         };
 
-        const lockLog = anchorInfo.id ? ` | [Genetic Lock: ${anchorInfo.id.toUpperCase()}]` : ' | [Mode: LOCAL GENERATION]';
-        console.log(`%c${getTimestamp()} [Engine] Sowing Suite DNA: ${blueprint.name} (Seed: ${seed})${lockLog}`, 'color: #FFD700; font-weight:bold;');
-
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true);
         
@@ -181,10 +177,7 @@ const Scheduler = {
         this.cloudAxiomPool = axioms || [];
         const hasAxioms = this.cloudAxiomPool.length > 0;
         
-        // #ЗАЧЕМ: ПЛАН №747. Универсальный Re-Lock.
-        // #ЧТО: Если мы на Bar 0 и получили первые аксиомы (любые), принудительно перезагружаем движок.
         if (this.barCount === 0 && !hadAxioms && hasAxioms) {
-            console.log(`%c${getTimestamp()} [Sync] First Cloud DNA arrived. Forcing Genetic Initialization...`, 'color: #00FFFF; font-weight: bold;');
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
@@ -195,7 +188,6 @@ const Scheduler = {
         if (!this.isRunning || !fractalMusicEngine) return;
 
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
-             console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage & Purging History...`, 'color: #4ade80; font-weight: bold;');
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -209,6 +201,14 @@ const Scheduler = {
         } catch (e) {
             console.error('[Worker] Evolution Error:', e);
             return;
+        }
+
+        // #ЗАЧЕМ: Динамическое наследование темпа (ПЛАН №755).
+        // #ЧТО: Если Мозг нашел новый BPM в аксиоме, обновляем Планировщик и UI.
+        if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
+            console.log(`%c${getTimestamp()} [Tempo] Axiom requested tempo change: ${this.settings.bpm} -> ${payload.newBpm} BPM`, 'color: #00FFFF; font-weight: bold;');
+            this.settings.bpm = payload.newBpm;
+            self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
         if (payload.lickId && !payload.lickId.includes('Generative')) {
@@ -249,7 +249,7 @@ const Scheduler = {
             payload: {
                 events: payload.events,
                 instrumentHints: h,
-                barDuration: this.barDuration,
+                barDuration: (60 / this.settings.bpm) * 4,
                 barCount: this.barCount,
                 actualBpm: this.settings.bpm,
                 lickId: payload.lickId,

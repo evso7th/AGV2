@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -51,8 +50,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V28.0 — "Timbre Rotation".
- * #ЧТО: ПЛАН №752 — Реализована периодическая смена тембров в MAIN секциях.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V29.0 — "Kinetic Pulse".
+ * #ЧТО: ПЛАН №755 — Реализовано динамическое наследование BPM из ДНК доноров.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -188,7 +187,8 @@ export class FractalMusicEngine {
       mutationType?: string,
       activeAxioms?: any,
       narrative?: string,
-      dynasty?: string
+      dynasty?: string,
+      newBpm?: number 
   } {
     if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
@@ -204,8 +204,6 @@ export class FractalMusicEngine {
     let currentInstructions: Partial<Record<InstrumentPart, any>> | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // #ЗАЧЕМ: Timbre Rotation (ПЛАН №752).
-    // #ЧТО: Сбрасываем тембры каждые 8 тактов в MAIN частях для динамики.
     if (this.epoch % 8 === 0 && navInfo.currentPart.id.startsWith('MAIN')) {
         this.activeTimbres = {};
         this.activatedParts.clear();
@@ -286,14 +284,19 @@ export class FractalMusicEngine {
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
     this.previousChord = currentChord;
 
-    let result: { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string };
+    let result: { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number };
 
     if (this.config.genre !== 'blues' && this.ambientBrain) {
         result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.bluesBrain) {
-        result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
+        result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else {
         result = { events: createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch) };
+    }
+
+    // #ЗАЧЕМ: Динамическое обновление темпа в конфигурации.
+    if (result.newBpm !== undefined && result.newBpm !== this.config.tempo) {
+        this.config.tempo = result.newBpm;
     }
 
     this.lastEvents = [...result.events];
@@ -309,7 +312,8 @@ export class FractalMusicEngine {
         lickId: result.lickId,
         mutationType: result.mutationType,
         activeAxioms: result.activeAxioms,
-        narrative: result.narrative
+        narrative: result.narrative,
+        newBpm: result.newBpm
     };
   }
 

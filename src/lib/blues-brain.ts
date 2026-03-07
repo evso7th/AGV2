@@ -31,11 +31,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V200.0 — "The Comping Singularity".
- * #ОБНОВЛЕНО (ПЛАН №754): 
- * 1. Искоренено наслоение нескольких "аккомпаниаторов" в слое A.
- * 2. Внедрен "Ритмический Затвор" (Gating) — ноты больше не сливаются.
- * 3. Строгий лимит на 1 аксиому на 1 инструментальный слой.
+ * @fileOverview Blues Brain V201.0 — "The Kinetic Pulse".
+ * #ОБНОВЛЕНО (ПЛАН №755): 
+ * 1. Реализовано динамическое наследование BPM из ДНК доноров.
+ * 2. Теперь при выборе новой аксиомы Мозг сигнализирует о смене темпа.
  */
 
 const TICKS_PER_BAR = 12;
@@ -192,7 +191,7 @@ export class BluesBrain {
     navInfo: NavigationInfo,
     dna: SuiteDNA,
     hints: InstrumentHints
-  ): { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string } {
+  ): { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number } {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
@@ -210,11 +209,14 @@ export class BluesBrain {
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
+    let newBpm: number | undefined;
+
     if (isSoloistFree && !isSoloistResting) {
         if (this.random.next() < 0.45) { 
             this.soloistRestingUntilBar = epoch + 1;
         } else {
-            this.selectNextAxiom(navInfo, dna, epoch);
+            // #ЗАЧЕМ: Запрос нового темпа при выборе аксиомы.
+            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
     }
 
@@ -231,9 +233,9 @@ export class BluesBrain {
     const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
-    // --- 3. ACCOMPANIMENT & HARMONY (The Singularity Fix) ---
+    // --- 3. ACCOMPANIMENT & HARMONY ---
     const accompanimentEvents: FractalEvent[] = [];
-    const usedTargetLayers = new Set<string>(); // #ЗАЧЕМ: Предотвращение наслоения в одну партию.
+    const usedTargetLayers = new Set<string>();
 
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
@@ -243,7 +245,6 @@ export class BluesBrain {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
             usedTargetLayers.add('accompaniment');
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
-            // #ЗАЧЕМ: Мы проходим по аксиомам, но заполняем каждый слой СТРОГО один раз.
             this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = 'accompaniment';
@@ -251,11 +252,9 @@ export class BluesBrain {
                 if (role.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) targetType = 'harmony';
                 
-                // Если основной слой 'A' еще не занят, отдаем его этой аксиоме
                 if (targetType === 'accompaniment' && usedTargetLayers.has('accompaniment')) {
-                    // Если слой 'A' уже занят другим "аккомпаниатором", пробуем перекинуть в Гармонию
                     if (!usedTargetLayers.has('harmony')) targetType = 'harmony';
-                    else return; // Иначе игнорируем, чтобы не было "двух музыкантов"
+                    else return;
                 }
 
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
@@ -286,6 +285,7 @@ export class BluesBrain {
         events, 
         lickId: this.currentLickId, 
         mutationType: this.state.lastMutationType,
+        newBpm, // #ЧТО: Проброс нового темпа в Engine
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : this.currentLickId,
             ensemble: this.ensembleStatus,
@@ -309,7 +309,11 @@ export class BluesBrain {
       }
   }
 
-  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
+  /**
+   * #ЗАЧЕМ: Выбор новой аксиомы и определение её темпа.
+   * #ЧТО: Возвращает nativeBpm из метаданных облачной аксиомы.
+   */
+  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
       this.secondaryAxiom = [];
@@ -329,13 +333,13 @@ export class BluesBrain {
               const commonMoodFilter = MOOD_TO_COMMON[this.mood];
               const moodMatched = basePool.filter(ax => {
                   const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                  const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                  return (moodArr.includes(this.mood) || commonArr.includes(commonMoodFilter));
+                  const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                  return (moods.includes(this.mood) || commonArr.includes(commonMoodFilter));
               });
 
               const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
               const selected = finalPool[this.random.nextInt(finalPool.length)];
-              if (!selected) return;
+              if (!selected) return undefined;
 
               this.currentLickId = selected.id;
               this.currentTrackName = selected.compositionId; 
@@ -372,7 +376,9 @@ export class BluesBrain {
               this.currentAxiom = rawPhrase; 
               this.soloistBusyUntilBar = epoch + phraseBars;
               this.ensembleStatus = 'SIBLING';
-              return;
+              
+              // #ЗАЧЕМ: Возврат темпа донора.
+              return selected.nativeBpm || undefined;
           }
       }
 
@@ -383,6 +389,7 @@ export class BluesBrain {
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       this.currentAxiomMaxTick = 48;
       this.soloistBusyUntilBar = epoch + 4;
+      return undefined;
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
@@ -481,8 +488,6 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          // #ЗАЧЕМ: ПЛАН №754 — Тотальный ритмический затвор.
-          // #ЧТО: Даже короткие ноты теперь принудительно ограничиваются до 0.5 доли.
           const isLong = n.d >= 4; 
           
           if (isLong && (type === 'accompaniment' || type === 'harmony')) {
@@ -494,7 +499,7 @@ export class BluesBrain {
                           type: type,
                           note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + walker, 64),
                           time: tickInBar * TICK_TO_BEAT,
-                          duration: 0.5 * TICK_TO_BEAT, // #ЧТО: Жесткий короткий импульс
+                          duration: 0.5 * TICK_TO_BEAT, 
                           weight: 0.5, 
                           technique: 'hit',
                           dynamics: 'p',
@@ -508,7 +513,7 @@ export class BluesBrain {
                   type: type,
                   note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), 64),
                   time: (n.t - barOffset) * TICK_TO_BEAT,
-                  duration: 0.5 * TICK_TO_BEAT, // #ЧТО: Никаких длинных хвостов в партитуре
+                  duration: 0.5 * TICK_TO_BEAT, 
                   weight: 0.5,
                   technique: 'hit',
                   dynamics: 'p',

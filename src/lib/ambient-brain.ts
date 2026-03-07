@@ -1,10 +1,8 @@
-
 /**
- * @fileOverview Ambient Brain v36.0 — "Dynamic Textures".
- * #ОБНОВЛЕНО (ПЛАН №752): 
- * 1. Повышена частота Спарклов (0.6) и SFX (0.2 каждый такт).
- * 2. Harmony научилась играть гитарные аккорды (Guitar Chords).
- * 3. Все генеративные тайминги квантованы.
+ * @fileOverview Ambient Brain v37.0 — "The Kinetic Pulse".
+ * #ОБНОВЛЕНО (ПЛАН №755): 
+ * 1. Реализовано динамическое наследование BPM из ДНК доноров.
+ * 2. Теперь при выборе новой аксиомы Мозг сигнализирует о смене темпа.
  */
 
 import type { 
@@ -127,7 +125,7 @@ export class AmbientBrain {
         navInfo: NavigationInfo, 
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number } {
         
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
@@ -144,11 +142,14 @@ export class AmbientBrain {
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
         const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
+        let newBpm: number | undefined;
+
         if (isSoloistFree && !isSoloistResting) {
             if (this.random.next() < 0.45) {
                 this.soloistRestingUntilBar = epoch + 2;
             } else {
-                this.selectNextAxiom(navInfo, dna, epoch);
+                // #ЗАЧЕМ: Запрос темпа донора.
+                newBpm = this.selectNextAxiom(navInfo, dna, epoch);
             }
         }
 
@@ -202,7 +203,7 @@ export class AmbientBrain {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
 
-        // --- 5. TEXTURES (Boosted Frequency) ---
+        // --- 5. TEXTURES ---
         if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord, isPositive));
         }
@@ -215,6 +216,7 @@ export class AmbientBrain {
             tension: localTension, 
             beautyScore: 0.5,
             mutationType: this.currentMutationType,
+            newBpm, // #ЧТО: Проброс темпа
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
                 ensemble: this.ensembleStatus,
@@ -225,7 +227,11 @@ export class AmbientBrain {
         };
     }
 
-    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number) {
+    /**
+     * #ЗАЧЕМ: Выбор новой аксиомы и определение её темпа.
+     * #ЧТО: Возвращает nativeBpm из метаданных облачной аксиомы.
+     */
+    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = []; 
         let cloudAxiom: any = null;
         const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
@@ -304,10 +310,14 @@ export class AmbientBrain {
             if (rawBass) this.currentBassTheme = { phrase: rawBass, startBar: epoch, endBar: epoch + phraseBars };
             this.currentAccompAxioms = rawAccomps.map((p, idx) => ({ phrase: p, role: accompSiblings[idx].role, endBar: epoch + phraseBars }));
             this.ensembleStatus = 'SIBLING';
+            
+            // #ЗАЧЕМ: Возвращаем темп донора.
+            return cloudAxiom.nativeBpm || undefined;
         } else {
             this.ensembleStatus = 'ADAPTIVE';
             this.currentTheme = null;
             this.currentBassTheme = null;
+            return undefined;
         }
     }
 
@@ -424,7 +434,6 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         
-        // #ЗАЧЕМ: Harmony Guitar Chords (ПЛАН №752).
         if (timbre === 'guitarChords') {
             const t1 = 0;
             const t2 = 6;
@@ -556,8 +565,8 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: 'bass',
             note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset) * TICK_TO_BEAT,
-            duration: n.d * TICK_TO_BEAT,
+            time: (n.t - barOffset) * TICK_TO_BEAT, 
+            duration: n.d * TICK_TO_BEAT, 
             weight: 0.8,
             technique: 'drone',
             dynamics: 'p',
