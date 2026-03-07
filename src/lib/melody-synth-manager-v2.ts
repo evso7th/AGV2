@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №711 — Восстановлены транзиенты (Ear-Trick) для реалистичности атак.
+ * #ЧТО: ПЛАН №764 — Внедрена специфическая калибровка громкости для Органа в роли Мелодии.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -130,9 +130,12 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: "Обман слуха" восстановлен (ПЛАН №711).
-        // #ЧТО: Сэмплированные транзиенты снова накладываются на синтезатор для реализма атаки.
-        if (this.partName === 'melody' && (this.activePresetName.startsWith('guitar') || this.activePresetName === 'synth')) {
+        // #ЗАЧЕМ: Умное управление балансом (ПЛАН №764).
+        // Если орган играет мелодию, снижаем его громкость в 2 раза.
+        const volumeMultiplier = (this.partName === 'melody' && currentActive.includes('organ')) ? 0.5 : 1.0;
+
+        // #ЗАЧЕМ: "Обман слуха" восстановлен.
+        if (this.partName === 'melody' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
@@ -143,7 +146,7 @@ export class MelodySynthManagerV2 {
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity * volumeMultiplier, note.duration);
             }
         });
     }

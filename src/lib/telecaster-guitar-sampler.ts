@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -36,9 +37,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
- * #ЧТО: 1. ПЛАН №640 — Гейн преампа снижен до 0.75 для устранения "Пляммм".
- *       2. Внедрен isTransientMode для извлечения "удара".
- *       3. ПЛАН №617: Удален избыточный 1.5x множитель для транзиентов.
+ * #ЧТО: 1. ПЛАН №764 — Гейн преампа поднят до 1.5 для доминирующего соло.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -53,8 +52,8 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Снижение гейна для предотвращения клиппинга при суммировании с пианино.
-        this.preamp.gain.value = 0.75;
+        // #ЗАЧЕМ: Удвоение громкости телекастера для чистого и сильного соло.
+        this.preamp.gain.value = 1.5;
         this.preamp.connect(this.destination);
     }
 
