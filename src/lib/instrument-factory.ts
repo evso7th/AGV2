@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.2 — "Eternal Tail Protocol".
- * #ЧТО: ПЛАН №748 — Исправлена преждевременная очистка голосов. Хвосты больше не режутся.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.5 — "Universal Eternal Tail".
+ * #ЧТО: ПЛАН №749 — Протокол сохранения хвостов теперь един для всех жанров и движков.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -227,16 +227,16 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
 };
 
 /**
- * #ЗАЧЕМ: Гарантия естественного затухания.
- * #ЧТО: Возвращает время, когда звук гарантированно затихнет (3 * константа релиза).
+ * #ЗАЧЕМ: Гарантия естественного затухания (ПЛАН №749).
+ * #ЧТО: Возвращает время, когда звук гарантированно затихнет (3.5 * константа релиза).
  */
 const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number, r: number): number => {
     const release = isFinite(r) ? Math.max(r, 0.02) : 0.3;
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     voiceState.node.gain.cancelScheduledValues(now);
-    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
-    return now + (release * 2.5); // Вернуть время затухания
+    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 4, 0.001));
+    return now + (release * 3.5); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -288,10 +288,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
-            // #ЗАЧЕМ: Исправление преждевременной очистки (ПЛАН №748).
-            // #ЧТО: Таймер теперь учитывает Scheduling Delay и полный хвост.
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 3) + 5; 
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 5; 
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -360,7 +358,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 3) + 5;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 5;
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -422,7 +420,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 3) + 5;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 5;
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -496,17 +494,17 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             activeVoiceRecords.add(record);
 
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
-            const stopTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 3) + 5;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 5;
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
                 deepCleanup(record);
             }, totalLifeInSec * 1000);
 
-            osc.stop(stopTime + 0.5); 
+            osc.stop(finalTime + 0.5); 
         },
         allNotesOff: () => { 
             activeVoiceRecords.forEach((v) => deepCleanup(v)); 
