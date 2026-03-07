@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.5 — "Tempo Inheritance".
- * #ЗАЧЕМ: Реализация ПЛАНА №732 — Наследование темпа из Heritage DNA.
+ * @fileOverview Universal Music Theory Utilities V2.6 — "Melodic Wanderer".
+ * #ЗАЧЕМ: Реализация ПЛАНА №751 — Добавлена функция детерминированной прогулки по гамме.
  */
 
 import type { 
@@ -38,6 +38,16 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Вычисляет "гуляющую" ступень для предотвращения зудения на одной ноте.
+ * #ЧТО: Возвращает смещение в полутонах (0, 7, 9, 12) на основе фрактального индекса.
+ */
+export function getWalkingDegree(epoch: number, seed: number): number {
+    const steps = [0, 7, 9, 12, 7, 0, 14, 0]; // R, 5, 6, Oct, 5, R, 9, R
+    const idx = calculateMusiNum(epoch, 3, seed, steps.length);
+    return steps[idx];
+}
 
 /**
  * #ЗАЧЕМ: Безопасный перевод полутонов в ступень (Mutation Helper).
