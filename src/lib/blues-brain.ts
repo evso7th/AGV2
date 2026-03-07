@@ -32,8 +32,10 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V201.1 — "Import Fix".
- * #ОБНОВЛЕНО (ПЛАН №755.1): Исправлен импорт BLUES_GUITAR_RIFFS.
+ * @fileOverview Blues Brain V202.0 — "Imperial Elegance".
+ * #ОБНОВЛЕНО (ПЛАН №757): 
+ * 1. Ликвидирован эффект "дятла" (дробление [0, 6] вместо [0, 4, 8]).
+ * 2. Правило 90/10: Гармония теперь — это гитара. Скрипки только для пиков напряжения.
  */
 
 const TICKS_PER_BAR = 12;
@@ -243,18 +245,15 @@ export class BluesBrain {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
             usedTargetLayers.add('accompaniment');
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
-            this.currentAccompAxioms.forEach((ax) => {
-                const role = ax.role.toLowerCase();
-                let targetType: InstrumentPart = 'accompaniment';
-                
-                if (role.includes('piano')) targetType = 'pianoAccompaniment';
-                else if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) targetType = 'harmony';
-                
-                if (targetType === 'accompaniment' && usedTargetLayers.has('accompaniment')) {
-                    if (!usedTargetLayers.has('harmony')) targetType = 'harmony';
-                    else return;
-                }
+            // COMPING SINGULARITY: Только одна аксиома в слой A
+            const primaryAccomp = this.currentAccompAxioms[0];
+            accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, primaryAccomp.phrase, 'accompaniment', dna, tension));
+            usedTargetLayers.add('accompaniment');
 
+            // Остальные аккомпанементы распределяем в другие слои
+            this.currentAccompAxioms.slice(1).forEach((ax, idx) => {
+                const role = ax.role.toLowerCase();
+                let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : 'harmony';
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
                     accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna, tension));
                     usedTargetLayers.add(targetType);
@@ -273,8 +272,10 @@ export class BluesBrain {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
     
+    // #ЗАЧЕМ: Harmony Rule 90/10. Если нет ДНК, играем гитарой. Скрипки — только акцент.
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        events.push(...this.renderDerivativeHarmony(currentChord, epoch));
+        const useViolin = tension > 0.88 || tension < 0.15;
+        events.push(...this.renderDerivativeHarmony(currentChord, epoch, useViolin ? 'violin' : 'guitarChords'));
     }
 
     events.push(...melodyEvents);
@@ -288,7 +289,8 @@ export class BluesBrain {
             melody: isSoloistResting ? 'Breath' : this.currentLickId,
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling' : 'Rhythmic',
-            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active' : 'none')
+            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active' : 'none'),
+            harmony: usedTargetLayers.has('harmony') ? 'DNA' : (tension > 0.88 || tension < 0.15 ? 'Violin Accent' : 'Guitar Body')
         },
         narrative: `Blues Narrative: ${this.currentTrackName}`
     };
@@ -412,12 +414,12 @@ export class BluesBrain {
       bassEvents.slice(0, 2).forEach(bass => {
           events.push({
               ...bass, type: 'accompaniment', note: type === 'strict' ? bass.note : bass.note + 12,
-              weight: 0.5, technique: 'hit', phrasing: 'staccato', duration: 0.5 * TICK_TO_BEAT
+              weight: 0.45, technique: 'hit', phrasing: 'staccato', duration: 0.4 * TICK_TO_BEAT
           });
           events.push({
               type: 'accompaniment', note: (bass.note || 0) + 24 + third,
-              time: bass.time + (1 * TICK_TO_BEAT), duration: 0.3 * TICK_TO_BEAT,
-              weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              time: bass.time + (1.5 * TICK_TO_BEAT), duration: 0.3 * TICK_TO_BEAT,
+              weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
       return events;
@@ -481,23 +483,25 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
+          // #ЗАЧЕМ: Устранение "дятла". Длинные ноты дробятся только на 2 удара (0, 6).
           const isLong = n.d >= 4; 
           
           if (isLong && (type === 'accompaniment' || type === 'harmony')) {
-              [0, 4, 8].forEach((p, idx) => {
+              [0, 6].forEach((p, idx) => {
                   const tickInBar = (n.t - barOffset) + p;
                   if (tickInBar < TICKS_PER_BAR) {
+                      // Walking Pitch: второй удар берется на квинту выше
                       const walker = idx === 1 ? 7 : 0; 
                       events.push({
                           type: type,
                           note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + walker, 64),
                           time: tickInBar * TICK_TO_BEAT,
-                          duration: 0.5 * TICK_TO_BEAT, 
-                          weight: 0.5, 
+                          duration: 0.4 * TICK_TO_BEAT, // Сокращено до 0.4 для воздуха
+                          weight: 0.45, 
                           technique: 'hit',
                           dynamics: 'p',
                           phrasing: 'staccato',
-                          params: { filterCutoff: 1200 + (tension * 1000) }
+                          params: { filterCutoff: 1000 + (tension * 1200) }
                       });
                   }
               });
@@ -506,8 +510,8 @@ export class BluesBrain {
                   type: type,
                   note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), 64),
                   time: (n.t - barOffset) * TICK_TO_BEAT,
-                  duration: 0.5 * TICK_TO_BEAT, 
-                  weight: 0.5,
+                  duration: Math.min(n.d, 6) * TICK_TO_BEAT, // Ограничение удержания
+                  weight: 0.45,
                   technique: 'hit',
                   dynamics: 'p',
                   phrasing: 'staccato'
@@ -519,27 +523,51 @@ export class BluesBrain {
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12 + getWalkingDegree(epoch, this.seed);
-    return [0, 4, 8].map(t => ({
-        type: 'accompaniment', note: root, time: t * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+    return [0, 6].map(t => ({
+        type: 'accompaniment', note: root, time: t * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }));
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
       const root = accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12);
-      const shift = getWalkingDegree(epoch, this.seed + 100);
+      // Пианист гуляет по "вкусным" ступеням (9, 11, 13)
+      const degrees = [14, 17, 21, 12, 14, 0];
+      const shift = degrees[calculateMusiNum(epoch, 5, this.seed + 100, degrees.length)];
+      
       return [{
           type: 'pianoAccompaniment', note: Math.min(root + shift, 72),
-          time: (this.random.nextInt(4) * 3) * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, 
-          weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          time: (this.random.nextInt(2) * 6) * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, 
+          weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
       }];
   }
 
-  private renderDerivativeHarmony(currentChord: GhostChord, epoch: number): FractalEvent[] {
+  private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
       const root = currentChord.rootNote + 12 + getWalkingDegree(epoch, this.seed + 50);
-      return [0, 6].map(t => ({ 
-          type: 'harmony', note: Math.min(root, 64), 
-          time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, 
-          weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-      }));
+      
+      if (timbre === 'guitarChords') {
+          return [0, 6].map(t => ({ 
+              type: 'harmony', 
+              note: Math.min(root, 64), 
+              time: t * TICK_TO_BEAT, 
+              duration: 0.4 * TICK_TO_BEAT, 
+              weight: 0.35, 
+              technique: 'hit', 
+              dynamics: 'p', 
+              phrasing: 'staccato',
+              chordName: currentChord.chordType === 'minor' ? 'Am' : 'A'
+          }));
+      }
+
+      // Скрипка: более протяжный, но все равно ограниченный звук
+      return [{
+          type: 'harmony',
+          note: Math.min(root + 12, 72),
+          time: 0,
+          duration: 4.0, // Скрипки могут тянуться до конца такта
+          weight: 0.4,
+          technique: 'swell',
+          dynamics: 'p',
+          phrasing: 'legato'
+      }];
   }
 }

@@ -50,8 +50,7 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V29.0 — "Kinetic Pulse".
- * #ЧТО: ПЛАН №755 — Реализовано динамическое наследование BPM из ДНК доноров.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V30.0 — "Imperial Narrative Enforcement".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -173,6 +172,7 @@ export class FractalMusicEngine {
         this.bluesBrain = null;
     }
 
+    // #ЗАЧЕМ: Усиленная синхронизация BPM.
     this.config.tempo = this.suiteDNA.baseTempo;
     this.isInitialized = true;
   }
@@ -242,7 +242,7 @@ export class FractalMusicEngine {
                 if (part === 'bass') defaultInst = 'bass_jazz_warm';
                 else if (part === 'melody') defaultInst = 'organ_soft_jazz';
                 else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
-                else if (part === 'harmony') defaultInst = 'violin';
+                else if (part === 'harmony') defaultInst = (this.config.genre === 'blues' ? 'guitarChords' : 'violin');
 
                 this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
             }
@@ -262,7 +262,7 @@ export class FractalMusicEngine {
                     if (part === 'bass') defaultInst = 'bass_jazz_warm';
                     else if (part === 'melody') defaultInst = 'organ_soft_jazz';
                     else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
-                    else if (part === 'harmony') defaultInst = 'violin';
+                    else if (part === 'harmony') defaultInst = (this.config.genre === 'blues' ? 'guitarChords' : 'violin');
 
                     this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
                 }

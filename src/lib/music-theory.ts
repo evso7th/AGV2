@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.6 — "Melodic Wanderer".
- * #ЗАЧЕМ: Реализация ПЛАНА №751 — Добавлена функция детерминированной прогулки по гамме.
+ * @fileOverview Universal Music Theory Utilities V2.7 — "Imperial Pulse".
+ * #ЗАЧЕМ: Реализация ПЛАНА №757 — Уточнение дефолтных темпов для предотвращения "залипания" на 80.
  */
 
 import type { 
@@ -41,17 +41,13 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Вычисляет "гуляющую" ступень для предотвращения зудения на одной ноте.
- * #ЧТО: Возвращает смещение в полутонах (0, 7, 9, 12) на основе фрактального индекса.
  */
 export function getWalkingDegree(epoch: number, seed: number): number {
-    const steps = [0, 7, 9, 12, 7, 0, 14, 0]; // R, 5, 6, Oct, 5, R, 9, R
+    const steps = [0, 7, 9, 12, 7, 0, 14, 0]; 
     const idx = calculateMusiNum(epoch, 3, seed, steps.length);
     return steps[idx];
 }
 
-/**
- * #ЗАЧЕМ: Безопасный перевод полутонов в ступень (Mutation Helper).
- */
 export function safeSemitoneToDegree(s: number): string {
     const norm = ((s % 12) + 12) % 12;
     const base = SEMITONE_TO_DEGREE[norm] || 'R';
@@ -59,63 +55,10 @@ export function safeSemitoneToDegree(s: number): string {
     return base;
 }
 
-// --- MUTATION FUNCTIONS ---
-
-/**
- * #ЗАЧЕМ: Зеркальное отражение мелодии (Инверсия).
- */
-export function invertPhrase(phrase: any[]): any[] {
-    if (phrase.length === 0) return [];
-    const firstSemitone = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
-    return phrase.map(n => {
-        const current = DEGREE_TO_SEMITONE[n.deg] || 0;
-        const diff = current - firstSemitone;
-        const inverted = firstSemitone - diff;
-        return { ...n, deg: safeSemitoneToDegree(inverted) };
-    });
-}
-
-/**
- * #ЗАЧЕМ: Проигрывание фразы задом наперед (Реверс).
- */
-export function retrogradePhrase(phrase: any[]): any[] {
-    if (phrase.length === 0) return [];
-    const maxT = Math.max(...phrase.map(n => n.t));
-    return phrase.map(n => ({
-        ...n,
-        t: maxT - n.t
-    })).sort((a, b) => a.t - b.t);
-}
-
-/**
- * #ЗАЧЕМ: Микро-ритмическое "очеловечивание" (Джиттер).
- */
-export function applyRhythmicJitter(phrase: any[], amount: number = 1): any[] {
-    return phrase.map(n => ({
-        ...n,
-        t: Math.max(0, n.t + (Math.random() > 0.5 ? amount : -amount))
-    }));
-}
-
-// --- EXISTING UTILS ---
-
 const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
-    ambient: [
-        [0.6, 0.2, 0.1, 0.1], 
-        [0.4, 0.4, 0.1, 0.1], 
-        [0.5, 0.1, 0.3, 0.1], 
-        [0.4, 0.2, 0.2, 0.2]  
-    ],
-    trance: [
-        [0.7, 0.1, 0.2],      
-        [0.3, 0.5, 0.2],      
-        [0.4, 0.1, 0.5]       
-    ],
-    blues: [
-        [0.5, 0.4, 0.1],      
-        [0.6, 0.3, 0.1],      
-        [0.7, 0.1, 0.2]       
-    ]
+    ambient: [[0.6, 0.2, 0.1, 0.1], [0.4, 0.4, 0.1, 0.1], [0.5, 0.1, 0.3, 0.1], [0.4, 0.2, 0.2, 0.2]],
+    trance: [[0.7, 0.1, 0.2], [0.3, 0.5, 0.2], [0.4, 0.1, 0.5]],
+    blues: [[0.5, 0.4, 0.1], [0.6, 0.3, 0.1], [0.7, 0.1, 0.2]]
 };
 
 const GENRE_STATES: Record<string, number[]> = {
@@ -129,8 +72,7 @@ export function decompressCompactPhrase(compact: number[]): any[] {
     if (!compact) return [];
     for (let i = 0; i < compact.length; i += 4) {
         result.push({
-            t: compact[i],
-            d: compact[i+1],
+            t: compact[i], d: compact[i+1],
             deg: DEGREE_KEYS[compact[i+2]] || 'R',
             tech: TECHNIQUE_KEYS[compact[i+3]] || 'pick'
         });
@@ -159,48 +101,16 @@ export function repairLegacyPhrase(compact: number[]): number[] {
 
 export function normalizePhraseGroup(phrases: any[][]): void {
     let minT = Infinity;
-    phrases.forEach(p => {
-        p.forEach(n => {
-            if (n.t < minT) minT = n.t;
-        });
-    });
-    
+    phrases.forEach(p => p.forEach(n => { if (n.t < minT) minT = n.t; }));
     if (minT !== Infinity && minT > 0) {
-        phrases.forEach(p => {
-            p.forEach(n => { n.t -= minT; });
-        });
+        phrases.forEach(p => p.forEach(n => { n.t -= minT; }));
     }
-}
-
-export function stretchToNarrativeLength(phrase: any[], targetTicks: number, random: any): any[] {
-    if (phrase.length === 0) return [];
-    const currentLength = Math.max(...phrase.map(n => n.t + n.d), 0) || 12;
-    if (currentLength >= targetTicks) return phrase;
-    const iterations = Math.ceil(targetTicks / currentLength);
-    const result = [];
-    for (let i = 0; i < iterations; i++) {
-        const offset = i * currentLength;
-        const variant = phrase.map(n => ({
-            ...n,
-            t: n.t + offset,
-            weight: 0.8,
-            timeJitter: 0
-        }));
-        result.push(...variant);
-    }
-    return result.filter(n => n.t < targetTicks);
 }
 
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
     HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
     MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
     VOID: { fog: 0.9, depth: 0.8, reg: 0 }
-};
-
-export const LIGHT_ATLAS: Record<string, { fog: number, depth: number, bright: number }> = {
-    PRISM: { fog: 0.1, depth: 0.4, bright: 0.8 },
-    GLOW: { fog: 0.4, depth: 0.6, bright: 0.5 },
-    DAZZLE: { fog: 0.05, depth: 0.9, bright: 1.0 }
 };
 
 export function getScaleForMood(mood: Mood, key: number = 60): number[] {
@@ -289,10 +199,6 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     return track;
 }
 
-/**
- * #ЗАЧЕМ: Генерация ДНК сюиты V3.0 — "Genetic Synchronization".
- * #ЧТО: ПЛАН №732 — Реализовано наследование темпа из Облачного Наследия.
- */
 export function generateSuiteDNA(
     totalBars: number, 
     mood: Mood, 
@@ -317,27 +223,23 @@ export function generateSuiteDNA(
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
     }
 
-    let seedLickId: string | undefined;
     let partLickMap: Map<string, string> = new Map();
 
     if (genre === 'blues') {
         const dynasty = getDynastyForMood(mood, finalSeed);
         let pool: string[] = [];
-        
         if (activeAnchorId && cloudAxioms) {
             const normalizedAnchor = activeAnchorId.toLowerCase().replace(/[^a-z0-9]/g, '');
             pool = cloudAxioms
                 .filter(ax => ax.role === 'melody' && (ax.compositionId || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedAnchor)
                 .map(ax => ax.id);
         }
-
         if (pool.length === 0) {
             pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
                 BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
             );
         }
         const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
-        seedLickId = finalPool[calculateMusiNum(finalSeed, 13, 0, finalPool.length)];
         blueprintParts.forEach((part: any, i: number) => {
             const partLick = finalPool[(calculateMusiNum(finalSeed, 17, i * 7, finalPool.length))];
             partLickMap.set(part.id, partLick);
@@ -347,9 +249,6 @@ export function generateSuiteDNA(
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
     const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
 
-    // #ЗАЧЕМ: Наследование темпа из Облачного Наследия.
-    // #ЧТО: Если есть активный якорь, берем BPM прямо из него. 
-    //       Иначе выбираем случайный "лидерский" BPM из пула подходящих аксиом.
     let inheritedBpm: number | null = null;
     if (cloudAxioms && cloudAxioms.length > 0) {
         const normalizeStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -358,7 +257,6 @@ export function generateSuiteDNA(
             const anchorAxiom = cloudAxioms.find(ax => normalizeStr(ax.compositionId) === target && ax.nativeBpm);
             if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
         } else {
-            // Пытаемся найти характерный темп для жанра/настроения в облаке
             const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);
             if (leaders.length > 0) {
                 const picked = leaders[calculateMusiNum(finalSeed, 29, 0, leaders.length)];
@@ -372,9 +270,14 @@ export function generateSuiteDNA(
         baseTempo = inheritedBpm;
     } else if (bpmConfig) {
         const [min, max] = bpmConfig.range;
-        const rangeWidth = max - min;
-        const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * rangeWidth;
+        const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * (max - min);
         baseTempo = Math.round((min + deterministicOffset) * bpmConfig.modifier);
+    } else {
+        // #ЗАЧЕМ: Предотвращение дефолтного застревания на 80.
+        const moodTempos: Record<string, number> = {
+            melancholic: 64, dark: 60, anxious: 88, joyful: 100, enthusiastic: 110, calm: 54, dreamy: 58, contemplative: 72, epic: 105
+        };
+        baseTempo = moodTempos[mood] || 72;
     }
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
@@ -382,7 +285,6 @@ export function generateSuiteDNA(
     return { 
         harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', 
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
-        seedLickId, partLickMap, sessionHistory,
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
         cloudAxioms, activeAnchorId,
         activeAnchorRoot: activeAnchorRoot || null 

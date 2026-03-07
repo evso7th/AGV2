@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V16.0 — "AI Arbiter Protocol".
- * #ЧТО: ПЛАН №734 — Реализован AI Arbiter для автоматического сохранения высокорезонансных сессий.
+ * #ЗАЧЕМ: Audio Engine Context V17.0 — "Imperial Balance".
+ * #ЧТО: ПЛАН №757 — Уточнение уровней громкости и баланса ансамбля.
  */
 'use client';
 
@@ -26,14 +25,14 @@ import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.30, 
-  melody: 0.70, 
-  accompaniment: 0.55, 
-  drums: 0.65, 
-  sparkles: 0.40, 
-  sfx: 0.50, 
-  harmony: 1.0, 
-  pianoAccompaniment: 0.45,
+  bass: 0.35, 
+  melody: 0.65, 
+  accompaniment: 0.40, // Снижено с 0.55 для устранения "лупежки"
+  drums: 0.60, 
+  sparkles: 0.45, 
+  sfx: 0.55, 
+  harmony: 0.85, 
+  pianoAccompaniment: 0.40,
 };
 
 interface AudioEngineContextType {
@@ -71,7 +70,7 @@ export const useAudioEngine = () => {
   return context;
 };
 
-export const AudioEngineProvider = ({ children }: { children: React.SetStateAction<React.ReactNode> }) => {
+export const AudioEngineProvider = ({ children }: { children: React.SetAction<React.ReactNode> }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
@@ -119,7 +118,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
     if (!db || !workerRef.current) return;
-    
     try {
       let axiomsQuery;
       if (manualFilter.length > 0) {
@@ -127,21 +125,16 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
       } else {
           axiomsQuery = query(collection(db, 'heritage_axioms'), where('genre', 'array-contains', genre), limit(500));
       }
-
       const snapshot = await getDocs(axiomsQuery);
       let axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      
       if (manualFilter.length === 0) {
           axioms = axioms.filter((ax: any) => {
               const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
               return moods.includes(mood);
           });
       }
-
       workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-    } catch (e) {
-      console.error('[Sync] Contextual fetch failed:', e);
-    }
+    } catch (e) { console.error('[Sync] Contextual fetch failed:', e); }
   }, [db]);
 
   const refreshCloudAxioms = useCallback(async () => {
@@ -168,7 +161,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
-    
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
@@ -182,27 +174,20 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
     if (isInitialized || initializationInFlightRef.current) return true;
     initializationInFlightRef.current = true;
     setIsInitializing(true);
-
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
-
-        if (auth && !auth.currentUser) {
-            initiateAnonymousSignIn(auth);
-        }
-
+        if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
             speakerGainNodeRef.current = context.createGain();
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
-            
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
-
         const parts = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'];
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
@@ -210,13 +195,11 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 gainNodesRef.current[p].connect(masterGainNodeRef.current!);
             }
         });
-
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
         cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
-        
         accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!);
         melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
         bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
@@ -224,14 +207,12 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
-
         await Promise.all([
             drumMachineRef.current.init(), blackGuitarSamplerRef.current.init(), telecasterSamplerRef.current.init(), 
             darkTelecasterSamplerRef.current.init(), cs80SamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), harmonyManagerRef.current.init(), 
             pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
         ]);
-
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (e) => {
@@ -239,34 +220,23 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-
-                    // #ЗАЧЕМ: Реализация AI Arbiter (ПЛАН №734).
                     if (payload.beautyScore > 0.8 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        console.log(`%c[Arbiter] High resonance detected (${payload.beautyScore.toFixed(2)}). Archiving...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, {
-                            seed: payload.seed,
-                            mood: settingsRef.current.mood,
-                            genre: settingsRef.current.genre,
-                            density: settingsRef.current.density,
-                            bpm: payload.actualBpm || settingsRef.current.bpm,
-                            instrumentSettings: settingsRef.current.instrumentSettings,
-                            isArbiterFind: true
+                            seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,
+                            density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm,
+                            instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true
                         });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
-
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
-                } else if (type === 'sfx' && payload) {
-                    sfxSynthManagerRef.current?.trigger([payload], nextBarTimeRef.current, 75);
                 } else if (type === 'error') {
                     toast({ variant: "destructive", title: "Worker Error", description: error });
                 }
             };
         }
-
         await refreshCloudAxioms();
         setIsInitialized(true);
         return true;
@@ -285,12 +255,9 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         setIsPlaying: async (playing) => {
             const context = audioContextRef.current;
             if (!context || !workerRef.current) return;
-            
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
-                if (settingsRef.current) {
-                    await syncContextDNA(settingsRef.current.genre, settingsRef.current.mood, settingsRef.current.selectedCompositionIds);
-                }
+                if (settingsRef.current) await syncContextDNA(settingsRef.current.genre, settingsRef.current.mood, settingsRef.current.selectedCompositionIds);
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
                 stopAllSounds(); 
@@ -307,9 +274,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
             if (workerRef.current) {
                 settingsRef.current = { ...settingsRef.current, ...s } as any;
                 workerRef.current.postMessage({ command: 'update_settings', data: s });
-                if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) {
-                    syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds);
-                }
+                if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds);
             }
         },
         refreshCloudAxioms,
