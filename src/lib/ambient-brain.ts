@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v27.0 — "The Sonic Cube Protocol".
- * #ОБНОВЛЕНО (ПЛАН №736): 
- * 1. Обязательное использование расширенной перкуссии (perc-*, tube, bongo).
- * 2. Реформа renderTexturalPercussion: четкое разделение на Барабаны, Железо и Перкуссию.
+ * @fileOverview Ambient Brain v28.0 — "The Sonic Cube Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №737): 
+ * 1. Внедрен Luminous Peaks Protocol: активация гитары Shine On при низком тумане (< 0.35).
+ * 2. Улучшена динамика соло в условиях "Ясного неба".
  */
 
 import type { 
@@ -155,6 +155,7 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
+        // #ЗАЧЕМ: Пограничные пассажи. Красивые медленные линии на стыках частей.
         if (navInfo.isPartTransition && hints.melody && this.random.next() < 0.7) {
             events.push(...this.renderBeautifulPassage(currentChord, localTension));
         }
@@ -177,6 +178,7 @@ export class AmbientBrain {
         }
 
         // --- 2. BASS ---
+        // #ЗАЧЕМ: Приоритет дронов для амбиента. Не более одной смены ноты в такт.
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(currentChord, epoch, localTension, dna)));
         } else if (hints.bass) {
@@ -193,7 +195,6 @@ export class AmbientBrain {
         }
 
         // --- 4. DRUMS & PERCUSSION ---
-        // #ЗАЧЕМ: Реформа ударных (ПЛАН №736). Барабаны, Железо и обязательная Перкуссия.
         if (hints.drums) {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
@@ -306,10 +307,9 @@ export class AmbientBrain {
 
     private renderTexturalPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const moodCategory = MOOD_TO_COMMON[this.mood] || 'neutral';
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        // --- 1. БАРАБАНЫ (Drums) ---
+        // --- 1. БАРАБАНЫ ---
         if (this.random.next() < 0.25) {
             const kick = kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft';
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
@@ -320,7 +320,7 @@ export class AmbientBrain {
             events.push({ type: tom as any, note: 40, time: 1.5 + this.random.next(), duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // --- 2. ЖЕЛЕЗО (Iron) ---
+        // --- 2. ЖЕЛЕЗО ---
         if (this.random.next() < 0.6) {
             [0, 1, 2, 3].forEach(beat => {
                 if (this.random.next() < 0.3) {
@@ -332,24 +332,14 @@ export class AmbientBrain {
             events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         }
 
-        // --- 3. ПЕРКУССИЯ (Percussion) ---
-        // #ЗАЧЕМ: Обязательное использование расширенной перкуссии (ПЛАН №736).
+        // --- 3. ПЕРКУССИЯ ---
         if (this.random.next() < 0.5) {
             const percPool = kit.perc || [];
             if (percPool.length > 0) {
                 const count = 1 + this.random.nextInt(2);
                 for(let i=0; i<count; i++) {
                     const perc = percPool[this.random.nextInt(percPool.length)];
-                    events.push({ 
-                        type: perc as any, 
-                        note: 48, 
-                        time: this.random.next() * 3.5, 
-                        duration: 1.0, 
-                        weight: 0.45, 
-                        technique: 'hit', 
-                        dynamics: 'p', 
-                        phrasing: 'staccato' 
-                    });
+                    events.push({ type: perc as any, note: 48, time: this.random.next() * 3.5, duration: 1.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
                 }
             }
         }
@@ -382,8 +372,9 @@ export class AmbientBrain {
         const hints: InstrumentHints = { summonProgress: {} };
         const part = navInfo.currentPart;
         
-        const organChance = 0.05; 
-        const useOrgan = this.random.next() < organChance;
+        // #ЗАЧЕМ: Luminous Peaks Protocol.
+        // #ЧТО: Если туман рассеивается (< 0.35), активируем Shine On гитару как "луч света".
+        const isClearSky = this.fog < 0.35;
 
         Object.entries(part.instrumentation || {}).forEach(([partStr, rule]: [any, any]) => {
             const p = partStr as InstrumentPart;
@@ -391,7 +382,11 @@ export class AmbientBrain {
                 if (this.random.next() < (rule.activationChance ?? 1.0)) {
                     this.activatedParts.add(p);
                     let options = rule.instrumentOptions || rule.v2Options || [];
-                    if (!useOrgan) options = options.filter((o: any) => o.name !== 'organ');
+                    
+                    if (p === 'melody' && isClearSky) {
+                        options = [{ name: 'guitar_shineOn', weight: 0.8 }, ...options];
+                    }
+
                     this.activeTimbres[p] = pickWeightedDeterministic(options, this.seed, epoch, 500);
                 }
             }
@@ -423,7 +418,8 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const barInAxiom = epoch % 4; 
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+        const barInAxiom = epoch % barCountInPhrase; 
         const barOffset = barInAxiom * 12;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({
@@ -561,9 +557,3 @@ export class AmbientBrain {
         this.solistCutoff = 1500 + (tension * 2500);
     }
 }
-
-const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
-  epic: 'light', joyful: 'light', enthusiastic: 'light',
-  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
-  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
-};
