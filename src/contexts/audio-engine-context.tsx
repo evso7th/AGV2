@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V15.1 — "BPM Synchronization".
- * #ЧТО: ПЛАН №732 — Добавлен проброс события BPM_SYNC из Воркера в UI.
+ * #ЗАЧЕМ: Audio Engine Context V16.0 — "AI Arbiter Protocol".
+ * #ЧТО: ПЛАН №734 — Реализован AI Arbiter для автоматического сохранения высокорезонансных сессий.
  */
 'use client';
 
@@ -19,6 +20,7 @@ import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
+import { saveMasterpiece } from '@/lib/firebase-service';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
@@ -81,6 +83,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
+  const lastSavedArbiterSeedRef = useRef<number | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
@@ -236,9 +239,23 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
+
+                    // #ЗАЧЕМ: Реализация AI Arbiter (ПЛАН №734).
+                    if (payload.beautyScore > 0.8 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                        console.log(`%c[Arbiter] High resonance detected (${payload.beautyScore.toFixed(2)}). Archiving...`, 'color: #FFD700; font-weight: bold;');
+                        saveMasterpiece(db, {
+                            seed: payload.seed,
+                            mood: settingsRef.current.mood,
+                            genre: settingsRef.current.genre,
+                            density: settingsRef.current.density,
+                            bpm: payload.actualBpm || settingsRef.current.bpm,
+                            instrumentSettings: settingsRef.current.instrumentSettings,
+                            isArbiterFind: true
+                        });
+                        lastSavedArbiterSeedRef.current = payload.seed;
+                    }
+
                 } else if (type === 'BPM_SYNC' && payload) {
-                    // #ЗАЧЕМ: Синхронизация BPM.
-                    // #ЧТО: Пробрасываем событие из Воркера в UI через кастомный Window Event.
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
@@ -260,7 +277,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetStateActi
         setIsInitializing(false); 
         initializationInFlightRef.current = false;
     }
-  }, [toast, scheduleEvents, auth, refreshCloudAxioms]);
+  }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
   return (
     <AudioEngineContext.Provider value={{

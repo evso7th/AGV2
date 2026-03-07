@@ -2,10 +2,11 @@
 import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { AxiomVector, CommonMood } from '@/types/fractal';
+import { toast } from '@/hooks/use-toast';
 
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
+ * #ЧТО: ПЛАН №734 — Добавлена визуальная обратная связь и поддержка Arbiter флага.
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -14,6 +15,7 @@ export function saveMasterpiece(db: Firestore, data: {
   density: number;
   bpm: number;
   instrumentSettings: any;
+  isArbiterFind?: boolean;
 }) {
   const masterpiecesRef = collection(db, 'masterpieces');
   const newDocRef = doc(masterpiecesRef);
@@ -26,10 +28,19 @@ export function saveMasterpiece(db: Firestore, data: {
     density: data.density,
     bpm: data.bpm,
     instrumentSettings: cleanSettings,
+    origin: data.isArbiterFind ? 'AI_Arbiter' : 'User_Like',
     timestamp: serverTimestamp()
   };
 
   setDoc(newDocRef, payload)
+    .then(() => {
+        if (!data.isArbiterFind) {
+            toast({
+                title: "Masterpiece Saved!",
+                description: "This seed has been added to the Cloud Registry.",
+            });
+        }
+    })
     .catch(async (serverError) => {
       const permissionError = new FirestorePermissionError({
         path: newDocRef.path,

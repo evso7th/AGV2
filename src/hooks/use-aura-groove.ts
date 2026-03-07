@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.2 — "BPM Synchronization".
- * #ЧТО: ПЛАН №704 — Добавлен слушатель AG_BPM_SYNC для обновления UI при наследовании темпа.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.3 — "Masterpiece Feedback".
+ * #ЧТО: ПЛАН №734 — Улучшена передача данных для сохранения Шедевров.
  */
 'use client';
 
@@ -109,8 +110,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => { initialize(); }, [initialize]);
 
-  // #ЗАЧЕМ: Синхронизация темпа из ДНК обратно в UI.
-  // #ЧТО: Ловим событие AG_BPM_SYNC, отправленное из Context (который получил его от Worker).
   useEffect(() => {
     const handleBpmSync = (e: any) => {
         if (e.detail && e.detail.bpm) {
@@ -138,11 +137,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
               sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
           },
-          density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds 
+          density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds,
+          seed: currentSeed
         });
         updateAllVolumes();
     }
-  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, selectedCompositionIds, updateSettings, updateAllVolumes]);
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, updateAllVolumes]);
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part as string, value);
@@ -163,7 +163,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!hasPlayedOnce && !isPlaying) {
-            setCurrentSeed(Date.now());
+            const initialSeed = Date.now();
+            setCurrentSeed(initialSeed);
             resetWorker();
             setHasPlayedOnce(true);
         }
@@ -171,7 +172,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     },
     handleRegenerate: () => {
         setIsRegenerating(true);
-        setCurrentSeed(Date.now());
+        const nextSeed = Date.now();
+        setCurrentSeed(nextSeed);
         setTimeout(() => setIsRegenerating(false), 500); 
         resetWorker();
     },
@@ -183,7 +185,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
         toggleBroadcast();
     },
-    handleSaveMasterpiece: () => saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }),
+    handleSaveMasterpiece: () => {
+        if (!isInitialized) return;
+        saveMasterpiece(db, { 
+            seed: currentSeed, 
+            mood, 
+            genre, 
+            density, 
+            bpm, 
+            instrumentSettings 
+        });
+    },
     drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: (part, name) => {
         setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } }));
         setInstrument(part as any, name as any);

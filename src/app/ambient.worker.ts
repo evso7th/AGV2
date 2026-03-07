@@ -2,6 +2,7 @@
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
  * #ОБНОВЛЕНО (ПЛАН №733): Реализована принудительная очистка истории при ротации циклов для предотвращения деградации музыки.
+ * #ОБНОВЛЕНО (ПЛАН №734): Добавлена передача beautyScore и seed для AI Arbiter.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -53,7 +54,8 @@ const Scheduler = {
         mood: 'melancholic' as Mood,
         introBars: 12, 
         sessionLickHistory: [],
-        selectedCompositionIds: [] 
+        selectedCompositionIds: [],
+        seed: generateTrueSeed()
     } as WorkerSettings,
 
     get barDuration() { 
@@ -183,7 +185,7 @@ const Scheduler = {
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage & Purging History...`, 'color: #4ade80; font-weight: bold;');
              this.filterRotationIndex++;
-             this.sessionLickHistory = []; // ОСНОВНОЙ ФИКС
+             this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
         }
@@ -236,7 +238,9 @@ const Scheduler = {
                 barDuration: this.barDuration,
                 barCount: this.barCount,
                 actualBpm: this.settings.bpm,
-                lickId: payload.lickId 
+                lickId: payload.lickId,
+                beautyScore: payload.beautyScore, // #ЗАЧЕМ: ПЛАН №734.
+                seed: this.settings.seed // #ЗАЧЕМ: ПЛАН №734.
             }
         });
 
