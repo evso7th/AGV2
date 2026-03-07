@@ -1,9 +1,10 @@
 
 /**
- * @fileOverview Ambient Brain v34.0 — "Heritage First Protocol".
- * #ОБНОВЛЕНО (ПЛАН №747): 
- * 1. Улучшен поиск аксиом: если нет мелодии, ищем аккомпанемент как основу темы.
- * 2.Mood filtering стал более гибким для предотвращения пустых пулов.
+ * @fileOverview Ambient Brain v35.0 — "Absolute Chronos Sync".
+ * #ОБНОВЛЕНО (ПЛАН №750): 
+ * 1. Внедрена константа TICKS_PER_BAR = 12 для 1:1 синхронизации с DNA.
+ * 2. renderThemeBass теперь проигрывает ВСЕ ноты такта из Наследия (fix find -> filter).
+ * 3. Все генеративные тайминги (sparkles, passages) квантованы по сетке тиков.
  */
 
 import type { 
@@ -32,6 +33,10 @@ import {
     safeSemitoneToDegree
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
+
+const TICKS_PER_BAR = 12;
+const BEATS_PER_BAR = 4;
+const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR; // 1/3
 
 const SPECTRAL_ATOMS: Record<string, { fog: number[], depth: number[], pulse: number[] }> = {
     A01_BREATH: { fog: [0.2, 0.4, 0.6, 0.4, 0.2], depth: [0.3, 0.3, 0.5, 0.3, 0.3], pulse: [0.1, 0.1, 0.1, 0.1, 0.1] },
@@ -227,8 +232,6 @@ export class AmbientBrain {
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
             
-            // #ЗАЧЕМ: ПЛАН №747. Расширенный поиск по ролям.
-            // #ЧТО: Сначала ищем мелодию, если её нет — берем аккомпанемент как тему.
             let basePool = poolToUse.filter(ax => ax.role === 'melody');
             if (basePool.length === 0) {
                 basePool = poolToUse.filter(ax => ax.role?.startsWith('accomp'));
@@ -245,14 +248,12 @@ export class AmbientBrain {
             if (basePool.length > 0) {
                 const commonMoodFilter = MOOD_TO_COMMON[this.mood];
                 
-                // Пробуем строгий фильтр по настроению
                 let moodMatched = basePool.filter(ax => {
                     const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                     const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                     return moods.includes(this.mood) || commons.includes(commonMoodFilter);
                 });
 
-                // Если ничего не нашли, берем любую мелодию из этого жанра (уже отфильтровано в worker)
                 const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
                 
                 const freshPool = finalPool.filter(ax => !this.usedThemeHistory.includes(ax.id));
@@ -294,7 +295,7 @@ export class AmbientBrain {
             normalizePhraseGroup(phrasesToNormalize);
 
             const phraseBars = cloudAxiom.bars || 4;
-            this.currentThemeMaxTick = phraseBars * 12;
+            this.currentThemeMaxTick = phraseBars * TICKS_PER_BAR;
             this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + phraseBars, id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
             this.currentTrackName = cloudAxiom.compositionId;
             this.soloistBusyUntilBar = epoch + phraseBars;
@@ -340,11 +341,12 @@ export class AmbientBrain {
         if (this.random.next() < 0.25) {
             const tomPool = ['drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'];
             const tom = tomPool[this.random.nextInt(tomPool.length)];
-            events.push({ type: tom as any, note: 40, time: 1.5 + this.random.next() * 2, duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: tom as any, note: 40, time: 1.5 + (this.random.nextInt(6) / 3), duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
         if (this.random.next() < 0.4) {
-            events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: 0.5 + this.random.next() * 3, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            const t = this.random.nextInt(12);
+            events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
         if (tension > 0.6 && this.random.next() < 0.2) {
             events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
@@ -354,10 +356,11 @@ export class AmbientBrain {
             const count = 1 + this.random.nextInt(3);
             for (let i = 0; i < count; i++) {
                 const perc = kit.perc[this.random.nextInt(kit.perc.length)];
+                const t = this.random.nextInt(12);
                 events.push({ 
                     type: perc as any, 
                     note: 48, 
-                    time: this.random.next() * 3.8, 
+                    time: t * TICK_TO_BEAT, 
                     duration: 1.0, 
                     weight: 0.45, 
                     technique: 'hit', 
@@ -382,8 +385,8 @@ export class AmbientBrain {
             events.push({
                 type: 'melody',
                 note: Math.min(root + scale[noteIdx], this.MELODY_CEILING),
-                time: i * 0.8,
-                duration: 2.5,
+                time: i * 1.0, // Aligned to 3 ticks (1 beat)
+                duration: 2.0,
                 weight: 0.45,
                 technique: 'pick',
                 dynamics: 'p',
@@ -402,10 +405,11 @@ export class AmbientBrain {
         const degrees = [0, 7, 12, 14, 11, 7, 4, 0];
         const shift = degrees[calculateMusiNum(epoch, 5, this.seed, 8)];
         const root = chord.rootNote + 24;
+        const t = this.random.nextInt(12);
         return [{
             type: 'pianoAccompaniment',
             note: Math.min(root + shift, this.MELODY_CEILING),
-            time: this.random.next() * 3,
+            time: t * TICK_TO_BEAT,
             duration: 2.0,
             weight: 0.35,
             technique: 'hit',
@@ -440,7 +444,7 @@ export class AmbientBrain {
         return degrees.map((n, i) => ({
             type: 'accompaniment',
             note: Math.min(root + n, this.PAD_CEILING + 12), 
-            time: i * 0.3,
+            time: (i * 1) * TICK_TO_BEAT, // 1 tick offset for spread
             duration: 5.0,
             weight: 0.4,
             technique: 'swell',
@@ -456,23 +460,23 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / 12);
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInAxiom = (epoch - startEpoch) % barCountInPhrase; 
-        const barOffset = barInAxiom * 12;
-        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+        const barOffset = barInAxiom * TICKS_PER_BAR;
+        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
             if (n.d >= 6 && type === 'accompaniment') {
-                [0, 4.5, 9].forEach((p, idx) => {
-                    const tick = (n.t - barOffset) + p;
-                    if (tick < 12) {
+                [0, 4, 8].forEach((p, idx) => {
+                    const tickInBar = (n.t - barOffset) + p;
+                    if (tickInBar < TICKS_PER_BAR) {
                         const shift = idx === 1 ? 7 : 0; 
                         events.push({
                             type: type,
                             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + shift + this.registerShift, this.PAD_CEILING + 12),
-                            time: tick / 3,
+                            time: tickInBar * TICK_TO_BEAT,
                             duration: 0.8,
                             weight: 0.5 * (p === 0 ? 1.1 : 0.8),
                             technique: 'hit',
@@ -488,8 +492,8 @@ export class AmbientBrain {
                 events.push({
                     type: type,
                     note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
-                    time: (n.t - barOffset) / 3,
-                    duration: n.d / 3,
+                    time: (n.t - barOffset) * TICK_TO_BEAT,
+                    duration: n.d * TICK_TO_BEAT,
                     weight: 0.5,
                     technique: tension > 0.7 ? 'hit' : 'swell',
                     dynamics: 'p',
@@ -504,16 +508,16 @@ export class AmbientBrain {
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-        const barCountInPhrase = Math.ceil(maxTick / 12);
+        const barCountInPhrase = Math.ceil(maxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-        const barOffset = barInCycle * 12;
-        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
+        const barOffset = barInCycle * TICKS_PER_BAR;
+        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         return barNotes.map(n => ({
             type: type as any,
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - barOffset) / 3,
-            duration: n.d / 3,
+            time: (n.t - barOffset) * TICK_TO_BEAT,
+            duration: n.d * TICK_TO_BEAT,
             weight: 0.6,
             technique: 'pick',
             dynamics: 'p',
@@ -528,14 +532,22 @@ export class AmbientBrain {
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const barInAxiom = epoch % (this.currentThemeMaxTick / 12);
-        const note = this.currentBassTheme.phrase.find(n => n.t >= barInAxiom * 12);
-        if (!note) return this.renderDroneBass(chord, epoch, tension);
-        return [{
+        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const barInAxiom = epoch % barCountInPhrase;
+        const barOffset = barInAxiom * TICKS_PER_BAR;
+        
+        // #ЗАЧЕМ: ПЛАН №750 — Проигрывание ВСЕХ нот баса из ДНК (fix find -> filter).
+        const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        
+        if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);
+        
+        const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
+        return barNotes.map(n => ({
             type: 'bass',
-            note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[note.deg] || 0)),
-            time: 0,
-            duration: 4.0,
+            note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+            time: (n.t - barOffset) * TICK_TO_BEAT,
+            duration: n.d * TICK_TO_BEAT,
             weight: 0.8,
             technique: 'drone',
             dynamics: 'p',
@@ -543,7 +555,7 @@ export class AmbientBrain {
             params: {
                 filterCutoff: 400 + (tension * 300)
             }
-        }];
+        }));
     }
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -567,10 +579,11 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
+        const t = this.random.nextInt(12);
         return {
             type: 'sparkle',
             note: chord.rootNote + 48,
-            time: this.random.next() * 4,
+            time: t * TICK_TO_BEAT,
             duration: 6.0,
             weight: 0.5, 
             technique: 'hit',
@@ -581,8 +594,9 @@ export class AmbientBrain {
     }
 
     private renderSfx(tension: number): FractalEvent[] {
+        const t = this.random.nextInt(6); // Keep SFX in the first half usually
         return [{
-            type: 'sfx', note: 60, time: this.random.next() * 2, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre }
+            type: 'sfx', note: 60, time: t * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre }
         }];
     }
 
