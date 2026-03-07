@@ -32,10 +32,11 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V204.0 — "Imperial Midrange".
- * #ОБНОВЛЕНО (ПЛАН №761): 
- * 1. Внедрена жесткая фильтрация диапазона аккомпанемента (3-4 октава).
- * 2. Орган теперь звучит теплее за счет системного ограничения диапазона и поддержки суб-баса.
+ * @fileOverview Blues Brain V205.0 — "Elastic Phrasing".
+ * #ОБНОВЛЕНО (ПЛАН №762): 
+ * 1. Внедрен Elastic Time: автоматическое растяжение плотных фраз в 2 раза.
+ * 2. Liquid Sound: автоматические слайды для малых интервалов.
+ * 3. Shred-Rest: обязательные паузы после быстрых пассажей.
  */
 
 const TICKS_PER_BAR = 12;
@@ -47,8 +48,6 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
-
-const BLUES_PROGRESSION_OFFSETS = [0, 0, 0, 0, 5, 5, 0, 0, 7, 5, 0, 7];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -82,6 +81,7 @@ export class BluesBrain {
   
   private currentAxiom: any[] = [];
   private currentAxiomMaxTick: number = 0;
+  private currentTimeScale: number = 1;
   
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
@@ -180,13 +180,8 @@ export class BluesBrain {
       return finalNote;
   }
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №761. Фокусировка ансамбля в 3-4 октаве.
-   * #ЧТО: Жесткое ограничение диапазона для всех инструментов сопровождения.
-   */
   private constrainAccompanimentOctave(note: number): number {
       let finalNote = note;
-      // 3-я и 4-я октавы: C3 (48) до B4 (71)
       while (finalNote > 71) finalNote -= 12;
       while (finalNote < 48) finalNote += 12;
       return finalNote;
@@ -220,7 +215,7 @@ export class BluesBrain {
 
     // --- 1. MELODY ---
     const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
-        ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, 1) 
+        ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, this.currentTimeScale) 
         : [];
     
     // --- 2. DRUMS & BASS ---
@@ -259,7 +254,6 @@ export class BluesBrain {
 
     events.push(...accompanimentEvents);
 
-    // --- 4. FALLBACKS ---
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
@@ -300,6 +294,7 @@ export class BluesBrain {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
       this.ensembleStatus = 'ADAPTIVE';
+      this.currentTimeScale = 1;
 
       if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
@@ -327,6 +322,14 @@ export class BluesBrain {
               this.state.recentLicks.push(selected.id);
               
               let rawPhrase = decompressCompactPhrase(selected.phrase);
+              
+              // #ЗАЧЕМ: Elastic Time Analyzer (ПЛАН №762).
+              const shortNotes = rawPhrase.filter(n => n.d < 3).length;
+              const densityRatio = shortNotes / Math.max(1, rawPhrase.length);
+              if (densityRatio > 0.4 && this.config.tempo > 85) {
+                  this.currentTimeScale = 2;
+              }
+
               const phrasesToNormalize = [rawPhrase];
               const cid = this.normalize(selected.compositionId);
               const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
@@ -345,9 +348,10 @@ export class BluesBrain {
               });
 
               normalizePhraseGroup(phrasesToNormalize);
-              this.currentAxiomMaxTick = (selected.bars || 4) * TICKS_PER_BAR;
+              const baseBars = selected.bars || 4;
+              this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
               this.currentAxiom = rawPhrase; 
-              this.soloistBusyUntilBar = epoch + (selected.bars || 4);
+              this.soloistBusyUntilBar = epoch + (baseBars * this.currentTimeScale);
               this.ensembleStatus = 'SIBLING';
               return selected.nativeBpm || undefined;
           }
@@ -361,6 +365,50 @@ export class BluesBrain {
       this.currentAxiomMaxTick = 48;
       this.soloistBusyUntilBar = epoch + 4;
       return undefined;
+  }
+
+  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
+    const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
+    const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
+    const barInCycle = (epoch - startEpoch) % barCountInPhrase;
+    
+    // #ЗАЧЕМ: Масштабирование окна поиска нот.
+    const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
+    const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
+    
+    const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+
+    // #ЗАЧЕМ: Shred-Rest Protocol (ПЛАН №762).
+    const isShredding = barNotes.filter(n => n.d < 2).length > 3;
+    if (isShredding) {
+        this.soloistRestingUntilBar = epoch + 2; 
+    }
+
+    return barNotes.map((n, idx) => {
+        let tech = n.tech || 'pick';
+        
+        // #ЗАЧЕМ: Liquid Sound (ПЛАН №762). Слайды при малых интервалах.
+        const nextNote = barNotes[idx + 1];
+        if (nextNote) {
+            const interval = Math.abs(DEGREE_TO_SEMITONE[n.deg] - DEGREE_TO_SEMITONE[nextNote.deg]);
+            if (interval > 0 && interval <= 2) tech = 'sl';
+        }
+
+        // #ЗАЧЕМ: Automatic Articulation.
+        if (n.d >= 6 && (tech === 'pick' || tech === '0')) tech = 'vb';
+        if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
+
+        return {
+            type: type,
+            note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
+            duration: n.d * TICK_TO_BEAT * timeScale,
+            weight: 0.85, 
+            technique: tech as any, 
+            dynamics: 'p', 
+            phrasing: 'legato'
+        };
+    });
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
@@ -400,23 +448,6 @@ export class BluesBrain {
           });
       });
       return events;
-  }
-
-  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-    const barCountInPhrase = Math.ceil(maxTick / TICKS_PER_BAR);
-    const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-    const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-    const barOffset = barInCycle * TICKS_PER_BAR;
-    const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-    const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
-
-    return barNotes.map(n => ({
-        type: type,
-        note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-        time: (n.t - barOffset) * TICK_TO_BEAT,
-        duration: n.d * TICK_TO_BEAT,
-        weight: 0.85, technique: n.tech || 'pick', dynamics: 'p', phrasing: 'legato'
-    }));
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
@@ -460,14 +491,12 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          const isLong = n.d >= 6; 
-          
           events.push({
               type: type,
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t - barOffset) * TICK_TO_BEAT,
-              duration: Math.min(n.d, 12) * TICK_TO_BEAT, 
-              weight: isLong ? 0.35 : 0.45, 
+              duration: Math.min(n.d, 6) * TICK_TO_BEAT, // #ЗАЧЕМ: Ритмический затвор.
+              weight: 0.25, 
               technique: 'hit',
               dynamics: 'p',
               phrasing: 'staccato'

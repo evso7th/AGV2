@@ -1,8 +1,6 @@
 /**
- * @fileOverview Ambient Brain v37.0 — "The Kinetic Pulse".
- * #ОБНОВЛЕНО (ПЛАН №755): 
- * 1. Реализовано динамическое наследование BPM из ДНК доноров.
- * 2. Теперь при выборе новой аксиомы Мозг сигнализирует о смене темпа.
+ * @fileOverview Ambient Brain v38.0 — "Elastic Phrasing".
+ * #ОБНОВЛЕНО (ПЛАН №762): Внедрена поддержка timeScale для тематических мелодий.
  */
 
 import type { 
@@ -81,6 +79,7 @@ export class AmbientBrain {
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentThemeMaxTick: number = 0;
+    private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
     private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
     
@@ -148,7 +147,6 @@ export class AmbientBrain {
             if (this.random.next() < 0.45) {
                 this.soloistRestingUntilBar = epoch + 2;
             } else {
-                // #ЗАЧЕМ: Запрос темпа донора.
                 newBpm = this.selectNextAxiom(navInfo, dna, epoch);
             }
         }
@@ -192,7 +190,7 @@ export class AmbientBrain {
             if (isBoundary && this.random.next() < 0.7) {
                 events.push(...this.renderBeautifulPassage(currentChord, epoch, localTension));
             } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, 1));
+                events.push(...this.renderThemeMelody(currentChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale));
             } else {
                 events.push(...this.renderMelodicPadBase(currentChord, epoch, localTension));
             }
@@ -216,7 +214,7 @@ export class AmbientBrain {
             tension: localTension, 
             beautyScore: 0.5,
             mutationType: this.currentMutationType,
-            newBpm, // #ЧТО: Проброс темпа
+            newBpm,
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
                 ensemble: this.ensembleStatus,
@@ -227,12 +225,9 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: Выбор новой аксиомы и определение её темпа.
-     * #ЧТО: Возвращает nativeBpm из метаданных облачной аксиомы.
-     */
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = []; 
+        this.currentTimeScale = 1;
         let cloudAxiom: any = null;
         const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
 
@@ -275,6 +270,13 @@ export class AmbientBrain {
 
         if (cloudAxiom) {
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+            
+            // #ЗАЧЕМ: Elastic Time Analyzer.
+            const shortNotes = rawPhrase.filter(n => n.d < 3).length;
+            if (shortNotes / Math.max(1, rawPhrase.length) > 0.4 && dna.baseTempo > 85) {
+                this.currentTimeScale = 2;
+            }
+
             const phrasesToNormalize = [rawPhrase];
             const cid = this.normalizeStr(cloudAxiom.compositionId);
 
@@ -303,15 +305,14 @@ export class AmbientBrain {
 
             const phraseBars = cloudAxiom.bars || 4;
             this.currentThemeMaxTick = phraseBars * TICKS_PER_BAR;
-            this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + phraseBars, id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
+            this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + (phraseBars * this.currentTimeScale), id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
             this.currentTrackName = cloudAxiom.compositionId;
-            this.soloistBusyUntilBar = epoch + phraseBars;
+            this.soloistBusyUntilBar = epoch + (phraseBars * this.currentTimeScale);
             
-            if (rawBass) this.currentBassTheme = { phrase: rawBass, startBar: epoch, endBar: epoch + phraseBars };
-            this.currentAccompAxioms = rawAccomps.map((p, idx) => ({ phrase: p, role: accompSiblings[idx].role, endBar: epoch + phraseBars }));
+            if (rawBass) this.currentBassTheme = { phrase: rawBass, startBar: epoch, endBar: epoch + (phraseBars * this.currentTimeScale) };
+            this.currentAccompAxioms = rawAccomps.map((p, idx) => ({ phrase: p, role: accompSiblings[idx].role, endBar: epoch + (phraseBars * this.currentTimeScale) }));
             this.ensembleStatus = 'SIBLING';
             
-            // #ЗАЧЕМ: Возвращаем темп донора.
             return cloudAxiom.nativeBpm || undefined;
         } else {
             this.ensembleStatus = 'ADAPTIVE';
@@ -529,16 +530,18 @@ export class AmbientBrain {
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-        const barCountInPhrase = Math.ceil(maxTick / TICKS_PER_BAR);
+        const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-        const barOffset = barInCycle * TICKS_PER_BAR;
-        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        
+        const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
+        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
+        
         return barNotes.map(n => ({
             type: type as any,
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT,
-            duration: n.d * TICK_TO_BEAT,
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
+            duration: n.d * TICK_TO_BEAT * timeScale,
             weight: 0.6,
             technique: 'pick',
             dynamics: 'p',
