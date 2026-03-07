@@ -26,15 +26,14 @@ import {
     getChordNameForBar 
 } from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
-import { BLUES_GUITAR_RIFFS, BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
+import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V201.0 — "The Kinetic Pulse".
- * #ОБНОВЛЕНО (ПЛАН №755): 
- * 1. Реализовано динамическое наследование BPM из ДНК доноров.
- * 2. Теперь при выборе новой аксиомы Мозг сигнализирует о смене темпа.
+ * @fileOverview Blues Brain V201.1 — "Import Fix".
+ * #ОБНОВЛЕНО (ПЛАН №755.1): Исправлен импорт BLUES_GUITAR_RIFFS.
  */
 
 const TICKS_PER_BAR = 12;
@@ -175,7 +174,7 @@ export class BluesBrain {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
-      if (this.config.activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
+      if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
   }
 
   private constrainBassOctave(note: number): number {
@@ -215,7 +214,6 @@ export class BluesBrain {
         if (this.random.next() < 0.45) { 
             this.soloistRestingUntilBar = epoch + 1;
         } else {
-            // #ЗАЧЕМ: Запрос нового темпа при выборе аксиомы.
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
     }
@@ -285,7 +283,7 @@ export class BluesBrain {
         events, 
         lickId: this.currentLickId, 
         mutationType: this.state.lastMutationType,
-        newBpm, // #ЧТО: Проброс нового темпа в Engine
+        newBpm,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : this.currentLickId,
             ensemble: this.ensembleStatus,
@@ -309,10 +307,6 @@ export class BluesBrain {
       }
   }
 
-  /**
-   * #ЗАЧЕМ: Выбор новой аксиомы и определение её темпа.
-   * #ЧТО: Возвращает nativeBpm из метаданных облачной аксиомы.
-   */
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
@@ -377,7 +371,6 @@ export class BluesBrain {
               this.soloistBusyUntilBar = epoch + phraseBars;
               this.ensembleStatus = 'SIBLING';
               
-              // #ЗАЧЕМ: Возврат темпа донора.
               return selected.nativeBpm || undefined;
           }
       }
