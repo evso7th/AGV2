@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -50,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V25.6 — "Mutation Link Fix".
- * #ЧТО: ПЛАН №723 (ФИКС) — Исправлен пропуск поля mutationType в Ambient-ветке метода evolve.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V26.0 — "Ensemble Sync".
+ * #ЧТО: ПЛАН №740 — Унифицирован расчет hints. Теперь hints вычисляются в начале evolve и передаются в Ambient/Blues мозги.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -154,10 +155,6 @@ export class FractalMusicEngine {
         this.config.activeAnchorId
     );
 
-    if (this.suiteDNA.seedLickId) {
-        self.postMessage({ type: 'LICK_BORN', lickId: this.suiteDNA.seedLickId });
-    }
-
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
     if (this.config.genre === 'blues') {
@@ -201,27 +198,7 @@ export class FractalMusicEngine {
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
-    if (this.config.genre !== 'blues' && this.ambientBrain) {
-        const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
-        const currentChord = foundChord || this.suiteDNA.harmonyTrack[0];
-        
-        const ambientResult = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA);
-        const beautyScore = this.calculateBeautyScore(ambientResult.events);
-
-        // #ЗАЧЕМ: Фикс проброса типа мутации в Воркер.
-        return { 
-            events: ambientResult.events, 
-            instrumentHints: ambientResult.instrumentHints, 
-            beautyScore, 
-            tension: ambientResult.tension,
-            navInfo,
-            dynasty: this.suiteDNA.dynasty,
-            activeAxioms: ambientResult.activeAxioms,
-            narrative: ambientResult.narrative,
-            mutationType: ambientResult.mutationType
-        };
-    }
-
+    // #ЗАЧЕМ: Унификация расчета hints (ПЛАН №740).
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
@@ -230,7 +207,6 @@ export class FractalMusicEngine {
 
     if (navInfo.currentPart.id === 'INTRO' && stages && stages.length > 0) {
         if (this.introLotteryMap.size === 0) this.performIntroLottery(stages);
-        
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / (partBars || 1);
         const stageIndex = Math.floor(progress * stages.length);
@@ -252,7 +228,6 @@ export class FractalMusicEngine {
             const part = partStr as InstrumentPart;
             if (!this.activatedParts.has(part)) {
                 let effectiveChance = rule.activationChance ?? 1.0;
-                if (part === 'sfx' || part === 'sparkles') effectiveChance *= (1.0 - tension * 0.5);
                 if (this.random.next() < effectiveChance) {
                     this.activatedParts.add(part);
                     const options = rule.instrumentOptions || rule.v2Options || rule.options || [];
@@ -274,11 +249,23 @@ export class FractalMusicEngine {
                 instrumentHints.summonProgress![part] = 1.0; 
             }
         });
-
         if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
     }
 
-    const result = this.generateOneBar(barDuration, navInfo, instrumentHints);
+    const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
+    let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
+    this.previousChord = currentChord;
+
+    let result: { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string };
+
+    if (this.config.genre !== 'blues' && this.ambientBrain) {
+        result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
+    } else if (this.bluesBrain) {
+        result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
+    } else {
+        result = { events: createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch) };
+    }
+
     this.lastEvents = [...result.events];
     const beautyScore = this.calculateBeautyScore(result.events);
 
@@ -289,10 +276,10 @@ export class FractalMusicEngine {
         tension, 
         navInfo,
         dynasty: this.suiteDNA.dynasty,
-        lickId: (result as any).lickId,
-        mutationType: (result as any).mutationType,
-        activeAxioms: (result as any).activeAxioms,
-        narrative: (result as any).narrative
+        lickId: result.lickId,
+        mutationType: result.mutationType,
+        activeAxioms: result.activeAxioms,
+        narrative: result.narrative
     };
   }
 
@@ -310,19 +297,5 @@ export class FractalMusicEngine {
       return pairCount > 0 ? totalResonance / pairCount : 0.5;
   }
   
-  private generateOneBar(barDuration: number, navInfo: NavigationInfo, instrumentHints: InstrumentHints): { events: FractalEvent[], lickId?: string, mutationType?: string, activeAxioms?: any, narrative?: string } {
-    if (!this.suiteDNA) return { events: [] };
-    const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
-    let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
-    this.previousChord = currentChord;
-    
-    if (this.config.genre === 'blues' && this.bluesBrain) {
-        return this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints, this.lastEvents);
-    } else {
-        const allEvents = createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch);
-        return { events: allEvents };
-    }
-  }
-
   public generateExternalImpulse() {}
 }

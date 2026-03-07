@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v29.0 — "The Golden Middle Protocol".
- * #ОБНОВЛЕНО (ПЛАН №738): 
- * 1. Введен жесткий потолок высоты нот: соло до C5 (72), пэды до E4 (64).
- * 2. Устранена возможность ухода инструментов "в небеса".
+ * @fileOverview Ambient Brain v30.0 — "The Ensemble Synchronizer".
+ * #ОБНОВЛЕНО (ПЛАН №740): 
+ * 1. Метод generateBar теперь принимает вычисленные hints от движка.
+ * 2. Исправлена логика выбора аксиом при активном якоре (учетaccomp как темы).
  */
 
 import type { 
@@ -59,18 +59,12 @@ export class AmbientBrain {
     private pulse: number = 0.15;
     private depth: number = 0.4;
     private bright: number = 0.3;
-    private solistCutoff: number = 2000; 
     private registerShift: number = 0;
-
-    private activatedParts: Set<InstrumentPart> = new Set();
-    private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
 
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1; 
     private accompanimentRestingUntilBar: number = -1; 
     
-    // #ЗАЧЕМ: Золотая середина регистра (ПЛАН №738).
-    // #ЧТО: Соло до C5 (72), Пэды до E4 (64).
     private readonly MELODY_CEILING = 72;
     private readonly PAD_CEILING = 64;
 
@@ -85,7 +79,6 @@ export class AmbientBrain {
     
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
-    private activeAnchorRoot: number | null = null;
     
     private usedThemeHistory: string[] = [];
 
@@ -102,34 +95,26 @@ export class AmbientBrain {
             state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
             return state / Math.pow(2, 32);
         };
-        const shuffle = <T>(array: T[]): T[] => {
-            const arr = [...array];
-            for (let i = arr.length - 1; i > 0; i--) {
-                const j = Math.floor(next() * (i + 1));
-                [arr[i], arr[j]] = [arr[j], arr[i]];
-            }
-            return arr;
-        };
         const nextInt = (max: number) => Math.floor(next() * max);
-        return { next, nextInt, shuffle };
+        return { next, nextInt };
     }
 
     private normalizeStr(s: string): string {
-        return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, activeAnchorRoot?: number | null) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
-        if (activeAnchorRoot !== undefined) this.activeAnchorRoot = activeAnchorRoot;
     }
 
     public generateBar(
         epoch: number, 
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
-        dna: SuiteDNA
-    ): { events: FractalEvent[], instrumentHints: InstrumentHints, tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string } {
+        dna: SuiteDNA,
+        hints: InstrumentHints // #ЗАЧЕМ: Принимаем hints от движка (ПЛАН №740).
+    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string } {
         
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
@@ -137,7 +122,6 @@ export class AmbientBrain {
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
         this.applyGeography(epoch, dna);
         this.applySpectralAtom(epoch, waves[3]);
-        this.updateMoodAxes(epoch, localTension);
 
         if (epoch % 16 === 0 && !this.activeAnchorId) {
             const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
@@ -148,26 +132,20 @@ export class AmbientBrain {
         const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
         if (isSoloistFree && !isSoloistResting) {
-            if (this.random.next() < 0.5) {
-                this.soloistRestingUntilBar = epoch + 2 + (this.random.next() > 0.5 ? 2 : 0);
+            if (this.random.next() < 0.45) {
+                this.soloistRestingUntilBar = epoch + 2;
             } else {
                 this.selectNextAxiom(navInfo, dna, epoch);
             }
         }
 
-        const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
-
-        if (navInfo.isPartTransition && hints.melody && this.random.next() < 0.7) {
-            events.push(...this.renderBeautifulPassage(currentChord, localTension));
-        }
 
         // --- 1. ACCOMPANIMENT ---
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
-            const hasHeritageAccomp = this.currentAccompAxioms.length > 0;
-            if (hasHeritageAccomp) {
-                this.currentAccompAxioms.forEach((ax, idx) => {
+            if (this.currentAccompAxioms.length > 0) {
+                this.currentAccompAxioms.forEach((ax) => {
                     const role = ax.role.toLowerCase();
                     let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                     if ((navInfo.currentPart.layers as any)[targetType]) {
@@ -195,7 +173,7 @@ export class AmbientBrain {
             }
         }
 
-        // --- 4. DRUMS & PERCUSSION ---
+        // --- 4. DRUMS ---
         if (hints.drums) {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
@@ -205,14 +183,11 @@ export class AmbientBrain {
             events.push(this.renderSparkle(currentChord, isPositive));
         }
         if (hints.sfx && epoch % 16 === 0 && this.random.next() < 0.3) {
-            events.push(...this.renderSfx(localTension, { categories: [{ name: 'voice', weight: 0.2 }, { name: 'common', weight: 0.8 }] }));
+            events.push(...this.renderSfx(localTension));
         }
-
-        const narrative = this.currentTrackName || 'Evolving Texture';
 
         return { 
             events, 
-            instrumentHints: hints, 
             tension: localTension, 
             beautyScore: 0.5,
             mutationType: this.currentMutationType,
@@ -222,7 +197,7 @@ export class AmbientBrain {
                 bass: 'Drone',
                 drums: 'Sonic Cube'
             },
-            narrative: `Texture Flow: ${narrative}`
+            narrative: `Texture Flow: ${this.currentTrackName || 'Evolving'}`
         };
     }
 
@@ -233,15 +208,25 @@ export class AmbientBrain {
 
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
+            
+            // #ЗАЧЕМ: Расширенный поиск темы (ПЛАН №740).
+            // #ЧТО: Если нет прямой роли 'melody', пробуем 'accomp' из того же трека.
             let basePool = poolToUse.filter(ax => ax.role === 'melody');
-            if (targetAnchor) basePool = basePool.filter(ax => this.normalizeStr(ax.compositionId || '') === targetAnchor);
+            if (targetAnchor) {
+                const anchorPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
+                basePool = anchorPool.filter(ax => ax.role === 'melody');
+                if (basePool.length === 0) {
+                    basePool = anchorPool.filter(ax => ax.role?.startsWith('accomp'));
+                }
+            }
 
             if (basePool.length > 0) {
-                const finalPool = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id));
-                const pool = finalPool.length > 0 ? finalPool : basePool;
-                cloudAxiom = pool[this.random.nextInt(pool.length)];
-                this.usedThemeHistory.push(cloudAxiom.id);
-                if (this.usedThemeHistory.length > 30) this.usedThemeHistory.shift();
+                const freshPool = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id));
+                cloudAxiom = (freshPool.length > 0 ? freshPool : basePool)[this.random.nextInt(Math.max(1, freshPool.length || basePool.length))];
+                if (cloudAxiom) {
+                    this.usedThemeHistory.push(cloudAxiom.id);
+                    if (this.usedThemeHistory.length > 30) this.usedThemeHistory.shift();
+                }
             }
         }
 
@@ -249,10 +234,11 @@ export class AmbientBrain {
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
             const phrasesToNormalize = [rawPhrase];
             
+            const normalizeCID = (s: string) => this.normalizeStr(s);
+            const cid = normalizeCID(cloudAxiom.compositionId);
+
             const bassSibling = poolToUse.find(ax => 
-                ax.role === 'bass' && 
-                this.normalizeStr(ax.compositionId || '') === this.normalizeStr(cloudAxiom.compositionId) &&
-                ax.barOffset === cloudAxiom.barOffset
+                ax.role === 'bass' && normalizeCID(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
             );
             
             let rawBass: any[] | null = null;
@@ -262,9 +248,7 @@ export class AmbientBrain {
             }
 
             const accompSiblings = poolToUse.filter(ax => 
-                ax.role?.startsWith('accomp') && 
-                this.normalizeStr(ax.compositionId || '') === this.normalizeStr(cloudAxiom.compositionId) && 
-                ax.barOffset === cloudAxiom.barOffset
+                ax.role?.startsWith('accomp') && normalizeCID(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset
             ).slice(0, 2);
 
             const rawAccomps: any[][] = [];
@@ -353,7 +337,6 @@ export class AmbientBrain {
         for(let i=0; i<count; i++) {
             events.push({
                 type: 'melody',
-                // #ЗАЧЕМ: Принудительный потолок соло (72).
                 note: Math.min(root + scale[this.random.nextInt(scale.length)], this.MELODY_CEILING),
                 time: i * 0.6,
                 duration: 2.0,
@@ -367,44 +350,11 @@ export class AmbientBrain {
         return events;
     }
 
-    private orchestrate(tension: number, navInfo: NavigationInfo, epoch: number, dna: SuiteDNA): InstrumentHints {
-        const hints: InstrumentHints = { summonProgress: {} };
-        const part = navInfo.currentPart;
-        
-        const isClearSky = this.fog < 0.35;
-
-        Object.entries(part.instrumentation || {}).forEach(([partStr, rule]: [any, any]) => {
-            const p = partStr as InstrumentPart;
-            if (!this.activatedParts.has(p)) {
-                if (this.random.next() < (rule.activationChance ?? 1.0)) {
-                    this.activatedParts.add(p);
-                    let options = rule.instrumentOptions || rule.v2Options || [];
-                    
-                    if (p === 'melody' && isClearSky) {
-                        options = [{ name: 'guitar_shineOn', weight: 0.8 }, ...options];
-                    }
-
-                    this.activeTimbres[p] = pickWeightedDeterministic(options, this.seed, epoch, 500);
-                }
-            }
-        });
-
-        this.activatedParts.forEach(p => {
-            if ((part.layers as any)[p]) {
-                (hints as any)[p] = this.activeTimbres[p] || 'synth';
-                hints.summonProgress![p] = 1.0;
-            }
-        });
-
-        return hints;
-    }
-
     private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: Ограничение высоты пэдов (Золотая середина).
         const root = Math.min(chord.rootNote + 12 + this.registerShift, this.PAD_CEILING);
         return [0, 7, 12].map((n, i) => ({
             type: 'accompaniment',
-            note: Math.min(root + n, this.PAD_CEILING + 12), // Допускаем небольшое расширение аккорда вверх
+            note: Math.min(root + n, this.PAD_CEILING + 12), 
             time: i * 0.3,
             duration: 5.0,
             weight: 0.4,
@@ -422,7 +372,6 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({
             type: type,
-            // #ЗАЧЕМ: Ограничение высоты аккомпанемента из Heritage.
             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
             time: (n.t - barOffset) / 3,
             duration: n.d / 3,
@@ -440,7 +389,6 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({
             type: type as any,
-            // #ЗАЧЕМ: Жесткий потолок соло (C5).
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - barOffset) / 3,
             duration: n.d / 3,
@@ -473,7 +421,6 @@ export class AmbientBrain {
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         return [{
             type: 'melody',
-            // #ЗАЧЕМ: Ограничение высоты пэда-мелодии.
             note: Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING),
             time: 0,
             duration: 4.0,
@@ -499,9 +446,9 @@ export class AmbientBrain {
         };
     }
 
-    private renderSfx(tension: number, options?: any): FractalEvent[] {
+    private renderSfx(tension: number): FractalEvent[] {
         return [{
-            type: 'sfx', note: 60, time: this.random.next() * 2, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre, options }
+            type: 'sfx', note: 60, time: this.random.next() * 2, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre }
         }];
     }
 
@@ -552,9 +499,5 @@ export class AmbientBrain {
         let t = 0;
         for (let n = 0; n < 4; n++) t += WEIGHTS[n] * waves[n];
         return (t + 1) / 2;
-    }
-
-    private updateMoodAxes(epoch: number, tension: number) {
-        this.solistCutoff = 1500 + (tension * 2500);
     }
 }
