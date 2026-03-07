@@ -1,7 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v33.0 — "Anchor Sovereignty Protocol".
- * #ОБНОВЛЕНО (ПЛАН №746): Жесткая фиксация якоря. Исключено переключение на чужие треки.
+ * @fileOverview Ambient Brain v34.0 — "Heritage First Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №747): 
+ * 1. Улучшен поиск аксиом: если нет мелодии, ищем аккомпанемент как основу темы.
+ * 2.Mood filtering стал более гибким для предотвращения пустых пулов.
  */
 
 import type { 
@@ -45,6 +47,12 @@ const BETA = 7.2360679775;
 const PERIODS = [8, 45, 180, 600];
 const WEIGHTS = [0.15, 0.35, 0.30, 0.20];
 const MOD_DEPTH = [0.05, 0.12, 0.25, 0.40];
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -219,9 +227,14 @@ export class AmbientBrain {
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
             
+            // #ЗАЧЕМ: ПЛАН №747. Расширенный поиск по ролям.
+            // #ЧТО: Сначала ищем мелодию, если её нет — берем аккомпанемент как тему.
             let basePool = poolToUse.filter(ax => ax.role === 'melody');
+            if (basePool.length === 0) {
+                basePool = poolToUse.filter(ax => ax.role?.startsWith('accomp'));
+            }
+
             if (targetAnchor) {
-                // #ЗАЧЕМ: ПЛАН №746. Строгая фиксация якоря. 
                 const anchorPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
                 basePool = anchorPool.filter(ax => ax.role === 'melody');
                 if (basePool.length === 0) {
@@ -230,8 +243,21 @@ export class AmbientBrain {
             }
 
             if (basePool.length > 0) {
-                const freshPool = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id));
-                cloudAxiom = (freshPool.length > 0 ? freshPool : basePool)[this.random.nextInt(Math.max(1, freshPool.length || basePool.length))];
+                const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                
+                // Пробуем строгий фильтр по настроению
+                let moodMatched = basePool.filter(ax => {
+                    const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                    const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                    return moods.includes(this.mood) || commons.includes(commonMoodFilter);
+                });
+
+                // Если ничего не нашли, берем любую мелодию из этого жанра (уже отфильтровано в worker)
+                const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
+                
+                const freshPool = finalPool.filter(ax => !this.usedThemeHistory.includes(ax.id));
+                cloudAxiom = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
+                
                 if (cloudAxiom) {
                     this.usedThemeHistory.push(cloudAxiom.id);
                     if (this.usedThemeHistory.length > 30) this.usedThemeHistory.shift();

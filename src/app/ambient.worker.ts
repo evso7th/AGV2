@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №746): Оптимизирован механизм Re-Lock. Исключены двойные старты на 1-м такте.
+ * #ОБНОВЛЕНО (ПЛАН №747): Универсальный Re-Lock. Наследие теперь всегда доминирует над локальной генерацией.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -177,12 +177,14 @@ const Scheduler = {
     },
 
     updateCloudAxioms(axioms: any[]) {
+        const hadAxioms = this.cloudAxiomPool.length > 0;
         this.cloudAxiomPool = axioms || [];
+        const hasAxioms = this.cloudAxiomPool.length > 0;
         
-        // #ЗАЧЕМ: ПЛАН №746. Ре-лок только на самом старте.
-        // #ЧТО: Изменено с <= 1 на === 0, чтобы предотвратить двойной старт на 1-м такте.
-        if (this.barCount === 0 && (this.settings.selectedCompositionIds?.length || 0) > 0) {
-            console.log(`%c${getTimestamp()} [Sync] Cloud DNA arrived. Locking Anchor...`, 'color: #00FFFF; font-weight: bold;');
+        // #ЗАЧЕМ: ПЛАН №747. Универсальный Re-Lock.
+        // #ЧТО: Если мы на Bar 0 и получили первые аксиомы (любые), принудительно перезагружаем движок.
+        if (this.barCount === 0 && !hadAxioms && hasAxioms) {
+            console.log(`%c${getTimestamp()} [Sync] First Cloud DNA arrived. Forcing Genetic Initialization...`, 'color: #00FFFF; font-weight: bold;');
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
