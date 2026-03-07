@@ -1,3 +1,4 @@
+
 // src/lib/piano-accompaniment-manager.ts
 import type { Note } from "@/types/music";
 import type { FractalEvent } from "@/types/fractal";
@@ -6,7 +7,7 @@ import { PIANO_SAMPLES } from "@/lib/samples";
 
 /**
  * #ЗАЧЕМ: Этот менеджер управляет независимой партией фортепианного аккомпанемента.
- * #ЧТО: ПЛАН №690 — Внедрена фильтрация событий. Слышит только тип 'pianoAccompaniment'.
+ * #ЧТО: ПЛАН №760 — Исправлена работа регулятора громкости.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -33,13 +34,11 @@ export class PianoAccompanimentManager {
     public schedule(events: FractalEvent[], startTime: number, tempo: number) {
         if (!this.isInitialized) return;
         
-        // #ЗАЧЕМ: "Обрезаем уши". Игнорируем всё, что не является типом 'pianoAccompaniment'.
         const filteredEvents = events.filter(e => e.type === 'pianoAccompaniment');
         if (filteredEvents.length === 0) return;
 
         const beatDuration = 60 / tempo;
         if (!isFinite(beatDuration)) {
-            console.error(`[pianosacc] Invalid tempo resulted in non-finite beatDuration: ${tempo}`);
             return;
         }
 
@@ -51,12 +50,16 @@ export class PianoAccompanimentManager {
             params: event.params
         }));
         
-        console.log(`[pianosacc] Received ${filteredEvents.length} relevant events, converted to ${notes.length} notes to play.`);
         this.piano.schedule('piano', notes, startTime, 'pianosacc');
     }
 
+    /**
+     * #ЗАЧЕМ: Прямая трансляция громкости из UI в сэмплер.
+     */
     public setVolume(volume: number) {
-        this.piano.setVolume(volume);
+        if (this.piano) {
+            this.piano.setVolume(volume);
+        }
     }
 
     public allNotesOff() {

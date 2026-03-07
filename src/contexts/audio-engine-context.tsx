@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V18.0 — "Session Capture".
- * #ЧТО: ПЛАН №759 — Реализована полноценная запись аудио через MediaRecorder.
+ * #ЗАЧЕМ: Audio Engine Context V19.0 — "Mix Calibration".
+ * #ЧТО: ПЛАН №760 — Снижена базовая громкость пианино и исправлена связь с UI.
  */
 'use client';
 
@@ -32,7 +33,8 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45, 
   sfx: 0.55, 
   harmony: 0.85, 
-  pianoAccompaniment: 0.40,
+  // #ЗАЧЕМ: Снижение громкости "Пианиста-тени" для деликатности.
+  pianoAccompaniment: 0.20, 
 };
 
 interface AudioEngineContextType {
@@ -116,8 +118,14 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
+    
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+    }
+    
+    // #ЗАЧЕМ: Принудительный проброс в менеджер для двойного контроля.
+    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+        pianoAccompanimentManagerRef.current.setVolume(volume);
     }
   }, []);
 
@@ -191,7 +199,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
             
-            // #ЗАЧЕМ: Инициализация потока для записи и трансляции.
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
             recDestRef.current = recDest;
@@ -263,7 +270,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
-  // --- Recording Logic ---
   const startRecording = useCallback(() => {
     if (!isInitialized || !recDestRef.current) {
         toast({ variant: "destructive", title: "Recording Failed", description: "Engine not ready." });
@@ -350,6 +356,9 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(name);
             else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
             else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
+            else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
+                // Fixed instrument, but ensure initialization state is fresh
+            }
         },
         setBassTechnique: () => {}, 
         setTextureSettings: (s) => {

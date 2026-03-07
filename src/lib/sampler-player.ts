@@ -1,3 +1,4 @@
+
 import type { Note } from "@/types/music";
 
 type SamplerInstrument = {
@@ -7,7 +8,7 @@ type SamplerInstrument = {
 
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. ПЛАН №678 — Системное снижение громкости пианино в 2 раза (0.375 -> 0.1875).
+ * #ЧТО: 1. ПЛАН №760 — Снижен базовый уровень усиления (preamp) для устранения громкости.
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -23,16 +24,20 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системная калибровка уровней. Гейн снижен в 2 раза.
-        this.preamp.gain.value = 0.1875; 
+        // #ЗАЧЕМ: Системная калибровка уровней. Гейн снижен до минимума для деликатности.
+        this.preamp.gain.value = 0.06; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
     }
     
+    /**
+     * #ЗАЧЕМ: Прямое управление громкостью внутри сэмплера.
+     */
     public setVolume(volume: number) {
-        // #ЗАЧЕМ: Очистка от перекрестного управления. 
-        //         Теперь системная громкость устанавливается на Context-узле.
+        if (isFinite(volume)) {
+            this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
+        }
     }
 
 
