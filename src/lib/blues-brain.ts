@@ -17,26 +17,19 @@ import {
     decompressCompactPhrase,
     calculateMusiNum,
     normalizePhraseGroup,
-    invertPhrase,
-    retrogradePhrase,
-    applyRhythmicJitter,
-    getWalkingDegree
+    normalizeStr,
+    pickWeightedDeterministic,
+    repairLegacyPhrase
 } from './music-theory';
-import { 
-    getChordNameForBar 
-} from './blues-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
-import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
-import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
-import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V205.0 — "Elastic Phrasing".
- * #ОБНОВЛЕНО (ПЛАН №762): 
- * 1. Внедрен Elastic Time: автоматическое растяжение плотных фраз в 2 раза.
- * 2. Liquid Sound: автоматические слайды для малых интервалов.
- * 3. Shred-Rest: обязательные паузы после быстрых пассажей.
+ * @fileOverview Blues Brain V206.0 — "Narrative Arc".
+ * #ОБНОВЛЕНО (ПЛАН №763): 
+ * 1. Narrative Exhaustion: Длинные и сложные соло теперь требуют отдыха в 3-4 такта.
+ * 2. Resolution logic: Быстрые ноты теперь стремятся к разрешению в длинную ноту, а не в тишину.
+ * 3. Elastic Time Integration: Улучшена работа с timeScale для драматических финалов.
  */
 
 const TICKS_PER_BAR = 12;
@@ -66,7 +59,7 @@ export interface BluesBrainConfig {
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
   tempo: 72,
-  rootNote: 55, // G3
+  rootNote: 55, 
   emotion: { melancholy: 0.82, darkness: 0.25 },
   genre: 'blues'
 };
@@ -90,8 +83,6 @@ export class BluesBrain {
   private currentTrackName: string = 'Local';
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
   
-  private currentGuitarRiff: BluesGuitarRiff | null = null;
-
   private readonly MELODY_CEILING = 72; 
   private readonly BASS_FLOOR = 31; 
   private readonly BASS_CEILING = 47; 
@@ -99,6 +90,9 @@ export class BluesBrain {
   private soloistBusyUntilBar: number = -1;
   private soloistRestingUntilBar: number = -1;
   private accompanimentRestingUntilBar: number = -1;
+  
+  // #ЗАЧЕМ: Система памяти для оценки "драматургической усталости".
+  private lastPhraseComplexity: number = 0;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
@@ -198,7 +192,6 @@ export class BluesBrain {
     this.state.lastTension = tension;
 
     if (epoch % 12 === 0) {
-        this.selectGrandAxiom(tension);
         this.state.lastMutationType = this.config.activeAnchorId ? 'none' : ['none', 'inversion', 'retrograde', 'jitter'][this.random.nextInt(4)];
     }
 
@@ -207,8 +200,18 @@ export class BluesBrain {
 
     let newBpm: number | undefined;
     if (isSoloistFree && !isSoloistResting) {
-        if (this.random.next() < 0.45) this.soloistRestingUntilBar = epoch + 1;
-        else newBpm = this.selectNextAxiom(navInfo, dna, epoch);
+        // #ЗАЧЕМ: Решение о "выдохе" (паузе) теперь принимается на основе сложности прошлой фразы.
+        const complexityThreshold = 0.6;
+        if (this.lastPhraseComplexity > complexityThreshold && this.random.next() < 0.7) {
+            // Длинный отдых после серьезного соло
+            this.soloistRestingUntilBar = epoch + 3 + this.random.nextInt(2);
+            this.lastPhraseComplexity = 0; // Сброс
+        } else if (this.random.next() < 0.3) {
+            // Обычная пауза между фразами
+            this.soloistRestingUntilBar = epoch + 1;
+        } else {
+            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
+        }
     }
 
     const events: FractalEvent[] = [];
@@ -280,16 +283,6 @@ export class BluesBrain {
     };
   }
 
-  private selectGrandAxiom(tension: number) {
-      const isMinor = this.mood === 'melancholic' || this.mood === 'dark' || this.mood === 'gloomy';
-      const pool = BLUES_GUITAR_RIFFS.filter(r => (r.moods.includes(this.mood) || (isMinor && r.type === 'minor')) && !this.state.recentGrandMelodies.includes(r.id));
-      this.currentGuitarRiff = (pool.length > 0 ? pool : BLUES_GUITAR_RIFFS)[this.random.nextInt(Math.max(1, pool.length))];
-      if (this.currentGuitarRiff) {
-          this.state.recentGrandMelodies.push(this.currentGuitarRiff.id);
-          if (this.state.recentGrandMelodies.length > 6) this.state.recentGrandMelodies.shift();
-      }
-  }
-
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
@@ -323,10 +316,12 @@ export class BluesBrain {
               
               let rawPhrase = decompressCompactPhrase(selected.phrase);
               
-              // #ЗАЧЕМ: Elastic Time Analyzer (ПЛАН №762).
+              // #ЗАЧЕМ: Оценка сложности для Narrative Exhaustion.
               const shortNotes = rawPhrase.filter(n => n.d < 3).length;
-              const densityRatio = shortNotes / Math.max(1, rawPhrase.length);
-              if (densityRatio > 0.4 && this.config.tempo > 85) {
+              this.lastPhraseComplexity = shortNotes / Math.max(1, rawPhrase.length);
+              
+              // Elastic Time
+              if (this.lastPhraseComplexity > 0.4 && this.config.tempo > 85) {
                   this.currentTimeScale = 2;
               }
 
@@ -364,6 +359,7 @@ export class BluesBrain {
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       this.currentAxiomMaxTick = 48;
       this.soloistBusyUntilBar = epoch + 4;
+      this.lastPhraseComplexity = 0.5;
       return undefined;
   }
 
@@ -372,38 +368,36 @@ export class BluesBrain {
     const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
     const barInCycle = (epoch - startEpoch) % barCountInPhrase;
     
-    // #ЗАЧЕМ: Масштабирование окна поиска нот.
     const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
     
     const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-    // #ЗАЧЕМ: Shred-Rest Protocol (ПЛАН №762).
-    const isShredding = barNotes.filter(n => n.d < 2).length > 3;
-    if (isShredding) {
-        this.soloistRestingUntilBar = epoch + 2; 
-    }
-
     return barNotes.map((n, idx) => {
         let tech = n.tech || 'pick';
         
-        // #ЗАЧЕМ: Liquid Sound (ПЛАН №762). Слайды при малых интервалах.
+        // Liquid Sound
         const nextNote = barNotes[idx + 1];
         if (nextNote) {
             const interval = Math.abs(DEGREE_TO_SEMITONE[n.deg] - DEGREE_TO_SEMITONE[nextNote.deg]);
             if (interval > 0 && interval <= 2) tech = 'sl';
         }
 
-        // #ЗАЧЕМ: Automatic Articulation.
+        // Automatic Articulation
         if (n.d >= 6 && (tech === 'pick' || tech === '0')) tech = 'vb';
         if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
+
+        // #ЗАЧЕМ: Драматическое завершение пассажа.
+        // Если это последняя нота в быстром пассаже, она должна быть ярче и тягучее.
+        const isEndOfShred = idx === barNotes.length - 1 && n.d < 3;
+        const weight = isEndOfShred ? 0.95 : 0.85;
 
         return {
             type: type,
             note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: n.d * TICK_TO_BEAT * timeScale,
-            weight: 0.85, 
+            weight: weight, 
             technique: tech as any, 
             dynamics: 'p', 
             phrasing: 'legato'
@@ -495,7 +489,7 @@ export class BluesBrain {
               type: type,
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
               time: (n.t - barOffset) * TICK_TO_BEAT,
-              duration: Math.min(n.d, 6) * TICK_TO_BEAT, // #ЗАЧЕМ: Ритмический затвор.
+              duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
               weight: 0.25, 
               technique: 'hit',
               dynamics: 'p',
@@ -506,14 +500,14 @@ export class BluesBrain {
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + getWalkingDegree(epoch, this.seed));
+    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12));
     return [{
-        type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+        type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }];
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12));
+      const root = this.constrainAccompanimentOctave(accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12) || 60);
       const degrees = [14, 17, 21, 12, 14, 0];
       const shift = degrees[calculateMusiNum(epoch, 5, this.seed + 100, degrees.length)];
       return [{
@@ -525,7 +519,7 @@ export class BluesBrain {
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + getWalkingDegree(epoch, this.seed + 50));
+      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed + 50, 12));
       
       if (timbre === 'guitarChords') {
           return [{ 
@@ -545,7 +539,7 @@ export class BluesBrain {
           type: 'harmony',
           note: this.constrainAccompanimentOctave(root + 12),
           time: 0,
-          duration: 4.0, 
+          duration: 4.0 * TICK_TO_BEAT, 
           weight: 0.3,
           technique: 'swell',
           dynamics: 'p',
