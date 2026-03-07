@@ -1,8 +1,8 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
+ * #ОБНОВЛЕНО (ПЛАН №744): Исправлена логика Play/Pause. Теперь это Resume/Pause без регенерации.
  * #ОБНОВЛЕНО (ПЛАН №733): Реализована принудительная очистка истории при ротации циклов для предотвращения деградации музыки.
- * #ОБНОВЛЕНО (ПЛАН №734): Добавлена передача beautyScore и seed для AI Arbiter.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -130,7 +130,12 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.initializeEngine(this.settings);
+        
+        // #ЗАЧЕМ: ПЛАН №744. Инициализируем только если двигателя нет.
+        // Это превращает Play в Resume, а не в Restart.
+        if (!fractalMusicEngine) {
+            this.initializeEngine(this.settings);
+        }
 
         const loop = () => {
             if (!this.isRunning) return;
@@ -151,20 +156,23 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        this.settings.seed = generateTrueSeed();
+        // #ЗАЧЕМ: ПЛАН №744. Воркер больше не генерирует семя сам. Использует присланное.
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
+       const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        
        this.settings = { ...this.settings, ...newSettings };
-       if (genreOrMoodChanged || filterChanged) {
+       
+       // #ЗАЧЕМ: Если семя изменилось (Regenerate), сбрасываем прогресс и пересоздаем DNA.
+       if (seedChanged || genreOrMoodChanged || filterChanged) {
            this.sessionLickHistory = []; 
            this.filterRotationIndex = 0; 
-           this.reset();
+           this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
        }
@@ -180,8 +188,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // #ЗАЧЕМ: Предотвращение деградации (ПЛАН №733).
-        // #ЧТО: Принудительная очистка истории фраз при ротации наследия.
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              console.log(`%c${getTimestamp()} [Chain] Cycle Complete. Rotating Heritage & Purging History...`, 'color: #4ade80; font-weight: bold;');
              this.filterRotationIndex++;
@@ -239,8 +245,8 @@ const Scheduler = {
                 barCount: this.barCount,
                 actualBpm: this.settings.bpm,
                 lickId: payload.lickId,
-                beautyScore: payload.beautyScore, // #ЗАЧЕМ: ПЛАН №734.
-                seed: this.settings.seed // #ЗАЧЕМ: ПЛАН №734.
+                beautyScore: payload.beautyScore,
+                seed: this.settings.seed
             }
         });
 

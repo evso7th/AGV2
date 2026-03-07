@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.3 — "Masterpiece Feedback".
- * #ЧТО: ПЛАН №734 — Улучшена передача данных для сохранения Шедевров.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.4 — "Seed Sovereignty".
+ * #ЧТО: ПЛАН №744 — Play/Pause больше не генерирует семя. Семя управляется только Regenerate.
  */
 'use client';
 
@@ -96,12 +96,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [mood, setMood] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(12);
-  const [currentSeed, setCurrentSeed] = useState<number>(0);
+  
+  // #ЗАЧЕМ: Семя инициализируется сразу, чтобы Play не вызывал регенерацию.
+  const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
+  
   const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
   const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
 
@@ -162,20 +164,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
     handlePlayPause: async () => {
         if (!isInitialized) return;
-        if (!hasPlayedOnce && !isPlaying) {
-            const initialSeed = Date.now();
-            setCurrentSeed(initialSeed);
-            resetWorker();
-            setHasPlayedOnce(true);
-        }
+        // #ЗАЧЕМ: Play теперь только играет. Никакой скрытой регенерации.
         setEngineIsPlaying(!isPlaying);
     },
     handleRegenerate: () => {
         setIsRegenerating(true);
+        // #ЗАЧЕМ: Regenerate — единственный источник нового семени.
         const nextSeed = Date.now();
         setCurrentSeed(nextSeed);
         setTimeout(() => setIsRegenerating(false), 500); 
-        resetWorker();
     },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
     handleToggleBroadcast: () => {
