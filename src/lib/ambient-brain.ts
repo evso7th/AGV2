@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain v28.0 — "The Sonic Cube Protocol".
- * #ОБНОВЛЕНО (ПЛАН №737): 
- * 1. Внедрен Luminous Peaks Protocol: активация гитары Shine On при низком тумане (< 0.35).
- * 2. Улучшена динамика соло в условиях "Ясного неба".
+ * @fileOverview Ambient Brain v29.0 — "The Golden Middle Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №738): 
+ * 1. Введен жесткий потолок высоты нот: соло до C5 (72), пэды до E4 (64).
+ * 2. Устранена возможность ухода инструментов "в небеса".
  */
 
 import type { 
@@ -69,7 +69,10 @@ export class AmbientBrain {
     private soloistRestingUntilBar: number = -1; 
     private accompanimentRestingUntilBar: number = -1; 
     
-    private readonly MELODY_CEILING = 75;
+    // #ЗАЧЕМ: Золотая середина регистра (ПЛАН №738).
+    // #ЧТО: Соло до C5 (72), Пэды до E4 (64).
+    private readonly MELODY_CEILING = 72;
+    private readonly PAD_CEILING = 64;
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentThemeMaxTick: number = 0;
@@ -155,7 +158,6 @@ export class AmbientBrain {
         const hints = this.orchestrate(localTension, navInfo, epoch, dna);
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: Пограничные пассажи. Красивые медленные линии на стыках частей.
         if (navInfo.isPartTransition && hints.melody && this.random.next() < 0.7) {
             events.push(...this.renderBeautifulPassage(currentChord, localTension));
         }
@@ -178,7 +180,6 @@ export class AmbientBrain {
         }
 
         // --- 2. BASS ---
-        // #ЗАЧЕМ: Приоритет дронов для амбиента. Не более одной смены ноты в такт.
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(currentChord, epoch, localTension, dna)));
         } else if (hints.bass) {
@@ -309,7 +310,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        // --- 1. БАРАБАНЫ ---
         if (this.random.next() < 0.25) {
             const kick = kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft';
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
@@ -320,7 +320,6 @@ export class AmbientBrain {
             events.push({ type: tom as any, note: 40, time: 1.5 + this.random.next(), duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // --- 2. ЖЕЛЕЗО ---
         if (this.random.next() < 0.6) {
             [0, 1, 2, 3].forEach(beat => {
                 if (this.random.next() < 0.3) {
@@ -332,7 +331,6 @@ export class AmbientBrain {
             events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         }
 
-        // --- 3. ПЕРКУССИЯ ---
         if (this.random.next() < 0.5) {
             const percPool = kit.perc || [];
             if (percPool.length > 0) {
@@ -355,7 +353,8 @@ export class AmbientBrain {
         for(let i=0; i<count; i++) {
             events.push({
                 type: 'melody',
-                note: root + scale[this.random.nextInt(scale.length)],
+                // #ЗАЧЕМ: Принудительный потолок соло (72).
+                note: Math.min(root + scale[this.random.nextInt(scale.length)], this.MELODY_CEILING),
                 time: i * 0.6,
                 duration: 2.0,
                 weight: 0.4,
@@ -372,8 +371,6 @@ export class AmbientBrain {
         const hints: InstrumentHints = { summonProgress: {} };
         const part = navInfo.currentPart;
         
-        // #ЗАЧЕМ: Luminous Peaks Protocol.
-        // #ЧТО: Если туман рассеивается (< 0.35), активируем Shine On гитару как "луч света".
         const isClearSky = this.fog < 0.35;
 
         Object.entries(part.instrumentation || {}).forEach(([partStr, rule]: [any, any]) => {
@@ -403,10 +400,11 @@ export class AmbientBrain {
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.registerShift;
+        // #ЗАЧЕМ: Ограничение высоты пэдов (Золотая середина).
+        const root = Math.min(chord.rootNote + 12 + this.registerShift, this.PAD_CEILING);
         return [0, 7, 12].map((n, i) => ({
             type: 'accompaniment',
-            note: root + n,
+            note: Math.min(root + n, this.PAD_CEILING + 12), // Допускаем небольшое расширение аккорда вверх
             time: i * 0.3,
             duration: 5.0,
             weight: 0.4,
@@ -424,7 +422,8 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({
             type: type,
-            note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift,
+            // #ЗАЧЕМ: Ограничение высоты аккомпанемента из Heritage.
+            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift, this.PAD_CEILING + 12),
             time: (n.t - barOffset) / 3,
             duration: n.d / 3,
             weight: 0.5,
@@ -441,6 +440,7 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + 12);
         return barNotes.map(n => ({
             type: type as any,
+            // #ЗАЧЕМ: Жесткий потолок соло (C5).
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - barOffset) / 3,
             duration: n.d / 3,
@@ -473,7 +473,8 @@ export class AmbientBrain {
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         return [{
             type: 'melody',
-            note: chord.rootNote + 24 + this.registerShift,
+            // #ЗАЧЕМ: Ограничение высоты пэда-мелодии.
+            note: Math.min(chord.rootNote + 24 + this.registerShift, this.MELODY_CEILING),
             time: 0,
             duration: 4.0,
             weight: 0.3,

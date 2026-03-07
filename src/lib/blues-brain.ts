@@ -33,8 +33,8 @@ import { BLUES_MELODY_RIFFS } from './assets/blues-melody-riffs';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * @fileOverview Blues Brain V193.0 — "Eternal Ensemble Stability".
- * #ОБНОВЛЕНО (ПЛАН №733): Внедрен протокол "Аварийного сброса истории" для предотвращения затухания музыки.
+ * @fileOverview Blues Brain V194.0 — "The Golden Middle Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №738): Внедрен потолок высоты нот 72 (C5) для сохранения мелодизма.
  */
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -92,7 +92,8 @@ export class BluesBrain {
   private currentGuitarRiff: BluesGuitarRiff | null = null;
   private currentGrandMelody: BluesMelody | null = null;
 
-  private readonly MELODY_CEILING = 75; 
+  // #ЗАЧЕМ: Золотая середина (ПЛАН №738).
+  private readonly MELODY_CEILING = 72; 
   private readonly BASS_FLOOR = 31; 
   private readonly BASS_CEILING = 47; 
 
@@ -266,7 +267,7 @@ export class BluesBrain {
     
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
     if (isAccompResting) {
-        // Silence for pads
+        // Silence
     } else if (hints.accompaniment && unisonType !== 'none') {
         accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
     } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
@@ -380,8 +381,6 @@ export class BluesBrain {
               const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
               let freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
               
-              // #ЗАЧЕМ: Профилактика деградации (ПЛАН №733).
-              // #ЧТО: Если свежих фраз нет, сбрасываем историю для этого пула.
               if (freshPool.length === 0) {
                   const poolIds = new Set(finalPool.map(ax => ax.id));
                   this.state.recentLicks = this.state.recentLicks.filter(id => !poolIds.has(id));
@@ -626,6 +625,7 @@ export class BluesBrain {
         
         return {
             type: type,
+            // #ЗАЧЕМ: Жесткий потолок соло (C5).
             note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (n.octShift || 0), this.MELODY_CEILING),
             time: tickInBar / 3,
             duration: (n.d * timeScale) / 3,
