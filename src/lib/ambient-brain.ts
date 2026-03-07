@@ -1,10 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v32.0 — "Melodic Voyager & Tone Morphing".
- * #ОБНОВЛЕНО (ПЛАН №743): 
- * 1. Внедрен Melodic Wanderer: бас и пэды теперь "гуляют" по гамме (1, 5, 6, 2 ступени).
- * 2. Длинные ноты Heritage теперь меняют высоту при дроблении (Pitch Variation).
- * 3. Добавлена динамическая модуляция тембра (Tone Morphing) через filterCutoff.
+ * @fileOverview Ambient Brain v32.1 — "Sync Integrity Fix".
+ * #ОБНОВЛЕНО (ПЛАН №745): Улучшена логика сопоставления Якоря и отчетности об аксиомах.
  */
 
 import type { 
@@ -286,7 +283,6 @@ export class AmbientBrain {
     }
 
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №743 - Дрон гуляет по ступеням (1, 5, 6, 4).
         const degrees = [0, 7, 9, 5, 0, 7, 2, 0];
         const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
         return [{
@@ -301,7 +297,7 @@ export class AmbientBrain {
             params: { 
                 attack: 1.5, 
                 release: 2.0,
-                filterCutoff: 300 + (tension * 200) // Tone morphing
+                filterCutoff: 300 + (tension * 200) 
             }
         }];
     }
@@ -352,8 +348,6 @@ export class AmbientBrain {
         const scale = [0, 2, 4, 7, 9, 11, 12, 14]; 
         const events: FractalEvent[] = [];
         const count = 3 + this.random.nextInt(4);
-        
-        // #ЗАЧЕМ: ПЛАН №743 - Пассаж теперь всегда разный.
         const seedOffset = calculateMusiNum(epoch, 7, this.seed, 100);
 
         for(let i=0; i<count; i++) {
@@ -378,7 +372,6 @@ export class AmbientBrain {
     }
 
     private renderGenerativePiano(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №743 - Пианино гуляет по ступеням.
         const degrees = [0, 7, 12, 14, 11, 7, 4, 0];
         const shift = degrees[calculateMusiNum(epoch, 5, this.seed, 8)];
         const root = chord.rootNote + 24;
@@ -396,7 +389,6 @@ export class AmbientBrain {
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №743 - Гармония меняет краску.
         const root = chord.rootNote + 12 + this.registerShift;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         return [{
@@ -412,12 +404,11 @@ export class AmbientBrain {
     }
 
     private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №743 - Пэды гуляют по октавам и ступеням.
         const root = Math.min(chord.rootNote + 12 + this.registerShift, this.PAD_CEILING);
         const isOrgan = timbre.includes('organ');
         if (isOrgan && this.random.next() > 0.15) return [];
 
-        const degrees = epoch % 16 < 8 ? [0, 7, 12] : [0, 4, 9]; // Меняем форму аккорда
+        const degrees = epoch % 16 < 8 ? [0, 7, 12] : [0, 4, 9]; 
 
         return degrees.map((n, i) => ({
             type: 'accompaniment',
@@ -446,11 +437,10 @@ export class AmbientBrain {
 
         barNotes.forEach(n => {
             if (n.d >= 6 && type === 'accompaniment') {
-                // #ЗАЧЕМ: ПЛАН №743 - При дроблении меняем высоту (1 -> 5 -> 1).
                 [0, 4.5, 9].forEach((p, idx) => {
                     const tick = (n.t - barOffset) + p;
                     if (tick < 12) {
-                        const shift = idx === 1 ? 7 : 0; // На втором ударе берем квинту
+                        const shift = idx === 1 ? 7 : 0; 
                         events.push({
                             type: type,
                             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + shift + this.registerShift, this.PAD_CEILING + 12),
@@ -527,7 +517,6 @@ export class AmbientBrain {
     }
 
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №743 - Мелодический пэд гуляет.
         const degrees = [0, 2, 4, 7, 9, 7, 4, 0];
         const shift = degrees[calculateMusiNum(epoch, 4, this.seed, 8)];
         return [{

@@ -1,8 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Cloud Composer")
- * #ОБНОВЛЕНО (ПЛАН №744): Исправлена логика Play/Pause. Теперь это Resume/Pause без регенерации.
- * #ОБНОВЛЕНО (ПЛАН №733): Реализована принудительная очистка истории при ротации циклов для предотвращения деградации музыки.
+ * #ОБНОВЛЕНО (ПЛАН №745): Исправлен рассинхрон загрузки DNA. Ре-инициализация при получении аксиом.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -85,11 +84,15 @@ const Scheduler = {
         }
 
         if (pickedId) {
-            const anchorAxiom = this.cloudAxiomPool.find(ax => ax.compositionId === pickedId && ax.nativeKey);
+            const anchorAxiom = this.cloudAxiomPool.find(ax => 
+                ax.compositionId && 
+                ax.compositionId.toLowerCase().replace(/[^a-z0-9]/g, '') === pickedId?.toLowerCase().replace(/[^a-z0-9]/g, '') && 
+                ax.nativeKey
+            );
             if (anchorAxiom) {
                 const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
                 const rootName = anchorAxiom.nativeKey.match(/^[A-G][#b]?/)?.[0] || 'C';
-                return { id: pickedId, nativeRoot: 48 + (noteMap[rootName] || 0) }; // Base C3
+                return { id: pickedId, nativeRoot: 48 + (noteMap[rootName] || 0) }; 
             }
             return { id: pickedId, nativeRoot: null };
         }
@@ -123,16 +126,12 @@ const Scheduler = {
             this.settings.bpm = inheritedBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
         }
-        
-        this.barCount = 0;
     },
 
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
         
-        // #ЗАЧЕМ: ПЛАН №744. Инициализируем только если двигателя нет.
-        // Это превращает Play в Resume, а не в Restart.
         if (!fractalMusicEngine) {
             this.initializeEngine(this.settings);
         }
@@ -156,7 +155,6 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        // #ЗАЧЕМ: ПЛАН №744. Воркер больше не генерирует семя сам. Использует присланное.
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -168,10 +166,10 @@ const Scheduler = {
        
        this.settings = { ...this.settings, ...newSettings };
        
-       // #ЗАЧЕМ: Если семя изменилось (Regenerate), сбрасываем прогресс и пересоздаем DNA.
        if (seedChanged || genreOrMoodChanged || filterChanged) {
            this.sessionLickHistory = []; 
            this.filterRotationIndex = 0; 
+           this.barCount = 0; // Сбрасываем счетчик при регенерации
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
@@ -179,8 +177,13 @@ const Scheduler = {
     },
 
     updateCloudAxioms(axioms: any[]) {
-        this.cloudAxiomPool = axioms;
-        if (fractalMusicEngine) {
+        this.cloudAxiomPool = axioms || [];
+        
+        // #ЗАЧЕМ: ПЛАН №745. Если аксиомы пришли, когда мы еще в начале, переподключаем Якорь.
+        if (this.barCount <= 1 && (this.settings.selectedCompositionIds?.length || 0) > 0) {
+            console.log(`%c${getTimestamp()} [Sync] Cloud DNA arrived. Forcing Genetic Re-Lock...`, 'color: #00FFFF; font-weight: bold;');
+            this.initializeEngine(this.settings);
+        } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
         }
     },
@@ -194,6 +197,7 @@ const Scheduler = {
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
+             this.barCount = 0;
         }
 
         let payload: any;
@@ -204,7 +208,7 @@ const Scheduler = {
             return;
         }
 
-        if (payload.lickId) {
+        if (payload.lickId && !payload.lickId.includes('Generative')) {
             if (!this.sessionLickHistory.includes(payload.lickId)) {
                 this.sessionLickHistory.push(payload.lickId);
                 if (this.sessionLickHistory.length > 50) this.sessionLickHistory.shift();
@@ -221,7 +225,9 @@ const Scheduler = {
         const mutType = payload.mutationType || 'none';
         const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
         const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
-        const melStr = axioms.melodyTrack ? `${axioms.melodyTrack} | ID: ${axioms.melody}` : (axioms.melody || 'none');
+        
+        // #ЗАЧЕМ: Исправлено отображение мелодии.
+        const melStr = axioms.melody === 'Generative' ? 'Generative (No DNA)' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
 
         console.log(
