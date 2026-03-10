@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v38.0 — "Elastic Phrasing".
- * #ОБНОВЛЕНО (ПЛАН №762): Внедрена поддержка timeScale для тематических мелодий.
+ * @fileOverview Ambient Brain v39.0 — "Evolutionary Variance".
+ * #ОБНОВЛЕНО (ПЛАН №780): Реализована защита от зацикливания через ротацию и мутации.
  */
 
 import type { 
@@ -86,6 +86,7 @@ export class AmbientBrain {
     private currentTrackName: string = '';
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
     private currentMutationType: string = 'none';
+    private themeRepeatCount: number = 0;
     
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
@@ -133,9 +134,14 @@ export class AmbientBrain {
         this.applyGeography(epoch, dna);
         this.applySpectralAtom(epoch, waves[3]);
 
-        if (epoch % 16 === 0 && !this.activeAnchorId) {
-            const mutPool = ['none', 'inversion', 'retrograde', 'jitter'];
-            this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+        // #ЗАЧЕМ: Система динамических мутаций (ПЛАН №780).
+        if (epoch % 12 === 0) {
+            if (this.themeRepeatCount > 0) {
+                const mutPool = ['inversion', 'retrograde', 'jitter'];
+                this.currentMutationType = mutPool[this.random.nextInt(mutPool.length)];
+            } else {
+                this.currentMutationType = 'none';
+            }
         }
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -144,7 +150,7 @@ export class AmbientBrain {
         let newBpm: number | undefined;
 
         if (isSoloistFree && !isSoloistResting) {
-            if (this.random.next() < 0.45) {
+            if (this.random.next() < 0.4) {
                 this.soloistRestingUntilBar = epoch + 2;
             } else {
                 newBpm = this.selectNextAxiom(navInfo, dna, epoch);
@@ -226,6 +232,7 @@ export class AmbientBrain {
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
+        const prevThemeId = this.currentTheme?.id;
         this.currentAccompAxioms = []; 
         this.currentTimeScale = 1;
         let cloudAxiom: any = null;
@@ -258,12 +265,18 @@ export class AmbientBrain {
 
                 const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
                 
+                // #ЗАЧЕМ: Lick Rotation Memory.
                 const freshPool = finalPool.filter(ax => !this.usedThemeHistory.includes(ax.id));
                 cloudAxiom = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
                 
                 if (cloudAxiom) {
+                    if (cloudAxiom.id === prevThemeId) {
+                        this.themeRepeatCount++;
+                    } else {
+                        this.themeRepeatCount = 0;
+                    }
                     this.usedThemeHistory.push(cloudAxiom.id);
-                    if (this.usedThemeHistory.length > 30) this.usedThemeHistory.shift();
+                    if (this.usedThemeHistory.length > 20) this.usedThemeHistory.shift();
                 }
             }
         }
@@ -271,11 +284,9 @@ export class AmbientBrain {
         if (cloudAxiom) {
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
             
-            // #ЗАЧЕМ: Elastic Time Analyzer.
-            const shortNotes = rawPhrase.filter(n => n.d < 3).length;
-            if (shortNotes / Math.max(1, rawPhrase.length) > 0.4 && dna.baseTempo > 85) {
-                this.currentTimeScale = 2;
-            }
+            // #ЗАЧЕМ: Evolutionary Mutations. Принудительная мутация при повторе.
+            if (this.themeRepeatCount === 1) rawPhrase = invertPhrase(rawPhrase);
+            else if (this.themeRepeatCount >= 2) rawPhrase = retrogradePhrase(rawPhrase);
 
             const phrasesToNormalize = [rawPhrase];
             const cid = this.normalizeStr(cloudAxiom.compositionId);
@@ -305,12 +316,12 @@ export class AmbientBrain {
 
             const phraseBars = cloudAxiom.bars || 4;
             this.currentThemeMaxTick = phraseBars * TICKS_PER_BAR;
-            this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + (phraseBars * this.currentTimeScale), id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
+            this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + phraseBars, id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
             this.currentTrackName = cloudAxiom.compositionId;
-            this.soloistBusyUntilBar = epoch + (phraseBars * this.currentTimeScale);
+            this.soloistBusyUntilBar = epoch + phraseBars;
             
-            if (rawBass) this.currentBassTheme = { phrase: rawBass, startBar: epoch, endBar: epoch + (phraseBars * this.currentTimeScale) };
-            this.currentAccompAxioms = rawAccomps.map((p, idx) => ({ phrase: p, role: accompSiblings[idx].role, endBar: epoch + (phraseBars * this.currentTimeScale) }));
+            if (rawBass) this.currentBassTheme = { phrase: rawBass, startBar: epoch, endBar: epoch + phraseBars };
+            this.currentAccompAxioms = rawAccomps.map((p, idx) => ({ phrase: p, role: accompSiblings[idx].role, endBar: epoch + phraseBars }));
             this.ensembleStatus = 'SIBLING';
             
             return cloudAxiom.nativeBpm || undefined;

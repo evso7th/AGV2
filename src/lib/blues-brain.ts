@@ -19,17 +19,19 @@ import {
     normalizePhraseGroup,
     normalizeStr,
     pickWeightedDeterministic,
-    repairLegacyPhrase
+    repairLegacyPhrase,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V207.0 — "Groove Recovery".
- * #ОБНОВЛЕНО (ПЛАН №766): 
- * 1. Tom Fills: Барабанщик снова делает "пробежки" по томам каждые 4 такта.
- * 2. Ghost Groove: Добавлены призрачные ноты для малого барабана.
- * 3. Restraint Update: Усилена связь между паузами солиста и активностью ударных.
+ * @fileOverview Blues Brain V208.0 — "Evolutionary Variance".
+ * #ОБНОВЛЕНО (ПЛАН №780): 
+ * 1. Anti-Looping: Система ротации ликов через lickHistory.
+ * 2. Evolutionary Mutations: Принудительная трансформация при повторах (Inversion/Retrograde).
  */
 
 const TICKS_PER_BAR = 12;
@@ -92,6 +94,7 @@ export class BluesBrain {
   private accompanimentRestingUntilBar: number = -1;
   
   private lastPhraseComplexity: number = 0;
+  private lickRepeatCount: number = 0;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
@@ -190,8 +193,14 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
-    if (epoch % 12 === 0) {
-        this.state.lastMutationType = this.config.activeAnchorId ? 'none' : ['none', 'inversion', 'retrograde', 'jitter'][this.random.nextInt(4)];
+    // #ЗАЧЕМ: Система динамических мутаций (ПЛАН №780).
+    if (epoch % 8 === 0) {
+        if (this.lickRepeatCount > 0) {
+            const mutPool = ['inversion', 'retrograde', 'jitter'];
+            this.state.lastMutationType = mutPool[this.random.nextInt(mutPool.length)];
+        } else {
+            this.state.lastMutationType = 'none';
+        }
     }
 
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -201,9 +210,9 @@ export class BluesBrain {
     if (isSoloistFree && !isSoloistResting) {
         const complexityThreshold = 0.6;
         if (this.lastPhraseComplexity > complexityThreshold && this.random.next() < 0.7) {
-            this.soloistRestingUntilBar = epoch + 3 + this.random.nextInt(2);
+            this.soloistRestingUntilBar = epoch + 2 + this.random.nextInt(2);
             this.lastPhraseComplexity = 0; 
-        } else if (this.random.next() < 0.3) {
+        } else if (this.random.next() < 0.25) {
             this.soloistRestingUntilBar = epoch + 1;
         } else {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
@@ -280,6 +289,7 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
+      const prevLickId = this.currentLickId;
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
       this.ensembleStatus = 'ADAPTIVE';
@@ -303,21 +313,35 @@ export class BluesBrain {
               });
 
               const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-              const selected = finalPool[this.random.nextInt(finalPool.length)];
+              
+              // #ЗАЧЕМ: Lick Rotation Memory. Предпочитаем новые лики.
+              const freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
+              const selected = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
+              
               if (!selected) return undefined;
+
+              // #ЗАЧЕМ: Режим мутации при повторе.
+              if (selected.id === prevLickId) {
+                  this.lickRepeatCount++;
+              } else {
+                  this.lickRepeatCount = 0;
+              }
 
               this.currentLickId = selected.id;
               this.currentTrackName = selected.compositionId; 
+              
               this.state.recentLicks.push(selected.id);
+              if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
               
               let rawPhrase = decompressCompactPhrase(selected.phrase);
+              
+              // #ЗАЧЕМ: Evolutionary Mutations. Если лик повторяется, трансформируем его.
+              if (this.lickRepeatCount === 1) rawPhrase = invertPhrase(rawPhrase);
+              else if (this.lickRepeatCount >= 2) rawPhrase = retrogradePhrase(rawPhrase);
+
               const shortNotes = rawPhrase.filter(n => n.d < 3).length;
               this.lastPhraseComplexity = shortNotes / Math.max(1, rawPhrase.length);
               
-              if (this.lastPhraseComplexity > 0.4 && this.config.tempo > 85) {
-                  this.currentTimeScale = 2;
-              }
-
               const phrasesToNormalize = [rawPhrase];
               const cid = this.normalize(selected.compositionId);
               const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
@@ -339,7 +363,7 @@ export class BluesBrain {
               const baseBars = selected.bars || 4;
               this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
               this.currentAxiom = rawPhrase; 
-              this.soloistBusyUntilBar = epoch + (baseBars * this.currentTimeScale);
+              this.soloistBusyUntilBar = epoch + baseBars;
               this.ensembleStatus = 'SIBLING';
               return selected.nativeBpm || undefined;
           }
@@ -376,8 +400,7 @@ export class BluesBrain {
         if (n.d >= 6 && (tech === 'pick' || tech === '0')) tech = 'vb';
         if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
 
-        const isEndOfShred = idx === barNotes.length - 1 && n.d < 3;
-        const weight = isEndOfShred ? 0.95 : 0.85;
+        const weight = 0.80; 
 
         return {
             type: type,
@@ -454,14 +477,11 @@ export class BluesBrain {
     }));
   }
 
-  /**
-   * #ЗАЧЕМ: Нарративные ударные с поддержкой филлов по томам (ПЛАН №766).
-   */
   private renderNarrativeDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
       const isFourthBar = epoch % 4 === 3;
       
-      // Basic Groove
+      // Basic Groove - ALWAYS ON
       [0, 6].forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       
@@ -473,8 +493,7 @@ export class BluesBrain {
 
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
-      // #ЗАЧЕМ: Возвращение "пробежек" по томам (ПЛАН №766).
-      // Филлы происходят на 4-й такт или когда солист молчит.
+      // Tom fills on transition or resting
       if (isFourthBar || (isSoloistResting && this.random.next() < 0.5)) {
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           const fillTicks = [9, 10, 11];
@@ -490,7 +509,6 @@ export class BluesBrain {
                   phrasing: 'staccato'
               });
           });
-          // Crash on the transition to next bar if it's very tense
           if (tension > 0.8) {
               events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
           }

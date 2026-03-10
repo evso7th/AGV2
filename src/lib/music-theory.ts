@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.7 — "Imperial Pulse".
- * #ЗАЧЕМ: Реализация ПЛАНА №757 — Уточнение дефолтных темпов для предотвращения "залипания" на 80.
+ * @fileOverview Universal Music Theory Utilities V2.8 — "Evolutionary Variance".
+ * #ЗАЧЕМ: ПЛАН №780 — Оптимизация мутаций для предотвращения зацикливания.
  */
 
 import type { 
@@ -39,9 +39,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Вычисляет "гуляющую" ступень для предотвращения зудения на одной ноте.
- */
 export function getWalkingDegree(epoch: number, seed: number): number {
     const steps = [0, 7, 9, 12, 7, 0, 14, 0]; 
     const idx = calculateMusiNum(epoch, 3, seed, steps.length);
@@ -78,6 +75,39 @@ export function decompressCompactPhrase(compact: number[]): any[] {
         });
     }
     return result;
+}
+
+/**
+ * #ЗАЧЕМ: Зеркальное отражение нот (Inversion).
+ */
+export function invertPhrase(phrase: any[]): any[] {
+    if (phrase.length === 0) return phrase;
+    return phrase.map(n => {
+        const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
+        const invertedSemitone = -semitone;
+        return { ...n, deg: safeSemitoneToDegree(invertedSemitone) };
+    });
+}
+
+/**
+ * #ЗАЧЕМ: Реверс временной последовательности (Retrograde).
+ */
+export function retrogradePhrase(phrase: any[]): any[] {
+    if (phrase.length === 0) return phrase;
+    const maxT = Math.max(...phrase.map(n => n.t + n.d));
+    return phrase.map(n => ({
+        ...n, t: maxT - (n.t + n.d)
+    })).sort((a, b) => a.t - b.t);
+}
+
+/**
+ * #ЗАЧЕМ: Внесение ритмического "дыхания" (Jitter).
+ */
+export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
+    return phrase.map((n, i) => {
+        const jitter = (calculateMusiNum(i, 3, seed, 3) - 1); // -1, 0, 1 tick
+        return { ...n, t: Math.max(0, n.t + jitter) };
+    });
 }
 
 export function repairLegacyPhrase(compact: number[]): number[] {
@@ -273,7 +303,6 @@ export function generateSuiteDNA(
         const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * (max - min);
         baseTempo = Math.round((min + deterministicOffset) * bpmConfig.modifier);
     } else {
-        // #ЗАЧЕМ: Предотвращение дефолтного застревания на 80.
         const moodTempos: Record<string, number> = {
             melancholic: 64, dark: 60, anxious: 88, joyful: 100, enthusiastic: 110, calm: 54, dreamy: 58, contemplative: 72, epic: 105
         };
