@@ -1,18 +1,22 @@
+
 'use client';
 
 import React, { useMemo, type ReactNode } from 'react';
-import { FirebaseProvider } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase';
+import { FirebaseProvider } from './provider';
+import { initializeFirebase } from './init';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
+/**
+ * #ЗАЧЕМ: Клиентский провайдер Firebase.
+ * #ЧТО: Использует прямой импорт из init.ts для предотвращения циклической зависимости.
+ */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
     return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
 
   return (
     <FirebaseProvider
