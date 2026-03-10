@@ -28,10 +28,11 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V208.0 — "Evolutionary Variance".
- * #ОБНОВЛЕНО (ПЛАН №780): 
- * 1. Anti-Looping: Система ротации ликов через lickHistory.
- * 2. Evolutionary Mutations: Принудительная трансформация при повторах (Inversion/Retrograde).
+ * @fileOverview Blues Brain V209.0 — "Narrative Drama".
+ * #ОБНОВЛЕНО (ПЛАН №781): 
+ * 1. Boundary Modulations: Смена тональности и лика на границах частей.
+ * 2. Extended Generative Licks: Длина генеративных фраз увеличена до 12 тактов.
+ * 3. Dynamic Drum Fills: Добавлены пробежки по томам и финальные филлы.
  */
 
 const TICKS_PER_BAR = 12;
@@ -80,6 +81,7 @@ export class BluesBrain {
   
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
+  private currentDrumAxiom: any[] = [];
   
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
@@ -95,6 +97,7 @@ export class BluesBrain {
   
   private lastPhraseComplexity: number = 0;
   private lickRepeatCount: number = 0;
+  private currentTransposition: number = 0;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
@@ -193,7 +196,14 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
-    // #ЗАЧЕМ: Система динамических мутаций (ПЛАН №780).
+    // #ЗАЧЕМ: Boundary Modulation Trigger (ПЛАН №781).
+    if (navInfo.isPartTransition) {
+        this.soloistBusyUntilBar = epoch; // Принудительно выбираем новый лик
+        const shifts = [0, 2, -2, 5, 7, -5];
+        this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
+        console.log(`%c[Boundary] Modulation active: Shift ${this.currentTransposition} semitones. New lick pending.`, 'color: #FFD700; font-weight: bold;');
+    }
+
     if (epoch % 8 === 0) {
         if (this.lickRepeatCount > 0) {
             const mutPool = ['inversion', 'retrograde', 'jitter'];
@@ -208,15 +218,7 @@ export class BluesBrain {
 
     let newBpm: number | undefined;
     if (isSoloistFree && !isSoloistResting) {
-        const complexityThreshold = 0.6;
-        if (this.lastPhraseComplexity > complexityThreshold && this.random.next() < 0.7) {
-            this.soloistRestingUntilBar = epoch + 2 + this.random.nextInt(2);
-            this.lastPhraseComplexity = 0; 
-        } else if (this.random.next() < 0.25) {
-            this.soloistRestingUntilBar = epoch + 1;
-        } else {
-            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
-        }
+        newBpm = this.selectNextAxiom(navInfo, dna, epoch);
     }
 
     const events: FractalEvent[] = [];
@@ -292,6 +294,7 @@ export class BluesBrain {
       const prevLickId = this.currentLickId;
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
+      this.currentDrumAxiom = [];
       this.ensembleStatus = 'ADAPTIVE';
       this.currentTimeScale = 1;
 
@@ -313,59 +316,59 @@ export class BluesBrain {
               });
 
               const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-              
-              // #ЗАЧЕМ: Lick Rotation Memory. Предпочитаем новые лики.
               const freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
               const selected = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
               
-              if (!selected) return undefined;
+              if (selected) {
+                  if (selected.id === prevLickId) {
+                      this.lickRepeatCount++;
+                  } else {
+                      this.lickRepeatCount = 0;
+                  }
 
-              // #ЗАЧЕМ: Режим мутации при повторе.
-              if (selected.id === prevLickId) {
-                  this.lickRepeatCount++;
-              } else {
-                  this.lickRepeatCount = 0;
+                  this.currentLickId = selected.id;
+                  this.currentTrackName = selected.compositionId; 
+                  
+                  this.state.recentLicks.push(selected.id);
+                  if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
+                  
+                  let rawPhrase = decompressCompactPhrase(selected.phrase);
+                  if (this.lickRepeatCount === 1) rawPhrase = invertPhrase(rawPhrase);
+                  else if (this.lickRepeatCount >= 2) rawPhrase = retrogradePhrase(rawPhrase);
+
+                  const shortNotes = rawPhrase.filter(n => n.d < 3).length;
+                  this.lastPhraseComplexity = shortNotes / Math.max(1, rawPhrase.length);
+                  
+                  const phrasesToNormalize = [rawPhrase];
+                  const cid = this.normalize(selected.compositionId);
+                  const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                  
+                  if (bassSibling) {
+                      const rb = decompressCompactPhrase(bassSibling.phrase);
+                      phrasesToNormalize.push(rb);
+                      this.currentBassAxiom = rb;
+                  }
+
+                  const drumSibling = this.config.cloudAxioms.find(ax => ax.role === 'drums' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                  if (drumSibling) {
+                      this.currentDrumAxiom = decompressCompactPhrase(drumSibling.phrase);
+                  }
+
+                  const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset).slice(0, 3);
+                  accompSiblings.forEach(ax => {
+                      const p = decompressCompactPhrase(ax.phrase);
+                      phrasesToNormalize.push(p);
+                      this.currentAccompAxioms.push({ phrase: p, role: ax.role });
+                  });
+
+                  normalizePhraseGroup(phrasesToNormalize);
+                  const baseBars = selected.bars || 4;
+                  this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
+                  this.currentAxiom = rawPhrase; 
+                  this.soloistBusyUntilBar = epoch + baseBars;
+                  this.ensembleStatus = 'SIBLING';
+                  return selected.nativeBpm || undefined;
               }
-
-              this.currentLickId = selected.id;
-              this.currentTrackName = selected.compositionId; 
-              
-              this.state.recentLicks.push(selected.id);
-              if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
-              
-              let rawPhrase = decompressCompactPhrase(selected.phrase);
-              
-              // #ЗАЧЕМ: Evolutionary Mutations. Если лик повторяется, трансформируем его.
-              if (this.lickRepeatCount === 1) rawPhrase = invertPhrase(rawPhrase);
-              else if (this.lickRepeatCount >= 2) rawPhrase = retrogradePhrase(rawPhrase);
-
-              const shortNotes = rawPhrase.filter(n => n.d < 3).length;
-              this.lastPhraseComplexity = shortNotes / Math.max(1, rawPhrase.length);
-              
-              const phrasesToNormalize = [rawPhrase];
-              const cid = this.normalize(selected.compositionId);
-              const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-              
-              if (bassSibling) {
-                  const rb = decompressCompactPhrase(bassSibling.phrase);
-                  phrasesToNormalize.push(rb);
-                  this.currentBassAxiom = rb;
-              }
-
-              const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset).slice(0, 3);
-              accompSiblings.forEach(ax => {
-                  const p = decompressCompactPhrase(ax.phrase);
-                  phrasesToNormalize.push(p);
-                  this.currentAccompAxioms.push({ phrase: p, role: ax.role });
-              });
-
-              normalizePhraseGroup(phrasesToNormalize);
-              const baseBars = selected.bars || 4;
-              this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
-              this.currentAxiom = rawPhrase; 
-              this.soloistBusyUntilBar = epoch + baseBars;
-              this.ensembleStatus = 'SIBLING';
-              return selected.nativeBpm || undefined;
           }
       }
 
@@ -374,8 +377,9 @@ export class BluesBrain {
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
-      this.currentAxiomMaxTick = 48;
-      this.soloistBusyUntilBar = epoch + 4;
+      // #ЗАЧЕМ: Extended Generative Licks (ПЛАН №781). Повышаем до 12 тактов для нарратива.
+      this.currentAxiomMaxTick = 144; 
+      this.soloistBusyUntilBar = epoch + 12;
       this.lastPhraseComplexity = 0.5;
       return undefined;
   }
@@ -392,22 +396,16 @@ export class BluesBrain {
 
     return barNotes.map((n, idx) => {
         let tech = n.tech || 'pick';
-        const nextNote = barNotes[idx + 1];
-        if (nextNote) {
-            const interval = Math.abs(DEGREE_TO_SEMITONE[n.deg] - DEGREE_TO_SEMITONE[nextNote.deg]);
-            if (interval > 0 && interval <= 2) tech = 'sl';
-        }
-        if (n.d >= 6 && (tech === 'pick' || tech === '0')) tech = 'vb';
+        if (n.d >= 6) tech = 'vb';
         if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
-
-        const weight = 0.80; 
 
         return {
             type: type,
-            note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+            // #ЗАЧЕМ: Применяем межчастевую транспозицию (ПЛАН №781).
+            note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: n.d * TICK_TO_BEAT * timeScale,
-            weight: weight, 
+            weight: 0.80, 
             technique: tech as any, 
             dynamics: 'p', 
             phrasing: 'legato'
@@ -426,7 +424,7 @@ export class BluesBrain {
 
           return barNotes.map(n => ({
               type: 'bass',
-              note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+              note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT, 
               duration: n.d * TICK_TO_BEAT, 
               weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
@@ -455,7 +453,7 @@ export class BluesBrain {
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
-    const root = chord.rootNote - 12;
+    const root = chord.rootNote - 12 + this.currentTransposition;
     const barInRiff = epoch % 4;
     const riff = [ 
         [{ t: 0, n: root }, { t: 4, n: root }, { t: 8, n: root + 7 }], 
@@ -470,7 +468,7 @@ export class BluesBrain {
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number): FractalEvent[] {
-    const root = chord.rootNote - 12;
+    const root = chord.rootNote - 12 + this.currentTransposition;
     return [root, root + 4, root + 7, root + 11].map((p, i) => ({ 
         type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, 
         weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato' 
@@ -480,22 +478,19 @@ export class BluesBrain {
   private renderNarrativeDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
       const isFourthBar = epoch % 4 === 3;
+      const isEighthBar = epoch % 8 === 7;
       
-      // Basic Groove - ALWAYS ON
+      // Basic Groove
       [0, 6].forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-      
-      // Ghost Snare for more flow
-      if (this.random.next() < 0.4) {
-          events.push({ type: 'drum_snare_ghost_note', note: 38, time: 4.5 * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
-          events.push({ type: 'drum_snare_ghost_note', note: 38, time: 10.5 * TICK_TO_BEAT, duration: 0.1, weight: 0.2, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
-      }
-
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
-      // Tom fills on transition or resting
-      if (isFourthBar || (isSoloistResting && this.random.next() < 0.5)) {
+      // #ЗАЧЕМ: Dynamic Fills & Tom Runs (ПЛАН №781).
+      if (isFourthBar || isEighthBar || isSoloistResting) {
+          const intensity = isEighthBar ? 1.0 : 0.6;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+          
+          // Пробежка по томам в конце фразы
           const fillTicks = [9, 10, 11];
           fillTicks.forEach((t, i) => {
               events.push({
@@ -503,14 +498,18 @@ export class BluesBrain {
                   note: 40,
                   time: t * TICK_TO_BEAT,
                   duration: 0.5,
-                  weight: 0.6 + (i * 0.1),
+                  weight: (0.6 + (i * 0.1)) * intensity,
                   technique: 'hit',
                   dynamics: 'p',
                   phrasing: 'staccato'
               });
           });
-          if (tension > 0.8) {
-              events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+
+          // Снейр-ролл для драйва
+          if (isEighthBar) {
+              [9.5, 10.5].forEach(t => {
+                  events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
+              });
           }
       }
 
@@ -529,7 +528,8 @@ export class BluesBrain {
       barNotes.forEach(n => {
           events.push({
               type: type,
-              note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+              // #ЗАЧЕМ: Транспозиция аккомпанемента (ПЛАН №781).
+              note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT,
               duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
               weight: 0.25, 
@@ -542,7 +542,7 @@ export class BluesBrain {
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12));
+    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition);
     return [{
         type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }];
@@ -561,7 +561,7 @@ export class BluesBrain {
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed + 50, 12));
+      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed + 50, 12) + this.currentTransposition);
       
       if (timbre === 'guitarChords') {
           return [{ 
