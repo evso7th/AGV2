@@ -1,7 +1,7 @@
+
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.8 — "The Anchor Protocol".
- * #ЧТО: 1. Кнопка "Cloud Filter" переименована в "DNA Anchor" для ясности.
- *       2. Добавлен статус "DNA Locked" при выборе одного трека.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.9 — "The Sovereignty Protocol".
+ * #ЧТО: ПЛАН №782 — Добавлен глобальный переключатель Heritage DNA и блокировка якоря.
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock
+  Guitar, Lock, Dna
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ export function AuraGrooveV2({
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
+  useHeritage, setUseHeritage,
   mood, setMood, genre, setGenre, isRegenerating,
   availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms
 }: AuraGrooveProps) {
@@ -131,6 +132,7 @@ export function AuraGrooveV2({
 
   const getAnchorButtonText = () => {
       const count = selectedCompositionIds.length;
+      if (!useHeritage) return "DNA Locked (Local)"; // #ЗАЧЕМ: Визуальный статус при выключенном Heritage.
       if (count === 0) return "DNA Anchor";
       if (count === 1) return "DNA Locked";
       return `DNA Hybrid (${count})`;
@@ -234,11 +236,16 @@ export function AuraGrooveV2({
                         if (open) refreshCloudAxioms();
                     }}>
                         <DialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className={cn(
-                                "h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", 
-                                selectedCompositionIds.length > 0 ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70"
-                            )}>
-                                {selectedCompositionIds.length === 1 ? <Lock className="h-3 w-3" /> : <TowerControl className="h-3 w-3" />}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                disabled={!useHeritage} // #ЗАЧЕМ: Блокировка выбора Якоря при выключенном Наследии.
+                                className={cn(
+                                    "h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", 
+                                    selectedCompositionIds.length > 0 && useHeritage ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70"
+                                )}
+                            >
+                                {selectedCompositionIds.length === 1 && useHeritage ? <Lock className="h-3 w-3" /> : <TowerControl className="h-3 w-3" />}
                                 {getAnchorButtonText()}
                             </Button>
                         </DialogTrigger>
@@ -344,7 +351,7 @@ export function AuraGrooveV2({
                   <div className="grid grid-cols-3 items-center gap-2">
                       <Label htmlFor="score-selector" className="text-right text-xs">Style</Label>
                       <Select value={score} onValueChange={(v) => handleScoreChange(v as any)} disabled={isInitializing || isPlaying}>
-                          <SelectTrigger id="score-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectTrigger id="score-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem>
                           </SelectContent>
@@ -355,7 +362,7 @@ export function AuraGrooveV2({
                      <div className="grid grid-cols-3 items-center gap-2">
                           <Label htmlFor="genre-selector" className="text-right text-xs">Genre</Label>
                           <Select value={genre} onValueChange={(v) => setGenre(v as Genre)} disabled={isInitializing || isPlaying}>
-                              <SelectTrigger id="genre-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectTrigger id="genre-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                   {genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{displayNames[g] || g}</SelectItem>)}
                               </SelectContent>
@@ -364,7 +371,7 @@ export function AuraGrooveV2({
                       <div className="grid grid-cols-3 items-center gap-2">
                           <Label htmlFor="mood-selector" className="text-right text-xs">Mood</Label>
                           <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
-                              <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 {moodList.map(m => {
                                     const category = MOOD_CATEGORIES[m];
@@ -378,6 +385,17 @@ export function AuraGrooveV2({
                               </SelectContent>
                           </Select>
                       </div>
+                      
+                      {/* #ЗАЧЕМ: Глобальные переключатели классов. */}
+                      <div className="grid grid-cols-3 items-center gap-2">
+                          <Label htmlFor="heritage-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
+                            <Dna className="h-3.5 w-3.5 text-primary" /> Heritage
+                          </Label>
+                          <div className="col-span-2 flex items-center">
+                              <Switch id="heritage-switch" checked={useHeritage} onCheckedChange={setUseHeritage} disabled={isInitializing || isPlaying}/>
+                          </div>
+                      </div>
+
                       <div className="grid grid-cols-3 items-center gap-2">
                           <Label htmlFor="composer-control-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
                             <Bot className="h-3 w-3" /> Control

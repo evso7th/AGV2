@@ -1,6 +1,7 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
- * #ОБНОВЛЕНО (ПЛАН №755): Реализовано динамическое наследование BPM из ДНК доноров.
+ * #ОБНОВЛЕНО (ПЛАН №782): Поддержка глобального флага useHeritage.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -49,8 +50,9 @@ const Scheduler = {
         },
         density: 0.5,
         composerControlsInstruments: true,
+        useHeritage: true, // #ЗАЧЕМ: ПЛАН №782.
         mood: 'melancholic' as Mood,
-        introBars: 12, 
+        introBars: 8, 
         sessionLickHistory: [],
         selectedCompositionIds: [],
         seed: generateTrueSeed()
@@ -61,6 +63,8 @@ const Scheduler = {
     },
 
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
+        if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; // #ЗАЧЕМ: Блокировка Якоря.
+
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
@@ -157,12 +161,13 @@ const Scheduler = {
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
+       const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        
        this.settings = { ...this.settings, ...newSettings };
        
-       if (seedChanged || genreOrMoodChanged || filterChanged) {
+       if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
            this.sessionLickHistory = []; 
            this.filterRotationIndex = 0; 
            this.barCount = 0; 
@@ -203,8 +208,6 @@ const Scheduler = {
             return;
         }
 
-        // #ЗАЧЕМ: Динамическое наследование темпа (ПЛАН №755).
-        // #ЧТО: Если Мозг нашел новый BPM в аксиоме, обновляем Планировщик и UI.
         if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
             console.log(`%c${getTimestamp()} [Tempo] Axiom requested tempo change: ${this.settings.bpm} -> ${payload.newBpm} BPM`, 'color: #00FFFF; font-weight: bold;');
             this.settings.bpm = payload.newBpm;

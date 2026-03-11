@@ -40,6 +40,7 @@ interface EngineConfig {
   seed: number;
   composerControlsInstruments?: boolean;
   useMelodyV2?: boolean;
+  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
   introBars: number;
   ancestor?: any;
   sessionLickHistory?: string[];
@@ -50,7 +51,7 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V31.0 — "Sticky Anchor Enforcement".
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V31.1 — "Heritage Sovereignty Support".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -78,25 +79,29 @@ export class FractalMusicEngine {
   public updateConfig(newConfig: Partial<EngineConfig>) {
       const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
+      const heritageChanged = newConfig.useHeritage !== undefined && newConfig.useHeritage !== this.config.useHeritage;
       
       this.config = { ...this.config, ...newConfig };
       
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
-      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined) {
+      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged) {
           if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
               this.config.cloudAxioms, 
               this.config.selectedCompositionIds,
-              this.config.activeAnchorId
+              this.config.activeAnchorId,
+              null,
+              this.config.useHeritage // #ЗАЧЕМ: Проброс флага.
           );
           
           if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
               this.config.cloudAxioms,
-              this.config.activeAnchorId
+              this.config.activeAnchorId,
+              this.config.useHeritage // #ЗАЧЕМ: Проброс флага.
           );
       }
 
-      if(moodOrGenreChanged || seedChanged) this.initialize(true);
+      if(moodOrGenreChanged || seedChanged || heritageChanged) this.initialize(true);
   }
 
   public initialize(force: boolean = false) {
@@ -130,12 +135,13 @@ export class FractalMusicEngine {
             this.config.cloudAxioms, 
             this.config.selectedCompositionIds,
             this.config.activeAnchorId,
-            this.config.genre
+            this.config.genre,
+            this.config.useHeritage // #ЗАЧЕМ: Передача флага в Мозг.
         );
         this.ambientBrain = null;
     } else {
-        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre);
-        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId);
+        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
+        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage);
         this.bluesBrain = null;
     }
 
@@ -167,9 +173,6 @@ export class FractalMusicEngine {
     const instrumentHints: InstrumentHints = { summonProgress: {} };
     let tension = this.suiteDNA.tensionMap[this.epoch % this.suiteDNA.tensionMap.length] ?? 0.5;
     
-    // #ЗАЧЕМ: ПЛАН №779. Музыканты больше не покидают сцену (Sticky Logic).
-    // Удален блок clearing activatedParts.
-
     let currentInstructions: any | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
@@ -212,7 +215,6 @@ export class FractalMusicEngine {
 
     // Populate hints for active musicians
     this.activatedParts.forEach(part => {
-        // Мы играем инструмент, только если он в слоях текущей части БП
         if ((navInfo.currentPart.layers as any)[part]) {
             (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
             instrumentHints.summonProgress![part] = 1.0; 

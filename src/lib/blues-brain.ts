@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -28,11 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V209.0 — "Narrative Drama".
- * #ОБНОВЛЕНО (ПЛАН №781): 
- * 1. Boundary Modulations: Смена тональности и лика на границах частей.
- * 2. Extended Generative Licks: Длина генеративных фраз увеличена до 12 тактов.
- * 3. Dynamic Drum Fills: Добавлены пробежки по томам и финальные филлы.
+ * @fileOverview Blues Brain V209.1 — "Heritage Sovereignty Switch".
+ * #ОБНОВЛЕНО (ПЛАН №782): Добавлена проверка useHeritage для блокировки облачных данных.
  */
 
 const TICKS_PER_BAR = 12;
@@ -58,13 +56,15 @@ export interface BluesBrainConfig {
   activeAnchorId?: string | null; 
   activeAnchorRoot?: number | null;
   genre: string;
+  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
   tempo: 72,
   rootNote: 55, 
   emotion: { melancholy: 0.82, darkness: 0.25 },
-  genre: 'blues'
+  genre: 'blues',
+  useHeritage: true
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -113,7 +113,8 @@ export class BluesBrain {
       cloudAxioms?: any[], 
       selectedCompositionIds?: string[],
       activeAnchorId?: string | null,
-      genre?: string
+      genre?: string,
+      useHeritage: boolean = true // #ЗАЧЕМ: ПЛАН №782.
   ) {
     this.seed = seed;
     this.mood = mood;
@@ -126,6 +127,7 @@ export class BluesBrain {
       selectedCompositionIds: selectedCompositionIds || [],
       activeAnchorId: activeAnchorId || null,
       genre: genre || 'blues',
+      useHeritage: useHeritage,
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -165,11 +167,12 @@ export class BluesBrain {
       return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null) {
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean) {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
       if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
+      if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
   }
 
   private constrainBassOctave(note: number): number {
@@ -196,12 +199,10 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
-    // #ЗАЧЕМ: Boundary Modulation Trigger (ПЛАН №781).
     if (navInfo.isPartTransition) {
-        this.soloistBusyUntilBar = epoch; // Принудительно выбираем новый лик
+        this.soloistBusyUntilBar = epoch; 
         const shifts = [0, 2, -2, 5, 7, -5];
         this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
-        console.log(`%c[Boundary] Modulation active: Shift ${this.currentTransposition} semitones. New lick pending.`, 'color: #FFD700; font-weight: bold;');
     }
 
     if (epoch % 8 === 0) {
@@ -223,17 +224,14 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    // --- 1. MELODY ---
     const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', this.currentAxiom, this.currentAxiomMaxTick, this.currentTimeScale) 
         : [];
     
-    // --- 2. DRUMS & BASS ---
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
     const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
-    // --- 3. ACCOMPANIMENT & HARMONY ---
     const accompanimentEvents: FractalEvent[] = [];
     const usedTargetLayers = new Set<string>();
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
@@ -298,7 +296,8 @@ export class BluesBrain {
       this.ensembleStatus = 'ADAPTIVE';
       this.currentTimeScale = 1;
 
-      if (this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
+      // #ЗАЧЕМ: ПЛАН №782. Блокировка наследия если useHeritage === false.
+      if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           let basePool = this.config.cloudAxioms.filter(ax => ax.role === 'melody');
           if (targetAnchor) {
@@ -377,7 +376,6 @@ export class BluesBrain {
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
-      // #ЗАЧЕМ: Extended Generative Licks (ПЛАН №781). Повышаем до 12 тактов для нарратива.
       this.currentAxiomMaxTick = 144; 
       this.soloistBusyUntilBar = epoch + 12;
       this.lastPhraseComplexity = 0.5;
@@ -401,7 +399,6 @@ export class BluesBrain {
 
         return {
             type: type,
-            // #ЗАЧЕМ: Применяем межчастевую транспозицию (ПЛАН №781).
             note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: n.d * TICK_TO_BEAT * timeScale,
@@ -480,17 +477,14 @@ export class BluesBrain {
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       
-      // Basic Groove
       [0, 6].forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
-      // #ЗАЧЕМ: Dynamic Fills & Tom Runs (ПЛАН №781).
       if (isFourthBar || isEighthBar || isSoloistResting) {
           const intensity = isEighthBar ? 1.0 : 0.6;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           
-          // Пробежка по томам в конце фразы
           const fillTicks = [9, 10, 11];
           fillTicks.forEach((t, i) => {
               events.push({
@@ -505,7 +499,6 @@ export class BluesBrain {
               });
           });
 
-          // Снейр-ролл для драйва
           if (isEighthBar) {
               [9.5, 10.5].forEach(t => {
                   events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
@@ -528,7 +521,6 @@ export class BluesBrain {
       barNotes.forEach(n => {
           events.push({
               type: type,
-              // #ЗАЧЕМ: Транспозиция аккомпанемента (ПЛАН №781).
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT,
               duration: Math.min(n.d, 6) * TICK_TO_BEAT, 

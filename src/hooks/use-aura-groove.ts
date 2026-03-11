@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.4 — "Seed Sovereignty".
- * #ЧТО: ПЛАН №744 — Play/Pause больше не генерирует семя. Семя управляется только Regenerate.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.5 — "Heritage Class Sovereignty".
+ * #ЧТО: ПЛАН №782 — Добавлен глобальный переключатель использования Наследия.
  */
 'use client';
 
@@ -49,6 +49,8 @@ export type AuraGrooveProps = {
   setDensity: (value: number) => void;
   composerControlsInstruments: boolean;
   setComposerControlsInstruments: (value: boolean) => void;
+  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
+  setUseHeritage: (value: boolean) => void;
   handleGoHome: () => void;
   handleExit?: () => void;
   isEqModalOpen: boolean;
@@ -94,10 +96,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [genre, setGenre] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
+  const [useHeritage, setUseHeritage] = useState(true); // #ЗАЧЕМ: Глобальный флаг классов.
   const [mood, setMood] = useState<Mood>('melancholic');
-  const [introBars, setIntroBars] = useState(12);
+  const [introBars, setIntroBars] = useState(8); // #ЗАЧЕМ: Жесткое 8-тактное интро по дефолту.
   
-  // #ЗАЧЕМ: Семя инициализируется сразу, чтобы Play не вызывал регенерацию.
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
   
   const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
@@ -139,12 +141,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
               sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
           },
-          density, composerControlsInstruments, mood, introBars, sessionLickHistory, selectedCompositionIds,
+          density, composerControlsInstruments, useHeritage, mood, introBars, sessionLickHistory, selectedCompositionIds,
           seed: currentSeed
         });
         updateAllVolumes();
     }
-  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, updateAllVolumes]);
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, updateAllVolumes]);
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part as string, value);
@@ -164,12 +166,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
     handlePlayPause: async () => {
         if (!isInitialized) return;
-        // #ЗАЧЕМ: Play теперь только играет. Никакой скрытой регенерации.
         setEngineIsPlaying(!isPlaying);
     },
     handleRegenerate: () => {
         setIsRegenerating(true);
-        // #ЗАЧЕМ: Regenerate — единственный источник нового семени.
         const nextSeed = Date.now();
         setCurrentSeed(nextSeed);
         setTimeout(() => setIsRegenerating(false), 500); 
@@ -200,7 +200,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleBassTechniqueChange: () => {}, handleVolumeChange, textureSettings, 
     handleTextureEnabledChange: (part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
-    composerControlsInstruments, setComposerControlsInstruments, handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
+    composerControlsInstruments, setComposerControlsInstruments,
+    useHeritage, setUseHeritage,
+    handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
     isEqModalOpen, setIsEqModalOpen, eqSettings, 
     handleEqChange: (index: number, value: number) => {
         const next = [...eqSettings];

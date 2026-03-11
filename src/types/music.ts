@@ -173,6 +173,7 @@ export type WorkerSettings = {
   textureSettings: TextureSettings;
   density: number;
   composerControlsInstruments: boolean;
+  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782. Глобальный переключатель Классов.
   mood: Mood;
   seed?: number;
   introBars: number;
@@ -181,7 +182,7 @@ export type WorkerSettings = {
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 
   ancestor?: any;
-  masterpieces?: any[]; // #ЗАЧЕМ: Передача пула Шедевров в Воркер для генетического отбора.
+  masterpieces?: any[]; 
 };
 
 export type TimerSettings = {
@@ -215,7 +216,7 @@ export type InstrumentBehaviorRules = {
     style?: 'solo' | 'fingerstyle' | 'chord-melody'; 
     techniques?: { value: string; weight: number }[];
     unisonType?: 'strict' | 'octave' | 'harmonized' | 'none';
-    timeScale?: number; // #ЗАЧЕМ: ПЛАН №726. Коэффициент растягивания фразы во времени.
+    timeScale?: number;
      ride?: {
         enabled: boolean;
         quietWindows?: { start: number, end: number }[];

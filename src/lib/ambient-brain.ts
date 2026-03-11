@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain v40.0 — "Narrative Drama".
- * #ОБНОВЛЕНО (ПЛАН №781): Смена тональности и лика на границах частей, расширенные лики (12 тактов).
+ * @fileOverview Ambient Brain v40.1 — "Heritage Sovereignty Switch".
+ * #ОБНОВЛЕНО (ПЛАН №782): Добавлена поддержка флага useHeritage для изоляции классов.
  */
 
 import type { 
@@ -63,6 +64,7 @@ export class AmbientBrain {
     private mood: Mood;
     private genre: Genre;
     private random: any;
+    private useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
     
     private fog: number = 0.3;
     private pulse: number = 0.15;
@@ -94,10 +96,11 @@ export class AmbientBrain {
     
     private usedThemeHistory: string[] = [];
 
-    constructor(seed: number, mood: Mood, genre: Genre) {
+    constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
         this.mood = mood;
         this.genre = genre;
+        this.useHeritage = useHeritage;
         this.random = this.createSeededRandom(seed);
     }
 
@@ -115,9 +118,10 @@ export class AmbientBrain {
         return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
+        if (useHeritage !== undefined) this.useHeritage = useHeritage;
     }
 
     public generateBar(
@@ -131,12 +135,10 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
-        // #ЗАЧЕМ: Boundary Modulation (ПЛАН №781).
         if (navInfo.isPartTransition) {
-            this.soloistBusyUntilBar = epoch; // Принудительный выбор нового лика
+            this.soloistBusyUntilBar = epoch; 
             const shifts = [0, 2, -2, 5, 7, -5];
             this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
-            console.log(`%c[Boundary] Ambient Modulation: Shift ${this.currentTransposition} semitones. New cycle started.`, 'color: #00FFFF; font-weight: bold;');
         }
 
         const isPositive = ['joyful', 'enthusiastic', 'epic'].includes(this.mood);
@@ -244,7 +246,9 @@ export class AmbientBrain {
         this.currentAccompAxioms = []; 
         this.currentTimeScale = 1;
         let cloudAxiom: any = null;
-        const poolToUse = this.cloudAxioms.length > 0 ? this.cloudAxioms : (dna.cloudAxioms || []);
+        
+        // #ЗАЧЕМ: ПЛАН №782. Блокировка наследия.
+        const poolToUse = (this.useHeritage && this.cloudAxioms.length > 0) ? this.cloudAxioms : (this.useHeritage ? (dna.cloudAxioms || []) : []);
 
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
@@ -334,7 +338,6 @@ export class AmbientBrain {
             this.ensembleStatus = 'ADAPTIVE';
             this.currentTheme = null;
             this.currentBassTheme = null;
-            // #ЗАЧЕМ: Extended Generative Licks (ПЛАН №781). Повышаем до 12 тактов.
             this.soloistBusyUntilBar = epoch + 12;
             return undefined;
         }
@@ -345,7 +348,6 @@ export class AmbientBrain {
         const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
         return [{
             type: 'bass',
-            // #ЗАЧЕМ: Применение транспозиции (ПЛАН №781).
             note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition),
             time: 0,
             duration: 4.0,
@@ -372,7 +374,6 @@ export class AmbientBrain {
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // #ЗАЧЕМ: Tom Runs & Fills (ПЛАН №781).
         if (isFourthBar || isEighthBar) {
             const tomPool = ['drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'];
             const fillTicks = isEighthBar ? [9, 10, 11] : [11];
@@ -568,7 +569,7 @@ export class AmbientBrain {
         
         if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);
         
-        const effectiveRoot = (dna.activeAnchorRoot && this.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+        const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
         return barNotes.map(n => ({
             type: 'bass',
