@@ -29,8 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V212.0 — "Level 1 Harmonic Resonance".
- * #ОБНОВЛЕНО (ПЛАН №791): Внедрен принудительный резонанс гармонии ансамбля под Heritage Axiom.
+ * @fileOverview Blues Brain V213.0 — "Level 2 Living Articulation".
+ * #ОБНОВЛЕНО (ПЛАН №792): Реализован протокол "Живая Кожа". Динамическая интерпретация техник и веса.
  */
 
 const TICKS_PER_BAR = 12;
@@ -62,9 +62,9 @@ export interface BluesBrainConfig {
 export const DEFAULT_CONFIG: BluesBrainConfig = {
   tempo: 72,
   rootNote: 55, 
-  emotion: { melancholy: 0.82, darkness: 0.25 },
   genre: 'blues',
-  useHeritage: true
+  useHeritage: true,
+  emotion: { melancholy: 0.82, darkness: 0.25 }
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -78,11 +78,10 @@ export class BluesBrain {
   private currentAxiom: any[] = [];
   private currentAxiomMaxTick: number = 0;
   private currentTimeScale: number = 1;
-  private currentNativeRoot: number | null = null; // #ЗАЧЕМ: Level 1 Resonance.
+  private currentNativeRoot: number | null = null;
   
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
-  private currentDrumAxiom: any[] = [];
   
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
@@ -96,15 +95,13 @@ export class BluesBrain {
   private soloistRestingUntilBar: number = -1;
   private accompanimentRestingUntilBar: number = -1;
   
-  private lastPhraseComplexity: number = 0;
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
       lastTension: number,
-      recentLicks: string[],
-      recentGrandMelodies: string[]
+      recentLicks: string[]
   };
 
   constructor(
@@ -150,8 +147,7 @@ export class BluesBrain {
       stagnationStrikes: { micro: 0, meso: 0, macro: 0 },
       lastMutationType: 'none',
       lastTension: 0.5,
-      recentLicks: [...(sessionLickHistory || [])],
-      recentGrandMelodies: []
+      recentLicks: [...(sessionLickHistory || [])]
     };
   }
 
@@ -232,8 +228,6 @@ export class BluesBrain {
         newBpm = this.selectNextAxiom(navInfo, dna, epoch);
     }
 
-    // #ЗАЧЕМ: ПЛАН №791. Резонансный Аккорд.
-    // Если играет Наследие, весь ансамбль подстраивается под его родную тональность.
     const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
     const resChord = { ...currentChord, rootNote: resRoot };
 
@@ -247,12 +241,11 @@ export class BluesBrain {
     }
 
     const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
-        ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale) 
+        ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension) 
         : [];
     
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
     
-    // Басист теперь резонирует с аксиомой
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
@@ -323,7 +316,6 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
-      this.currentDrumAxiom = [];
       this.currentNativeRoot = null;
       this.ensembleStatus = 'ADAPTIVE';
       this.currentTimeScale = 1;
@@ -359,7 +351,6 @@ export class BluesBrain {
                       this.state.recentLicks.push(selected.id);
                       if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
                       
-                      // #ЗАЧЕМ: Level 1. Сохраняем родную тональность.
                       this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
 
                       let rawPhrase = decompressCompactPhrase(selected.phrase);
@@ -399,35 +390,57 @@ export class BluesBrain {
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
       this.currentAxiomMaxTick = 144; 
       this.soloistBusyUntilBar = epoch + 12;
-      this.lastPhraseComplexity = 0.5;
       return undefined;
   }
 
-  private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Level 2 Articulation Implementation.
+   */
+  private renderMelodicSegment(
+      epoch: number, 
+      chord: GhostChord, 
+      dna: SuiteDNA, 
+      type: string, 
+      phrase: any[], 
+      maxTick: number, 
+      timeScale: number,
+      tension: number
+  ): FractalEvent[] {
     const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
     const barInCycle = (epoch - startEpoch) % barCountInPhrase;
     const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
     
-    // В Heritage режиме используем Resonant Root
     const effectiveRoot = chord.rootNote; 
 
     return barNotes.map((n) => {
+        // --- Level 2: Dynamic Articulation Jitter ---
         let tech = n.tech || 'pick';
-        if (this.ensembleStatus === 'LOCAL' && this.random.next() < 0.2) {
-            tech = this.random.next() < 0.5 ? 'sl' : 'bn';
-        } else {
-            if (n.d >= 6) tech = 'vb';
-            if ((n.deg === 'b5' || n.deg === 'b3') && n.d >= 4) tech = 'bn';
+        const rand = this.random.next();
+        
+        // Повышаем вероятность выразительных техник при высоком натяжении
+        if (tension > 0.7) {
+            if (n.d >= 4 && rand < 0.4) tech = 'bn'; // Bend
+            else if (n.d >= 6 && rand < 0.6) tech = 'vb'; // Vibrato
+        } else if (tension < 0.3) {
+            if (rand < 0.2) tech = 'swell'; // Мягкий вход
         }
+
+        // Рандомная замена щипка на слайд (путь 2)
+        if (tech === 'pick' && rand < 0.15) tech = 'sl';
+
+        // --- Level 2: Humanized Weight ---
+        const weightJitter = (this.random.next() * 0.1) - 0.05;
+        const baseWeight = 0.75 + (tension * 0.15); // Солист громче при напряжении
+        const effectiveWeight = clamp(baseWeight + weightJitter, 0.4, 0.95);
 
         return {
             type: type,
             note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: n.d * TICK_TO_BEAT * timeScale,
-            weight: 0.80, 
+            weight: effectiveWeight, 
             technique: tech as any, 
             dynamics: 'p', 
             phrasing: 'legato'
@@ -538,12 +551,16 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
+          // Humanize accomp weight
+          const jitter = (this.random.next() * 0.06) - 0.03;
+          
           events.push({
               type: type,
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT,
               duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
-              weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              weight: clamp(0.25 + jitter, 0.15, 0.4), 
+              technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
           });
       });
       return events;

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v41.0 — "Level 1 Harmonic Resonance".
- * #ОБНОВЛЕНО (ПЛАН №791): Внедрен принудительный резонанс гармонии под Heritage Axiom.
+ * @fileOverview Ambient Brain v42.0 — "Level 2 Living Articulation".
+ * #ОБНОВЛЕНО (ПЛАН №792): Внедрен протокол "Живая Кожа" для текстурных жанров.
  */
 
 import type { 
@@ -58,7 +58,7 @@ export class AmbientBrain {
     private registerShift: number = 0;
     private currentTransposition: number = 0;
     private microTransposition: number = 0;
-    private currentNativeRoot: number | null = null; // #ЗАЧЕМ: Level 1 Resonance.
+    private currentNativeRoot: number | null = null; 
 
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1; 
@@ -114,7 +114,7 @@ export class AmbientBrain {
         epoch: number, 
         currentChord: GhostChord, 
         navInfo: NavigationInfo, 
-        dna: SuiteDNA,
+        dna: SuiteDNA, 
         hints: InstrumentHints
     ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number } {
         
@@ -155,7 +155,6 @@ export class AmbientBrain {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
 
-        // #ЗАЧЕМ: ПЛАН №791. Резонансный Аккорд.
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
 
@@ -271,7 +270,6 @@ export class AmbientBrain {
         }
 
         if (cloudAxiom) {
-            // #ЗАЧЕМ: Level 1. Сохраняем родную тональность.
             this.currentNativeRoot = keyToMidiRoot(cloudAxiom.nativeKey);
 
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
@@ -415,12 +413,17 @@ export class AmbientBrain {
         if (isOrgan && this.random.next() > 0.15) return [];
         const degrees = epoch % 16 < 8 ? [0, 7, 12] : [0, 4, 9]; 
 
-        return degrees.map((n, i) => ({
-            type: 'accompaniment',
-            note: Math.min(root + n, this.PAD_CEILING + 12), 
-            time: (i * 1) * TICK_TO_BEAT, duration: 5.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.2, release: 2.5, barCount: epoch, filterCutoff: 1200 + (tension * 800) }
-        }));
+        return degrees.map((n, i) => {
+            // Level 2: Tension-driven attack variation
+            const attackTime = 1.0 + (1 - tension) * 1.5; 
+            
+            return {
+                type: 'accompaniment',
+                note: Math.min(root + n, this.PAD_CEILING + 12), 
+                time: (i * 1) * TICK_TO_BEAT, duration: 5.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { attack: attackTime, release: 2.5, barCount: epoch, filterCutoff: 1200 + (tension * 800) }
+            };
+        });
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
@@ -432,19 +435,33 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
+            // Level 2: Humanized weight
+            const jitter = (this.random.next() * 0.08) - 0.04;
+            
             events.push({
                 type: type,
                 note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition, this.PAD_CEILING + 12),
                 time: (n.t - barOffset) * TICK_TO_BEAT,
                 duration: n.d * TICK_TO_BEAT,
-                weight: 0.5, technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato',
+                weight: clamp(0.5 + jitter, 0.3, 0.7), 
+                technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato',
                 params: { filterCutoff: 1400 + (tension * 1000) }
             });
         });
         return events;
     }
 
-    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
+    private renderThemeMelody(
+        chord: GhostChord, 
+        epoch: number, 
+        tension: number, 
+        hints: InstrumentHints, 
+        dna: SuiteDNA, 
+        type: string, 
+        phrase: any[], 
+        maxTick: number, 
+        timeScale: number
+    ): FractalEvent[] {
         const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
         const barInCycle = (epoch - startEpoch) % barCountInPhrase;
@@ -453,15 +470,26 @@ export class AmbientBrain {
         const effectiveRoot = chord.rootNote;
 
         return barNotes.map(n => {
+            // --- Level 2: Dynamic Articulation ---
             let tech = n.tech || 'pick';
-            if (this.ensembleStatus === 'LOCAL' && this.random.next() < 0.15) tech = 'swell';
+            const rand = this.random.next();
+            
+            if (tension > 0.6 && n.d >= 4 && rand < 0.3) tech = 'vb'; // Vibrato
+            if (tension < 0.4 && rand < 0.2) tech = 'swell'; // Soft approach
+            
+            // Random technique jitter
+            if (this.ensembleStatus === 'LOCAL' && rand < 0.1) tech = 'sl';
+
+            // Humanized weight
+            const weightJitter = (this.random.next() * 0.1) - 0.05;
 
             return {
                 type: type as any,
                 note: Math.min(effectiveRoot + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
                 duration: n.d * TICK_TO_BEAT * timeScale,
-                weight: 0.6, technique: tech as any, dynamics: 'p', phrasing: 'legato',
+                weight: clamp(0.6 + weightJitter, 0.4, 0.8), 
+                technique: tech as any, dynamics: 'p', phrasing: 'legato',
                 params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (tension * 1500) }
             };
         });
@@ -482,7 +510,7 @@ export class AmbientBrain {
             note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, 
             duration: n.d * TICK_TO_BEAT, 
-            weight: 0.8, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+            weight: 0.85, technique: 'drone', dynamics: 'p', phrasing: 'legato',
             params: { filterCutoff: 400 + (tension * 300) }
         }));
     }
