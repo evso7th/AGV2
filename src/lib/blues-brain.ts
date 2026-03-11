@@ -29,8 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V214.0 — "Level 3 Motive Mosaic".
- * #ОБНОВЛЕНО (ПЛАН №793): Реализован протокол «Мозаика». Нелинейный обход аксиом.
+ * @fileOverview Blues Brain V214.1 — "Level 3 Motive Mosaic".
+ * #ОБНОВЛЕНО (ПЛАН №794): Улучшена прозрачность логов. Статус SIBLING теперь отображается корректно.
  */
 
 const TICKS_PER_BAR = 12;
@@ -173,21 +173,14 @@ export class BluesBrain {
   }
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
-      // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный траверс.
       const barsElapsed = epoch - startEpoch;
       const linearIndex = barsElapsed % totalBars;
-      
       const rand = calculateMusiNum(epoch, 13, this.seed, 100) / 100;
-      
-      // На высоком напряжении выше шанс «заикания» (stutter) или прыжка
       if (tension > 0.75) {
-          if (rand < 0.2) return Math.max(0, linearIndex - 1); // Повтор предыдущего такта (Stutter)
-          if (rand > 0.9) return (linearIndex + 1) % totalBars; // Прыжок вперед (Skip)
+          if (rand < 0.2) return Math.max(0, linearIndex - 1); 
+          if (rand > 0.9) return (linearIndex + 1) % totalBars; 
       }
-      
-      // На низком напряжении — спокойный линейный ход
       if (tension < 0.3) return linearIndex;
-
       return linearIndex;
   }
 
@@ -325,10 +318,11 @@ export class BluesBrain {
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : this.currentLickId,
             ensemble: this.ensembleStatus,
-            bass: this.currentBassAxiom.length > 0 ? 'Sibling' : 'Rhythmic',
-            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active' : 'none')
+            // #ЗАЧЕМ: Улучшена прозрачность лога. Четко разделяем Sibling и Rhythmic.
+            bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
+            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none')
         },
-        narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}]`
+        narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}] [Mosaic Mode]`
     };
   }
 
@@ -424,13 +418,9 @@ export class BluesBrain {
   ): FractalEvent[] {
     const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-    
-    // #ЗАЧЕМ: Level 3 Мозаика. Вычисляем нелинейный индекс такта внутри фразы.
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
-    
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-    
     const effectiveRoot = chord.rootNote; 
 
     return barNotes.map((n) => {
@@ -467,10 +457,7 @@ export class BluesBrain {
       if (this.currentBassAxiom.length > 0) {
           const totalBarsInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
           const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-          
-          // #ЗАЧЕМ: Level 3 Мозаика. Бас следует за нелинейным ходом мелодии.
           const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
-          
           const barOffset = mosaicBar * TICKS_PER_BAR;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           const effectiveRoot = chord.rootNote;
@@ -562,10 +549,7 @@ export class BluesBrain {
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
       const totalBarsInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
       const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-      
-      // #ЗАЧЕМ: Level 3 Мозаика. Аккомпанемент резонирует с нелинейным обходом.
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
-      
       const barOffset = mosaicBar * TICKS_PER_BAR;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
       const effectiveRoot = chord.rootNote;
