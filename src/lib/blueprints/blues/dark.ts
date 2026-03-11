@@ -1,10 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.0 - The Obsidian Protocol).
- * #ЧТО: 1. Мелодия жестко заблокирована на "guitar_shineOn".
- *       2. Активирован "Strict Unison" для баса и аккомпанемента в основной части.
- *       3. Внедрена иерархия сцен с лотереей вступления.
+ * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.1).
+ * #ОБНОВЛЕНО (ПЛАН №784): bass_ambient_dark заменен на bass_808.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -40,13 +39,13 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
                            sfx: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_dark', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] }
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_808', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
                     accompaniment: { 
-                        unisonType: 'octave', // В прологе мягкий октавный унисон
+                        unisonType: 'octave', 
                         techniques: [{ value: 'long-chords', weight: 1.0 }], 
                         register: { preferred: 'low' } 
                     },
@@ -62,7 +61,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_ambient_dark', weight: 1.0 }] },
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_808', weight: 1.0 }] },
                             accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                         }
                     },
@@ -76,7 +75,6 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            // #ЗАЧЕМ: Мелодия жестко заблокирована на Shine-On.
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 1.0 }] },
                             sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
                         }
@@ -103,13 +101,11 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                    drums: { strategy: 'weighted', options: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
                    accompaniment: { strategy: 'weighted', options: [ { name: 'accompaniment', weight: 1.0 } ] },
-                   // #ЗАЧЕМ: Мелодия заблокирована на Shine-On в основной части.
                    melody: { strategy: 'weighted', options: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                    pianoAccompaniment: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] },
                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'violin', weight: 0.2 } ] }
                 },
                 instrumentRules: {
-                    // #ЗАЧЕМ: Внедрение СТРОГОГО УНИСОНА согласно unison_concept.txt.
                     accompaniment: { unisonType: 'strict', density: { min: 0.8, max: 1.0 } },
                     bass: { techniques: [{ value: 'riff', weight: 1.0 }], density: { min: 0.4, max: 0.6 } },
                     melody: { source: 'blues_solo', density: { min: 0.5, max: 0.8 } },

@@ -29,8 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V210.0 — "Generative Evolution Protocol".
- * #ОБНОВЛЕНО (ПЛАН №783): Интенсивные мутации в генеративном режиме (каждые 4 такта).
+ * @fileOverview Blues Brain V211.0 — "Ensemble Density Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №784): Фикс громкости пианиста, разделение гармонии (85/25) и удаление гудящего баса.
  */
 
 const TICKS_PER_BAR = 12;
@@ -96,9 +96,8 @@ export class BluesBrain {
   private accompanimentRestingUntilBar: number = -1;
   
   private lastPhraseComplexity: number = 0;
-  private lickRepeatCount: number = 0;
   private currentTransposition: number = 0;
-  private microTransposition: number = 0; // #ЗАЧЕМ: ПЛАН №783. Внутри-фразовые сдвиги.
+  private microTransposition: number = 0;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
@@ -200,21 +199,16 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
-    // --- MACRO TRANSITIONS (Part Boundary) ---
     if (navInfo.isPartTransition) {
         this.soloistBusyUntilBar = epoch; 
         const shifts = [0, 2, -2, 5, 7, -5];
         this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
-        this.microTransposition = 0; // Сброс микро-сдвига
+        this.microTransposition = 0;
     }
 
-    // --- EVOLUTIONARY MUTATIONS (Every 4 bars in LOCAL mode) ---
-    // #ЗАЧЕМ: ПЛАН №783. Повышение частоты мутаций для генеративки.
     if (epoch % 4 === 0 && this.ensembleStatus === 'LOCAL') {
         const mutationRand = this.random.next();
-        
         if (mutationRand < 0.4) {
-            // Сдвиг по высоте (Pitch Shift)
             const shifts = [-2, 0, 2, 5, -5];
             this.microTransposition = shifts[this.random.nextInt(shifts.length)];
             this.state.lastMutationType = 'transpose';
@@ -226,7 +220,6 @@ export class BluesBrain {
             this.state.lastMutationType = 'jitter';
         }
     } else if (epoch % 8 === 0 && this.ensembleStatus !== 'LOCAL') {
-        // Редкие мутации для Heritage
         this.state.lastMutationType = this.random.next() < 0.3 ? 'jitter' : 'none';
     }
 
@@ -240,7 +233,6 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
-    // --- MELODY RENDERING WITH EVOLUTION ---
     let activeAxiom = this.currentAxiom;
     if (this.ensembleStatus === 'LOCAL') {
         if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
@@ -286,13 +278,23 @@ export class BluesBrain {
 
     events.push(...accompanimentEvents);
 
+    // #ЗАЧЕМ: Реализация "Теневого Пианиста" (ПЛАН №784).
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
     
+    // #ЗАЧЕМ: Реализация "Драматической Гармонии" (85% аккорды / 25% скрипки).
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        const useViolin = tension > 0.88 || tension < 0.15;
-        events.push(...this.renderDerivativeHarmony(currentChord, epoch, useViolin ? 'violin' : 'guitarChords'));
+        const rand = this.random.next();
+        const useViolin = (tension > 0.85 || tension < 0.15) || rand < 0.25;
+        const useChords = rand < 0.85;
+        
+        if (useViolin) {
+            events.push(...this.renderDerivativeHarmony(currentChord, epoch, 'violin'));
+        }
+        if (useChords) {
+            events.push(...this.renderDerivativeHarmony(currentChord, epoch, 'guitarChords'));
+        }
     }
 
     events.push(...melodyEvents);
@@ -313,7 +315,6 @@ export class BluesBrain {
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-      const prevLickId = this.currentLickId;
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
       this.currentDrumAxiom = [];
@@ -376,13 +377,12 @@ export class BluesBrain {
           }
       }
 
-      // --- GENERATIVE FALLBACK (LOCAL) ---
       this.ensembleStatus = 'LOCAL';
       const allLickIds = Object.keys(BLUES_SOLO_LICKS);
       const nextId = allLickIds[this.random.nextInt(allLickIds.length)];
       this.currentLickId = nextId;
       this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS[nextId].phrase as any);
-      this.currentAxiomMaxTick = 144; // 12 Bars
+      this.currentAxiomMaxTick = 144; 
       this.soloistBusyUntilBar = epoch + 12;
       this.lastPhraseComplexity = 0.5;
       return undefined;
@@ -392,16 +392,12 @@ export class BluesBrain {
     const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
     const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-    
     const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-    
     const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
 
-    return barNotes.map((n, idx) => {
+    return barNotes.map((n) => {
         let tech = n.tech || 'pick';
-        
-        // #ЗАЧЕМ: ПЛАН №783. Динамическая замена техник в генеративном режиме.
         if (this.ensembleStatus === 'LOCAL' && this.random.next() < 0.2) {
             tech = this.random.next() < 0.5 ? 'sl' : 'bn';
         } else {
@@ -411,7 +407,6 @@ export class BluesBrain {
 
         return {
             type: type,
-            // Применяем макро-транспозицию + микро-транспозицию
             note: Math.min(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: n.d * TICK_TO_BEAT * timeScale,
@@ -434,13 +429,13 @@ export class BluesBrain {
 
           return barNotes.map(n => ({
               type: 'bass',
-              // Бас тоже следует за макро-транспозицией
               note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT, 
               duration: n.d * TICK_TO_BEAT, 
               weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
           }));
       }
+      // #ЗАЧЕМ: Гарантия использования только Jazz Warm / 808.
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
 
@@ -512,12 +507,6 @@ export class BluesBrain {
                   phrasing: 'staccato'
               });
           });
-
-          if (isEighthBar) {
-              [9.5, 10.5].forEach(t => {
-                  events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
-              });
-          }
       }
 
       return events;
@@ -538,10 +527,7 @@ export class BluesBrain {
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT,
               duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
-              weight: 0.25, 
-              technique: 'hit',
-              dynamics: 'p',
-              phrasing: 'staccato'
+              weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
           });
       });
       return events;
@@ -555,27 +541,35 @@ export class BluesBrain {
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(accompanimentEvents[0]?.note || (melodyEvents[0]?.note - 12) || 60);
-      const degrees = [14, 17, 21, 12, 14, 0];
-      const shift = degrees[calculateMusiNum(epoch, 5, this.seed + 100, degrees.length)];
+      // #ЗАЧЕМ: ПЛАН №784. Пианист повторяет фрагменты мелодии (Echo logic).
+      if (melodyEvents.length === 0) return [];
+      
+      const sourceEvent = melodyEvents[this.random.nextInt(melodyEvents.length)];
+      const echoTime = (sourceEvent.time + 1.5 * TICK_TO_BEAT) % (BEATS_PER_BAR);
+      
       return [{
           type: 'pianoAccompaniment', 
-          note: this.constrainAccompanimentOctave(root + shift),
-          time: (this.random.nextInt(2) * 6) * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, 
-          weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+          note: this.constrainAccompanimentOctave(sourceEvent.note - 12), // Октавой ниже лида
+          time: echoTime, 
+          duration: 0.5 * TICK_TO_BEAT, 
+          weight: 0.12, // Очень мягко
+          technique: 'hit', 
+          dynamics: 'p', 
+          phrasing: 'staccato',
+          params: { release: 2.0 }
       }];
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed + 50, 12) + this.currentTransposition + this.microTransposition);
+      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + this.currentTransposition + this.microTransposition);
       
       if (timbre === 'guitarChords') {
           return [{ 
               type: 'harmony', 
-              note: this.constrainAccompanimentOctave(root), 
+              note: root, 
               time: 0, 
               duration: 0.5 * TICK_TO_BEAT, 
-              weight: 0.25, 
+              weight: 0.22, 
               technique: 'hit', 
               dynamics: 'p', 
               phrasing: 'staccato',
@@ -588,7 +582,7 @@ export class BluesBrain {
           note: this.constrainAccompanimentOctave(root + 12),
           time: 0,
           duration: 4.0 * TICK_TO_BEAT, 
-          weight: 0.3,
+          weight: 0.28,
           technique: 'swell',
           dynamics: 'p',
           phrasing: 'legato'

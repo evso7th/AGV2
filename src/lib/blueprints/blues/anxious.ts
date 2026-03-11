@@ -1,10 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Silent Hill Protocol" (Anxious Blues v8.0).
- * #ЧТО: 1. Tension Plateau (0.68-0.78) — застывшее напряжение без разрешения.
- *       2. Радикальное снижение плотности для создания эффекта пустоты.
- *       3. Использование темных текстур и редких ритмических ударов.
+ * #ЗАЧЕМ: Блюпринт "The Silent Hill Protocol" (Anxious Blues v8.1).
+ * #ОБНОВЛЕНО (ПЛАН №784): Удален bass_ambient_dark. Используем только bass_808.
  */
 export const AnxiousBluesBlueprint: MusicBlueprint = {
     id: 'anxious_blues',
@@ -19,7 +18,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
         tensionProfile: { 
             type: 'plateau', 
             peakPosition: 0.5, 
-            // #ЗАЧЕМ: Застывшее напряжение. Музыка "тлеет", но не взрывается.
             curve: () => 0.73 + (Math.random() * 0.05)
         }
     },
@@ -51,7 +49,7 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_ambient_dark', weight: 1.0 } ] },
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_808', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_dark', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
@@ -62,7 +60,6 @@ export const AnxiousBluesBlueprint: MusicBlueprint = {
                     }
                 ],
                 instrumentRules: {
-                    // #ЗАЧЕМ: Радикально низкая плотность для Саспенса.
                     melody: { source: 'blues_solo', density: { min: 0.15, max: 0.35 } },
                     drums: { kitName: 'blues_dark', density: { min: 0.2, max: 0.4 }, useSnare: true, rareKick: true },
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }], density: { min: 0.3, max: 0.5 } },
