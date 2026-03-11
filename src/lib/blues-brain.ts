@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -23,19 +22,20 @@ import {
     repairLegacyPhrase,
     invertPhrase,
     retrogradePhrase,
-    applyRhythmicJitter
+    applyRhythmicJitter,
+    keyToMidiRoot
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V211.1 — "Metadata Sovereignty Protocol".
- * #ОБНОВЛЕНО (ПЛАН №785): Строгая фильтрация ДНК по Жанру и Настроению.
+ * @fileOverview Blues Brain V212.0 — "Level 1 Harmonic Resonance".
+ * #ОБНОВЛЕНО (ПЛАН №791): Внедрен принудительный резонанс гармонии ансамбля под Heritage Axiom.
  */
 
 const TICKS_PER_BAR = 12;
 const BEATS_PER_BAR = 4;
-const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR; // 1/3
+const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR; 
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -78,6 +78,7 @@ export class BluesBrain {
   private currentAxiom: any[] = [];
   private currentAxiomMaxTick: number = 0;
   private currentTimeScale: number = 1;
+  private currentNativeRoot: number | null = null; // #ЗАЧЕМ: Level 1 Resonance.
   
   private currentBassAxiom: any[] = [];
   private currentAccompAxioms: { phrase: any[], role: string }[] = [];
@@ -231,6 +232,11 @@ export class BluesBrain {
         newBpm = this.selectNextAxiom(navInfo, dna, epoch);
     }
 
+    // #ЗАЧЕМ: ПЛАН №791. Резонансный Аккорд.
+    // Если играет Наследие, весь ансамбль подстраивается под его родную тональность.
+    const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
+    const resChord = { ...currentChord, rootNote: resRoot };
+
     const events: FractalEvent[] = [];
 
     let activeAxiom = this.currentAxiom;
@@ -241,11 +247,13 @@ export class BluesBrain {
     }
 
     const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
-        ? this.renderMelodicSegment(epoch, currentChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale) 
+        ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale) 
         : [];
     
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
-    const bassEvents = hints.bass ? this.renderSymbioticBass(currentChord, epoch, tension, dna) : [];
+    
+    // Басист теперь резонирует с аксиомой
+    const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
     const accompanimentEvents: FractalEvent[] = [];
@@ -255,23 +263,23 @@ export class BluesBrain {
 
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
-            accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, currentChord, unisonType));
+            accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
             usedTargetLayers.add('accompaniment');
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
             const primaryAccomp = this.currentAccompAxioms[0];
-            accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, primaryAccomp.phrase, 'accompaniment', dna, tension));
+            accompanimentEvents.push(...this.renderHeritageAccompaniment(resChord, epoch, primaryAccomp.phrase, 'accompaniment', dna, tension));
             usedTargetLayers.add('accompaniment');
 
             this.currentAccompAxioms.slice(1).forEach((ax) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : 'harmony';
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
-                    accompanimentEvents.push(...this.renderHeritageAccompaniment(currentChord, epoch, ax.phrase, targetType, dna, tension));
+                    accompanimentEvents.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension));
                     usedTargetLayers.add(targetType);
                 }
             });
         } else if (hints.accompaniment) {
-            accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, currentChord, tension));
+            accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
             usedTargetLayers.add('accompaniment');
         }
     }
@@ -288,10 +296,10 @@ export class BluesBrain {
         const useChords = rand < 0.85;
         
         if (useViolin) {
-            events.push(...this.renderDerivativeHarmony(currentChord, epoch, 'violin'));
+            events.push(...this.renderDerivativeHarmony(resChord, epoch, 'violin'));
         }
         if (useChords) {
-            events.push(...this.renderDerivativeHarmony(currentChord, epoch, 'guitarChords'));
+            events.push(...this.renderDerivativeHarmony(resChord, epoch, 'guitarChords'));
         }
     }
 
@@ -316,6 +324,7 @@ export class BluesBrain {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
       this.currentDrumAxiom = [];
+      this.currentNativeRoot = null;
       this.ensembleStatus = 'ADAPTIVE';
       this.currentTimeScale = 1;
 
@@ -323,15 +332,12 @@ export class BluesBrain {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           const commonMoodFilter = MOOD_TO_COMMON[this.mood];
 
-          // #ЗАЧЕМ: ПЛАН №785. Strict Genre/Mood Filtering.
           let filteredPool = this.config.cloudAxioms.filter(ax => {
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
               const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-              
               const genreMatch = axGenres.includes(this.config.genre);
               const moodMatch = axMoods.includes(this.mood) || axCommons.includes(commonMoodFilter);
-              
               return genreMatch && moodMatch;
           });
 
@@ -353,6 +359,9 @@ export class BluesBrain {
                       this.state.recentLicks.push(selected.id);
                       if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
                       
+                      // #ЗАЧЕМ: Level 1. Сохраняем родную тональность.
+                      this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
+
                       let rawPhrase = decompressCompactPhrase(selected.phrase);
                       const phrasesToNormalize = [rawPhrase];
                       const cid = this.normalize(selected.compositionId);
@@ -400,7 +409,9 @@ export class BluesBrain {
     const barInCycle = (epoch - startEpoch) % barCountInPhrase;
     const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-    const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+    
+    // В Heritage режиме используем Resonant Root
+    const effectiveRoot = chord.rootNote; 
 
     return barNotes.map((n) => {
         let tech = n.tech || 'pick';
@@ -431,7 +442,7 @@ export class BluesBrain {
           const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
           const barOffset = barInAxiom * TICKS_PER_BAR;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-          const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+          const effectiveRoot = chord.rootNote;
 
           return barNotes.map(n => ({
               type: 'bass',
@@ -523,7 +534,7 @@ export class BluesBrain {
       const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
       const barOffset = barInAxiom * TICKS_PER_BAR;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-      const effectiveRoot = (dna.activeAnchorRoot && this.config.activeAnchorId) ? dna.activeAnchorRoot : chord.rootNote;
+      const effectiveRoot = chord.rootNote;
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {

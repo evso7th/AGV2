@@ -1,7 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.8 — "Evolutionary Variance".
- * #ЗАЧЕМ: ПЛАН №780 — Оптимизация мутаций для предотвращения зацикливания.
- * #ОБНОВЛЕНО (ПЛАН №787): Выравнивание индексов ступеней согласно Forge Master Spec v2.2.
+ * @fileOverview Universal Music Theory Utilities V2.9 — "Resonance Alignment".
+ * #ОБНОВЛЕНО (ПЛАН №791): Внедрен keyToMidiRoot для поддержки Гармонического Резонанса.
  */
 
 import type { 
@@ -29,25 +28,10 @@ export const MODE_SEMITONES: Record<string, number[]> = {
 
 /**
  * #ЗАЧЕМ: Строгое соответствие Forge Master Spec v2.2.
- * #ЧТО: Порядок ключей определяет их индекс при декомпрессии фраз.
- * 0:R, 1:b2, 2:2, 3:b3, 4:3, 5:4, 6:#4, 7:5, 8:b6, 9:6, 10:b7, 11:7, 12:R+8, 13:9, 14:11
  */
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
-    'R': 0, 
-    'b2': 1, 
-    '2': 2, 
-    'b3': 3, 
-    '3': 4, 
-    '4': 5, 
-    '#4': 6, 
-    '5': 7,
-    'b6': 8, 
-    '6': 9, 
-    'b7': 10, 
-    '7': 11, 
-    'R+8': 12, 
-    '9': 14, 
-    '11': 17
+    'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, '5': 7,
+    'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
 };
 
 export const DEGREE_KEYS = Object.keys(DEGREE_TO_SEMITONE);
@@ -57,6 +41,18 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Перевод текстовой тональности в MIDI-корень для Резонанса.
+ */
+export function keyToMidiRoot(key: string | null | undefined): number | null {
+    if (!key) return null;
+    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
+    const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
+    const offset = noteMap[rootName] || 0;
+    // Возвращаем корень в октаве 2 (базовый диапазон движка 48-60)
+    return 48 + offset;
+}
 
 export function getWalkingDegree(epoch: number, seed: number): number {
     const steps = [0, 7, 9, 12, 7, 0, 14, 0]; 
@@ -78,9 +74,7 @@ const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
 };
 
 const GENRE_STATES: Record<string, number[]> = {
-    ambient: [0, 5, 7, 9], 
-    trance: [0, 8, 10],    
-    blues: [0, 5, 7]       
+    ambient: [0, 5, 7, 9], trance: [0, 8, 10], blues: [0, 5, 7]       
 };
 
 export function decompressCompactPhrase(compact: number[]): any[] {
@@ -96,9 +90,6 @@ export function decompressCompactPhrase(compact: number[]): any[] {
     return result;
 }
 
-/**
- * #ЗАЧЕМ: Зеркальное отражение нот (Inversion).
- */
 export function invertPhrase(phrase: any[]): any[] {
     if (phrase.length === 0) return phrase;
     return phrase.map(n => {
@@ -108,23 +99,15 @@ export function invertPhrase(phrase: any[]): any[] {
     });
 }
 
-/**
- * #ЗАЧЕМ: Реверс временной последовательности (Retrograde).
- */
 export function retrogradePhrase(phrase: any[]): any[] {
     if (phrase.length === 0) return phrase;
     const maxT = Math.max(...phrase.map(n => n.t + n.d));
-    return phrase.map(n => ({
-        ...n, t: maxT - (n.t + n.d)
-    })).sort((a, b) => a.t - b.t);
+    return phrase.map(n => ({ ...n, t: maxT - (n.t + n.d) })).sort((a, b) => a.t - b.t);
 }
 
-/**
- * #ЗАЧЕМ: Внесение ритмического "дыхания" (Jitter).
- */
 export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
     return phrase.map((n, i) => {
-        const jitter = (calculateMusiNum(i, 3, seed, 3) - 1); // -1, 0, 1 tick
+        const jitter = (calculateMusiNum(i, 3, seed, 3) - 1); 
         return { ...n, t: Math.max(0, n.t + jitter) };
     });
 }
@@ -136,9 +119,7 @@ export function repairLegacyPhrase(compact: number[]): number[] {
     const repaired: number[] = [];
     const BASE_C4 = 60;
     for (let i = 0; i < compact.length; i += 4) {
-        const t = compact[i];
-        const d = compact[i+1];
-        const midi = compact[i+2];
+        const t = compact[i]; const d = compact[i+1]; const midi = compact[i+2];
         const semitone = (midi - BASE_C4) % 12;
         const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
         const degIdx = DEGREE_KEYS.indexOf(degName);
@@ -222,7 +203,6 @@ export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, wei
 
 export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number, genre: string): GhostChord[] {
     const track: GhostChord[] = [];
-    const root = rootNote;
     const matrix = GENRE_HARMONY_MATRICES[genre] || GENRE_HARMONY_MATRICES.ambient;
     const states = GENRE_STATES[genre] || GENRE_STATES.ambient;
     let currentBar = 0;
@@ -231,7 +211,7 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
         const durPool = [2, 4, 8];
         const dur = durPool[calculateMusiNum(currentBar, 3, seed, 3)];
         track.push({
-            rootNote: root + (states[currentStateIdx] || 0),
+            rootNote: rootNote + (states[currentStateIdx] || 0),
             chordType: 'minor',
             bar: currentBar,
             durationBars: Math.min(dur, totalBars - currentBar)
@@ -270,29 +250,6 @@ export function generateSuiteDNA(
         finalSeed = (parent1.seed & 0xAAAA) | (parent2.seed & 0x5555);
     } else if (ancestor && typeof ancestor.seed === 'number') {
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
-    }
-
-    let partLickMap: Map<string, string> = new Map();
-
-    if (genre === 'blues') {
-        const dynasty = getDynastyForMood(mood, finalSeed);
-        let pool: string[] = [];
-        if (activeAnchorId && cloudAxioms) {
-            const normalizedAnchor = activeAnchorId.toLowerCase().replace(/[^a-z0-9]/g, '');
-            pool = cloudAxioms
-                .filter(ax => ax.role === 'melody' && (ax.compositionId || '').toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedAnchor)
-                .map(ax => ax.id);
-        }
-        if (pool.length === 0) {
-            pool = Object.keys(BLUES_SOLO_LICKS).filter(id => 
-                BLUES_SOLO_LICKS[id].tags.includes(dynasty) && !(sessionHistory || []).includes(id)
-            );
-        }
-        const finalPool = pool.length > 0 ? pool : Object.keys(BLUES_SOLO_LICKS);
-        blueprintParts.forEach((part: any, i: number) => {
-            const partLick = finalPool[(calculateMusiNum(finalSeed, 17, i * 7, finalPool.length))];
-            partLickMap.set(part.id, partLick);
-        });
     }
 
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
