@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.0 — "Absolute Piano Calibration".
- * #ЧТО: ПЛАН №786 — Снижена системная громкость пианино и исправлена нелинейность слайдера.
+ * #ЗАЧЕМ: Audio Engine Context V20.1 — "Unmuted Audition Support".
+ * #ЧТО: ПЛАН №787 — Unmute master gain during playRawEvents for axiom preview.
  */
 'use client';
 
@@ -33,7 +32,6 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45, 
   sfx: 0.55, 
   harmony: 0.85, 
-  // #ЗАЧЕМ: ПЛАН №786. Снижение громкости в 2 раза (было 0.20).
   pianoAccompaniment: 0.10, 
 };
 
@@ -122,9 +120,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
-    
-    // #ЗАЧЕМ: ПЛАН №786. Удален принудительный проброс громкости в менеджер.
-    // Это исключает double-scaling и делает слайдер в UI линейным.
   }, []);
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
@@ -380,7 +375,11 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         }, 
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h, t) => {
-            if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.8, t || 72, 0, h)
+            if(audioContextRef.current) {
+                // #ЗАЧЕМ: Unmute master gain for audition.
+                masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
+                scheduleEvents(e, audioContextRef.current.currentTime + 0.8, t || 72, 0, h);
+            }
         },
         stopAllSounds,
         startRecording,

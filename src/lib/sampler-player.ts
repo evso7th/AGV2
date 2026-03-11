@@ -9,6 +9,7 @@ type SamplerInstrument = {
 /**
  * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
  * #ЧТО: 1. ПЛАН №760 — Снижен базовый уровень усиления (preamp) для устранения громкости.
+ *       2. ПЛАН №787 — Корректировка preamp для обеспечения слышимости при audition.
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -24,8 +25,8 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системная калибровка уровней. Гейн снижен до минимума для деликатности.
-        this.preamp.gain.value = 0.06; 
+        // #ЗАЧЕМ: ПЛАН №787. Гейн поднят до 0.6 для адекватной громкости при audition.
+        this.preamp.gain.value = 0.6; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);

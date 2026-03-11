@@ -1,6 +1,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities V2.8 — "Evolutionary Variance".
  * #ЗАЧЕМ: ПЛАН №780 — Оптимизация мутаций для предотвращения зацикливания.
+ * #ОБНОВЛЕНО (ПЛАН №787): Выравнивание индексов ступеней согласно Forge Master Spec v2.2.
  */
 
 import type { 
@@ -26,16 +27,34 @@ export const MODE_SEMITONES: Record<string, number[]> = {
     locrian: [0, 1, 3, 5, 6, 8, 10]
 };
 
+/**
+ * #ЗАЧЕМ: Строгое соответствие Forge Master Spec v2.2.
+ * #ЧТО: Порядок ключей определяет их индекс при декомпрессии фраз.
+ * 0:R, 1:b2, 2:2, 3:b3, 4:3, 5:4, 6:#4, 7:5, 8:b6, 9:6, 10:b7, 11:7, 12:R+8, 13:9, 14:11
+ */
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
-    'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, 'b5': 6, '5': 7,
-    'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
+    'R': 0, 
+    'b2': 1, 
+    '2': 2, 
+    'b3': 3, 
+    '3': 4, 
+    '4': 5, 
+    '#4': 6, 
+    '5': 7,
+    'b6': 8, 
+    '6': 9, 
+    'b7': 10, 
+    '7': 11, 
+    'R+8': 12, 
+    '9': 14, 
+    '11': 17
 };
 
 export const DEGREE_KEYS = Object.keys(DEGREE_TO_SEMITONE);
 export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pluck', 'hit', 'swell'];
 
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
-    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: 'b5', 7: '5',
+    0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 

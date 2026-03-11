@@ -37,7 +37,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/class/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -477,6 +477,10 @@ export default function HypercubeDashboard() {
     reader.readAsText(file);
   };
 
+  /**
+   * #ЗАЧЕМ: Прослушивание аксиомы из базы V2.0.
+   * #ЧТО: ПЛАН №787 — Исправлена маршрутизация Пианино и добавлена очистка таймера.
+   */
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) {
         stopAllSounds();
@@ -508,6 +512,11 @@ export default function HypercubeDashboard() {
           else eventType = 'drum_lowtom_soft';
       }
 
+      // #ЗАЧЕМ: Поддержка роли Пианиста при прослушивании.
+      if (rawRole.includes('piano')) {
+          eventType = 'pianoAccompaniment';
+      }
+
       return {
         type: eventType,
         note: (rawRole === 'bass' ? 31 : (rawRole === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
@@ -530,14 +539,22 @@ export default function HypercubeDashboard() {
         if (rawRole.includes('guitar')) {
             events.forEach(e => { if(e.type === 'accompaniment') e.type = 'melody'; });
             hints.melody = 'blackAcoustic';
+        } else if (rawRole.includes('piano')) {
+            hints.pianoAccompaniment = 'piano';
         } else {
-            hints.accompaniment = rawRole.includes('piano') ? 'ep_rhodes_warm' : 'organ_soft_jazz';
+            hints.accompaniment = 'organ_soft_jazz';
         }
     }
 
     const tempo = axiom.nativeBpm || 72;
     playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
+
+    // #ЗАЧЕМ: Сброс иконки после завершения фразы.
+    const maxDuration = Math.max(...events.map(e => e.time + e.duration));
+    setTimeout(() => {
+        setPlayingAxiomId(prev => prev === axiom.id ? null : prev);
+    }, (maxDuration + 1) * 1000);
   };
 
   const handleCommitInjection = async () => {
