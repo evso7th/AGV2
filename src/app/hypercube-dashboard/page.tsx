@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -41,7 +40,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -477,10 +476,6 @@ export default function HypercubeDashboard() {
     reader.readAsText(file);
   };
 
-  /**
-   * #ЗАЧЕМ: Прослушивание аксиомы из базы V2.0.
-   * #ЧТО: ПЛАН №787 — Исправлена маршрутизация Пианино и добавлена очистка таймера.
-   */
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) {
         stopAllSounds();
@@ -512,7 +507,6 @@ export default function HypercubeDashboard() {
           else eventType = 'drum_lowtom_soft';
       }
 
-      // #ЗАЧЕМ: Поддержка роли Пианиста при прослушивании.
       if (rawRole.includes('piano')) {
           eventType = 'pianoAccompaniment';
       }
@@ -550,7 +544,6 @@ export default function HypercubeDashboard() {
     playRawEvents(events, hints, tempo);
     setPlayingAxiomId(axiom.id);
 
-    // #ЗАЧЕМ: Сброс иконки после завершения фразы.
     const maxDuration = Math.max(...events.map(e => e.time + e.duration));
     setTimeout(() => {
         setPlayingAxiomId(prev => prev === axiom.id ? null : prev);
@@ -1167,7 +1160,7 @@ export default function HypercubeDashboard() {
                                               <>
                                                 <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
                                                 <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">
-                                                  {playingAxiomId === axiom.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                                                  {playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}
                                                 </Button>
                                                 <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
                                               </>
