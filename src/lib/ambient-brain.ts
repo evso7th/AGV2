@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain v40.2 — "Generative Evolution Protocol".
- * #ОБНОВЛЕНО (ПЛАН №783): Интенсивные мутации в генеративном режиме.
+ * @fileOverview Ambient Brain v40.3 — "Metadata Sovereignty Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №785): Строгая фильтрация аксиом по жанру и настроению.
  */
 
 import type { 
@@ -72,7 +72,7 @@ export class AmbientBrain {
     private bright: number = 0.3;
     private registerShift: number = 0;
     private currentTransposition: number = 0;
-    private microTransposition: number = 0; // #ЗАЧЕМ: ПЛАН №783.
+    private microTransposition: number = 0;
 
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1; 
@@ -90,7 +90,6 @@ export class AmbientBrain {
     private currentTrackName: string = '';
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
     private currentMutationType: string = 'none';
-    private themeRepeatCount: number = 0;
     
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
@@ -136,7 +135,6 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
-        // --- MACRO TRANSITIONS ---
         if (navInfo.isPartTransition) {
             this.soloistBusyUntilBar = epoch; 
             const shifts = [0, 2, -2, 5, 7, -5];
@@ -147,8 +145,7 @@ export class AmbientBrain {
         this.applyGeography(epoch, dna);
         this.applySpectralAtom(epoch, waves[3]);
 
-        // --- MICRO EVOLUTION (LOCAL mode) ---
-        // #ЗАЧЕМ: ПЛАН №783. Частое обновление мутаций.
+        // #ЗАЧЕМ: ПЛАН №783. Частое обновление мутаций в режиме LOCAL.
         if (epoch % 4 === 0 && this.ensembleStatus === 'LOCAL') {
             const mutRand = this.random.next();
             if (mutRand < 0.4) {
@@ -177,7 +174,6 @@ export class AmbientBrain {
 
         const events: FractalEvent[] = [];
 
-        // --- MELODY EVOLUTION ---
         let activePhrase = this.currentTheme?.phrase || [];
         if (this.ensembleStatus === 'LOCAL' && activePhrase.length > 0) {
             if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
@@ -185,7 +181,6 @@ export class AmbientBrain {
             else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
         }
 
-        // --- 1. ACCOMPANIMENT & HARMONY ---
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
             if (this.currentAccompAxioms.length > 0) {
@@ -209,14 +204,12 @@ export class AmbientBrain {
             }
         }
 
-        // --- 2. BASS ---
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(currentChord, epoch, localTension, dna)));
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(currentChord, epoch, localTension)));
         }
 
-        // --- 3. MELODY ---
         if (hints.melody && !isSoloistResting) {
             const isBoundary = navInfo.isPartTransition || navInfo.isBundleTransition;
             if (isBoundary && this.random.next() < 0.7) {
@@ -228,12 +221,10 @@ export class AmbientBrain {
             }
         }
 
-        // --- 4. DRUMS ---
         if (hints.drums) {
             events.push(...this.renderTexturalPercussion(epoch, localTension));
         }
 
-        // --- 5. TEXTURES ---
         if (hints.sparkles && this.random.next() < 0.6) {
             events.push(this.renderSparkle(currentChord, MOOD_TO_COMMON[this.mood] === 'light'));
         }
@@ -258,7 +249,6 @@ export class AmbientBrain {
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        const prevThemeId = this.currentTheme?.id;
         this.currentAccompAxioms = []; 
         this.currentTimeScale = 1;
         let cloudAxiom: any = null;
@@ -267,25 +257,30 @@ export class AmbientBrain {
 
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
-            let basePool = poolToUse.filter(ax => ax.role === 'melody');
-            if (basePool.length === 0) basePool = poolToUse.filter(ax => ax.role?.startsWith('accomp'));
+            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+
+            // #ЗАЧЕМ: ПЛАН №785. Strict Metadata Filter.
+            let filteredPool = poolToUse.filter(ax => {
+                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                
+                const genreMatch = axGenres.includes(this.genre);
+                const moodMatch = axMoods.includes(this.mood) || axCommons.includes(commonMoodFilter);
+                
+                return genreMatch && moodMatch;
+            });
 
             if (targetAnchor) {
-                const anchorPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
-                basePool = anchorPool.filter(ax => ax.role === 'melody');
-                if (basePool.length === 0) basePool = anchorPool.filter(ax => ax.role?.startsWith('accomp'));
+                filteredPool = filteredPool.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
             }
 
+            let basePool = filteredPool.filter(ax => ax.role === 'melody');
+            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
+
             if (basePool.length > 0) {
-                const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-                let moodMatched = basePool.filter(ax => {
-                    const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                    const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                    return moods.includes(this.mood) || commons.includes(commonMoodFilter);
-                });
-                const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-                const freshPool = finalPool.filter(ax => !this.usedThemeHistory.includes(ax.id));
-                cloudAxiom = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
+                const freshPool = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id));
+                cloudAxiom = (freshPool.length > 0 ? freshPool : basePool)[this.random.nextInt(Math.max(1, freshPool.length || basePool.length))];
                 if (cloudAxiom) {
                     this.usedThemeHistory.push(cloudAxiom.id);
                     if (this.usedThemeHistory.length > 20) this.usedThemeHistory.shift();
@@ -363,7 +358,7 @@ export class AmbientBrain {
             const fillTicks = isEighthBar ? [9, 10, 11] : [11];
             fillTicks.forEach((t, i) => {
                 const tom = tomPool[i % tomPool.length];
-                events.push({ type: tom as any, note: 40, time: t * TICK_TO_BEAT, duration: 1.5, weight: 0.5 + (i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+                events.push({ type: tom as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: 0.5 + (i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             });
         }
 

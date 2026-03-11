@@ -29,8 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V211.0 — "Ensemble Density Protocol".
- * #ОБНОВЛЕНО (ПЛАН №784): Фикс громкости пианиста, разделение гармонии (85/25) и удаление гудящего баса.
+ * @fileOverview Blues Brain V211.1 — "Metadata Sovereignty Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №785): Строгая фильтрация ДНК по Жанру и Настроению.
  */
 
 const TICKS_PER_BAR = 12;
@@ -278,12 +278,10 @@ export class BluesBrain {
 
     events.push(...accompanimentEvents);
 
-    // #ЗАЧЕМ: Реализация "Теневого Пианиста" (ПЛАН №784).
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
     
-    // #ЗАЧЕМ: Реализация "Драматической Гармонии" (85% аккорды / 25% скрипки).
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
         const rand = this.random.next();
         const useViolin = (tension > 0.85 || tension < 0.15) || rand < 0.25;
@@ -323,56 +321,64 @@ export class BluesBrain {
 
       if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          let basePool = this.config.cloudAxioms.filter(ax => ax.role === 'melody');
+          const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+
+          // #ЗАЧЕМ: ПЛАН №785. Strict Genre/Mood Filtering.
+          let filteredPool = this.config.cloudAxioms.filter(ax => {
+              const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+              const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+              const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+              
+              const genreMatch = axGenres.includes(this.config.genre);
+              const moodMatch = axMoods.includes(this.mood) || axCommons.includes(commonMoodFilter);
+              
+              return genreMatch && moodMatch;
+          });
+
           if (targetAnchor) {
-              const anchorPool = this.config.cloudAxioms.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
-              basePool = anchorPool.filter(ax => ax.role === 'melody');
-              if (basePool.length === 0) basePool = anchorPool.filter(ax => ax.role?.startsWith('accomp'));
+              filteredPool = filteredPool.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
           }
 
-          if (basePool.length > 0) {
-              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-              const moodMatched = basePool.filter(ax => {
-                  const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                  const commonArr = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                  return (moods.includes(this.mood) || commonArr.includes(commonMoodFilter));
-              });
+          if (filteredPool.length > 0) {
+              let basePool = filteredPool.filter(ax => ax.role === 'melody');
+              if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
 
-              const finalPool = moodMatched.length > 0 ? moodMatched : basePool;
-              const freshPool = finalPool.filter(ax => !this.state.recentLicks.includes(ax.id));
-              const selected = (freshPool.length > 0 ? freshPool : finalPool)[this.random.nextInt(Math.max(1, freshPool.length || finalPool.length))];
-              
-              if (selected) {
-                  this.currentLickId = selected.id;
-                  this.currentTrackName = selected.compositionId; 
-                  this.state.recentLicks.push(selected.id);
-                  if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
+              if (basePool.length > 0) {
+                  const freshPool = basePool.filter(ax => !this.state.recentLicks.includes(ax.id));
+                  const selected = (freshPool.length > 0 ? freshPool : basePool)[this.random.nextInt(Math.max(1, freshPool.length || basePool.length))];
                   
-                  let rawPhrase = decompressCompactPhrase(selected.phrase);
-                  const phrasesToNormalize = [rawPhrase];
-                  const cid = this.normalize(selected.compositionId);
-                  const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                  
-                  if (bassSibling) {
-                      const rb = decompressCompactPhrase(bassSibling.phrase);
-                      phrasesToNormalize.push(rb);
-                      this.currentBassAxiom = rb;
+                  if (selected) {
+                      this.currentLickId = selected.id;
+                      this.currentTrackName = selected.compositionId; 
+                      this.state.recentLicks.push(selected.id);
+                      if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
+                      
+                      let rawPhrase = decompressCompactPhrase(selected.phrase);
+                      const phrasesToNormalize = [rawPhrase];
+                      const cid = this.normalize(selected.compositionId);
+                      const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      
+                      if (bassSibling) {
+                          const rb = decompressCompactPhrase(bassSibling.phrase);
+                          phrasesToNormalize.push(rb);
+                          this.currentBassAxiom = rb;
+                      }
+
+                      const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset).slice(0, 3);
+                      accompSiblings.forEach(ax => {
+                          const p = decompressCompactPhrase(ax.phrase);
+                          phrasesToNormalize.push(p);
+                          this.currentAccompAxioms.push({ phrase: p, role: ax.role });
+                      });
+
+                      normalizePhraseGroup(phrasesToNormalize);
+                      const baseBars = selected.bars || 4;
+                      this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
+                      this.currentAxiom = rawPhrase; 
+                      this.soloistBusyUntilBar = epoch + baseBars;
+                      this.ensembleStatus = 'SIBLING';
+                      return selected.nativeBpm || undefined;
                   }
-
-                  const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset).slice(0, 3);
-                  accompSiblings.forEach(ax => {
-                      const p = decompressCompactPhrase(ax.phrase);
-                      phrasesToNormalize.push(p);
-                      this.currentAccompAxioms.push({ phrase: p, role: ax.role });
-                  });
-
-                  normalizePhraseGroup(phrasesToNormalize);
-                  const baseBars = selected.bars || 4;
-                  this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
-                  this.currentAxiom = rawPhrase; 
-                  this.soloistBusyUntilBar = epoch + baseBars;
-                  this.ensembleStatus = 'SIBLING';
-                  return selected.nativeBpm || undefined;
               }
           }
       }
@@ -435,7 +441,6 @@ export class BluesBrain {
               weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
           }));
       }
-      // #ЗАЧЕМ: Гарантия использования только Jazz Warm / 808.
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
 
@@ -541,7 +546,6 @@ export class BluesBrain {
   }
 
   private renderShadowPiano(epoch: number, melodyEvents: FractalEvent[], accompanimentEvents: FractalEvent[]): FractalEvent[] {
-      // #ЗАЧЕМ: ПЛАН №784. Пианист повторяет фрагменты мелодии (Echo logic).
       if (melodyEvents.length === 0) return [];
       
       const sourceEvent = melodyEvents[this.random.nextInt(melodyEvents.length)];
@@ -549,10 +553,10 @@ export class BluesBrain {
       
       return [{
           type: 'pianoAccompaniment', 
-          note: this.constrainAccompanimentOctave(sourceEvent.note - 12), // Октавой ниже лида
+          note: this.constrainAccompanimentOctave(sourceEvent.note - 12), 
           time: echoTime, 
           duration: 0.5 * TICK_TO_BEAT, 
-          weight: 0.12, // Очень мягко
+          weight: 0.12, 
           technique: 'hit', 
           dynamics: 'p', 
           phrasing: 'staccato',
