@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain v42.0 — "Level 2 Living Articulation".
- * #ОБНОВЛЕНО (ПЛАН №792): Внедрен протокол "Живая Кожа" для текстурных жанров.
+ * @fileOverview Ambient Brain V43.0 — "Level 3 Motive Mosaic".
+ * #ОБНОВЛЕНО (ПЛАН №793): Реализован протокол «Мозаика». Нелинейная рекомбинация текстур.
  */
 
 import type { 
@@ -108,6 +108,19 @@ export class AmbientBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
+    }
+
+    private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход текстурных фрагментов.
+        const barsElapsed = epoch - startEpoch;
+        const linearIndex = barsElapsed % totalBars;
+        const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
+        
+        if (tension > 0.8) {
+            if (rand < 0.15) return Math.max(0, linearIndex - 1); // Stutter
+            if (rand > 0.95) return (linearIndex + 1) % totalBars; // Skip
+        }
+        return linearIndex;
     }
 
     public generateBar(
@@ -414,7 +427,6 @@ export class AmbientBrain {
         const degrees = epoch % 16 < 8 ? [0, 7, 12] : [0, 4, 9]; 
 
         return degrees.map((n, i) => {
-            // Level 2: Tension-driven attack variation
             const attackTime = 1.0 + (1 - tension) * 1.5; 
             
             return {
@@ -427,16 +439,19 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-        const barInAxiom = (epoch - startEpoch) % barCountInPhrase; 
-        const barOffset = barInAxiom * TICKS_PER_BAR;
+        const totalBarsInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+        
+        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход для падов.
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+        
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        const effectiveRoot = chord.rootNote;
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
-            // Level 2: Humanized weight
-            const jitter = (this.random.next() * 0.08) - 0.04;
+            const jitter = (this.random.next() * 0.06) - 0.03;
             
             events.push({
                 type: type,
@@ -462,25 +477,25 @@ export class AmbientBrain {
         maxTick: number, 
         timeScale: number
     ): FractalEvent[] {
-        const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-        const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-        const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
+        const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+        
+        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход мелодии.
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+        const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
+        
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         const effectiveRoot = chord.rootNote;
 
         return barNotes.map(n => {
-            // --- Level 2: Dynamic Articulation ---
             let tech = n.tech || 'pick';
             const rand = this.random.next();
             
-            if (tension > 0.6 && n.d >= 4 && rand < 0.3) tech = 'vb'; // Vibrato
-            if (tension < 0.4 && rand < 0.2) tech = 'swell'; // Soft approach
+            if (tension > 0.6 && n.d >= 4 && rand < 0.3) tech = 'vb'; 
+            if (tension < 0.4 && rand < 0.2) tech = 'swell'; 
             
-            // Random technique jitter
             if (this.ensembleStatus === 'LOCAL' && rand < 0.1) tech = 'sl';
 
-            // Humanized weight
             const weightJitter = (this.random.next() * 0.1) - 0.05;
 
             return {
@@ -497,9 +512,13 @@ export class AmbientBrain {
 
     private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const barCountInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const barInAxiom = epoch % barCountInPhrase;
-        const barOffset = barInAxiom * TICKS_PER_BAR;
+        const totalBarsInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+        
+        // #ЗАЧЕМ: Level 3 Мозаика. Бас резонирует с обходом мелодии.
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+        
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         
         if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);

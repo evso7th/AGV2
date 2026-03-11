@@ -29,8 +29,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V213.0 — "Level 2 Living Articulation".
- * #ОБНОВЛЕНО (ПЛАН №792): Реализован протокол "Живая Кожа". Динамическая интерпретация техник и веса.
+ * @fileOverview Blues Brain V214.0 — "Level 3 Motive Mosaic".
+ * #ОБНОВЛЕНО (ПЛАН №793): Реализован протокол «Мозаика». Нелинейный обход аксиом.
  */
 
 const TICKS_PER_BAR = 12;
@@ -170,6 +170,25 @@ export class BluesBrain {
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
       if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
+  }
+
+  private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+      // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный траверс.
+      const barsElapsed = epoch - startEpoch;
+      const linearIndex = barsElapsed % totalBars;
+      
+      const rand = calculateMusiNum(epoch, 13, this.seed, 100) / 100;
+      
+      // На высоком напряжении выше шанс «заикания» (stutter) или прыжка
+      if (tension > 0.75) {
+          if (rand < 0.2) return Math.max(0, linearIndex - 1); // Повтор предыдущего такта (Stutter)
+          if (rand > 0.9) return (linearIndex + 1) % totalBars; // Прыжок вперед (Skip)
+      }
+      
+      // На низком напряжении — спокойный линейный ход
+      if (tension < 0.3) return linearIndex;
+
+      return linearIndex;
   }
 
   private constrainBassOctave(note: number): number {
@@ -393,9 +412,6 @@ export class BluesBrain {
       return undefined;
   }
 
-  /**
-   * #ЗАЧЕМ: Level 2 Articulation Implementation.
-   */
   private renderMelodicSegment(
       epoch: number, 
       chord: GhostChord, 
@@ -406,33 +422,32 @@ export class BluesBrain {
       timeScale: number,
       tension: number
   ): FractalEvent[] {
-    const barCountInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
-    const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-    const barInCycle = (epoch - startEpoch) % barCountInPhrase;
-    const barOffset = (barInCycle * TICKS_PER_BAR) / timeScale;
+    const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
+    const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+    
+    // #ЗАЧЕМ: Level 3 Мозаика. Вычисляем нелинейный индекс такта внутри фразы.
+    const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+    
+    const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
     
     const effectiveRoot = chord.rootNote; 
 
     return barNotes.map((n) => {
-        // --- Level 2: Dynamic Articulation Jitter ---
         let tech = n.tech || 'pick';
         const rand = this.random.next();
         
-        // Повышаем вероятность выразительных техник при высоком натяжении
         if (tension > 0.7) {
-            if (n.d >= 4 && rand < 0.4) tech = 'bn'; // Bend
-            else if (n.d >= 6 && rand < 0.6) tech = 'vb'; // Vibrato
+            if (n.d >= 4 && rand < 0.4) tech = 'bn'; 
+            else if (n.d >= 6 && rand < 0.6) tech = 'vb'; 
         } else if (tension < 0.3) {
-            if (rand < 0.2) tech = 'swell'; // Мягкий вход
+            if (rand < 0.2) tech = 'swell'; 
         }
 
-        // Рандомная замена щипка на слайд (путь 2)
         if (tech === 'pick' && rand < 0.15) tech = 'sl';
 
-        // --- Level 2: Humanized Weight ---
         const weightJitter = (this.random.next() * 0.1) - 0.05;
-        const baseWeight = 0.75 + (tension * 0.15); // Солист громче при напряжении
+        const baseWeight = 0.75 + (tension * 0.15); 
         const effectiveWeight = clamp(baseWeight + weightJitter, 0.4, 0.95);
 
         return {
@@ -450,10 +465,13 @@ export class BluesBrain {
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
       if (this.currentBassAxiom.length > 0) {
-          const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-          const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-          const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
-          const barOffset = barInAxiom * TICKS_PER_BAR;
+          const totalBarsInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+          const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+          
+          // #ЗАЧЕМ: Level 3 Мозаика. Бас следует за нелинейным ходом мелодии.
+          const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+          
+          const barOffset = mosaicBar * TICKS_PER_BAR;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           const effectiveRoot = chord.rootNote;
 
@@ -542,16 +560,18 @@ export class BluesBrain {
   }
 
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-      const barCountInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-      const startEpoch = this.soloistBusyUntilBar - barCountInPhrase;
-      const barInAxiom = (epoch - startEpoch) % barCountInPhrase;
-      const barOffset = barInAxiom * TICKS_PER_BAR;
+      const totalBarsInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+      const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+      
+      // #ЗАЧЕМ: Level 3 Мозаика. Аккомпанемент резонирует с нелинейным обходом.
+      const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+      
+      const barOffset = mosaicBar * TICKS_PER_BAR;
       const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
       const effectiveRoot = chord.rootNote;
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          // Humanize accomp weight
           const jitter = (this.random.next() * 0.06) - 0.03;
           
           events.push({
