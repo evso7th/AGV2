@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V19.0 — "Mix Calibration".
- * #ЧТО: ПЛАН №760 — Снижена базовая громкость пианино и исправлена связь с UI.
+ * #ЗАЧЕМ: Audio Engine Context V20.0 — "Absolute Piano Calibration".
+ * #ЧТО: ПЛАН №786 — Снижена системная громкость пианино и исправлена нелинейность слайдера.
  */
 'use client';
 
@@ -33,8 +33,8 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45, 
   sfx: 0.55, 
   harmony: 0.85, 
-  // #ЗАЧЕМ: Снижение громкости "Пианиста-тени" для деликатности.
-  pianoAccompaniment: 0.20, 
+  // #ЗАЧЕМ: ПЛАН №786. Снижение громкости в 2 раза (было 0.20).
+  pianoAccompaniment: 0.10, 
 };
 
 interface AudioEngineContextType {
@@ -86,7 +86,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const settingsRef = useRef<WorkerSettings | null>(null);
   const lastSavedArbiterSeedRef = useRef<number | null>(null);
   
-  // --- Recording System ---
+  // --- System Nodes ---
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -123,10 +123,8 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
     
-    // #ЗАЧЕМ: Принудительный проброс в менеджер для двойного контроля.
-    if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-        pianoAccompanimentManagerRef.current.setVolume(volume);
-    }
+    // #ЗАЧЕМ: ПЛАН №786. Удален принудительный проброс громкости в менеджер.
+    // Это исключает double-scaling и делает слайдер в UI линейным.
   }, []);
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
@@ -357,7 +355,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
             else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
             else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-                // Fixed instrument, but ensure initialization state is fresh
+                // Fixed instrument
             }
         },
         setBassTechnique: () => {}, 
