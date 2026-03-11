@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v11.2).
- * #ОБНОВЛЕНО (ПЛАН №784): Использование bass_jazz_warm для теплоты.
+ * #ЗАЧЕМ: Блюпринт "Celestial Blues" (Dreamy Blues v11.3).
+ * #ОБНОВЛЕНО (ПЛАН №795): Флейта удалена из списка инструментов гармонии.
  */
 export const DreamyBluesBlueprint: MusicBlueprint = {
     id: 'dreamy_blues',
@@ -51,7 +51,8 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: Флейта удалена.
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 1.0 } ] }
                         }
                     },
                     {
@@ -92,7 +93,7 @@ export const DreamyBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'flute', weight: 0.7 }, { name: 'violin', weight: 0.3 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 } ] },
                            sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true }
                         }
                     }

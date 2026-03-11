@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V43.0 — "Level 3 Motive Mosaic".
- * #ОБНОВЛЕНО (ПЛАН №793): Реализован протокол «Мозаика». Нелинейная рекомбинация текстур.
+ * @fileOverview Ambient Brain V43.1 — "Ensemble Purity".
+ * #ОБНОВЛЕНО (ПЛАН №795): Флейта удалена из гармонии. Усилены томовые филлы.
  */
 
 import type { 
@@ -111,14 +111,13 @@ export class AmbientBrain {
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
-        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход текстурных фрагментов.
         const barsElapsed = epoch - startEpoch;
         const linearIndex = barsElapsed % totalBars;
         const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
         
         if (tension > 0.8) {
-            if (rand < 0.15) return Math.max(0, linearIndex - 1); // Stutter
-            if (rand > 0.95) return (linearIndex + 1) % totalBars; // Skip
+            if (rand < 0.15) return Math.max(0, linearIndex - 1); 
+            if (rand > 0.95) return (linearIndex + 1) % totalBars; 
         }
         return linearIndex;
     }
@@ -156,8 +155,6 @@ export class AmbientBrain {
             } else {
                 this.currentMutationType = 'jitter';
             }
-        } else if (epoch % 12 === 0 && this.ensembleStatus !== 'LOCAL') {
-            this.currentMutationType = 'none';
         }
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -198,6 +195,7 @@ export class AmbientBrain {
             if (hints.pianoAccompaniment && !this.currentAccompAxioms.some(a => a.role.includes('piano'))) {
                 events.push(...this.renderGenerativePiano(resChord, epoch, localTension));
             }
+            // #ЗАЧЕМ: ПЛАН №795. Флейта удалена из гармонии.
             if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
                 events.push(...this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony));
             }
@@ -240,7 +238,7 @@ export class AmbientBrain {
                 bass: this.currentBassTheme ? 'Sibling' : 'Walking Drone',
                 drums: 'Sonic Cube'
             },
-            narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [${this.currentMutationType}]`
+            narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [${this.currentMutationType}] [Mosaic Mode]`
         };
     }
 
@@ -340,9 +338,10 @@ export class AmbientBrain {
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
+        // #ЗАЧЕМ: ПЛАН №795. Ударник стал активнее на томах.
         if (isFourthBar || isEighthBar) {
             const tomPool = ['drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'];
-            const fillTicks = isEighthBar ? [9, 10, 11] : [11];
+            const fillTicks = [9, 10, 11];
             fillTicks.forEach((t, i) => {
                 const tom = tomPool[i % tomPool.length];
                 events.push({ type: tom as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: 0.5 + (i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
@@ -405,6 +404,7 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         
+        // #ЗАЧЕМ: ПЛАН №795. Только гитара или скрипки. Флейта удалена.
         if (timbre === 'guitarChords') {
             const t1 = 0; const t2 = 6;
             return [
@@ -442,7 +442,6 @@ export class AmbientBrain {
         const totalBarsInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
         
-        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход для падов.
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
@@ -480,7 +479,6 @@ export class AmbientBrain {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
         
-        // #ЗАЧЕМ: Level 3 Мозаика. Нелинейный обход мелодии.
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         
@@ -515,7 +513,6 @@ export class AmbientBrain {
         const totalBarsInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
         
-        // #ЗАЧЕМ: Level 3 Мозаика. Бас резонирует с обходом мелодии.
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         

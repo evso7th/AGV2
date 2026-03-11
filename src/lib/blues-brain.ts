@@ -29,8 +29,11 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V214.1 — "Level 3 Motive Mosaic".
- * #ОБНОВЛЕНО (ПЛАН №794): Улучшена прозрачность логов. Статус SIBLING теперь отображается корректно.
+ * @fileOverview Blues Brain V214.2 — "Ensemble Purity Fix".
+ * #ОБНОВЛЕНО (ПЛАН №795): 
+ * 1. Флейта удалена из слоя гармонии (только гитара и скрипки).
+ * 2. Ударник теперь активно использует томы и филлы каждые 4/8 тактов.
+ * 3. Исправлено отображение инструментов в логах (MEL: presetName).
  */
 
 const TICKS_PER_BAR = 12;
@@ -180,7 +183,6 @@ export class BluesBrain {
           if (rand < 0.2) return Math.max(0, linearIndex - 1); 
           if (rand > 0.9) return (linearIndex + 1) % totalBars; 
       }
-      if (tension < 0.3) return linearIndex;
       return linearIndex;
   }
 
@@ -252,6 +254,7 @@ export class BluesBrain {
         else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
     }
 
+    // #ЗАЧЕМ: ПЛАН №795. Исправлено использование actual preset name в Hints.
     const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension) 
         : [];
@@ -295,6 +298,7 @@ export class BluesBrain {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
     
+    // #ЗАЧЕМ: ПЛАН №795. Строгое ограничение: только гитара и скрипки. Флейта удалена.
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
         const rand = this.random.next();
         const useViolin = (tension > 0.85 || tension < 0.15) || rand < 0.25;
@@ -318,7 +322,6 @@ export class BluesBrain {
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : this.currentLickId,
             ensemble: this.ensembleStatus,
-            // #ЗАЧЕМ: Улучшена прозрачность лога. Четко разделяем Sibling и Rhythmic.
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none')
         },
@@ -524,10 +527,12 @@ export class BluesBrain {
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
+      // #ЗАЧЕМ: ПЛАН №795. Активация «Живых Томов» и филлов.
       if (isFourthBar || isEighthBar || isSoloistResting) {
-          const intensity = isEighthBar ? 1.0 : 0.6;
+          const intensity = isEighthBar ? 1.0 : 0.7;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           
+          // Филл в конце такта
           const fillTicks = [9, 10, 11];
           fillTicks.forEach((t, i) => {
               events.push({
