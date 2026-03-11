@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.1 — "Unmuted Audition Support".
- * #ЧТО: ПЛАН №787 — Unmute master gain during playRawEvents for axiom preview.
+ * #ЗАЧЕМ: Audio Engine Context V20.2 — "Infinite Axiom Support".
+ * #ЧТО: ПЛАН №790 — Увеличен audition lookahead до 1.5с и внедрена глобальная очистка голосов.
  */
 'use client';
 
@@ -23,6 +24,7 @@ import { saveMasterpiece } from '@/lib/firebase-service';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
+import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35, 
@@ -84,7 +86,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const settingsRef = useRef<WorkerSettings | null>(null);
   const lastSavedArbiterSeedRef = useRef<number | null>(null);
   
-  // --- System Nodes ---
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -158,6 +159,10 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   }, [db]);
 
   const stopAllSounds = useCallback(() => {
+    // 1. Сначала чистим глобальный реестр голосов
+    globalAllNotesOff();
+    
+    // 2. Затем сбрасываем состояние менеджеров
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll();
@@ -378,7 +383,8 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             if(audioContextRef.current) {
                 // #ЗАЧЕМ: Unmute master gain for audition.
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
-                scheduleEvents(e, audioContextRef.current.currentTime + 0.8, t || 72, 0, h);
+                // #ЗАЧЕМ: ПЛАН №790. Увеличен запас до 1.5с для инициализации V2 инструментов.
+                scheduleEvents(e, audioContextRef.current.currentTime + 1.5, t || 72, 0, h);
             }
         },
         stopAllSounds,
