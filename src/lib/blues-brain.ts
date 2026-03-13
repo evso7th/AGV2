@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -29,11 +30,10 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V214.2 — "Ensemble Purity Fix".
- * #ОБНОВЛЕНО (ПЛАН №795): 
- * 1. Флейта удалена из слоя гармонии (только гитара и скрипки).
- * 2. Ударник теперь активно использует томы и филлы каждые 4/8 тактов.
- * 3. Исправлено отображение инструментов в логах (MEL: presetName).
+ * @fileOverview Blues Brain V215.0 — "Generative Imperative".
+ * #ОБНОВЛЕНО (ПЛАН №796): 
+ * 1. Устранение пустых мест (Gaps). Если в такте нет ДНК, ищем замену в том же треке.
+ * 2. Улучшен поиск сиблингов (бас/аккомп) — берем любой подходящий, если родной отсутствует.
  */
 
 const TICKS_PER_BAR = 12;
@@ -254,10 +254,15 @@ export class BluesBrain {
         else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
     }
 
-    // #ЗАЧЕМ: ПЛАН №795. Исправлено использование actual preset name в Hints.
-    const melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
+    // #ЗАЧЕМ: ПЛАН №796. Генеративный Императив. Если ДНК молчит в этом такте — играем замену.
+    let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension) 
         : [];
+    
+    // Fallback Filling: Если сцена активна, но ДНК пуста — импровизируем.
+    if (hints.melody && !isSoloistResting && melodyEvents.length === 0 && navInfo.currentPart.id === 'MAIN') {
+        melodyEvents = this.renderAdaptiveMelody(epoch, resChord, tension);
+    }
     
     if (hints.drums) events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
     
@@ -298,7 +303,6 @@ export class BluesBrain {
         events.push(...this.renderShadowPiano(epoch, melodyEvents, accompanimentEvents));
     }
     
-    // #ЗАЧЕМ: ПЛАН №795. Строгое ограничение: только гитара и скрипки. Флейта удалена.
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
         const rand = this.random.next();
         const useViolin = (tension > 0.85 || tension < 0.15) || rand < 0.25;
@@ -320,7 +324,7 @@ export class BluesBrain {
         mutationType: this.state.lastMutationType,
         newBpm,
         activeAxioms: {
-            melody: isSoloistResting ? 'Breath' : this.currentLickId,
+            melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentLickId : 'Gap-Filler'),
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none')
@@ -372,7 +376,10 @@ export class BluesBrain {
                       let rawPhrase = decompressCompactPhrase(selected.phrase);
                       const phrasesToNormalize = [rawPhrase];
                       const cid = this.normalize(selected.compositionId);
-                      const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      
+                      // #ЗАЧЕМ: ПЛАН №796. Улучшенный поиск Сиблингов. Если нет родного такта — берем любой от этого мастера.
+                      const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset)
+                                       || this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid);
                       
                       if (bassSibling) {
                           const rb = decompressCompactPhrase(bassSibling.phrase);
@@ -380,8 +387,10 @@ export class BluesBrain {
                           this.currentBassAxiom = rb;
                       }
 
-                      const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset).slice(0, 3);
-                      accompSiblings.forEach(ax => {
+                      const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const finalAccompSiblings = accompSiblings.length > 0 ? accompSiblings : this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid).slice(0, 2);
+                      
+                      finalAccompSiblings.forEach(ax => {
                           const p = decompressCompactPhrase(ax.phrase);
                           phrasesToNormalize.push(p);
                           this.currentAccompAxioms.push({ phrase: p, role: ax.role });
@@ -456,6 +465,16 @@ export class BluesBrain {
     });
   }
 
+  private renderAdaptiveMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+      const scale = [0, 3, 5, 7, 10]; 
+      const degIdx = calculateMusiNum(epoch, 5, this.seed, scale.length);
+      return [{
+          type: 'melody',
+          note: chord.rootNote + 12 + scale[degIdx],
+          time: 0, duration: 2.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+      }];
+  }
+
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
       if (this.currentBassAxiom.length > 0) {
           const totalBarsInPhrase = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
@@ -465,13 +484,15 @@ export class BluesBrain {
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           const effectiveRoot = chord.rootNote;
 
-          return barNotes.map(n => ({
-              type: 'bass',
-              note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-              time: (n.t - barOffset) * TICK_TO_BEAT, 
-              duration: n.d * TICK_TO_BEAT, 
-              weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
-          }));
+          if (barNotes.length > 0) {
+              return barNotes.map(n => ({
+                  type: 'bass',
+                  note: this.constrainBassOctave(effectiveRoot - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
+                  time: (n.t - barOffset) * TICK_TO_BEAT, 
+                  duration: n.d * TICK_TO_BEAT, 
+                  weight: 0.85, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
+              }));
+          }
       }
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
@@ -527,12 +548,10 @@ export class BluesBrain {
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
 
-      // #ЗАЧЕМ: ПЛАН №795. Активация «Живых Томов» и филлов.
       if (isFourthBar || isEighthBar || isSoloistResting) {
           const intensity = isEighthBar ? 1.0 : 0.7;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           
-          // Филл в конце такта
           const fillTicks = [9, 10, 11];
           fillTicks.forEach((t, i) => {
               events.push({

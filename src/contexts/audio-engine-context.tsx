@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.2 — "Infinite Axiom Support".
- * #ЧТО: ПЛАН №790 — Увеличен audition lookahead до 1.5с и внедрена глобальная очистка голосов.
+ * #ЗАЧЕМ: Audio Engine Context V20.3 — "Dependency Stability".
+ * #ЧТО: ПЛАН №796 — Прямые импорты из провайдеров для устранения ChunkLoadError.
  */
 'use client';
 
@@ -23,7 +23,9 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-import { useFirestore, useAuth, initiateAnonymousSignIn } from '@/firebase';
+// #ЗАЧЕМ: Устранение ChunkLoadError через прямые пути.
+import { useFirestore, useAuth } from '@/firebase/provider';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 const VOICE_BALANCE: Record<string, number> = {
@@ -159,10 +161,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   }, [db]);
 
   const stopAllSounds = useCallback(() => {
-    // 1. Сначала чистим глобальный реестр голосов
     globalAllNotesOff();
-    
-    // 2. Затем сбрасываем состояние менеджеров
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll();
@@ -381,9 +380,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         getWorker: () => workerRef.current, 
         playRawEvents: (e, h, t) => {
             if(audioContextRef.current) {
-                // #ЗАЧЕМ: Unmute master gain for audition.
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
-                // #ЗАЧЕМ: ПЛАН №790. Увеличен запас до 1.5с для инициализации V2 инструментов.
                 scheduleEvents(e, audioContextRef.current.currentTime + 1.5, t || 72, 0, h);
             }
         },

@@ -1,6 +1,9 @@
+
 /**
- * @fileOverview Ambient Brain V43.1 — "Ensemble Purity".
- * #ОБНОВЛЕНО (ПЛАН №795): Флейта удалена из гармонии. Усилены томовые филлы.
+ * @fileOverview Ambient Brain V43.2 — "Generative Imperative".
+ * #ОБНОВЛЕНО (ПЛАН №796): 
+ * 1. Устранение пустых мест в Heritage DNA. Нелинейное заполнение тактов.
+ * 2. Улучшен поиск сиблингов баса и аккомпанемента.
  */
 
 import type { 
@@ -195,7 +198,6 @@ export class AmbientBrain {
             if (hints.pianoAccompaniment && !this.currentAccompAxioms.some(a => a.role.includes('piano'))) {
                 events.push(...this.renderGenerativePiano(resChord, epoch, localTension));
             }
-            // #ЗАЧЕМ: ПЛАН №795. Флейта удалена из гармонии.
             if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
                 events.push(...this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony));
             }
@@ -212,7 +214,12 @@ export class AmbientBrain {
             if (isBoundary && this.random.next() < 0.7) {
                 events.push(...this.renderBeautifulPassage(resChord, epoch, localTension));
             } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale));
+                let mel = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
+                // #ЗАЧЕМ: ПЛАН №796. Генеративный Императив для Амбиента.
+                if (mel.length === 0 && navInfo.currentPart.id === 'MAIN') {
+                    mel = this.renderBeautifulPassage(resChord, epoch, localTension);
+                }
+                events.push(...mel);
             } else {
                 events.push(...this.renderMelodicPadBase(resChord, epoch, localTension));
             }
@@ -286,14 +293,21 @@ export class AmbientBrain {
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
             const phrasesToNormalize = [rawPhrase];
             const cid = this.normalizeStr(cloudAxiom.compositionId);
-            const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            
+            // #ЗАЧЕМ: ПЛАН №796. Улучшенный поиск Сиблингов для Амбиента.
+            const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset)
+                             || poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid);
+            
             if (bassSibling) {
                 const rb = decompressCompactPhrase(bassSibling.phrase);
                 phrasesToNormalize.push(rb);
                 this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
             }
-            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset).slice(0, 3);
-            accompSiblings.forEach(ax => {
+            
+            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const finalAccompSiblings = accompSiblings.length > 0 ? accompSiblings : poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid).slice(0, 3);
+            
+            finalAccompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
@@ -338,7 +352,6 @@ export class AmbientBrain {
             events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // #ЗАЧЕМ: ПЛАН №795. Ударник стал активнее на томах.
         if (isFourthBar || isEighthBar) {
             const tomPool = ['drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'];
             const fillTicks = [9, 10, 11];
@@ -404,7 +417,6 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         
-        // #ЗАЧЕМ: ПЛАН №795. Только гитара или скрипки. Флейта удалена.
         if (timbre === 'guitarChords') {
             const t1 = 0; const t2 = 6;
             return [
@@ -550,6 +562,17 @@ export class AmbientBrain {
             time: t * TICK_TO_BEAT,
             duration: 6.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato',
             params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' }
+        };
+    }
+
+    private renderSparkleEx(chord: GhostChord, category: string): FractalEvent {
+        const t = this.random.nextInt(12);
+        return {
+            type: 'sparkle',
+            note: chord.rootNote + 48,
+            time: t * TICK_TO_BEAT,
+            duration: 6.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+            params: { mood: this.mood, genre: this.genre, category: category }
         };
     }
 
