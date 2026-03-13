@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V216.0 — "Liquid Bridge Protocol".
- * #ОБНОВЛЕНО (ПЛАН №797): Реализованы бесшовные переходы через наплывы и басовые подводы.
+ * @fileOverview Blues Brain V216.1 — "Stable Loudness Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №798): Динамическая громкость (weight) зажата в коридор +/- 5%.
  */
 
 const TICKS_PER_BAR = 12;
@@ -349,7 +349,6 @@ export class BluesBrain {
       const root = chord.rootNote + this.currentTransposition + this.microTransposition;
       
       // 1. Bass: Scalar Walk (The Foundation)
-      // Play a slow rising or falling scale to the next potential root
       const scale = [0, 2, 4, 5, 7, 9, 11]; // Ionian base
       [0, 3, 6, 9].forEach((t, i) => {
           events.push({
@@ -505,9 +504,10 @@ export class BluesBrain {
 
         if (tech === 'pick' && rand < 0.15) tech = 'sl';
 
-        const weightJitter = (this.random.next() * 0.1) - 0.05;
-        const baseWeight = 0.75 + (tension * 0.15); 
-        const effectiveWeight = clamp(baseWeight + weightJitter, 0.4, 0.95);
+        // #ЗАЧЕМ: ПЛАН №798. Коридор громкости +/- 5%.
+        const baseWeight = 0.8; 
+        const weightJitter = (this.random.next() * 0.1) - 0.05; 
+        const effectiveWeight = baseWeight + weightJitter;
 
         return {
             type: type,
@@ -528,7 +528,7 @@ export class BluesBrain {
       return [{
           type: 'melody',
           note: chord.rootNote + 12 + scale[degIdx],
-          time: 0, duration: 2.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+          time: 0, duration: 2.0, weight: 0.8, technique: 'swell', dynamics: 'p', phrasing: 'legato'
       }];
   }
 
@@ -637,14 +637,15 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       barNotes.forEach(n => {
-          const jitter = (this.random.next() * 0.06) - 0.03;
+          const jitter = (this.random.next() * 0.1) - 0.05;
+          const baseWeight = 0.45; 
           
           events.push({
               type: type,
               note: this.constrainAccompanimentOctave(effectiveRoot + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
               time: (n.t - barOffset) * TICK_TO_BEAT,
               duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
-              weight: clamp(0.25 + jitter, 0.15, 0.4), 
+              weight: baseWeight + jitter, 
               technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
           });
       });
@@ -654,7 +655,7 @@ export class BluesBrain {
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition + this.microTransposition);
     return [{
-        type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+        type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }];
   }
 
@@ -669,7 +670,7 @@ export class BluesBrain {
           note: this.constrainAccompanimentOctave(sourceEvent.note - 12), 
           time: echoTime, 
           duration: 0.5 * TICK_TO_BEAT, 
-          weight: 0.12, 
+          weight: 0.15, 
           technique: 'hit', 
           dynamics: 'p', 
           phrasing: 'staccato',
@@ -686,7 +687,7 @@ export class BluesBrain {
               note: root, 
               time: 0, 
               duration: 0.5 * TICK_TO_BEAT, 
-              weight: 0.22, 
+              weight: 0.25, 
               technique: 'hit', 
               dynamics: 'p', 
               phrasing: 'staccato',
@@ -699,7 +700,7 @@ export class BluesBrain {
           note: this.constrainAccompanimentOctave(root + 12),
           time: 0,
           duration: 4.0 * TICK_TO_BEAT, 
-          weight: 0.28,
+          weight: 0.35,
           technique: 'swell',
           dynamics: 'p',
           phrasing: 'legato'

@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V43.3 — "Liquid Bridge Protocol".
- * #ОБНОВЛЕНО (ПЛАН №797): Реализованы плавные перетекания через орнаментальные связки и наплывы.
+ * @fileOverview Ambient Brain V43.4 — "Stable Loudness Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №798): Громкость (weight) откалибрована в коридор +/- 5%.
  */
 
 import type { 
@@ -134,7 +134,6 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
-        // Detect Bridge parts
         const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
 
         if (navInfo.isPartTransition) {
@@ -151,7 +150,6 @@ export class AmbientBrain {
 
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: ПЛАН №797. Если это бридж — переходим на Ликвидный Протокол.
         if (isBridge) {
             events.push(...this.renderLiquidBridge(epoch, resChord, localTension, hints));
             return { 
@@ -264,39 +262,35 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const root = chord.rootNote + this.currentTransposition + this.microTransposition;
         
-        // 1. Bass: Gentle Walk
         const scale = [0, 7, 12, 14, 12, 7, 0];
         [0, 6].forEach((t, i) => {
             events.push({
                 type: 'bass',
                 note: this.constrainBassOctave(root - 12 + scale[i % scale.length]),
                 time: t * TICK_TO_BEAT, duration: 6.0 * TICK_TO_BEAT,
-                weight: 0.6, technique: 'drone', dynamics: 'p', phrasing: 'legato'
+                weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato'
             });
         });
 
-        // 2. Organ (Accompaniment): Long Celestial Swell
         events.push({
             type: 'accompaniment',
             note: this.constrainAccompanimentOctave(root + 12),
-            time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 2.5 }
         });
 
-        // 3. Melody: Fading Reflection
         if (hints.melody) {
             events.push({
                 type: 'melody',
                 note: root + 24,
-                time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                time: 0, duration: 4.0, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato',
                 params: { attack: 2.5, release: 3.0 }
             });
         }
 
-        // 4. Drums: Soft Swells
         events.push({
             type: 'drum_ride_wetter',
-            note: 51, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            note: 51, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         });
 
         return events;
@@ -388,7 +382,7 @@ export class AmbientBrain {
         return [{
             type: 'bass',
             note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition + this.microTransposition),
-            time: 0, duration: 4.0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.8, technique: 'drone', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 2.0, filterCutoff: 300 + (tension * 200) }
         }];
     }
@@ -401,7 +395,7 @@ export class AmbientBrain {
 
         if (this.random.next() < 0.2 || isFourthBar) {
             const kick = kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft';
-            events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: kick as any, note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
         if (isFourthBar || isEighthBar) {
@@ -409,17 +403,17 @@ export class AmbientBrain {
             const fillTicks = [9, 10, 11];
             fillTicks.forEach((t, i) => {
                 const tom = tomPool[i % tomPool.length];
-                events.push({ type: tom as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: 0.5 + (i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+                events.push({ type: tom as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: 0.6 + (i * 0.1), technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
             });
         }
 
         if (this.random.next() < 0.4) {
             const t = this.random.nextInt(12);
-            events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: 'drum_closed_hi_hat_ghost', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
         
         if (tension > 0.6 && this.random.next() < 0.2) {
-            events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.2, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+            events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         }
 
         if (this.random.next() < 0.7) {
@@ -445,7 +439,7 @@ export class AmbientBrain {
             events.push({
                 type: 'melody',
                 note: Math.min(root + scale[noteIdx], this.MELODY_CEILING),
-                time: i * 1.0, duration: 2.0, weight: 0.45, technique: 'pick', dynamics: 'p', phrasing: 'legato',
+                time: i * 1.0, duration: 2.0, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato',
                 params: { attack: 0.3, release: 2.0, filterCutoff: 1500 + (tension * 1000) }
             });
         }
@@ -460,7 +454,7 @@ export class AmbientBrain {
         return [{
             type: 'pianoAccompaniment',
             note: Math.min(root + shift, this.MELODY_CEILING),
-            time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+            time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'staccato',
             params: { release: 1.5 }
         }];
     }
@@ -472,15 +466,15 @@ export class AmbientBrain {
         if (timbre === 'guitarChords') {
             const t1 = 0; const t2 = 6;
             return [
-                { type: 'harmony', note: root, time: t1 * TICK_TO_BEAT, duration: 2.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' },
-                { type: 'harmony', note: root + colorDegree, time: t2 * TICK_TO_BEAT, duration: 2.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }
+                { type: 'harmony', note: root, time: t1 * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' },
+                { type: 'harmony', note: root + colorDegree, time: t2 * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }
             ];
         }
 
         return [{
             type: 'harmony',
             note: Math.min(root + colorDegree, this.PAD_CEILING),
-            time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }];
     }
 
@@ -496,7 +490,7 @@ export class AmbientBrain {
             return {
                 type: 'accompaniment',
                 note: Math.min(root + n, this.PAD_CEILING + 12), 
-                time: (i * 1) * TICK_TO_BEAT, duration: 5.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                time: (i * 1) * TICK_TO_BEAT, duration: 5.0, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato',
                 params: { attack: attackTime, release: 2.5, barCount: epoch, filterCutoff: 1200 + (tension * 800) }
             };
         });
@@ -514,14 +508,15 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         barNotes.forEach(n => {
-            const jitter = (this.random.next() * 0.06) - 0.03;
+            const jitter = (this.random.next() * 0.1) - 0.05;
+            const baseWeight = 0.45;
             
             events.push({
                 type: type,
                 note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition, this.PAD_CEILING + 12),
                 time: (n.t - barOffset) * TICK_TO_BEAT,
                 duration: n.d * TICK_TO_BEAT,
-                weight: clamp(0.5 + jitter, 0.3, 0.7), 
+                weight: baseWeight + jitter, 
                 technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato',
                 params: { filterCutoff: 1400 + (tension * 1000) }
             });
@@ -558,14 +553,16 @@ export class AmbientBrain {
             
             if (this.ensembleStatus === 'LOCAL' && rand < 0.1) tech = 'sl';
 
-            const weightJitter = (this.random.next() * 0.1) - 0.05;
+            // #ЗАЧЕМ: ПЛАН №798. Коридор громкости +/- 5%.
+            const baseWeight = 0.8;
+            const weightJitter = (this.random.next() * 0.1) - 0.05; 
 
             return {
                 type: type as any,
                 note: Math.min(effectiveRoot + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
                 duration: n.d * TICK_TO_BEAT * timeScale,
-                weight: clamp(0.6 + weightJitter, 0.4, 0.8), 
+                weight: baseWeight + weightJitter, 
                 technique: tech as any, dynamics: 'p', phrasing: 'legato',
                 params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (tension * 1500) }
             };
@@ -601,7 +598,7 @@ export class AmbientBrain {
         return [{
             type: 'melody',
             note: Math.min(chord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200) }
         }];
     }
