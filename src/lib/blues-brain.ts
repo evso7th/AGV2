@@ -30,10 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V215.0 — "Generative Imperative".
- * #ОБНОВЛЕНО (ПЛАН №796): 
- * 1. Устранение пустых мест (Gaps). Если в такте нет ДНК, ищем замену в том же треке.
- * 2. Улучшен поиск сиблингов (бас/аккомп) — берем любой подходящий, если родной отсутствует.
+ * @fileOverview Blues Brain V216.0 — "Liquid Bridge Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №797): Реализованы бесшовные переходы через наплывы и басовые подводы.
  */
 
 const TICKS_PER_BAR = 12;
@@ -210,6 +208,9 @@ export class BluesBrain {
     const tension = dna.tensionMap?.[epoch] ?? 0.5;
     this.state.lastTension = tension;
 
+    // Detect Bridge parts for Liquid Protocol
+    const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
+
     if (navInfo.isPartTransition) {
         this.soloistBusyUntilBar = epoch; 
         const shifts = [0, 2, -2, 5, 7, -5];
@@ -238,7 +239,7 @@ export class BluesBrain {
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
 
     let newBpm: number | undefined;
-    if (isSoloistFree && !isSoloistResting) {
+    if (isSoloistFree && !isSoloistResting && !isBridge) {
         newBpm = this.selectNextAxiom(navInfo, dna, epoch);
     }
 
@@ -247,6 +248,18 @@ export class BluesBrain {
 
     const events: FractalEvent[] = [];
 
+    // #ЗАЧЕМ: ПЛАН №797. Если это бридж — переходим на Ликвидный Протокол.
+    if (isBridge) {
+        events.push(...this.renderLiquidBridge(epoch, resChord, tension, hints));
+        return { 
+            events, 
+            lickId: 'Liquid Bridge', 
+            mutationType: 'none',
+            activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
+            narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
+        };
+    }
+
     let activeAxiom = this.currentAxiom;
     if (this.ensembleStatus === 'LOCAL') {
         if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
@@ -254,12 +267,10 @@ export class BluesBrain {
         else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
     }
 
-    // #ЗАЧЕМ: ПЛАН №796. Генеративный Императив. Если ДНК молчит в этом такте — играем замену.
     let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar) 
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension) 
         : [];
     
-    // Fallback Filling: Если сцена активна, но ДНК пуста — импровизируем.
     if (hints.melody && !isSoloistResting && melodyEvents.length === 0 && navInfo.currentPart.id === 'MAIN') {
         melodyEvents = this.renderAdaptiveMelody(epoch, resChord, tension);
     }
@@ -333,6 +344,53 @@ export class BluesBrain {
     };
   }
 
+  private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const root = chord.rootNote + this.currentTransposition + this.microTransposition;
+      
+      // 1. Bass: Scalar Walk (The Foundation)
+      // Play a slow rising or falling scale to the next potential root
+      const scale = [0, 2, 4, 5, 7, 9, 11]; // Ionian base
+      [0, 3, 6, 9].forEach((t, i) => {
+          events.push({
+              type: 'bass',
+              note: this.constrainBassOctave(root - 12 + scale[i % scale.length]),
+              time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT,
+              weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato'
+          });
+      });
+
+      // 2. Organ (Accompaniment): Long Swell
+      events.push({
+          type: 'accompaniment',
+          note: this.constrainAccompanimentOctave(root + 12),
+          time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+          params: { attack: 1.5, release: 2.0 }
+      });
+
+      // 3. Melody: Farewell Fade
+      if (hints.melody) {
+          events.push({
+              type: 'melody',
+              note: root + 24,
+              time: 0, duration: 4.0, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+              params: { attack: 2.0, release: 3.0 }
+          });
+      }
+
+      // 4. Drums: Soft Sweeping Swells
+      events.push({
+          type: 'drum_ride_wetter',
+          note: 51, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+      });
+      events.push({
+          type: 'drum_Sonor_Classix_Low_Tom',
+          note: 40, time: 2.0, duration: 2.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'staccato'
+      });
+
+      return events;
+  }
+
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; 
       this.currentAccompAxioms = [];
@@ -377,7 +435,6 @@ export class BluesBrain {
                       const phrasesToNormalize = [rawPhrase];
                       const cid = this.normalize(selected.compositionId);
                       
-                      // #ЗАЧЕМ: ПЛАН №796. Улучшенный поиск Сиблингов. Если нет родного такта — берем любой от этого мастера.
                       const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset)
                                        || this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid);
                       

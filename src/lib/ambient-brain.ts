@@ -1,9 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V43.2 — "Generative Imperative".
- * #ОБНОВЛЕНО (ПЛАН №796): 
- * 1. Устранение пустых мест в Heritage DNA. Нелинейное заполнение тактов.
- * 2. Улучшен поиск сиблингов баса и аккомпанемента.
+ * @fileOverview Ambient Brain V43.3 — "Liquid Bridge Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №797): Реализованы плавные перетекания через орнаментальные связки и наплывы.
  */
 
 import type { 
@@ -136,6 +134,9 @@ export class AmbientBrain {
         const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
         const localTension = this.computeGlobalTension(waves);
 
+        // Detect Bridge parts
+        const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
+
         if (navInfo.isPartTransition) {
             this.soloistBusyUntilBar = epoch; 
             const shifts = [0, 2, -2, 5, 7, -5];
@@ -144,6 +145,22 @@ export class AmbientBrain {
         }
 
         this.applyGeography(epoch, dna);
+
+        const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
+        const resChord = { ...currentChord, rootNote: resRoot };
+
+        const events: FractalEvent[] = [];
+
+        // #ЗАЧЕМ: ПЛАН №797. Если это бридж — переходим на Ликвидный Протокол.
+        if (isBridge) {
+            events.push(...this.renderLiquidBridge(epoch, resChord, localTension, hints));
+            return { 
+                events, tension: localTension, beautyScore: 0.5,
+                lickId: 'Liquid Bridge', mutationType: 'none',
+                activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
+                narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
+            };
+        }
 
         if (epoch % 4 === 0 && this.ensembleStatus === 'LOCAL') {
             const mutRand = this.random.next();
@@ -167,11 +184,6 @@ export class AmbientBrain {
         if (isSoloistFree && !isSoloistResting) {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
-
-        const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
-        const resChord = { ...currentChord, rootNote: resRoot };
-
-        const events: FractalEvent[] = [];
 
         let activePhrase = this.currentTheme?.phrase || [];
         if (this.ensembleStatus === 'LOCAL' && activePhrase.length > 0) {
@@ -215,7 +227,6 @@ export class AmbientBrain {
                 events.push(...this.renderBeautifulPassage(resChord, epoch, localTension));
             } else if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 let mel = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
-                // #ЗАЧЕМ: ПЛАН №796. Генеративный Императив для Амбиента.
                 if (mel.length === 0 && navInfo.currentPart.id === 'MAIN') {
                     mel = this.renderBeautifulPassage(resChord, epoch, localTension);
                 }
@@ -247,6 +258,48 @@ export class AmbientBrain {
             },
             narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [${this.currentMutationType}] [Mosaic Mode]`
         };
+    }
+
+    private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + this.currentTransposition + this.microTransposition;
+        
+        // 1. Bass: Gentle Walk
+        const scale = [0, 7, 12, 14, 12, 7, 0];
+        [0, 6].forEach((t, i) => {
+            events.push({
+                type: 'bass',
+                note: this.constrainBassOctave(root - 12 + scale[i % scale.length]),
+                time: t * TICK_TO_BEAT, duration: 6.0 * TICK_TO_BEAT,
+                weight: 0.6, technique: 'drone', dynamics: 'p', phrasing: 'legato'
+            });
+        });
+
+        // 2. Organ (Accompaniment): Long Celestial Swell
+        events.push({
+            type: 'accompaniment',
+            note: this.constrainAccompanimentOctave(root + 12),
+            time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 2.0, release: 2.5 }
+        });
+
+        // 3. Melody: Fading Reflection
+        if (hints.melody) {
+            events.push({
+                type: 'melody',
+                note: root + 24,
+                time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 2.5, release: 3.0 }
+            });
+        }
+
+        // 4. Drums: Soft Swells
+        events.push({
+            type: 'drum_ride_wetter',
+            note: 51, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        });
+
+        return events;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -294,7 +347,6 @@ export class AmbientBrain {
             const phrasesToNormalize = [rawPhrase];
             const cid = this.normalizeStr(cloudAxiom.compositionId);
             
-            // #ЗАЧЕМ: ПЛАН №796. Улучшенный поиск Сиблингов для Амбиента.
             const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset)
                              || poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid);
             
@@ -565,17 +617,6 @@ export class AmbientBrain {
         };
     }
 
-    private renderSparkleEx(chord: GhostChord, category: string): FractalEvent {
-        const t = this.random.nextInt(12);
-        return {
-            type: 'sparkle',
-            note: chord.rootNote + 48,
-            time: t * TICK_TO_BEAT,
-            duration: 6.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato',
-            params: { mood: this.mood, genre: this.genre, category: category }
-        };
-    }
-
     private renderSfx(tension: number): FractalEvent[] {
         const t = this.random.nextInt(12); 
         return [{
@@ -587,6 +628,13 @@ export class AmbientBrain {
         let finalNote = note;
         while (finalNote > 47) finalNote -= 12;
         while (finalNote < 31) finalNote += 12;
+        return finalNote;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let finalNote = note;
+        while (finalNote > 71) finalNote -= 12;
+        while (finalNote < 48) finalNote += 12;
         return finalNote;
     }
 

@@ -40,7 +40,7 @@ interface EngineConfig {
   seed: number;
   composerControlsInstruments?: boolean;
   useMelodyV2?: boolean;
-  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
+  useHeritage: boolean;
   introBars: number;
   ancestor?: any;
   sessionLickHistory?: string[];
@@ -51,7 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V31.1 — "Heritage Sovereignty Support".
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V31.2 — "Liquid Bridge Support".
+ * #ЧТО: ПЛАН №797 — Реализовано сохранение музыкантов на сцене во время переходов.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -91,13 +92,13 @@ export class FractalMusicEngine {
               this.config.selectedCompositionIds,
               this.config.activeAnchorId,
               null,
-              this.config.useHeritage // #ЗАЧЕМ: Проброс флага.
+              this.config.useHeritage
           );
           
           if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
               this.config.cloudAxioms,
               this.config.activeAnchorId,
-              this.config.useHeritage // #ЗАЧЕМ: Проброс флага.
+              this.config.useHeritage
           );
       }
 
@@ -136,7 +137,7 @@ export class FractalMusicEngine {
             this.config.selectedCompositionIds,
             this.config.activeAnchorId,
             this.config.genre,
-            this.config.useHeritage // #ЗАЧЕМ: Передача флага в Мозг.
+            this.config.useHeritage
         );
         this.ambientBrain = null;
     } else {
@@ -176,7 +177,6 @@ export class FractalMusicEngine {
     let currentInstructions: any | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    // #ЗАЧЕМ: 8-Bar Intro Lock. Если мы на 9-м такте или выше, лотерея заканчивается.
     const forceActivation = this.epoch >= 8 && navInfo.currentPart.id === 'INTRO';
 
     if (stages && stages.length > 0) {
@@ -214,14 +214,17 @@ export class FractalMusicEngine {
     });
 
     // Populate hints for active musicians
+    const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
+    
     this.activatedParts.forEach(part => {
-        if ((navInfo.currentPart.layers as any)[part]) {
+        // #ЗАЧЕМ: ПЛАН №797. Не выключаем музыкантов во время переходов для плавности.
+        if ((navInfo.currentPart.layers as any)[part] || isTransition) {
             (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
             instrumentHints.summonProgress![part] = 1.0; 
         }
     });
     
-    if (navInfo.currentPart.layers.pianoAccompaniment) instrumentHints.pianoAccompaniment = 'piano';
+    if (navInfo.currentPart.layers.pianoAccompaniment || isTransition) instrumentHints.pianoAccompaniment = 'piano';
 
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
