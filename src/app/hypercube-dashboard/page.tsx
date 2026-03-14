@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -318,6 +318,10 @@ export default function HypercubeDashboard() {
       setSelectedFilterMoods([]);
   };
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №810 — Умная классификация MIDI дорожек при импорте.
+   * #ЧТО: Анализирует плотность нот, регистр и метаданные для автоматического назначения ролей.
+   */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -381,8 +385,10 @@ export default function HypercubeDashboard() {
             json.tracks.forEach((track: any, tIdx: number) => {
                 if (!track.notes || track.notes.length === 0) return;
                 
+                let totalPitch = 0;
                 const phrase: number[] = [];
                 track.notes.forEach((note: any) => {
+                    totalPitch += note.midi;
                     const tick = Math.round(note.time * 3); 
                     const duration = Math.max(1, Math.round(note.duration * 3));
                     const semitone = note.midi % 12;
@@ -392,11 +398,29 @@ export default function HypercubeDashboard() {
                     phrase.push(tick, duration, degIdx, techIdx);
                 });
 
+                const noteCount = track.notes.length;
+                const avgPitch = totalPitch / noteCount;
+                const maxTime = Math.max(...track.notes.map((n: any) => n.time + n.duration));
+                const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
+                const density = noteCount / calculatedBars;
+
+                // --- SMART CLASSIFICATION ENGINE (ПЛАН №810) ---
                 let role = 'melody';
                 const lowerName = (track.name || "").toLowerCase();
-                if (lowerName.includes('bass')) role = 'bass';
-                else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion)) role = 'drums';
-                else if (lowerName.includes('piano') || lowerName.includes('accomp')) role = 'accomp piano';
+                const isDrum = lowerName.includes('drum') || lowerName.includes('perc') || (track.instrument && track.instrument.percussion) || tIdx === 9;
+
+                if (isDrum) {
+                    role = 'drums';
+                } else if (density > 10 || noteCount > 500) {
+                    // Плотность > 10 нот на такт или огромное общее кол-во = Аккомпанемент
+                    role = 'accomp piano';
+                } else if (avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
+                    // Низкий регистр или малая плотность в басовом диапазоне = Бас
+                    role = 'bass';
+                } else {
+                    // Все остальное = Мелодия
+                    role = 'melody';
+                }
 
                 flattened.push(processAxiom({
                     phrase,
@@ -716,10 +740,6 @@ export default function HypercubeDashboard() {
     }
   };
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №806. Экспорт данных трека в JSON для повторного импорта.
-   * #ЧТО: Очистка от системных полей Firestore и скачивание файла.
-   */
   const handleExportTrack = (compId: string, licks: any[]) => {
       const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({
           ...rest
@@ -1057,7 +1077,7 @@ export default function HypercubeDashboard() {
                                                               <SelectItem value="5/4" className="text-xs">5/4</SelectItem>
                                                               <SelectItem value="7/8" className="text-xs">7/8</SelectItem>
                                                               <SelectItem value="12/8" className="text-xs">12/8</SelectItem>
-                                                          </SelectContent>
+                           </SelectContent>
                                                       </Select>
                                                   </div>
                                               </div>
