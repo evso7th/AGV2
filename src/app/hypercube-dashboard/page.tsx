@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -10,26 +11,16 @@ import {
   Wind, 
   ShieldAlert,
   ArrowLeft,
-  Save,
-  RotateCcw,
   Search,
-  Eye,
-  EyeOff,
   Trash2,
   Globe,
   Edit2,
   Check,
   X,
   Dna,
-  Zap,
-  Activity,
-  History,
   TrendingUp,
   LayoutGrid,
-  Layers,
-  ListChecks,
-  RefreshCw,
-  Filter as FilterIcon,
+  RotateCcw,
   Download,
   FileJson
 } from 'lucide-react';
@@ -70,7 +61,7 @@ import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom } from '@/lib/firebase-service';
-import { decompressCompactPhrase, DEGREE_TO_SEMITONE, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS } from '@/lib/music-theory';
+import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, keyToMidiRoot } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -402,14 +393,22 @@ export default function HypercubeDashboard() {
 
                 let role = 'melody';
                 const lowerName = (track.name || "").toLowerCase();
-                const isDrum = lowerName.includes('drum') || lowerName.includes('perc') || (track.instrument && track.instrument.percussion) || tIdx === 9;
+                
+                /**
+                 * #ЗАЧЕМ: Сверхчувствительная детекция ударных (ПЛАН №812).
+                 * #ЧТО: Расширенный список ключевых слов для распознавания конкретных барабанов.
+                 */
+                const drumKeywords = ['drum', 'perc', 'kick', 'snare', 'hat', 'tom', 'ride', 'crash', 'rim', 'clap', 'cymbal', 'tambourine', 'shaker'];
+                const isDrum = drumKeywords.some(kw => lowerName.includes(kw)) || 
+                               (track.instrument && track.instrument.percussion) || 
+                               tIdx === 9;
 
                 if (isDrum) {
                     role = 'drums';
+                } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
+                    role = 'bass';
                 } else if (density > 10 || noteCount > 500) {
                     role = 'accomp piano';
-                } else if (avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
-                    role = 'bass';
                 } else {
                     role = 'melody';
                 }
