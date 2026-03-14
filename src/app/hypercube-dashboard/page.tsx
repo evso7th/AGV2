@@ -23,7 +23,9 @@ import {
   RotateCcw,
   Download,
   FileJson,
-  History
+  History,
+  Heart,
+  Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -159,6 +161,9 @@ export default function HypercubeDashboard() {
   const axiomsQuery = useMemoFirebase(() => query(collection(db, 'heritage_axioms')), [db]);
   const { data: globalAxioms, isLoading: isDbLoading } = useCollection(axiomsQuery);
 
+  const masterpiecesQuery = useMemoFirebase(() => query(collection(db, 'masterpieces')), [db]);
+  const { data: globalMasterpieces, isLoading: isMpiecesLoading } = useCollection(masterpiecesQuery);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -221,6 +226,17 @@ export default function HypercubeDashboard() {
         commonMoods: {} as Record<string, number> 
     });
   }, [globalAxioms]);
+
+  /** #ЗАЧЕМ: Статистика "Шедевров". */
+  const masterpieceStats = useMemo(() => {
+      if (!globalMasterpieces) return { total: 0, userLikes: 0, arbiterFinds: 0 };
+      return globalMasterpieces.reduce((acc, m) => {
+          acc.total++;
+          if (m.origin === 'AI_Arbiter') acc.arbiterFinds++;
+          else acc.userLikes++;
+          return acc;
+      }, { total: 0, userLikes: 0, arbiterFinds: 0 });
+  }, [globalMasterpieces]);
 
   const groupedAxioms = useMemo(() => {
     if (!globalAxioms) return [];
@@ -608,15 +624,17 @@ export default function HypercubeDashboard() {
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Global Capacity</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Masterpieces (Likes)</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isMpiecesLoading ? '---' : masterpieceStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Genre Map</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1.5">{Object.entries(globalStats.genres).map(([g, count]) => (<Badge key={g} variant="secondary" className="text-[10px] uppercase font-bold py-0.5">{g}: {count}</Badge>))}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent></Card>
         </div>
         <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid grid-cols-3 h-12 bg-muted/30 p-1 border border-border/50">
+          <TabsList className="grid grid-cols-4 h-12 bg-muted/30 p-1 border border-border/50">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Globe className="h-4 w-4 mr-2" /> Explore</TabsTrigger>
             <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Dna className="h-4 w-4 mr-2" /> Genetic Map</TabsTrigger>
+            <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Star className="h-4 w-4 mr-2" /> Masterpieces</TabsTrigger>
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Upload className="h-4 w-4 mr-2" /> Inject DNA</TabsTrigger>
           </TabsList>
           <TabsContent value="explore" className="space-y-4">
@@ -704,6 +722,57 @@ export default function HypercubeDashboard() {
           <TabsContent value="genetic" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription></CardHeader><CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent></Card><Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader><CardContent><ScrollArea className="h-[400px] px-4"><div className="space-y-3 pb-4">{dynastyStats.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count} phrases</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent></Card></div>
             <Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-4 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Dna className="h-5 w-5" /> Detailed Ancestry</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription></CardHeader><CardContent className="p-0"><ScrollArea className="h-[500px] p-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{dynastyStats.map((dynasty) => (<Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden"><CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader><CardContent className="p-4 pt-2 space-y-4"><div className="grid grid-cols-2 gap-x-4 gap-y-3"><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div><Progress value={dynasty.vector.t * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div><Progress value={dynasty.vector.b * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div><Progress value={dynasty.vector.e * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div><Progress value={dynasty.vector.h * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div></div><div className="space-y-1.5"><Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5"><History className="h-3 w-3" /> Member Records</Label><div className="flex flex-wrap gap-1">{dynasty.compositions.slice(0, 5).map(c => (<Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>))}{dynasty.compositions.length > 5 && (<Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>)}</div></div></CardContent></Card>))}</div></ScrollArea></CardContent></Card>
+          </TabsContent>
+          <TabsContent value="masterpieces" className="space-y-4">
+            <Card className="border-border/50 shadow-xl bg-card/50">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Registry</CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Saved Musical States: AI Finds & User Likes</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-border/30">
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-black uppercase opacity-70"><span>User Likes</span><span>{masterpieceStats.userLikes}</span></div>
+                        <Progress value={(masterpieceStats.userLikes / (masterpieceStats.total || 1)) * 100} className="h-2 bg-muted" />
+                    </div>
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-black uppercase opacity-70"><span>AI Arbiter Finds</span><span>{masterpieceStats.arbiterFinds}</span></div>
+                        <Progress value={(masterpieceStats.arbiterFinds / (masterpieceStats.total || 1)) * 100} className="h-2 bg-muted" />
+                    </div>
+                </div>
+                <ScrollArea className="h-[400px] mt-4">
+                    {isMpiecesLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse"><Star className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Querying Registry...</p></div>
+                    ) : globalMasterpieces?.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-40"><Heart className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">No Masterpieces yet</p></div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+                            {globalMasterpieces?.map((m: any) => (
+                                <Card key={m.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all p-4 space-y-3 group relative overflow-hidden">
+                                    <div className="flex items-center justify-between">
+                                        <Badge variant="outline" className={cn("text-[10px] font-black uppercase", m.origin === 'AI_Arbiter' ? "text-primary border-primary/30" : "text-accent border-accent/30")}>
+                                            {m.origin === 'AI_Arbiter' ? 'AI Found' : 'User Like'}
+                                        </Badge>
+                                        <span className="text-[9px] font-mono opacity-50">{new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <div className="text-xs font-black uppercase truncate">{m.genre} / {m.mood}</div>
+                                        <div className="text-[10px] font-mono opacity-70 flex gap-2"><span>BPM: {m.bpm}</span><span>Seed: {m.seed}</span></div>
+                                    </div>
+                                    <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => {
+                                            const ref = doc(db, 'masterpieces', m.id);
+                                            deleteDocumentNonBlocking(ref);
+                                            toast({ title: "Masterpiece Purged" });
+                                        }}><Trash2 className="h-3 w-3" /></Button>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </TabsContent>
           <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black">Vector (t,b,e,h)</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 font-mono text-[10px] text-muted-foreground">[{ax.vector?.t?.toFixed(1) || 0}, {ax.vector?.b?.toFixed(1) || 0}, {ax.vector?.e?.toFixed(1) || 0}, {ax.vector?.h?.toFixed(1) || 0}]</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
         </Tabs>

@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V49.1 — "Soft Textures Protocol".
- * #ОБНОВЛЕНО (ПЛАН №815): Разрядка партии Пианино. Умягчение жестов.
+ * @fileOverview Ambient Brain V49.2 — "Virtuoso Restoration".
+ * #ОБНОВЛЕНО (ПЛАН №816): Восстановлена слышимость Пианиста. Вес поднят до 0.7.
  */
 
 import type { 
@@ -229,8 +229,8 @@ export class AmbientBrain {
             }
         }
 
-        if (hints.sparkles && this.random.next() < 0.6) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
-        if (hints.sfx && this.random.next() < 0.2) events.push(...this.renderSfx(localTension));
+        if (hints.sparkles && this.random.nextInt(100) < 60) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
+        if (hints.sfx && this.random.nextInt(100) < 20) events.push(...this.renderSfx(localTension));
 
         return { 
             events, tension: localTension, beautyScore: 0.5,
@@ -465,11 +465,14 @@ export class AmbientBrain {
         }];
     }
 
+    /**
+     * #ЗАЧЕМ: Восстановление слышимости Пианиста.
+     * #ЧТО: Вес нот поднят с 0.1 до 0.7.
+     */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         const isSoloistBusy = melodyEvents.length > 0;
         
-        /** #ЗАЧЕМ: ПЛАН №815. Разрядка партии. Мягкость и пространство. */
         if (this.random.next() < 0.6) return { events: [], style: 'Breath' };
 
         const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition;
@@ -482,18 +485,18 @@ export class AmbientBrain {
                 const passage = [0, 2, 4, 7].map((s, i) => ({
                     type: 'pianoAccompaniment' as any, note: this.constrainAccompanimentOctave(root + s), 
                     time: (i * 3.0) * TICK_TO_BEAT, duration: 2.0 * TICK_TO_BEAT,
-                    weight: 0.10 + (this.random.next() * 0.05), // Мягче
+                    weight: 0.7 + (this.random.next() * 0.1), // Восстановлено до 0.7
                     technique: 'hit' as any, dynamics: 'p' as any, phrasing: 'staccato' as any, params: { release: 2.5 }
                 }));
                 events.push(...passage);
             } else {
                 style = "Arpeggio";
-                const pattern = [0, 2, 4]; // Разряжено
+                const pattern = [0, 2, 4]; 
                 pattern.forEach((idx, i) => {
                     events.push({
                         type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), 
                         time: (i * 4) * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT,
-                        weight: 0.10 + (this.random.next() * 0.05),
+                        weight: 0.65 + (this.random.next() * 0.1), // Восстановлено
                         technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.0 }
                     });
                 });
@@ -505,7 +508,7 @@ export class AmbientBrain {
                 events.push({
                     type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), 
                     time: (source.time + 3.0 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT,
-                    weight: 0.08, // Деликатно
+                    weight: 0.6, // Восстановлено
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.5 }
                 });
             }
@@ -517,9 +520,8 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         if (timbre === 'guitarChords') {
-            /** #ЗАЧЕМ: ПЛАН №815. Разрядка гитары в Амбиенте. */
             const times = (epoch % 4 === 0) ? [0] : [];
-            return times.map(t => ({ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: t * TICK_TO_BEAT, duration: 4.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }));
+            return times.map(t => ({ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: t * TICK_TO_BEAT, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }));
         }
         return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }

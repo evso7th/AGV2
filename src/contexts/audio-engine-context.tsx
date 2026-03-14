@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.6 — "Delicate Ensemble Calibration".
- * #ЧТО: ПЛАН №815 — Перекалибровка баланса: Гармония тише в 2 раза, Пианино громче в 2 раза.
+ * #ЗАЧЕМ: Audio Engine Context V20.7 — "Virtuoso Restoration".
+ * #ЧТО: ПЛАН №816 — Пианино поднято до 0.5 для обеспечения слышимости.
  */
 'use client';
 
@@ -28,8 +28,8 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 /**
- * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №815).
- * #ЧТО: Гармония (Harmony) снижена до 0.475, Пианино (Piano) поднято до 0.05.
+ * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №816).
+ * #ЧТО: Пианино (Piano) поднято до 0.5 для слышимости при любых настройках.
  */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35, 
@@ -38,8 +38,8 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.75,            
   sparkles: 0.45, 
   sfx: 0.55, 
-  harmony: 0.475,         // Снижено в 2 раза для деликатности
-  pianoAccompaniment: 0.05, // Поднято в 2 раза для слышимости виртуоза
+  harmony: 0.475,         
+  pianoAccompaniment: 0.5, // Поднято до стандарта для слышимости
 };
 
 interface AudioEngineContextType {
@@ -241,6 +241,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
+                    // #ЗАЧЕМ: Проверка beautyScore для Арбитра.
                     if (payload.beautyScore > 0.8 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, {
                             seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,

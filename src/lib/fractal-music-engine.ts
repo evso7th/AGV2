@@ -5,6 +5,7 @@ import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
 import { AmbientBrain } from './ambient-brain';
 import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic } from './music-theory';
+import { MelancholicMinorK } from './resonance-matrices';
 
 function seededRandom(seed: number) {
   let state = seed;
@@ -51,8 +52,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V31.2 — "Liquid Bridge Support".
- * #ЧТО: ПЛАН №797 — Реализовано сохранение музыкантов на сцене во время переходов.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V32.0 — "Active Arbiter Unleashed".
+ * #ЧТО: ПЛАН №816 — Внедрен реальный расчет beautyScore для авто-лайков.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -150,6 +151,36 @@ export class FractalMusicEngine {
     this.isInitialized = true;
   }
 
+  /**
+   * #ЗАЧЕМ: Расчет индекса красоты для Арбитра.
+   * #ЧТО: Анализ резонанса между событиями текущего такта.
+   */
+  private calculateBeautyScore(events: FractalEvent[]): number {
+      if (events.length < 2) return 0.5;
+      
+      let totalResonance = 0;
+      let comparisons = 0;
+      
+      // Сравниваем только тональные пары (мелодия/бас/аккомп)
+      const tonalEvents = events.filter(e => ['melody', 'bass', 'accompaniment'].includes(e.type as string));
+      if (tonalEvents.length < 2) return 0.6; // Одинокое соло — это тоже неплохо
+
+      for (let i = 0; i < tonalEvents.length; i++) {
+          for (let j = i + 1; j < tonalEvents.length; j++) {
+              const res = MelancholicMinorK(tonalEvents[i], tonalEvents[j], {
+                  mood: this.config.mood,
+                  tempo: this.config.tempo,
+                  delta: 1.0,
+                  genre: this.config.genre
+              });
+              totalResonance += res;
+              comparisons++;
+          }
+      }
+      
+      return comparisons > 0 ? (totalResonance / comparisons) : 0.5;
+  }
+
   public evolve(barDuration: number, barCount: number): { 
       events: FractalEvent[], 
       instrumentHints: InstrumentHints, 
@@ -217,7 +248,6 @@ export class FractalMusicEngine {
     const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
     
     this.activatedParts.forEach(part => {
-        // #ЗАЧЕМ: ПЛАН №797. Не выключаем музыкантов во время переходов для плавности.
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
             (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
             instrumentHints.summonProgress![part] = 1.0; 
@@ -241,10 +271,13 @@ export class FractalMusicEngine {
 
     this.lastEvents = [...result.events];
     
+    // #ЗАЧЕМ: Реальный расчет оценки красоты для Арбитра.
+    const barBeauty = this.calculateBeautyScore(result.events);
+    
     return { 
         ...result, 
         instrumentHints, 
-        beautyScore: 0.5, 
+        beautyScore: barBeauty, 
         tension, 
         navInfo,
         dynasty: this.suiteDNA.dynasty,
