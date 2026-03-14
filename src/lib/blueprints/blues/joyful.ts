@@ -1,10 +1,9 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Detroit Shuffle" (Joyful Blues v7.0).
- * #ЧТО: 1. Реализация парадокса "Счастливого Блюза".
- *       2. Мажорный лад A Ionian + высокий темп (100 BPM).
- *       3. Энергетическая дуга 0.4 -> 0.85 для драйвового финала.
+ * #ЗАЧЕМ: Блюпринт "Detroit Shuffle" (Joyful Blues v7.1).
+ * #ЧТО: 1. Исправлено отсутствие соло в интро (ПЛАН №808).
+ *       2. Гарантированное вступление всех слоев.
  */
 export const JoyfulBluesBlueprint: MusicBlueprint = {
     id: 'joyful_blues',
@@ -20,8 +19,8 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
             type: 'crescendo', 
             peakPosition: 0.7, 
             curve: (p) => {
-                if (p < 0.15) return 0.4 + (p / 0.15) * 0.2; // Быстрый разгон: 0.4 -> 0.6
-                return 0.6 + (p - 0.15) * 0.3; // Плавный рост до 0.9
+                if (p < 0.15) return 0.4 + (p / 0.15) * 0.2; 
+                return 0.6 + (p - 0.15) * 0.3; 
             }
         }
     },
@@ -30,7 +29,7 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'The Setup', duration: { percent: 20 },
-                layers: { bass: true, drums: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                layers: { bass: true, drums: true, accompaniment: true, harmony: true, pianoAccompaniment: true, melody: true },
                 stagedInstrumentation: [
                     { 
                         duration: { percent: 100 }, 
@@ -38,14 +37,17 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_jimmy_smith', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
+                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
+                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
+                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     }
                 ],
                 instrumentRules: {
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, useSnare: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'boogie', weight: 1.0 }], density: { min: 0.8, max: 1.0 } },
-                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }] }
+                    accompaniment: { techniques: [{ value: 'rhythmic-comp', weight: 1.0 }] },
+                    melody: { source: 'blues_solo', density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'JOY_INTRO', name: 'Shuffle Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

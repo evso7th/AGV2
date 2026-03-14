@@ -1,7 +1,6 @@
-
 /**
  * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
- * #ОБНОВЛЕНО (ПЛАН №782): Поддержка глобального флага useHeritage.
+ * #ОБНОВЛЕНО (ПЛАН №808): Добавлен статус Пианиста в когнитивные логи.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -50,7 +49,7 @@ const Scheduler = {
         },
         density: 0.5,
         composerControlsInstruments: true,
-        useHeritage: true, // #ЗАЧЕМ: ПЛАН №782.
+        useHeritage: true, 
         mood: 'melancholic' as Mood,
         introBars: 8, 
         sessionLickHistory: [],
@@ -63,7 +62,7 @@ const Scheduler = {
     },
 
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
-        if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; // #ЗАЧЕМ: Блокировка Якоря.
+        if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
@@ -233,7 +232,7 @@ const Scheduler = {
         const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
         
         const melStr = axioms.melody === 'Generative' ? 'Generative (No DNA)' : (axioms.melody || 'Breath');
-        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}]`;
+        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ${mutationStr} ` +

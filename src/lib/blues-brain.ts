@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -30,8 +29,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V220.0 — "Pianist Analytics".
- * #ОБНОВЛЕНО (ПЛАН №807): Пианист теперь классифицирует свою манеру (Echo, Arpeggio, Passage) для логов.
+ * @fileOverview Blues Brain V221.0 — "Mix & Logic Correction".
+ * #ОБНОВЛЕНО (ПЛАН №808): 1. Внедрена динамическая генерация имен аккордов.
+ *                          2. Вес гармонии поднят до 0.5 (слышимость).
  */
 
 const TICKS_PER_BAR = 12;
@@ -43,6 +43,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
+
+const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -308,7 +310,6 @@ export class BluesBrain {
 
     events.push(...accompanimentEvents);
 
-    // #ЗАЧЕМ: Пианист-Виртуоз с аналитикой стиля (ПЛАН №807).
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
         const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
@@ -603,9 +604,6 @@ export class BluesBrain {
     return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }];
   }
 
-  /**
-   * #ЗАЧЕМ: Пианист-Виртуоз с аналитикой стиля (ПЛАН №807).
-   */
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = [];
       const isSoloistBusy = melodyEvents.length > 0;
@@ -660,18 +658,22 @@ export class BluesBrain {
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + this.currentTransposition + this.microTransposition);
+      const rootMidi = currentChord.rootNote + this.currentTransposition + this.microTransposition;
+      const rootName = MIDI_NOTE_NAMES[rootMidi % 12];
+      const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : '');
+      const note = this.constrainAccompanimentOctave(rootMidi + 12);
+
       if (timbre === 'guitarChords') {
           return [0, 6].map(t => ({
               type: 'harmony', 
-              note: root, 
+              note: note, 
               time: t * TICK_TO_BEAT, 
               duration: 2.0 * TICK_TO_BEAT, 
-              weight: 0.25, 
+              weight: 0.5, 
               technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
-              chordName: currentChord.chordType === 'minor' ? 'Am' : 'A' 
+              chordName: chordName
           }));
       }
-      return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
   }
 }
