@@ -2,7 +2,7 @@ import type { Note } from "@/types/music";
 
 /**
  * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode).
- * #ЧТО: ПЛАН №800 — Калибровка громкости (0.05 -> 0.20) для обеспечения слышимости в ансамбле.
+ * #ЧТО: ПЛАН №801 — Уровень установлен на 0.1 по директиве пользователя.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -32,8 +32,8 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Калибровка присутствия. Гейн установлен на 0.20.
-        this.preamp.gain.value = 0.20; 
+        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.1.
+        this.preamp.gain.value = 0.1; 
         this.preamp.connect(this.destination);
     }
 
