@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.5 — "Heritage Class Sovereignty".
- * #ЧТО: ПЛАН №782 — Добавлен глобальный переключатель использования Наследия.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.6 — "Unified UI Defaults".
+ * #ЧТО: ПЛАН №809 — Установлен дефолтный уровень 50 (0.5) для всех инструментов и текстур.
  */
 'use client';
 
@@ -78,17 +78,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const db = useFirestore();
   
-  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.4, kickVolume: 1.0, enabled: true });
+  // #ЗАЧЕМ: Унификация дефолтов (ПЛАН №809). Все уровни на 0.5 (50%).
+  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
-    melody: { name: "blackAcoustic" as any, volume: 0.25 },
-    accompaniment: { name: "organ_soft_jazz" as any, volume: 0.18 },
-    harmony: { name: "guitarChords", volume: 0.10 }, 
-    pianoAccompaniment: { name: "piano", volume: 0.12 },
+    melody: { name: "blackAcoustic" as any, volume: 0.5 },
+    accompaniment: { name: "organ_soft_jazz" as any, volume: 0.5 },
+    harmony: { name: "guitarChords", volume: 0.5 }, 
+    pianoAccompaniment: { name: "piano", volume: 0.5 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      sparkles: { enabled: true, volume: 0.12 },
-      sfx: { enabled: true, volume: 0.12 },
+      sparkles: { enabled: true, volume: 0.5 },
+      sfx: { enabled: true, volume: 0.5 },
   });
   
   const [bpm, setBpm] = useState(75);
