@@ -29,7 +29,9 @@ import {
   Layers,
   ListChecks,
   RefreshCw,
-  Filter as FilterIcon
+  Filter as FilterIcon,
+  Download,
+  FileJson
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -714,6 +716,48 @@ export default function HypercubeDashboard() {
     }
   };
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №806. Экспорт данных трека в JSON для повторного импорта.
+   * #ЧТО: Очистка от системных полей Firestore и скачивание файла.
+   */
+  const handleExportTrack = (compId: string, licks: any[]) => {
+      const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({
+          ...rest
+      }));
+
+      const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({ title: "DNA Exported", description: `File saved as ${a.download}` });
+  };
+
+  const handleExportFullRegistry = () => {
+      if (!globalAxioms) return;
+      
+      const cleanRegistry = globalAxioms.map(({ id, timestamp, ...rest }) => ({
+          ...rest
+      }));
+
+      const blob = new Blob([JSON.stringify(cleanRegistry, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AuraGroove_Full_DNA_Registry_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({ title: "Registry Downloaded", description: "Full heritage backup saved." });
+  };
+
   const handlePurgeAll = () => {
     setConfirmAction({
         title: "MASTER PURGE",
@@ -801,6 +845,9 @@ export default function HypercubeDashboard() {
             <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5">
+                <FileJson className="h-4 w-4" /> Export Registry
+            </Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10">
                 <Square className="h-4 w-4" /> Stop Audition
             </Button>
@@ -1048,9 +1095,14 @@ export default function HypercubeDashboard() {
                                       )}
                                   </div>
                                   
-                                  <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8 ml-2">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
+                                  <div className="flex items-center gap-1.5 pr-2">
+                                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="text-muted-foreground hover:text-primary h-8 w-8" title="Export Track DNA">
+                                        <Download className="h-4 w-4" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8" title="Purge Track">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                  </div>
                               </div>
                             </div>
                             <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible">
