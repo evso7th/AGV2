@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V49.0 — "Virtuoso Transparency".
- * #ОБНОВЛЕНО (ПЛАН №814): Добавлена прозрачность логов для пианиста.
+ * @fileOverview Ambient Brain V49.1 — "Soft Textures Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №815): Разрядка партии Пианино. Умягчение жестов.
  */
 
 import type { 
@@ -302,8 +302,6 @@ export class AmbientBrain {
                 if (basePool.length > 0) {
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                     const suitePlayhead = epoch % (maxDonorBars || 144);
-                    
-                    // Logic from Plan 804: Shuffle variants with same offset
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
                     if (sameOffsetPool.length > 0) {
                         const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
@@ -470,38 +468,46 @@ export class AmbientBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         const isSoloistBusy = melodyEvents.length > 0;
+        
+        /** #ЗАЧЕМ: ПЛАН №815. Разрядка партии. Мягкость и пространство. */
+        if (this.random.next() < 0.6) return { events: [], style: 'Breath' };
+
         const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition;
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
         let style = "none";
+        
         if (!isSoloistBusy) {
             if (tension > 0.75) {
                 style = "Passage";
-                const passage = [0, 2, 4, 7, 12, 14, 17].map((s, i) => ({
-                    type: 'pianoAccompaniment' as any, note: this.constrainAccompanimentOctave(root + s), time: (i * 1.5) * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
-                    weight: 0.12, technique: 'hit' as any, dynamics: 'p' as any, phrasing: 'staccato' as any, params: { release: 2.0 }
+                const passage = [0, 2, 4, 7].map((s, i) => ({
+                    type: 'pianoAccompaniment' as any, note: this.constrainAccompanimentOctave(root + s), 
+                    time: (i * 3.0) * TICK_TO_BEAT, duration: 2.0 * TICK_TO_BEAT,
+                    weight: 0.10 + (this.random.next() * 0.05), // Мягче
+                    technique: 'hit' as any, dynamics: 'p' as any, phrasing: 'staccato' as any, params: { release: 2.5 }
                 }));
                 events.push(...passage);
             } else {
                 style = "Arpeggio";
-                const pattern = [0, 2, 4, 1, 3, 0];
+                const pattern = [0, 2, 4]; // Разряжено
                 pattern.forEach((idx, i) => {
                     events.push({
-                        type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), time: (i * 2) * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT,
-                        weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.0 }
+                        type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), 
+                        time: (i * 4) * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT,
+                        weight: 0.10 + (this.random.next() * 0.05),
+                        technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.0 }
                     });
                 });
             }
         } else {
             style = "Echo";
-            const sourceCount = Math.min(2, melodyEvents.length);
-            for (let i = 0; i < sourceCount; i++) {
-                const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
-                if (source) {
-                    events.push({
-                        type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT,
-                        weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 }
-                    });
-                }
+            const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
+            if (source) {
+                events.push({
+                    type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), 
+                    time: (source.time + 3.0 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT,
+                    weight: 0.08, // Деликатно
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.5 }
+                });
             }
         }
         return { events, style };
@@ -511,7 +517,9 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         if (timbre === 'guitarChords') {
-            return [0, 6].map(t => ({ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }));
+            /** #ЗАЧЕМ: ПЛАН №815. Разрядка гитары в Амбиенте. */
+            const times = (epoch % 4 === 0) ? [0] : [];
+            return times.map(t => ({ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: t * TICK_TO_BEAT, duration: 4.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }));
         }
         return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }

@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.5 — "Master Mix Calibration".
- * #ЧТО: ПЛАН №811 — Глобальная перекалибровка баланса для идеального звучания при 50% в UI.
+ * #ЗАЧЕМ: Audio Engine Context V20.6 — "Delicate Ensemble Calibration".
+ * #ЧТО: ПЛАН №815 — Перекалибровка баланса: Гармония тише в 2 раза, Пианино громче в 2 раза.
  */
 'use client';
 
@@ -28,18 +28,18 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 /**
- * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №811).
- * #ЧТО: Калибровка уровней для комфортной работы при среднем положении ползунков в UI.
+ * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №815).
+ * #ЧТО: Гармония (Harmony) снижена до 0.475, Пианино (Piano) поднято до 0.05.
  */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35, 
-  melody: 0.50,           // Снижено на ~23% для деликатности соло
-  accompaniment: 0.80,    // Усилено в 2 раза для плотности
-  drums: 0.75,            // Усилено на 25% для драйва
+  melody: 0.50,           
+  accompaniment: 0.80,    
+  drums: 0.75,            
   sparkles: 0.45, 
   sfx: 0.55, 
-  harmony: 0.95,          // Усилено для слышимости гитарных аккордов
-  pianoAccompaniment: 0.025, // Снижено в 2 раза для "призрачного" эффекта
+  harmony: 0.475,         // Снижено в 2 раза для деликатности
+  pianoAccompaniment: 0.05, // Поднято в 2 раза для слышимости виртуоза
 };
 
 interface AudioEngineContextType {

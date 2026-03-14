@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V223.0 — "Ensemble Transparency".
- * #ОБНОВЛЕНО (ПЛАН №814): Снят блок на генерацию пианиста в Heritage режиме.
+ * @fileOverview Blues Brain V224.0 — "Delicate Virtuosity".
+ * #ОБНОВЛЕНО (ПЛАН №815): Разрядка партий Пианино и Гармонии. Умягчение жестов.
  */
 
 const TICKS_PER_BAR = 12;
@@ -257,7 +257,6 @@ export class BluesBrain {
         melodyEvents = this.renderAdaptiveMelody(epoch, resChord, tension);
     }
     
-    // --- Drum Selection Logic ---
     if (hints.drums) {
         const heritageDrums = this.renderHeritageDrums(epoch, tension);
         if (heritageDrums.length > 0) {
@@ -300,8 +299,6 @@ export class BluesBrain {
     events.push(...accompanimentEvents);
 
     let pianoInfo = { style: 'none', count: 0 };
-    // #ЗАЧЕМ: ПЛАН №814. Снимаем блок usedTargetLayers.has('pianoAccompaniment') для пианиста.
-    // Если в ДНК есть пианино - оно сыграет выше. Но Virtuoso Piano должен иметь шанс всегда.
     if (hints.pianoAccompaniment) {
         const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
         events.push(...p.events); 
@@ -375,8 +372,6 @@ export class BluesBrain {
               if (basePool.length > 0) {
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
-                  
-                  // Logic from Plan 804: Shuffle variants with same offset
                   const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
                   let selected: any = null;
                   
@@ -483,25 +478,54 @@ export class BluesBrain {
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
-      const events: FractalEvent[] = []; const isSoloistBusy = melodyEvents.length > 0;
-      const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition; const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
+      const events: FractalEvent[] = []; 
+      const isSoloistBusy = melodyEvents.length > 0;
+      
+      /** #ЗАЧЕМ: ПЛАН №815. Разрядка партии. Пианист играет реже. */
+      if (this.random.next() < 0.6) return { events: [], style: 'Breath' };
+
+      const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition; 
+      const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
       let style = "none";
+      
       if (!isSoloistBusy) {
           if (tension > 0.75) {
-              style = "Passage"; const passage = [0, 2, 4, 7, 12, 14, 17].map((s, i) => ({ type: 'pianoAccompaniment' as any, note: this.constrainAccompanimentOctave(root + s), time: (i * 1.5) * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.15 + (this.random.next() * 0.05), technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.0 } }));
+              style = "Passage"; 
+              const passage = [0, 2, 4, 7, 12].map((s, i) => ({ 
+                  type: 'pianoAccompaniment' as any, 
+                  note: this.constrainAccompanimentOctave(root + s), 
+                  time: (i * 2.0) * TICK_TO_BEAT, 
+                  duration: 1.5 * TICK_TO_BEAT, 
+                  weight: 0.10 + (this.random.next() * 0.05), // Мягче
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.0 } 
+              }));
               events.push(...passage);
           } else {
-              style = "Arpeggio"; const pattern = [0, 2, 4, 1, 3, 0]; pattern.forEach((idx, i) => { events.push({ type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), time: (i * 2) * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.15 + (this.random.next() * 0.05), technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.0 } }); });
+              style = "Arpeggio"; 
+              const pattern = [0, 2, 4]; // Короче арпеджио
+              pattern.forEach((idx, i) => { 
+                  events.push({ 
+                      type: 'pianoAccompaniment', 
+                      note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), 
+                      time: (i * 3) * TICK_TO_BEAT, 
+                      duration: 2.0 * TICK_TO_BEAT, 
+                      weight: 0.10 + (this.random.next() * 0.05), // Мягче
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 } 
+                  }); 
+              });
           }
       } else {
           style = "Echo"; 
-          // #ЗАЧЕМ: ПЛАН №814. Более активное эхо. 
-          const sourceCount = Math.min(2, melodyEvents.length);
-          for (let i = 0; i < sourceCount; i++) {
-              const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
-              if (source) {
-                  events.push({ type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 } });
-              }
+          const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
+          if (source) {
+              events.push({ 
+                  type: 'pianoAccompaniment', 
+                  note: this.constrainAccompanimentOctave(source.note - 12), 
+                  time: (source.time + 2.0 * TICK_TO_BEAT) % BEATS_PER_BAR, 
+                  duration: 0.5 * TICK_TO_BEAT, 
+                  weight: 0.08, // Деликатнее
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.0 } 
+              });
           }
       }
       return { events, style };
@@ -518,8 +542,31 @@ export class BluesBrain {
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
-      const rootMidi = currentChord.rootNote + this.currentTransposition + this.microTransposition; const rootName = MIDI_NOTE_NAMES[rootMidi % 12]; const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : ''); const note = this.constrainAccompanimentOctave(rootMidi + 12);
-      if (timbre === 'guitarChords') { return [0, 6].map(t => ({ type: 'harmony', note: note, time: t * TICK_TO_BEAT, duration: 2.0 * TICK_TO_BEAT, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName })); }
+      const rootMidi = currentChord.rootNote + this.currentTransposition + this.microTransposition; 
+      const rootName = MIDI_NOTE_NAMES[rootMidi % 12]; 
+      const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : ''); 
+      const note = this.constrainAccompanimentOctave(rootMidi + 12);
+      
+      if (timbre === 'guitarChords') { 
+          /** #ЗАЧЕМ: ПЛАН №815. Разнообразие паттерна. Не "долбим" аккордами. */
+          const patternType = epoch % 4;
+          let times = [0];
+          if (patternType === 1) times = [0, 6];
+          else if (patternType === 2) times = []; // Пауза в гармонии
+          else if (patternType === 3) times = [0];
+
+          return times.map(t => {
+              const useFifth = this.random.next() < 0.3;
+              return { 
+                  type: 'harmony', 
+                  note: useFifth ? this.constrainAccompanimentOctave(note + 7) : note, 
+                  time: t * TICK_TO_BEAT, 
+                  duration: 2.0 * TICK_TO_BEAT, 
+                  weight: 0.4, // Мягче
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName 
+              };
+          }); 
+      }
       return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
   }
 
