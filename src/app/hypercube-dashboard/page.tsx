@@ -42,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -51,10 +51,9 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import { 
   Radar, 
@@ -318,10 +317,6 @@ export default function HypercubeDashboard() {
       setSelectedFilterMoods([]);
   };
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №810 — Умная классификация MIDI дорожек при импорте.
-   * #ЧТО: Анализирует плотность нот, регистр и метаданные для автоматического назначения ролей.
-   */
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -404,7 +399,6 @@ export default function HypercubeDashboard() {
                 const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
                 const density = noteCount / calculatedBars;
 
-                // --- SMART CLASSIFICATION ENGINE (ПЛАН №810) ---
                 let role = 'melody';
                 const lowerName = (track.name || "").toLowerCase();
                 const isDrum = lowerName.includes('drum') || lowerName.includes('perc') || (track.instrument && track.instrument.percussion) || tIdx === 9;
@@ -412,13 +406,10 @@ export default function HypercubeDashboard() {
                 if (isDrum) {
                     role = 'drums';
                 } else if (density > 10 || noteCount > 500) {
-                    // Плотность > 10 нот на такт или огромное общее кол-во = Аккомпанемент
                     role = 'accomp piano';
                 } else if (avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
-                    // Низкий регистр или малая плотность в басовом диапазоне = Бас
                     role = 'bass';
                 } else {
-                    // Все остальное = Мелодия
                     role = 'melody';
                 }
 
@@ -1077,7 +1068,7 @@ export default function HypercubeDashboard() {
                                                               <SelectItem value="5/4" className="text-xs">5/4</SelectItem>
                                                               <SelectItem value="7/8" className="text-xs">7/8</SelectItem>
                                                               <SelectItem value="12/8" className="text-xs">12/8</SelectItem>
-                           </SelectContent>
+                                                          </SelectContent>
                                                       </Select>
                                                   </div>
                                               </div>
@@ -1478,7 +1469,7 @@ export default function HypercubeDashboard() {
       </div>
 
       {/* Global Alert Dialog */}
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog primary open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="border-primary/20 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">
