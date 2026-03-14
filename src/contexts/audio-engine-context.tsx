@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.4 — "Mix Balance Refinement".
- * #ЧТО: ПЛАН №807 — Громкость пианиста снижена в 2 раза (0.10 -> 0.05).
+ * #ЗАЧЕМ: Audio Engine Context V20.5 — "Master Mix Calibration".
+ * #ЧТО: ПЛАН №811 — Глобальная перекалибровка баланса для идеального звучания при 50% в UI.
  */
 'use client';
 
@@ -27,15 +27,19 @@ import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
+/**
+ * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №811).
+ * #ЧТО: Калибровка уровней для комфортной работы при среднем положении ползунков в UI.
+ */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35, 
-  melody: 0.65, 
-  accompaniment: 0.40, 
-  drums: 0.60, 
+  melody: 0.50,           // Снижено на ~23% для деликатности соло
+  accompaniment: 0.80,    // Усилено в 2 раза для плотности
+  drums: 0.75,            // Усилено на 25% для драйва
   sparkles: 0.45, 
   sfx: 0.55, 
-  harmony: 0.85, 
-  pianoAccompaniment: 0.05, // #ЗАЧЕМ: ПЛАН №807. Снижение в 2 раза для деликатности.
+  harmony: 0.95,          // Усилено для слышимости гитарных аккордов
+  pianoAccompaniment: 0.025, // Снижено в 2 раза для "призрачного" эффекта
 };
 
 interface AudioEngineContextType {
