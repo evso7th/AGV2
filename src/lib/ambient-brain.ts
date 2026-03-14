@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V45.0 — "Audition Mode Protocol".
- * #ОБНОВЛЕНО (ПЛАН №803): Якорь теперь подавляет фильтры жанра и настроения.
+ * @fileOverview Ambient Brain V46.0 — "Virtuoso Alignment".
+ * #ОБНОВЛЕНО (ПЛАН №804): Улучшена ротация аксиом и поддержка пианиста.
  */
 
 import type { 
@@ -154,12 +154,14 @@ export class AmbientBrain {
             };
         }
 
-        if (epoch % 4 === 0 && this.ensembleStatus === 'LOCAL') {
+        // Включаем мутации для всех режимов
+        if (epoch % 4 === 0) {
             const mutRand = this.random.next();
-            if (mutRand < 0.4) { this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; this.currentMutationType = 'transpose'; }
-            else if (mutRand < 0.6) this.currentMutationType = 'inversion';
-            else if (mutRand < 0.8) this.currentMutationType = 'retrograde';
-            else this.currentMutationType = 'jitter';
+            if (mutRand < 0.2) { this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; this.currentMutationType = 'transpose'; }
+            else if (mutRand < 0.35) this.currentMutationType = 'inversion';
+            else if (mutRand < 0.5) this.currentMutationType = 'retrograde';
+            else if (mutRand < 0.65) this.currentMutationType = 'jitter';
+            else this.currentMutationType = 'none';
         }
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -171,11 +173,9 @@ export class AmbientBrain {
         }
 
         let activePhrase = this.currentTheme?.phrase || [];
-        if (this.ensembleStatus === 'LOCAL' && activePhrase.length > 0) {
-            if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
-            else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
-            else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
-        }
+        if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+        else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+        else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
 
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
@@ -266,7 +266,6 @@ export class AmbientBrain {
             
             let filteredPool: any[] = [];
 
-            // #ЗАЧЕМ: ПЛАН №803. Игнорируем метаданные, если выбран Якорь (Audition Mode).
             if (targetAnchor) {
                 filteredPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
             } else {
@@ -286,9 +285,15 @@ export class AmbientBrain {
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                     const suitePlayhead = epoch % (maxDonorBars || 144);
                     
+                    // #ЗАЧЕМ: Улучшенная ротация при одинаковых оффсетах.
                     const candidates = basePool
                         .filter(ax => !this.usedThemeHistory.includes(ax.id))
-                        .sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
+                        .sort((a, b) => {
+                            const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
+                            const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
+                            if (distA === distB) return calculateMusiNum(this.seed + epoch, 7, 0, 100) - 50; 
+                            return distA - distB;
+                        });
 
                     cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
                     if (cloudAxiom) {
@@ -398,6 +403,16 @@ export class AmbientBrain {
         }));
     }
 
+    private renderPad(chord: GhostChord, epoch: number, name: string, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
+        return [{
+            type: 'accompaniment',
+            note: this.constrainAccompanimentOctave(root),
+            time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800) }
+        }];
+    }
+
     private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const shift = [0, 2, 4, 7, 9, 7, 4, 0][calculateMusiNum(epoch, 4, this.seed, 8)];
         return [{
@@ -408,17 +423,28 @@ export class AmbientBrain {
     }
 
     private renderGenerativePiano(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const shift = [0, 7, 12, 14, 11, 7, 4, 0][calculateMusiNum(epoch, 5, this.seed, 8)];
-        return [{ type: 'pianoAccompaniment', note: Math.min(chord.rootNote + 24 + this.currentTransposition + this.microTransposition + shift, this.MELODY_CEILING), time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 2.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }];
+        // Улучшенная логика пианиста для амбиента
+        const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition;
+        const scale = [0, 7, 12, 14, 11];
+        const pattern = [0, 2, 4, 1, 3];
+        const step = calculateMusiNum(epoch, 3, this.seed, pattern.length);
+        
+        return [{ 
+            type: 'pianoAccompaniment', 
+            note: this.constrainAccompanimentOctave(root + scale[pattern[step]]), 
+            time: this.random.nextInt(12) * TICK_TO_BEAT, 
+            duration: 2.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+            params: { release: 2.5 }
+        }];
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number, timbre?: string): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         if (timbre === 'guitarChords') {
-            return [{ type: 'harmony', note: root, time: 0, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }, { type: 'harmony', note: root + colorDegree, time: 6 * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
+            return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: 0, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }, { type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 6 * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
         }
-        return [{ type: 'harmony', note: Math.min(root + colorDegree, this.PAD_CEILING), time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+        return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
