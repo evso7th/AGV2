@@ -30,11 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V219.0 — "Virtuoso Upgrade".
- * #ОБНОВЛЕНО (ПЛАН №804): 
- * 1. Исправлена ротация аксиом при одинаковом оффсете.
- * 2. Пианист стал виртуозом (арпеджио и вставки).
- * 3. Мутации теперь активны для Heritage.
+ * @fileOverview Blues Brain V220.0 — "Pianist Analytics".
+ * #ОБНОВЛЕНО (ПЛАН №807): Пианист теперь классифицирует свою манеру (Echo, Arpeggio, Passage) для логов.
  */
 
 const TICKS_PER_BAR = 12;
@@ -222,7 +219,6 @@ export class BluesBrain {
         this.microTransposition = 0;
     }
 
-    // #ЗАЧЕМ: Активация мутаций для всех режимов, включая SIBLING.
     if (epoch % 4 === 0) {
         const mutationRand = this.random.next();
         if (mutationRand < 0.25) {
@@ -265,7 +261,6 @@ export class BluesBrain {
     }
 
     let activeAxiom = this.currentAxiom;
-    // Применяем мутации к активной аксиоме
     if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
     else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
     else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
@@ -313,9 +308,12 @@ export class BluesBrain {
 
     events.push(...accompanimentEvents);
 
-    // #ЗАЧЕМ: Пианист-виртуоз теперь всегда на сцене, если активен.
+    // #ЗАЧЕМ: Пианист-Виртуоз с аналитикой стиля (ПЛАН №807).
+    let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
-        events.push(...this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents));
+        const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+        events.push(...p.events);
+        pianoInfo = { style: p.style, count: p.events.length };
         usedTargetLayers.add('pianoAccompaniment');
     }
     
@@ -343,7 +341,8 @@ export class BluesBrain {
             melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentLickId : 'Gap-Filler'),
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
-            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none')
+            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none'),
+            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
         },
         narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode] [Mosaic Mode]`
     };
@@ -418,13 +417,12 @@ export class BluesBrain {
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
                   
-                  // #ЗАЧЕМ: Улучшенная ротация при одинаковых оффсетах.
                   const candidates = basePool
                     .filter(ax => !this.state.recentLicks.includes(ax.id))
                     .sort((a, b) => {
                         const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
                         const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
-                        if (distA === distB) return calculateMusiNum(this.seed + epoch, 7, 0, 100) - 50; // Random shuffle for same distance
+                        if (distA === distB) return calculateMusiNum(this.seed + epoch, 7, 0, 100) - 50; 
                         return distA - distB;
                     });
 
@@ -605,47 +603,65 @@ export class BluesBrain {
     return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }];
   }
 
-  // #ЗАЧЕМ: Апгрейд Пианиста до Виртуоза.
-  private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: Пианист-Виртуоз с аналитикой стиля (ПЛАН №807).
+   */
+  private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = [];
       const isSoloistBusy = melodyEvents.length > 0;
       const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition;
       const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
+      let style = "none";
 
       if (!isSoloistBusy) {
-          // Если солист молчит — пианист играет красивые арпеджио
-          const pattern = [0, 2, 4, 1, 3, 0];
-          pattern.forEach((idx, i) => {
-              events.push({
-                  type: 'pianoAccompaniment',
-                  note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]),
-                  time: (i * 2) * TICK_TO_BEAT,
+          if (tension > 0.75) {
+              style = "Passage";
+              const passage = [0, 2, 4, 7, 12, 14, 17].map((s, i) => ({
+                  type: 'pianoAccompaniment' as any,
+                  note: this.constrainAccompanimentOctave(root + s),
+                  time: (i * 1.5) * TICK_TO_BEAT,
                   duration: 1.5 * TICK_TO_BEAT,
                   weight: 0.15 + (this.random.next() * 0.05),
                   technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                   params: { release: 2.0 }
+              }));
+              events.push(...passage);
+          } else {
+              style = "Arpeggio";
+              const pattern = [0, 2, 4, 1, 3, 0];
+              pattern.forEach((idx, i) => {
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]),
+                      time: (i * 2) * TICK_TO_BEAT,
+                      duration: 1.5 * TICK_TO_BEAT,
+                      weight: 0.15 + (this.random.next() * 0.05),
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { release: 2.0 }
+                  });
               });
-          });
+          }
       } else {
-          // Если солист играет — пианист деликатно оттеняет (Echo Mode)
+          style = "Echo";
           const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
-          events.push({
-              type: 'pianoAccompaniment',
-              note: this.constrainAccompanimentOctave(source.note - 12),
-              time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR,
-              duration: 0.5 * TICK_TO_BEAT,
-              weight: 0.12,
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-              params: { release: 2.5 }
-          });
+          if (source) {
+              events.push({
+                  type: 'pianoAccompaniment',
+                  note: this.constrainAccompanimentOctave(source.note - 12),
+                  time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR,
+                  duration: 0.5 * TICK_TO_BEAT,
+                  weight: 0.12,
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                  params: { release: 2.5 }
+              });
+          }
       }
-      return events;
+      return { events, style };
   }
 
   private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
       const root = this.constrainAccompanimentOctave(currentChord.rootNote + 12 + this.currentTransposition + this.microTransposition);
       if (timbre === 'guitarChords') {
-          // Делаем гармонию гитары чуть сложнее (ритмический перебор)
           return [0, 6].map(t => ({
               type: 'harmony', 
               note: root, 

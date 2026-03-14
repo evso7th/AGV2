@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.3 — "Dependency Stability".
- * #ЧТО: ПЛАН №796 — Прямые импорты из провайдеров для устранения ChunkLoadError.
+ * #ЗАЧЕМ: Audio Engine Context V20.4 — "Mix Balance Refinement".
+ * #ЧТО: ПЛАН №807 — Громкость пианиста снижена в 2 раза (0.10 -> 0.05).
  */
 'use client';
 
@@ -23,7 +23,6 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-// #ЗАЧЕМ: Устранение ChunkLoadError через прямые пути.
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
@@ -36,7 +35,7 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45, 
   sfx: 0.55, 
   harmony: 0.85, 
-  pianoAccompaniment: 0.10, 
+  pianoAccompaniment: 0.05, // #ЗАЧЕМ: ПЛАН №807. Снижение в 2 раза для деликатности.
 };
 
 interface AudioEngineContextType {
