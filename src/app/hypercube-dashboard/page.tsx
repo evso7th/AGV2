@@ -51,6 +51,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
@@ -1469,7 +1470,7 @@ export default function HypercubeDashboard() {
       </div>
 
       {/* Global Alert Dialog */}
-      <AlertDialog primary open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="border-primary/20 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">
