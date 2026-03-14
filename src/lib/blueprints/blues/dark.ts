@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.1).
- * #ОБНОВЛЕНО (ПЛАН №784): bass_ambient_dark заменен на bass_808.
+ * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.2).
+ * #ЧТО: ПЛАН №817 — Аккомпанемент переведен с синтезатора на Cathedral и Soft Jazz органы.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -36,7 +35,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     { 
                         duration: { percent: 100 }, 
                         instrumentation: {
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'synth_cave_pad', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: ПЛАН №817. Cathedral organ для мистического вступления.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ', weight: 1.0 } ] },
                            sfx: { activationChance: 0.6, instrumentOptions: [ { name: 'dark', weight: 1.0 } ], transient: true },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_dark', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_808', weight: 1.0 } ] }
@@ -62,7 +62,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_808', weight: 1.0 }] },
-                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
+                            // #ЗАЧЕМ: ПЛАН №817. Смесь органов в интро.
+                            accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'organ', weight: 0.6 }, { name: 'organ_soft_jazz', weight: 0.4 }] }
                         }
                     },
                     {
@@ -100,7 +101,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    drums: { strategy: 'weighted', options: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
-                   accompaniment: { strategy: 'weighted', options: [ { name: 'accompaniment', weight: 1.0 } ] },
+                   // #ЗАЧЕМ: ПЛАН №817. Органная мощь в кульминации.
+                   accompaniment: { strategy: 'weighted', v2Options: [ { name: 'organ', weight: 0.7 }, { name: 'organ_soft_jazz', weight: 0.3 } ] },
                    melody: { strategy: 'weighted', options: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
                    pianoAccompaniment: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] },
                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'violin', weight: 0.2 } ] }

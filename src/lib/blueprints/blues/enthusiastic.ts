@@ -1,10 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Texas Flood" (Enthusiastic Blues v9.0).
- * #ЧТО: 1. Максимальный драйв и энергия (BPM 120).
- *       2. Лад E Mixolydian для дерзкого, яркого звучания.
- *       3. Приоритет на Muff Lead (фузз) и мощную ритм-секцию.
+ * #ЗАЧЕМ: Блюпринт "Texas Flood" (Enthusiastic Blues v9.1).
+ * #ЧТО: ПЛАН №817 — Смесь агрессивного Prog органа и классического Jimmy Smith.
  */
 export const EnthusiasticBluesBlueprint: MusicBlueprint = {
     id: 'enthusiastic_blues',
@@ -35,7 +33,14 @@ export const EnthusiasticBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'guitar_muffLead', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'rockBass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_prog', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: ПЛАН №817. Ротация энергичных органов.
+                           accompaniment: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'organ_prog', weight: 0.6 }, 
+                                   { name: 'organ_jimmy_smith', weight: 0.4 } 
+                               ] 
+                           },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
                     }

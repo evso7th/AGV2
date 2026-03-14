@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Detroit Shuffle" (Joyful Blues v7.1).
- * #ЧТО: 1. Исправлено отсутствие соло в интро (ПЛАН №808).
- *       2. Гарантированное вступление всех слоев.
+ * #ЗАЧЕМ: Блюпринт "Detroit Shuffle" (Joyful Blues v7.2).
+ * #ЧТО: ПЛАН №817 — Расширен парк органов: Jimmy Smith, Soft Jazz и Cathedral.
  */
 export const JoyfulBluesBlueprint: MusicBlueprint = {
     id: 'joyful_blues',
@@ -36,7 +35,15 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_jimmy_smith', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: ПЛАН №817. Разнообразие органов.
+                           accompaniment: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'organ_jimmy_smith', weight: 0.5 }, 
+                                   { name: 'organ_soft_jazz', weight: 0.3 },
+                                   { name: 'organ', weight: 0.2 } 
+                               ] 
+                           },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
@@ -62,7 +69,14 @@ export const JoyfulBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'telecaster', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_jimmy_smith', weight: 1.0 } ] },
+                           accompaniment: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'organ_jimmy_smith', weight: 0.5 }, 
+                                   { name: 'organ_soft_jazz', weight: 0.3 },
+                                   { name: 'organ_prog', weight: 0.2 } 
+                               ] 
+                           },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            sparkles: { activationChance: 0.4, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true }
                         }

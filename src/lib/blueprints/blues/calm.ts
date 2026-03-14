@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Ripple Calm" (Calm Blues v10.2).
- * #ОБНОВЛЕНО (ПЛАН №784): Использование bass_jazz_warm вместо гудящего баса.
+ * #ЗАЧЕМ: Блюпринт "Ripple Calm" (Calm Blues v10.3).
+ * #ЧТО: ПЛАН №817 — Добавлен Soft Jazz орган для более глубокого погружения.
  */
 export const CalmBluesBlueprint: MusicBlueprint = {
     id: 'calm_blues',
@@ -36,7 +35,8 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: ПЛАН №817. Смесь Rhodes и мягкого органа.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 } ] },
                            sparkles: { activationChance: 0.8, instrumentOptions: [ { name: 'light', weight: 1.0 } ], transient: true },
                            sfx: { activationChance: 0.4, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                         }
@@ -58,7 +58,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'trance_intro', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
                     }
@@ -80,7 +80,8 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'accompaniment', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: ПЛАН №817. Органная подложка.
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.8 }, { name: 'ep_rhodes_warm', weight: 0.2 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] }
                         }
@@ -102,7 +103,7 @@ export const CalmBluesBlueprint: MusicBlueprint = {
                         duration: { percent: 100 }, 
                         instrumentation: {
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'ep_rhodes_warm', weight: 1.0 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] }
                         }
                     }

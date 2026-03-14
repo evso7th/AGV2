@@ -1,9 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Grand Finale" (Epic Blues v11.0).
- * #ЧТО: 1. Грандиозное нарастание в D Ionian.
- *       2. Переход от интимного пианино к мощному стадионному гимну.
+ * #ЗАЧЕМ: Блюпринт "The Grand Finale" (Epic Blues v11.1).
+ * #ЧТО: ПЛАН №817 — Величественная смесь Cathedral и Prog органов.
  */
 export const EpicBluesBlueprint: MusicBlueprint = {
     id: 'epic_blues',
@@ -51,7 +50,14 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ', weight: 1.0 } ] }
+                           // #ЗАЧЕМ: ПЛАН №817. Органная мощь.
+                           accompaniment: { 
+                               activationChance: 1.0, 
+                               instrumentOptions: [ 
+                                   { name: 'organ', weight: 0.6 }, 
+                                   { name: 'organ_prog', weight: 0.4 } 
+                               ] 
+                           }
                         }
                     },
                     {
