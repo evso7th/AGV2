@@ -36,7 +36,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
- * #ЧТО: ПЛАН №801 — Уровень установлен на 0.4 по директиве пользователя.
+ * #ЧТО: ПЛАН №805 — Уровень установлен на 0.2 по директиве пользователя.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -51,8 +51,8 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.4.
-        this.preamp.gain.value = 0.4;
+        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.2.
+        this.preamp.gain.value = 0.2;
         this.preamp.connect(this.destination);
     }
 
