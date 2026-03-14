@@ -4,7 +4,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
  * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой гибридных транзиентов.
- * #ЧТО: ПЛАН №766 — Громкость снижена в 2 раза по требованию пользователя (0.32 -> 0.16).
+ * #ЧТО: ПЛАН №800 — Калибровка громкости (0.16 -> 0.32) для обеспечения слышимости в ансамбле.
  */
 const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
     'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
@@ -49,8 +49,8 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Регулировка уровней. Гейн снижен до 0.16.
-        this.preamp.gain.value = 0.16;
+        // #ЗАЧЕМ: Калибровка уровней. Гейн установлен на 0.32.
+        this.preamp.gain.value = 0.32;
         this.preamp.connect(this.destination);
     }
 

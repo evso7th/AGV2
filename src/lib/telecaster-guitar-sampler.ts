@@ -1,6 +1,6 @@
 import type { Note, Technique } from "@/types/music";
-import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 const TELECASTER_SAMPLES: Record<string, string> = {
     'c6': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_C6.ogg',
@@ -36,7 +36,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
- * #ЧТО: 1. ПЛАН №766 — Громкость снижена в 2 раза по требованию пользователя (1.5 -> 0.75).
+ * #ЧТО: ПЛАН №800 — Калибровка громкости (0.75 -> 0.65) для баланса в ансамбле.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -51,8 +51,8 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Гейн возвращен к значению 0.75 для баланса.
-        this.preamp.gain.value = 0.75;
+        // #ЗАЧЕМ: Калибровка лидера. Гейн установлен на 0.65.
+        this.preamp.gain.value = 0.65;
         this.preamp.connect(this.destination);
     }
 
