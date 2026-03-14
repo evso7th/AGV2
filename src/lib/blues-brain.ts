@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V222.0 — "Drum Sibling Integration".
- * #ОБНОВЛЕНО (ПЛАН №813): Внедрена поддержка многослойных барабанов из Heritage DNA.
+ * @fileOverview Blues Brain V223.0 — "Ensemble Transparency".
+ * #ОБНОВЛЕНО (ПЛАН №814): Снят блок на генерацию пианиста в Heritage режиме.
  */
 
 const TICKS_PER_BAR = 12;
@@ -84,7 +84,7 @@ export class BluesBrain {
   private currentNativeRoot: number | null = null;
   
   private currentBassAxiom: any[] = [];
-  private currentAccompAxioms: { phrase: any[], role: string }[] = [];
+  private currentAccompAxioms: { phrase: any[], role: string, id?: string }[] = [];
   private currentDrumAxioms: { phrase: any[], role: string }[] = [];
   
   private currentLickId: string = '';
@@ -275,27 +275,37 @@ export class BluesBrain {
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
 
+    let accStatus = 'none';
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
-            accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType)); usedTargetLayers.add('accompaniment');
+            accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType)); 
+            usedTargetLayers.add('accompaniment');
+            accStatus = 'Unison Texture';
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax, idx) => {
-                const targetType: InstrumentPart = idx === 0 ? 'accompaniment' : (ax.role.includes('piano') ? 'pianoAccompaniment' : 'harmony');
+                const role = ax.role.toLowerCase();
+                const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
                     accompanimentEvents.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension));
                     usedTargetLayers.add(targetType);
+                    if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
         } else if (hints.accompaniment) {
-            accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension)); usedTargetLayers.add('accompaniment');
+            accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension)); 
+            usedTargetLayers.add('accompaniment');
+            accStatus = 'Adaptive Pad';
         }
     }
     events.push(...accompanimentEvents);
 
     let pianoInfo = { style: 'none', count: 0 };
-    if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
+    // #ЗАЧЕМ: ПЛАН №814. Снимаем блок usedTargetLayers.has('pianoAccompaniment') для пианиста.
+    // Если в ДНК есть пианино - оно сыграет выше. Но Virtuoso Piano должен иметь шанс всегда.
+    if (hints.pianoAccompaniment) {
         const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-        events.push(...p.events); pianoInfo = { style: p.style, count: p.events.length }; usedTargetLayers.add('pianoAccompaniment');
+        events.push(...p.events); 
+        pianoInfo = { style: p.style, count: p.events.length };
     }
     
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
@@ -312,7 +322,7 @@ export class BluesBrain {
             melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentLickId : 'Gap-Filler'),
             ensemble: this.ensembleStatus,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
-            accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none'),
+            accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
             piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
         },
@@ -365,8 +375,19 @@ export class BluesBrain {
               if (basePool.length > 0) {
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
-                  const candidates = basePool.filter(ax => !this.state.recentLicks.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
-                  const selected = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                  
+                  // Logic from Plan 804: Shuffle variants with same offset
+                  const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
+                  let selected: any = null;
+                  
+                  if (sameOffsetPool.length > 0) {
+                      const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
+                      selected = sameOffsetPool[idx];
+                  } else {
+                      const candidates = basePool.filter(ax => !this.state.recentLicks.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
+                      selected = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                  }
+
                   if (selected) {
                       this.currentLickId = selected.id; this.currentTrackName = selected.compositionId; 
                       this.state.recentLicks.push(selected.id); if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
@@ -376,7 +397,7 @@ export class BluesBrain {
                       const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
                       const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                      accompSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p); this.currentAccompAxioms.push({ phrase: p, role: ax.role }); });
+                      accompSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p); this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id }); });
                       const drumSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('drums') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       drumSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); this.currentDrumAxioms.push({ phrase: p, role: ax.role }); });
                       normalizePhraseGroup(phrasesToNormalize);
@@ -473,7 +494,15 @@ export class BluesBrain {
               style = "Arpeggio"; const pattern = [0, 2, 4, 1, 3, 0]; pattern.forEach((idx, i) => { events.push({ type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[idx % scale.length]), time: (i * 2) * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.15 + (this.random.next() * 0.05), technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.0 } }); });
           }
       } else {
-          style = "Echo"; const source = melodyEvents[this.random.nextInt(melodyEvents.length)]; if (source) { events.push({ type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 } }); }
+          style = "Echo"; 
+          // #ЗАЧЕМ: ПЛАН №814. Более активное эхо. 
+          const sourceCount = Math.min(2, melodyEvents.length);
+          for (let i = 0; i < sourceCount; i++) {
+              const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
+              if (source) {
+                  events.push({ type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 } });
+              }
+          }
       }
       return { events, style };
   }

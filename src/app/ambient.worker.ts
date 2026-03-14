@@ -1,6 +1,7 @@
+
 /**
  * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
- * #ОБНОВЛЕНО (ПЛАН №808): Добавлен статус Пианиста в когнитивные логи.
+ * #ОБНОВЛЕНО (ПЛАН №814): Добавлен статус Пианиста в когнитивные логи.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -224,7 +225,7 @@ const Scheduler = {
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
         const narration = payload.narrative || 'Developing story...';
-        const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'}`;
+        const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'} | PNO: ${h.pianoAccompaniment || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
         const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
         const mutType = payload.mutationType || 'none';

@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V48.0 — "Drum Sibling Layering".
- * #ОБНОВЛЕНО (ПЛАН №813): Внедрена сборка многослойных барабанов из Heritage DNA.
+ * @fileOverview Ambient Brain V49.0 — "Virtuoso Transparency".
+ * #ОБНОВЛЕНО (ПЛАН №814): Добавлена прозрачность логов для пианиста.
  */
 
 import type { 
@@ -9,7 +9,7 @@ import type {
     GhostChord, 
     Mood, 
     SuiteDNA, 
-    NavigationInfo,
+    NavigationInfo, 
     InstrumentHints,
     InstrumentPart,
     Genre,
@@ -72,7 +72,7 @@ export class AmbientBrain {
     private currentThemeMaxTick: number = 0;
     private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null; 
-    private currentAccompAxioms: { phrase: any[], role: string, endBar: number }[] = []; 
+    private currentAccompAxioms: { phrase: any[], role: string, id?: string, endBar: number }[] = []; 
     private currentDrumAxioms: { phrase: any[], role: string, endBar: number }[] = [];
     
     private currentTrackName: string = '';
@@ -177,6 +177,7 @@ export class AmbientBrain {
         else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
         else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
 
+        let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
@@ -184,10 +185,12 @@ export class AmbientBrain {
                 let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType]) {
                     events.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension));
+                    if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
             if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
                 events.push(...this.renderPad(resChord, epoch, hints.accompaniment as string, localTension));
+                accStatus = 'Adaptive Pad';
             }
             if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
                 events.push(...this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony));
@@ -211,13 +214,12 @@ export class AmbientBrain {
         events.push(...melodyEvents);
 
         let pianoInfo = { style: 'none', count: 0 };
-        if (hints.pianoAccompaniment && !this.currentAccompAxioms.some(a => a.role.includes('piano'))) {
+        if (hints.pianoAccompaniment) {
             const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
             events.push(...p.events);
             pianoInfo = { style: p.style, count: p.events.length };
         }
 
-        // --- Drum Layering ---
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, localTension);
             if (heritageDrums.length > 0) {
@@ -238,6 +240,7 @@ export class AmbientBrain {
                 ensemble: this.ensembleStatus,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
+                accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
             },
             narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode] [Mosaic Mode]`
@@ -288,7 +291,7 @@ export class AmbientBrain {
                 filteredPool = poolToUse.filter(ax => {
                     const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                     const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                    return axGenres.includes(this.genre) && (axMoods.includes(this.mood) || Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
+                    return axGenres.includes(this.genre) && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
                 });
             }
 
@@ -299,12 +302,20 @@ export class AmbientBrain {
                 if (basePool.length > 0) {
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                     const suitePlayhead = epoch % (maxDonorBars || 144);
-                    const candidates = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id)).sort((a, b) => {
-                        const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
-                        const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
-                        return distA - distB;
-                    });
-                    cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                    
+                    // Logic from Plan 804: Shuffle variants with same offset
+                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
+                    if (sameOffsetPool.length > 0) {
+                        const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
+                        cloudAxiom = sameOffsetPool[idx];
+                    } else {
+                        const candidates = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id)).sort((a, b) => {
+                            const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
+                            const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
+                            return distA - distB;
+                        });
+                        cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                    }
                     if (cloudAxiom) { this.usedThemeHistory.push(cloudAxiom.id); if (this.usedThemeHistory.length > 20) this.usedThemeHistory.shift(); }
                 }
             }
@@ -324,7 +335,7 @@ export class AmbientBrain {
             const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             accompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
-                this.currentAccompAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
+                this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4) });
             });
             const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             drumSiblings.forEach(ax => {
@@ -350,7 +361,7 @@ export class AmbientBrain {
 
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const partBars = this.soloistBusyUntilBar - epoch; // rough estimation
+        if (this.currentDrumAxioms.length === 0) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
@@ -482,12 +493,15 @@ export class AmbientBrain {
             }
         } else {
             style = "Echo";
-            const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
-            if (source) {
-                events.push({
-                    type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT,
-                    weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 }
-                });
+            const sourceCount = Math.min(2, melodyEvents.length);
+            for (let i = 0; i < sourceCount; i++) {
+                const source = melodyEvents[this.random.nextInt(melodyEvents.length)];
+                if (source) {
+                    events.push({
+                        type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(source.note - 12), time: (source.time + 1.5 * TICK_TO_BEAT) % BEATS_PER_BAR, duration: 0.5 * TICK_TO_BEAT,
+                        weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 2.5 }
+                    });
+                }
             }
         }
         return { events, style };
