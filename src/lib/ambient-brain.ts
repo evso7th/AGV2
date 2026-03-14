@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V44.0 — "Chronos Rotation Protocol".
- * #ОБНОВЛЕНО (ПЛАН №799): Аксиомы следуют временной сетке донора и ротируются принудительно.
+ * @fileOverview Ambient Brain V45.0 — "Audition Mode Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №803): Якорь теперь подавляет фильтры жанра и настроения.
  */
 
 import type { 
@@ -221,10 +221,10 @@ export class AmbientBrain {
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
                 ensemble: this.ensembleStatus,
-                bass: this.currentBassTheme ? 'Sibling' : 'Walking Drone',
+                bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: 'Sonic Cube'
             },
-            narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode]`
+            narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode] [Mosaic Mode]`
         };
     }
 
@@ -263,22 +263,26 @@ export class AmbientBrain {
 
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            
+            let filteredPool: any[] = [];
 
-            let filteredPool = poolToUse.filter(ax => {
-                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                return axGenres.includes(this.genre) && (axMoods.includes(this.mood) || Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
-            });
-
-            if (targetAnchor) filteredPool = filteredPool.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
+            // #ЗАЧЕМ: ПЛАН №803. Игнорируем метаданные, если выбран Якорь (Audition Mode).
+            if (targetAnchor) {
+                filteredPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
+            } else {
+                const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+                filteredPool = poolToUse.filter(ax => {
+                    const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                    const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                    return axGenres.includes(this.genre) && (axMoods.includes(this.mood) || Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
+                });
+            }
 
             if (filteredPool.length > 0) {
                 let basePool = filteredPool.filter(ax => ax.role === 'melody');
                 if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
 
                 if (basePool.length > 0) {
-                    // #ЗАЧЕМ: ПЛАН №799. Chronos Discovery Logic.
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                     const suitePlayhead = epoch % (maxDonorBars || 144);
                     
@@ -415,14 +419,6 @@ export class AmbientBrain {
             return [{ type: 'harmony', note: root, time: 0, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }, { type: 'harmony', note: root + colorDegree, time: 6 * TICK_TO_BEAT, duration: 2.0, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
         }
         return [{ type: 'harmony', note: Math.min(root + colorDegree, this.PAD_CEILING), time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
-    }
-
-    private renderPad(chord: GhostChord, epoch: number, timbre: string, tension: number): FractalEvent[] {
-        const root = Math.min(chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition, this.PAD_CEILING);
-        return [0, 7, 12].map((n, i) => ({
-            type: 'accompaniment', note: Math.min(root + n, this.PAD_CEILING + 12), time: i * TICK_TO_BEAT, duration: 5.0, weight: 0.45, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.0 + (1 - tension) * 1.5, release: 2.5, filterCutoff: 1200 + (tension * 800) }
-        }));
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {

@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V217.0 — "Chronos Rotation Protocol".
- * #ОБНОВЛЕНО (ПЛАН №799): Аксиомы теперь следуют временной сетке донора и ротируются принудительно.
+ * @fileOverview Blues Brain V218.0 — "Audition Mode Protocol".
+ * #ОБНОВЛЕНО (ПЛАН №803): Якорь теперь подавляет фильтры жанра и настроения.
  */
 
 const TICKS_PER_BAR = 12;
@@ -103,7 +103,7 @@ export class BluesBrain {
       lastMutationType: string,
       lastTension: number,
       recentLicks: string[],
-      lastPlayedOffset: number // #ЗАЧЕМ: Слежение за прогрессом донора
+      lastPlayedOffset: number
   };
 
   constructor(
@@ -329,8 +329,6 @@ export class BluesBrain {
 
     events.push(...melodyEvents);
 
-    const melDisplay = hints.melody || 'none';
-
     return { 
         events, 
         lickId: this.currentLickId, 
@@ -342,7 +340,7 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : (usedTargetLayers.has('accompaniment') ? 'Active Texture' : 'none')
         },
-        narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode]`
+        narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode] [Mosaic Mode]`
     };
   }
 
@@ -392,17 +390,20 @@ export class BluesBrain {
 
       if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
-          const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+          
+          let filteredPool: any[] = [];
 
-          let filteredPool = this.config.cloudAxioms.filter(ax => {
-              const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-              const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-              const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-              return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || axCommons.includes(commonMoodFilter));
-          });
-
+          // #ЗАЧЕМ: ПЛАН №803. Игнорируем метаданные, если выбран Якорь (Audition Mode).
           if (targetAnchor) {
-              filteredPool = filteredPool.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
+              filteredPool = this.config.cloudAxioms.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
+          } else {
+              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+              filteredPool = this.config.cloudAxioms.filter(ax => {
+                  const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                  const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                  const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                  return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || axCommons.includes(commonMoodFilter));
+              });
           }
 
           if (filteredPool.length > 0) {
@@ -410,12 +411,9 @@ export class BluesBrain {
               if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
 
               if (basePool.length > 0) {
-                  // #ЗАЧЕМ: ПЛАН №799. Chronos Discovery Logic.
-                  // Ищем аксиому, которая по barOffset ближе всего к нашему текущему прогрессу в сюите.
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
                   
-                  // Сортируем по близости к плейхеду и фильтруем недавно игравшие
                   const candidates = basePool
                     .filter(ax => !this.state.recentLicks.includes(ax.id))
                     .sort((a, b) => {

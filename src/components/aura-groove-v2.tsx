@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.9 — "The Sovereignty Protocol".
- * #ЧТО: ПЛАН №782 — Добавлен глобальный переключатель Heritage DNA и блокировка якоря.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.10 — "Audition Mode Unlock".
+ * #ЧТО: ПЛАН №803 — Слайдер BPM теперь доступен во время игры, если выбран Генетический Якорь.
  */
 'use client';
 
@@ -64,7 +64,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 export function AuraGrooveV2({
   isPlaying, isInitializing, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
-  bpm, score, handleScoreChange, density, setDensity, handleGoHome,
+  bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
@@ -132,11 +132,14 @@ export function AuraGrooveV2({
 
   const getAnchorButtonText = () => {
       const count = selectedCompositionIds.length;
-      if (!useHeritage) return "DNA Locked (Local)"; // #ЗАЧЕМ: Визуальный статус при выключенном Heritage.
+      if (!useHeritage) return "DNA Locked (Local)";
       if (count === 0) return "DNA Anchor";
       if (count === 1) return "DNA Locked";
       return `DNA Hybrid (${count})`;
   };
+
+  // #ЗАЧЕМ: ПЛАН №803. BPM разблокирован в режиме прослушивания Якоря.
+  const isBpmSliderDisabled = isInitializing || (isPlaying && selectedCompositionIds.length === 0);
 
   return (
     <div className="w-full h-full flex flex-col p-3 bg-card">
@@ -230,7 +233,6 @@ export function AuraGrooveV2({
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
                     
-                    {/* #ЗАЧЕМ: DNA Anchor Selector (Genetic Lock) */}
                     <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
                         setIsFilterModalOpen(open);
                         if (open) refreshCloudAxioms();
@@ -239,7 +241,7 @@ export function AuraGrooveV2({
                             <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                disabled={!useHeritage} // #ЗАЧЕМ: Блокировка выбора Якоря при выключенном Наследии.
+                                disabled={!useHeritage} 
                                 className={cn(
                                     "h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", 
                                     selectedCompositionIds.length > 0 && useHeritage ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70"
@@ -386,7 +388,6 @@ export function AuraGrooveV2({
                           </Select>
                       </div>
                       
-                      {/* #ЗАЧЕМ: Глобальные переключатели классов. */}
                       <div className="grid grid-cols-3 items-center gap-2">
                           <Label htmlFor="heritage-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
                             <Dna className="h-3.5 w-3.5 text-primary" /> Heritage
@@ -408,7 +409,7 @@ export function AuraGrooveV2({
                   )}
                   <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
                     <Label htmlFor="bpm-slider" className="text-right text-xs">BPM</Label>
-                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} className="col-span-1" disabled={true}/>
+                    <Slider id="bpm-slider" value={[bpm]} min={60} max={160} step={1} onValueChange={(v) => handleBpmChange(v[0])} className="col-span-1" disabled={isBpmSliderDisabled}/>
                     <span className="text-xs w-8 text-right font-mono">{bpm}</span>
                   </div>
                   <div className="grid grid-cols-3 items-center gap-2">
