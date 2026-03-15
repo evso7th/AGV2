@@ -11,8 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №765 — Реализован бесшовный переход между инструментами. 
- *       Старые синтезаторы теперь дозвукивают свои хвосты при смене пресета.
+ * #ЧТО: ПЛАН №839 — Динамическое управление громкостью (volumeMultiplier) полностью отключено.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -54,15 +53,13 @@ export class MelodySynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
-        // #ЗАЧЕМ: ПЛАН №765. Сохраняем хвосты при смене инструмента.
         if (this.synth) {
             const fadingSynth = this.synth;
-            // Позволяем текущим нотам дозвучать (Eternal Tail)
             setTimeout(() => {
                 try { 
                     fadingSynth.disconnect(); 
                 } catch (e) {}
-            }, 10000); // 10 секунд — безопасный запас для любого релиза
+            }, 10000); 
             this.synth = null;
         }
         
@@ -138,8 +135,8 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        const volumeMultiplier = (this.partName === 'melody' && currentActive.includes('organ')) ? 0.5 : 1.0;
-
+        // #ЗАЧЕМ: Динамическое управление громкостью отключено.
+        // #ЧТО: Удален volumeMultiplier.
         if (this.partName === 'melody' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
@@ -151,7 +148,7 @@ export class MelodySynthManagerV2 {
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime, note.velocity * volumeMultiplier, note.duration);
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }
         });
     }
@@ -167,8 +164,6 @@ export class MelodySynthManagerV2 {
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
-           // Для сэмплеров (которые общие) мы можем гасить синтезатор сразу, 
-           // но для единообразия тоже дадим ему 10 секунд
            if (this.synth) {
                const oldSynth = this.synth;
                setTimeout(() => { try { oldSynth.disconnect(); } catch(e) {} }, 10000);

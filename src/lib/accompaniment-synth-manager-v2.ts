@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №765 — Реализован бесшовный переход. Пэды больше не обрываются при смене тембра.
+ * #ЧТО: ПЛАН №839 — Динамическое управление громкостью (summonProgress) полностью отключено.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -39,7 +39,6 @@ export class AccompanimentSynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
-        // #ЗАЧЕМ: ПЛАН №765. Позволяем старому пэду раствориться естественным образом.
         if (this.instrument) {
             const oldInst = this.instrument;
             setTimeout(() => {

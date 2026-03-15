@@ -59,7 +59,6 @@ export type InstrumentHints = {
     harmony?: string;
     pianoAccompaniment?: string;
     drums?: string;
-    summonProgress?: Partial<Record<string, number>>;
 };
 
 export type NavigationInfo = {
