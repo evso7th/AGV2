@@ -1,8 +1,8 @@
+
 /**
- * @fileOverview Ambient Brain V52.0 — "Silent Partner Pianist".
- * #ЗАЧЕМ: Усмирение пианиста и глобальная защита громкости (ПЛАН №842).
- * #ЧТО: 1. Пианист вступает крайне редко (85% пропусков).
- *       2. Удален агрессивный стиль "Passage".
+ * @fileOverview Ambient Brain V53.0 — "Shadow Pianist Integration".
+ * #ЗАЧЕМ: Реализация Плана №843. Умное сопровождение в терцию.
+ * #ЧТО: Пианист теперь подсвечивает мелодию параллельной терцией в тихом режиме.
  */
 
 import type { 
@@ -378,7 +378,7 @@ export class AmbientBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -395,7 +395,7 @@ export class AmbientBrain {
 
             barNotes.forEach(n => {
                 events.push({
-                    type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
                 });
             });
         });
@@ -415,7 +415,7 @@ export class AmbientBrain {
     private renderTexturalPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
-        if (this.random.next() < 0.2 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        if (this.random.next() < 0.2 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         if (this.random.next() < 0.7) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
             events.push({ type: perc as any, note: 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 1.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
@@ -486,22 +486,32 @@ export class AmbientBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Усмирение пианиста. Шанс пропуска 85%.
-        if (this.random.next() < 0.85) return { events: [], style: 'Breath' };
+        // #ЗАЧЕМ: Усмирение пианиста. Шанс вступления 30%.
+        if (this.random.next() < 0.7) return { events: [], style: 'Breath' };
 
-        const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition;
-        const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
+        // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
+        if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
+
+        const isMinor = chord.chordType === 'minor';
+        const thirdInterval = isMinor ? 3 : 4;
         
-        // #ЗАЧЕМ: Замена Passage наDecoration.
-        const noteIdx = calculateMusiNum(epoch, 7, this.seed, scale.length);
-        const style = "Decoration";
-        events.push({
-            type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + scale[noteIdx]), 
-            time: (calculateMusiNum(epoch, 11, this.seed, 12)) * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT,
-            weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.5 }
+        melodyEvents.forEach((m, i) => {
+            // Выбираем каждую вторую ноту для разреженности
+            if (i % 2 === 0) {
+                events.push({ 
+                    ...m,
+                    type: 'pianoAccompaniment', 
+                    note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
+                    weight: 0.25, // Бренчание
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato', 
+                    params: { release: 2.0 } 
+                });
+            }
         });
 
-        return { events, style };
+        return { events, style: "Shadow (Thirds)" };
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {

@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -29,10 +30,10 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V228.0 — "Quiet Pianist Protocol".
- * #ЗАЧЕМ: Усмирение пианиста и стабилизация громкости (ПЛАН №842).
- * #ЧТО: 1. Шанс пропуска пианиста поднят до 85%.
- *       2. Веса нот пианино снижены до 0.3.
+ * @fileOverview Blues Brain V229.0 — "Shadow Pianist Protocol".
+ * #ЗАЧЕМ: Реализация Плана №843. Пианист подсвечивает гитару в терцию.
+ * #ЧТО: 1. Удалена случайная декорация.
+ *       2. Внедрена логика Shadowing (Parallel Thirds).
  */
 
 const TICKS_PER_BAR = 12;
@@ -507,27 +508,33 @@ export class BluesBrain {
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = []; 
-      const isSoloistBusy = melodyEvents.length > 0;
       
-      // #ЗАЧЕМ: Усмирение пианиста. Шанс пропуска 85%.
-      if (this.random.next() < 0.85) return { events: [], style: 'Breath' };
+      // #ЗАЧЕМ: Усмирение пианиста. Шанс вступления 30%.
+      if (this.random.next() < 0.7) return { events: [], style: 'Breath' };
 
-      const root = chord.rootNote + 24 + this.currentTransposition + this.microTransposition; 
-      const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12];
+      // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
+      if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
+
+      const isMinor = chord.chordType === 'minor';
+      const thirdInterval = isMinor ? 3 : 4;
       
-      // #ЗАЧЕМ: Замена агрессивного Passage на деликатный Decoration.
-      const noteIdx = calculateMusiNum(epoch, 7, this.seed, scale.length);
-      const style = "Decoration";
-      events.push({ 
-          type: 'pianoAccompaniment', 
-          note: this.constrainAccompanimentOctave(root + scale[noteIdx]), 
-          time: (calculateMusiNum(epoch, 11, this.seed, 12)) * TICK_TO_BEAT, 
-          duration: 3.0 * TICK_TO_BEAT, 
-          weight: 0.3, // Очень тихо
-          technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { release: 3.5 } 
+      melodyEvents.forEach((m, i) => {
+          // Выбираем каждую вторую ноту для разреженности (через раз)
+          if (i % 2 === 0) {
+              events.push({ 
+                  ...m,
+                  type: 'pianoAccompaniment', 
+                  note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
+                  weight: 0.25, // Очень тихо (бренчание)
+                  technique: 'hit', 
+                  dynamics: 'p', 
+                  phrasing: 'staccato', 
+                  params: { release: 2.5 } 
+              });
+          }
       });
 
-      return { events, style };
+      return { events, style: "Shadow (Thirds)" };
   }
 
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
