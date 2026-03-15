@@ -68,7 +68,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: number[]):
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: ПЛАН №696 — Добавлена поддержка полей bars и noteCount.
+ * #ЧТО: ПЛАН №838 — Добавлена поддержка флага ignored.
  */
 export function saveHeritageAxiom(db: Firestore, data: any) {
     const compositionId = data.compositionId || 'Unknown_Heritage';
@@ -95,6 +95,7 @@ export function saveHeritageAxiom(db: Firestore, data: any) {
         nativeBpm: data.nativeBpm ?? data.bpm ?? null,
         nativeKey: data.nativeKey ?? data.key ?? null,
         timeSignature: data.timeSignature ?? data.ts ?? null,
+        ignored: data.ignored ?? false,
         timestamp: serverTimestamp()
     };
 

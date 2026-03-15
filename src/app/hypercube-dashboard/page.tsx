@@ -25,7 +25,9 @@ import {
   FileJson,
   History,
   Heart,
-  Star
+  Star,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -227,7 +229,6 @@ export default function HypercubeDashboard() {
     });
   }, [globalAxioms]);
 
-  /** #ЗАЧЕМ: Статистика "Шедевров". */
   const masterpieceStats = useMemo(() => {
       if (!globalMasterpieces) return { total: 0, userLikes: 0, arbiterFinds: 0 };
       return globalMasterpieces.reduce((acc, m) => {
@@ -332,7 +333,8 @@ export default function HypercubeDashboard() {
                 mood: moods, commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
                 vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, tags: ax.tags || [], narrative: ax.narrative || "Heritage component.",
                 nativeBpm: ax.nativeBpm || ax.bpm || null, nativeKey: ax.nativeKey || ax.key || null, timeSignature: ax.timeSignature || ax.ts || null,
-                barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount
+                barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount,
+                ignored: ax.ignored ?? false
             };
         };
 
@@ -422,6 +424,23 @@ export default function HypercubeDashboard() {
     reader.readAsText(file);
   };
 
+  const mapAxiomToChannel = (rawRole: string): string => {
+      const role = rawRole.toLowerCase();
+      if (role === 'bass') return 'bass';
+      if (role.startsWith('drums')) {
+          const sub = role.split(' ')[1] || 'kick';
+          if (sub === 'kick') return 'drum_kick_reso';
+          if (sub === 'snare') return 'drum_snare';
+          if (sub === 'hat') return 'drum_25693__walter_odington__hackney-hat-1';
+          if (sub === 'tom') return 'drum_Sonor_Classix_Low_Tom';
+          if (sub === 'ride' || sub === 'crash') return 'drum_ride_wetter';
+          return 'drum_perc-001';
+      }
+      if (role.includes('piano')) return 'pianoAccompaniment';
+      if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) return 'harmony';
+      return 'melody';
+  };
+
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) { stopAllSounds(); setPlayingAxiomId(null); return; }
     if (!isInitialized) await initialize();
@@ -429,39 +448,43 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
     const minTick = Math.min(...phrase.map(n => n.t));
-    const rawRole = (axiom.role || 'melody').toLowerCase();
-    let type: any = 'melody';
-    if (rawRole === 'bass') type = 'bass';
-    else if (rawRole.startsWith('drums')) type = 'drums';
-    else if (rawRole.startsWith('accomp')) type = 'accompaniment';
+    const channelType = mapAxiomToChannel(axiom.role || 'melody');
     const events: FractalEvent[] = phrase.map((n: any) => {
-      let eventType: string = type;
-      if (rawRole.startsWith('drums')) {
-          const sub = rawRole.split(' ')[1] || 'kick';
-          if (sub === 'kick') eventType = 'drum_kick_reso';
-          else if (sub === 'snare') eventType = 'drum_snare';
-          else if (sub === 'hat') eventType = 'drum_25693__walter_odington__hackney-hat-1';
-          else if (sub === 'tom') eventType = 'drum_Sonor_Classix_Low_Tom';
-          else if (sub === 'ride' || sub === 'crash') eventType = 'drum_ride_wetter';
-          else eventType = 'drum_perc-001';
-      }
-      if (rawRole.includes('piano')) eventType = 'pianoAccompaniment';
-      return { type: eventType, note: (rawRole === 'bass' ? 31 : (rawRole.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - minTick) / 3, duration: n.d / 3, weight: 0.8, technique: n.tech as any, dynamics: 'p', phrasing: 'legato', params: { attack: 0.05, release: 0.5, barCount: 0 }, chordName: rawRole.startsWith('accomp') ? 'Am' : undefined };
+      return { 
+          type: channelType, 
+          note: (axiom.role === 'bass' ? 31 : (axiom.role.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0), 
+          time: (n.t - minTick) / 3, 
+          duration: n.d / 3, 
+          weight: 0.8, 
+          technique: n.tech as any, 
+          dynamics: 'p', 
+          phrasing: 'legato', 
+          params: { attack: 0.05, release: 0.5, barCount: 0 }, 
+          chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined 
+      };
     });
     const hints: InstrumentHints = {};
-    if (type === 'melody') hints.melody = 'blackAcoustic';
-    else if (type === 'bass') hints.bass = 'bass_jazz_warm';
-    else if (type === 'drums') hints.drums = 'melancholic'; 
-    else if (type === 'accompaniment') {
-        if (rawRole.includes('guitar')) { events.forEach(e => { if(e.type === 'accompaniment') e.type = 'melody'; }); hints.melody = 'blackAcoustic'; }
-        else if (rawRole.includes('piano')) hints.pianoAccompaniment = 'piano';
-        else hints.accompaniment = 'organ_soft_jazz';
-    }
-    const tempo = axiom.nativeBpm || 72;
-    playRawEvents(events, hints, tempo);
+    if (channelType === 'melody') hints.melody = 'organ_soft_jazz';
+    else if (channelType === 'bass') hints.bass = 'bass_jazz_warm';
+    else if (channelType === 'drums') hints.drums = 'melancholic'; 
+    else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
+    else if (channelType === 'harmony') hints.harmony = 'violin';
+    else hints.accompaniment = 'organ_soft_jazz';
+    
+    playRawEvents(events, hints, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
     const maxDuration = Math.max(...events.map(e => e.time + e.duration));
     setTimeout(() => { setPlayingAxiomId(prev => prev === axiom.id ? null : prev); }, (maxDuration + 1) * 1000);
+  };
+
+  const handleToggleIgnore = async (axiom: any) => {
+      setIsProcessing(true);
+      try {
+          const ref = doc(db, 'heritage_axioms', axiom.id);
+          await updateDoc(ref, { ignored: !axiom.ignored });
+          toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored" });
+      } catch (e) { toast({ variant: "destructive", title: "Action Failed" }); }
+      finally { setIsProcessing(false); }
   };
 
   const handleCommitInjection = async () => {
@@ -471,7 +494,7 @@ export default function HypercubeDashboard() {
       for (const ax of toInject) {
         const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        await saveHeritageAxiom(db, { ...ax, genre: selectedGenre, mood: newMoods, commonMood: newCommons, barOffset: ax.barOffset ?? 0, origin: `Manual_Forge_Injection_${currentFileName}`, timestamp: new Date().toISOString() as any, narrative: ax.narrative || "Heritage component." });
+        await saveHeritageAxiom(db, { ...ax, genre: selectedGenre, mood: newMoods, commonMood: newCommons, barOffset: ax.barOffset ?? 0, origin: `Manual_Forge_Injection_${currentFileName}`, timestamp: new Date().toISOString() as any, narrative: ax.narrative || "Heritage component.", ignored: false });
         addedCount++;
       }
       setProcessedFiles(prev => [...new Set([...prev, currentFileName])]);
@@ -543,7 +566,7 @@ export default function HypercubeDashboard() {
         const ref = doc(db, 'heritage_axioms', editAxiomData.id);
         const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        await updateDoc(ref, { role: editAxiomData.role, narrative: editAxiomData.narrative, vector: editAxiomData.vector, mood: newMoods, commonMood: newCommons, nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null, nativeKey: editAxiomData.nativeKey, timeSignature: editAxiomData.timeSignature, barOffset: editAxiomData.barOffset ?? 0 });
+        await updateDoc(ref, { role: editAxiomData.role, narrative: editAxiomData.narrative, vector: editAxiomData.vector, mood: newMoods, commonMood: newCommons, nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null, nativeKey: editAxiomData.nativeKey, timeSignature: editAxiomData.timeSignature, barOffset: editAxiomData.barOffset ?? 0, bars: editAxiomData.bars, noteCount: editAxiomData.noteCount });
         toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
     } catch (e) { toast({ variant: "destructive", title: "Update Failed", description: String(e) }); }
     finally { setIsProcessing(false); }
@@ -687,7 +710,7 @@ export default function HypercubeDashboard() {
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {filteredLicks.map((ax: any) => (
-                                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                      <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
                                         <td className="p-3 pl-12">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
@@ -696,14 +719,14 @@ export default function HypercubeDashboard() {
                                           )}
                                         </td>
                                         <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
-                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><span>{ax.bars}</span><span className="opacity-30">/</span><span>{ax.noteCount}</span></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
+                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (
                                             <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
                                           ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
                                         </td>
                                         <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
-                                        <td className="p-3 text-right"><div className="flex items-center justify-end gap-1">{editingAxiomId === ax.id ? (<><Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button></>) : (<><Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></>)}</div></td>
+                                        <td className="p-3 text-right"><div className="flex items-center justify-end gap-1">{editingAxiomId === ax.id ? (<><Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button></>) : (<><Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button></>)}</div></td>
                                       </tr>
                                     ))}
                                   </tbody>

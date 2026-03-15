@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V49.2 — "Virtuoso Restoration".
- * #ОБНОВЛЕНО (ПЛАН №816): Восстановлена слышимость Пианиста. Вес поднят до 0.7.
+ * @fileOverview Ambient Brain V49.3 — "DNA Shield Active".
+ * #ОБНОВЛЕНО (ПЛАН №838): Внедрена фильтрация игнорируемых аксиом.
  */
 
 import type { 
@@ -279,7 +279,8 @@ export class AmbientBrain {
         this.currentTimeScale = 1;
         let cloudAxiom: any = null;
         
-        const poolToUse = (this.useHeritage && this.cloudAxioms.length > 0) ? this.cloudAxioms : (this.useHeritage ? (dna.cloudAxioms || []) : []);
+        // #ЗАЧЕМ: Фильтрация игнорируемых аксиом (ПЛАН №838).
+        const poolToUse = ((this.useHeritage && this.cloudAxioms.length > 0) ? this.cloudAxioms : (this.useHeritage ? (dna.cloudAxioms || []) : [])).filter(ax => ax.ignored !== true);
 
         if (poolToUse.length > 0) {
             const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;

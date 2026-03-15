@@ -38,6 +38,7 @@
         },
         "narrative": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
+        "ignored": { "type": "boolean", "description": "Flag to exclude this axiom from generation." },
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["phrase", "role", "compositionId", "vector"]

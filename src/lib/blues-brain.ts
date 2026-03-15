@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V225.0 — "Virtuoso Restoration".
- * #ОБНОВЛЕНО (ПЛАН №816): Восстановлена слышимость Пианиста. Вес поднят до 0.7.
+ * @fileOverview Blues Brain V225.1 — "DNA Shield Active".
+ * #ОБНОВЛЕНО (ПЛАН №838): Внедрена фильтрация игнорируемых аксиом.
  */
 
 const TICKS_PER_BAR = 12;
@@ -354,13 +354,16 @@ export class BluesBrain {
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; this.currentAccompAxioms = []; this.currentDrumAxioms = []; this.currentNativeRoot = null; this.ensembleStatus = 'ADAPTIVE'; this.currentTimeScale = 1;
+      
+      // #ЗАЧЕМ: Фильтрация игнорируемых аксиом (ПЛАН №838).
       if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
+          const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
           let filteredPool: any[] = [];
-          if (targetAnchor) filteredPool = this.config.cloudAxioms.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
+          if (targetAnchor) filteredPool = poolToUse.filter(ax => this.normalize(ax.compositionId) === targetAnchor);
           else {
               const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-              filteredPool = this.config.cloudAxioms.filter(ax => {
+              filteredPool = poolToUse.filter(ax => {
                   const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                   const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                   return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
@@ -389,11 +392,11 @@ export class BluesBrain {
                       this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                       let rawPhrase = decompressCompactPhrase(selected.phrase); const phrasesToNormalize = [rawPhrase];
                       const cid = this.normalize(selected.compositionId);
-                      const bassSibling = this.config.cloudAxioms.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
-                      const accompSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       accompSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p); this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id }); });
-                      const drumSiblings = this.config.cloudAxioms.filter(ax => ax.role?.startsWith('drums') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       drumSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); this.currentDrumAxioms.push({ phrase: p, role: ax.role }); });
                       normalizePhraseGroup(phrasesToNormalize);
                       const baseBars = selected.bars || 4; this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
