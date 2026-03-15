@@ -51,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V34.0 — "Jazzman Protocol".
- * #ЧТО: ПЛАН №841 — Автоматическое определение режима импровизации.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V35.0 — "Ensemble Lottery".
+ * #ЧТО: ПЛАН №844 — Динамическая активация пар инструментов на тактах 0, 3 и 6.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -70,6 +70,9 @@ export class FractalMusicEngine {
 
   private activatedParts: Set<InstrumentPart> = new Set();
   private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
+  
+  /** #ЗАЧЕМ: Расписание вступлений, определенное жребием. */
+  private lotterySchedule: Map<InstrumentPart, number> = new Map();
   
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
     this.config = { ...config };
@@ -114,6 +117,23 @@ export class FractalMusicEngine {
 
     this.activatedParts.clear(); 
     this.activeTimbres = {};
+    this.lotterySchedule.clear();
+
+    // --- ENSEMBLE LOTTERY SETUP ---
+    // #ЗАЧЕМ: Жеребьевка вступления (ПЛАН №844).
+    const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
+    const shuffled = this.random.shuffle(pool);
+    
+    // Пара 1: Такт 0
+    this.lotterySchedule.set(shuffled[0], 0);
+    this.lotterySchedule.set(shuffled[1], 0);
+    // Пара 2: Такт 3
+    this.lotterySchedule.set(shuffled[2], 3);
+    this.lotterySchedule.set(shuffled[3], 3);
+    // Остальные: Такт 6
+    for (let i = 4; i < shuffled.length; i++) {
+        this.lotterySchedule.set(shuffled[i], 6);
+    }
 
     this.suiteDNA = generateSuiteDNA(
         this.blueprint.structure.totalDuration.preferredBars, 
@@ -205,8 +225,6 @@ export class FractalMusicEngine {
     let currentInstructions: any | undefined;
     const stages = navInfo.currentPart.stagedInstrumentation;
 
-    const forceActivation = this.epoch >= 8 && navInfo.currentPart.id === 'INTRO';
-
     if (stages && stages.length > 0) {
         const partBars = navInfo.currentPartEndBar - navInfo.currentPartStartBar + 1;
         const progress = (this.epoch - navInfo.currentPartStartBar) / (partBars || 1);
@@ -220,14 +238,30 @@ export class FractalMusicEngine {
     }
 
     const activeLayers = navInfo.currentPart.layers || {};
+    const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
+
+    // --- ACTIVATION LOGIC (Lottery Integration) ---
     Object.keys(activeLayers).forEach(layer => {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
-            const rule = currentInstructions ? currentInstructions[part] : null;
-            let effectiveChance = forceActivation ? 1.0 : (rule ? (rule.activationChance ?? 1.0) : 1.0);
+            let shouldActivate = false;
             
-            if (this.random.next() < effectiveChance) {
+            // #ЗАЧЕМ: Проверка жребия в интро.
+            if (isIntro && this.lotterySchedule.has(part)) {
+                if (this.epoch >= this.lotterySchedule.get(part)!) {
+                    shouldActivate = true;
+                }
+            } else if (!isIntro) {
+                // В основных частях активируем все разрешенные слои сразу (или по шансу)
+                const rule = currentInstructions ? currentInstructions[part] : null;
+                if (this.random.next() < (rule ? (rule.activationChance ?? 1.0) : 1.0)) {
+                    shouldActivate = true;
+                }
+            }
+
+            if (shouldActivate) {
                 this.activatedParts.add(part);
+                const rule = currentInstructions ? currentInstructions[part] : null;
                 const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
                 
                 let defaultInst = 'synth';
@@ -243,13 +277,29 @@ export class FractalMusicEngine {
 
     const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
     
+    // --- HINT GENERATION ---
     this.activatedParts.forEach(part => {
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
             (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
         }
     });
     
-    if (navInfo.currentPart.layers.pianoAccompaniment || isTransition) instrumentHints.pianoAccompaniment = 'piano';
+    // Special handling for pianoAccompaniment to respect lottery if it's considered part of layering
+    if (navInfo.currentPart.layers.pianoAccompaniment && !this.activatedParts.has('pianoAccompaniment' as any)) {
+        if (isIntro && this.lotterySchedule.get('pianoAccompaniment' as any) !== undefined) {
+            if (this.epoch >= this.lotterySchedule.get('pianoAccompaniment' as any)!) {
+                this.activatedParts.add('pianoAccompaniment' as any);
+            }
+        } else if (!isIntro) {
+            this.activatedParts.add('pianoAccompaniment' as any);
+        }
+    }
+
+    if (this.activatedParts.has('pianoAccompaniment' as any)) {
+        if (navInfo.currentPart.layers.pianoAccompaniment || isTransition) {
+            instrumentHints.pianoAccompaniment = 'piano';
+        }
+    }
 
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];

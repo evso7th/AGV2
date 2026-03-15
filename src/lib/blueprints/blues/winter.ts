@@ -1,10 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v30.4 - Absolute Fidelity).
- * #ЧТО: ПЛАН №729 — Сброс timeScale до 1.
- *       Благодаря фиксу траверса аксиом, замедление больше не требуется для мелодизма.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v31.0 - Lottery Ready).
+ * #ЧТО: ПЛАН №844 — INTRO очищено от жестких сценариев для работы Ensemble Lottery.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -28,39 +26,20 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 160 },
         parts: [
-            // --- 1. INTRO (6 bars) ---
+            // --- 1. INTRO (9 bars for 3 lottery phases) ---
             {
-                id: 'INTRO', name: 'BirthLottery', duration: { percent: 4 }, 
+                id: 'INTRO', name: 'BirthLottery', duration: { percent: 6 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
-                stagedInstrumentation: [
-                    { 
-                        duration: { percent: 33 }, 
-                        instrumentation: {
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass', weight: 1.0 } ] },
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
-                           melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 33 }, 
-                        instrumentation: {
-                           drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
-                           pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] }
-                        }
-                    },
-                    {
-                        duration: { percent: 34 }, 
-                        instrumentation: {
-                           sparkles: { activationChance: 1.0, instrumentOptions: [ { name: 'dark', weight: 1.0 } ] },
-                           sfx: { activationChance: 1.0, instrumentOptions: [ { name: 'voice', weight: 1.0 } ], transient: true }
-                        }
-                    }
-                ],
+                instrumentation: {
+                   bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
+                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                   melody: { strategy: 'weighted', options: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] },
+                   harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] },
+                   sfx: { strategy: 'weighted', options: [ { name: 'voice', weight: 1.0 } ] }
+                },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
-                    // #ЗАЧЕМ: timeScale сброшен до 1.0. Движок теперь сам понимает длину фразы.
                     melody: { source: 'blues_solo', register: { preferred: 'low' }, timeScale: 1 },
                     pianoAccompaniment: { timeScale: 1 }
                 },
