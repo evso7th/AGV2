@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Ambient Brain V53.0 — "Shadow Pianist Integration".
+ * @fileOverview Ambient Brain V53.1 — "Shadow Pianist Integration Fixed".
  * #ЗАЧЕМ: Реализация Плана №843. Умное сопровождение в терцию.
- * #ЧТО: Пианист теперь подсвечивает мелодию параллельной терцией в тихом режиме.
+ * #ЧТО: 1. Исправлена ошибка ReferenceError p is not defined.
+ *       2. Пианист теперь подсвечивает мелодию параллельной терцией в тихом режиме.
  */
 
 import type { 
@@ -252,7 +253,7 @@ export class AmbientBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
-                piano: pianoInfo.count > 0 ? `${p.style} (${p.events.length} events)` : 'none'
+                piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode]`
         };

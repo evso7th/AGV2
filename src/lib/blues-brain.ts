@@ -30,9 +30,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V229.0 — "Shadow Pianist Protocol".
+ * @fileOverview Blues Brain V229.1 — "Shadow Pianist Protocol Fixed".
  * #ЗАЧЕМ: Реализация Плана №843. Пианист подсвечивает гитару в терцию.
- * #ЧТО: 1. Удалена случайная декорация.
+ * #ЧТО: 1. Исправлена ошибка ReferenceError p is not defined.
  *       2. Внедрена логика Shadowing (Parallel Thirds).
  */
 
@@ -337,7 +337,7 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
-            piano: pianoInfo.count > 0 ? `${p.style} (${p.events.length} events)` : 'none'
+            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode]`
     };
