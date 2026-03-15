@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.7 — "Sonic Stability Protocol".
- * #ЧТО: ПЛАН №790 — Лимит голосов поднят до 500, внедрена глобальная очистка реестра.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.8 — "Protective Master Shield".
+ * #ЧТО: ПЛАН №842 — Лимитер настроен на -12dB для предотвращения взрывных скачков.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -9,10 +9,6 @@
 let globalActiveVoices: any[] = [];
 const GLOBAL_VOICE_LIMIT = 500; 
 
-/**
- * #ЗАЧЕМ: Принудительная очистка всего системного реестра.
- * #ЧТО: Используется при смене сюит или нажатии Stop в Dashboard.
- */
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
     globalActiveVoices = [];
@@ -37,7 +33,6 @@ const deepCleanup = (voiceRecord: any) => {
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
     
-    // Эффективное удаление без filter на каждом шаге
     const idx = globalActiveVoices.indexOf(voiceRecord);
     if (idx !== -1) globalActiveVoices.splice(idx, 1);
 };
@@ -489,8 +484,15 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else if (type === 'organ') engine = buildOrganEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else if (type === 'guitar') engine = buildGuitarEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
+    
+    // #ЗАЧЕМ: ПЛАН №842. Порог лимитера снижен до -12dB для защиты от скачков.
     const limiter = ctx.createDynamicsCompressor();
-    limiter.threshold.value = -6.0; limiter.knee.value = 0; limiter.ratio.value = 20; limiter.attack.value = 0.003; limiter.release.value = 0.1;
+    limiter.threshold.value = -12.0; 
+    limiter.knee.value = 0; 
+    limiter.ratio.value = 20; 
+    limiter.attack.value = 0.003; 
+    limiter.release.value = 0.1;
+    
     master.connect(limiter); limiter.connect(output || ctx.destination);
     return {
         connect: (dest) => limiter.connect(dest || output),
