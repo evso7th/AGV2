@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -52,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V33.0 — "Static Volume Protocol".
- * #ЧТО: ПЛАН №839 — Динамическое управление громкостью (summonProgress) полностью отключено.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V34.0 — "Jazzman Protocol".
+ * #ЧТО: ПЛАН №841 — Автоматическое определение режима импровизации.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -87,19 +86,23 @@ export class FractalMusicEngine {
       
       if (seedChanged) this.random = seededRandom(this.config.seed);
       
+      const isImprovising = (this.config.selectedCompositionIds || []).length === 0;
+
       if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged) {
           if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
               this.config.cloudAxioms, 
               this.config.selectedCompositionIds,
               this.config.activeAnchorId,
               null,
-              this.config.useHeritage
+              this.config.useHeritage,
+              isImprovising
           );
           
           if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
               this.config.cloudAxioms,
               this.config.activeAnchorId,
-              this.config.useHeritage
+              this.config.useHeritage,
+              isImprovising
           );
       }
 
@@ -129,6 +132,8 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
     
+    const isImprovising = (this.config.selectedCompositionIds || []).length === 0;
+
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(
             this.config.seed, 
@@ -140,10 +145,11 @@ export class FractalMusicEngine {
             this.config.genre,
             this.config.useHeritage
         );
+        this.bluesBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.selectedCompositionIds, this.config.activeAnchorId, null, this.config.useHeritage, isImprovising);
         this.ambientBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
-        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage);
+        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, isImprovising);
         this.bluesBrain = null;
     }
 

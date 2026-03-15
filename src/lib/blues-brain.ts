@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -30,9 +29,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V226.0 — "Static Volume Protocol".
- * #ЗАЧЕМ: Динамическое управление громкостью полностью отключено (ПЛАН №839).
- * #ЧТО: Удалена рандомизация весов нот.
+ * @fileOverview Blues Brain V227.0 — "Jazzman Protocol".
+ * #ЗАЧЕМ: Реализация режима «Джазмен» для блюза (ПЛАН №841).
+ * #ЧТО: Перемешивание аксиом донора и усиленные мутации в режиме «Свободной игры».
  */
 
 const TICKS_PER_BAR = 12;
@@ -61,6 +60,7 @@ export interface BluesBrainConfig {
   activeAnchorRoot?: number | null;
   genre: string;
   useHeritage: boolean;
+  isImprovising: boolean;
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
@@ -68,6 +68,7 @@ export const DEFAULT_CONFIG: BluesBrainConfig = {
   rootNote: 55, 
   genre: 'blues',
   useHeritage: true,
+  isImprovising: false,
   emotion: { melancholy: 0.82, darkness: 0.25 }
 };
 
@@ -132,6 +133,7 @@ export class BluesBrain {
       activeAnchorId: activeAnchorId || null,
       genre: genre || 'blues',
       useHeritage: useHeritage,
+      isImprovising: (selectedCompositionIds || []).length === 0,
       emotion: {
         melancholy: ['melancholic', 'dark', 'anxious'].includes(mood) ? 0.85 : 0.4,
         darkness: ['dark', 'gloomy'].includes(mood) ? 0.35 : 0.2
@@ -171,15 +173,20 @@ export class BluesBrain {
       return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
 
-  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean) {
+  public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean, isImprovising?: boolean) {
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
       if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
+      if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
   }
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+      // #ЗАЧЕМ: ПЛАН №841. Хаотичная мозаика в режиме импровизации.
+      if (this.config.isImprovising) {
+          return calculateMusiNum(epoch, 7, this.seed, totalBars);
+      }
       const barsElapsed = epoch - startEpoch;
       const linearIndex = barsElapsed % totalBars;
       const rand = calculateMusiNum(epoch, 13, this.seed, 100) / 100;
@@ -218,10 +225,15 @@ export class BluesBrain {
 
     if (epoch % 4 === 0) {
         const mutationRand = this.random.next();
-        if (mutationRand < 0.25) { this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; this.state.lastMutationType = 'transpose'; }
-        else if (mutationRand < 0.4) this.state.lastMutationType = 'inversion';
-        else if (mutationRand < 0.55) this.state.lastMutationType = 'retrograde';
-        else if (mutationRand < 0.7) this.state.lastMutationType = 'jitter';
+        const mutationThreshold = this.config.isImprovising ? 0.9 : 0.45; // #ЗАЧЕМ: ПЛАН №841. Усиленные мутации.
+        
+        if (mutationRand < mutationThreshold * 0.25) { 
+            this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; 
+            this.state.lastMutationType = 'transpose'; 
+        }
+        else if (mutationRand < mutationThreshold * 0.5) this.state.lastMutationType = 'inversion';
+        else if (mutationRand < mutationThreshold * 0.75) this.state.lastMutationType = 'retrograde';
+        else if (mutationRand < mutationThreshold) this.state.lastMutationType = 'jitter';
         else this.state.lastMutationType = 'none';
     }
 
@@ -314,17 +326,19 @@ export class BluesBrain {
 
     events.push(...melodyEvents);
 
+    const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
+
     return { 
         events, lickId: this.currentLickId, mutationType: this.state.lastMutationType, newBpm,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentLickId : 'Gap-Filler'),
-            ensemble: this.ensembleStatus,
+            ensemble: `${this.ensembleStatus} [${modeStr}]`,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
             piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
         },
-        narrative: `Blues Evolution: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode] [Mosaic Mode]`
+        narrative: `Blues ${modeStr}: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode]`
     };
   }
 
@@ -356,6 +370,13 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; this.currentAccompAxioms = []; this.currentDrumAxioms = []; this.currentNativeRoot = null; this.ensembleStatus = 'ADAPTIVE'; this.currentTimeScale = 1;
       
+      // #ЗАЧЕМ: ПЛАН №841. Логика «дыхания» в режиме импровизации.
+      if (this.config.isImprovising && this.random.next() < 0.25 && epoch > 12) {
+          this.soloistRestingUntilBar = epoch + 2;
+          this.currentAxiom = [];
+          return undefined;
+      }
+
       if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
           const targetAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : null;
@@ -375,15 +396,21 @@ export class BluesBrain {
               if (basePool.length > 0) {
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
-                  const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
                   let selected: any = null;
                   
-                  if (sameOffsetPool.length > 0) {
-                      const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
-                      selected = sameOffsetPool[idx];
+                  if (this.config.isImprovising) {
+                      // #ЗАЧЕМ: ПЛАН №841. Нелинейная выборка из пула донора.
+                      const idx = calculateMusiNum(this.seed, 19, epoch, basePool.length);
+                      selected = basePool[idx];
                   } else {
-                      const candidates = basePool.filter(ax => !this.state.recentLicks.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
-                      selected = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                      const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
+                      if (sameOffsetPool.length > 0) {
+                          const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
+                          selected = sameOffsetPool[idx];
+                      } else {
+                          const candidates = basePool.filter(ax => !this.state.recentLicks.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
+                          selected = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                      }
                   }
 
                   if (selected) {
@@ -405,7 +432,7 @@ export class BluesBrain {
               }
           }
       }
-      this.ensembleStatus = 'LOCAL'; this.currentLickId = 'L01'; this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS['L01'].phrase as any); this.currentAxiomMaxTick = 144; this.soloistBusyUntilBar = epoch + 12; return undefined;
+      this.ensembleStatus = 'LOCAL'; this.currentLickId = 'L01'; this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS['LN_01'].phrase as any); this.currentAxiomMaxTick = 48; this.soloistBusyUntilBar = epoch + 4; return undefined;
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {

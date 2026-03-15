@@ -1,8 +1,8 @@
-
 /**
- * @fileOverview Ambient Brain V50.0 — "Static Volume Protocol".
- * #ЗАЧЕМ: Динамическое управление громкостью полностью отключено (ПЛАН №839).
- * #ЧТО: Все веса нот теперь статические, случайные колебания удалены.
+ * @fileOverview Ambient Brain V51.0 — "Jazzman Protocol".
+ * #ЗАЧЕМ: Реализация режима «Джазмен» (ПЛАН №841).
+ * #ЧТО: 1. Добавлена нелинейная выборка аксиом в режиме импровизации.
+ *       2. Усилены мутации и логика «дыхания» (генеративные паузы).
  */
 
 import type { 
@@ -52,6 +52,7 @@ export class AmbientBrain {
     private genre: Genre;
     private random: any;
     private useHeritage: boolean;
+    private isImprovising: boolean = false;
     
     private fog: number = 0.3;
     private pulse: number = 0.15;
@@ -84,7 +85,6 @@ export class AmbientBrain {
     private activeAnchorId: string | null = null;
     
     private usedThemeHistory: string[] = [];
-    private lastPlayedOffset: number = -1;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -108,13 +108,18 @@ export class AmbientBrain {
         return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
-    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean) {
+    public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
+        if (isImprovising !== undefined) this.isImprovising = isImprovising;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        // #ЗАЧЕМ: ПЛАН №841. В режиме импровизации мозаика работает хаотичнее.
+        if (this.isImprovising) {
+            return calculateMusiNum(epoch, 11, this.seed, totalBars);
+        }
         const barsElapsed = epoch - startEpoch;
         const linearIndex = barsElapsed % totalBars;
         const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
@@ -158,10 +163,15 @@ export class AmbientBrain {
 
         if (epoch % 4 === 0) {
             const mutRand = this.random.next();
-            if (mutRand < 0.2) { this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; this.currentMutationType = 'transpose'; }
-            else if (mutRand < 0.35) this.currentMutationType = 'inversion';
-            else if (mutRand < 0.5) this.currentMutationType = 'retrograde';
-            else if (mutRand < 0.65) this.currentMutationType = 'jitter';
+            const mutationThreshold = this.isImprovising ? 0.8 : 0.4; // #ЗАЧЕМ: Усиленный мутагенез в импровизации.
+            
+            if (mutRand < mutationThreshold * 0.25) { 
+                this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)]; 
+                this.currentMutationType = 'transpose'; 
+            }
+            else if (mutRand < mutationThreshold * 0.5) this.currentMutationType = 'inversion';
+            else if (mutRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
+            else if (mutRand < mutationThreshold) this.currentMutationType = 'jitter';
             else this.currentMutationType = 'none';
         }
 
@@ -233,18 +243,20 @@ export class AmbientBrain {
         if (hints.sparkles && this.random.nextInt(100) < 60) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
         if (hints.sfx && this.random.nextInt(100) < 20) events.push(...this.renderSfx(localTension));
 
+        const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
+
         return { 
             events, tension: localTension, beautyScore: 0.5,
             mutationType: this.currentMutationType, newBpm,
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
-                ensemble: this.ensembleStatus,
+                ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
             },
-            narrative: `Ambient Evolution: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode] [Mosaic Mode]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode]`
         };
     }
 
@@ -280,6 +292,13 @@ export class AmbientBrain {
         this.currentTimeScale = 1;
         let cloudAxiom: any = null;
         
+        // #ЗАЧЕМ: ПЛАН №841. Логика «дыхания» в режиме импровизации.
+        if (this.isImprovising && this.random.next() < 0.3 && epoch > 8) {
+            this.soloistRestingUntilBar = epoch + 2;
+            this.currentTheme = null;
+            return undefined;
+        }
+
         const poolToUse = ((this.useHeritage && this.cloudAxioms.length > 0) ? this.cloudAxioms : (this.useHeritage ? (dna.cloudAxioms || []) : [])).filter(ax => ax.ignored !== true);
 
         if (poolToUse.length > 0) {
@@ -303,17 +322,25 @@ export class AmbientBrain {
                 if (basePool.length > 0) {
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                     const suitePlayhead = epoch % (maxDonorBars || 144);
-                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
-                    if (sameOffsetPool.length > 0) {
-                        const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
-                        cloudAxiom = sameOffsetPool[idx];
+                    
+                    if (this.isImprovising) {
+                        // #ЗАЧЕМ: ПЛАН №841. Нелинейный выбор в импровизации.
+                        const idx = calculateMusiNum(this.seed, 13, epoch, basePool.length);
+                        cloudAxiom = basePool[idx];
                     } else {
-                        const candidates = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id)).sort((a, b) => {
-                            const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
-                            const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
-                            return distA - distB;
-                        });
-                        cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                        // Режим Реставрации: Строгая привязка к сетке.
+                        const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
+                        if (sameOffsetPool.length > 0) {
+                            const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
+                            cloudAxiom = sameOffsetPool[idx];
+                        } else {
+                            const candidates = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id)).sort((a, b) => {
+                                const distA = Math.abs((a.barOffset || 0) - suitePlayhead);
+                                const distB = Math.abs((b.barOffset || 0) - suitePlayhead);
+                                return distA - distB;
+                            });
+                            cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
+                        }
                     }
                     if (cloudAxiom) { this.usedThemeHistory.push(cloudAxiom.id); if (this.usedThemeHistory.length > 20) this.usedThemeHistory.shift(); }
                 }
@@ -353,7 +380,7 @@ export class AmbientBrain {
         } else {
             this.ensembleStatus = 'LOCAL';
             this.currentTheme = null;
-            this.soloistBusyUntilBar = epoch + 12;
+            this.soloistBusyUntilBar = epoch + 4; // #ЗАЧЕМ: Чаще пересчитываем в локальном режиме.
             return undefined;
         }
     }
