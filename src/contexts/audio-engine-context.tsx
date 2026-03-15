@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.7 — "Virtuoso Restoration".
- * #ЧТО: ПЛАН №816 — Пианино поднято до 0.5 для обеспечения слышимости.
+ * #ЗАЧЕМ: Audio Engine Context V20.8 — "Golden Mix Calibration".
+ * #ЧТО: ПЛАН №840 — Системные уровни пересчитаны так, чтобы 50% на слайдерах давали идеальный микс.
  */
 'use client';
 
@@ -28,18 +28,18 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 /**
- * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №816).
- * #ЧТО: Пианино (Piano) поднято до 0.5 для слышимости при любых настройках.
+ * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №840).
+ * #ЧТО: Коэффициенты откалиброваны под скриншот пользователя (Цель: 50% в UI = Идеальный Микс).
  */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.35, 
-  melody: 0.50,           
-  accompaniment: 0.80,    
+  bass: 0.175,            // Было 0.35 (при 25% в UI)
+  melody: 0.45,           // Было 0.50 (при 45% в UI)
+  accompaniment: 0.40,    // Было 0.80 (при 25% в UI)
   drums: 0.75,            
   sparkles: 0.45, 
   sfx: 0.55, 
-  harmony: 0.475,         
-  pianoAccompaniment: 0.5, // Поднято до стандарта для слышимости
+  harmony: 0.1425,        // Было 0.475 (при 15% в UI)
+  pianoAccompaniment: 0.15, // Было 0.5 (при 15% в UI)
 };
 
 interface AudioEngineContextType {
@@ -241,7 +241,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    // #ЗАЧЕМ: Проверка beautyScore для Арбитра.
                     if (payload.beautyScore > 0.8 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, {
                             seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,
