@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
- * #ОБНОВЛЕНО (ПЛАН №814): Добавлен статус Пианиста в когнитивные логи.
+ * #ОБНОВЛЕНО (ПЛАН №846): Внедрена детерминированная ротация доноров для Свободной игры.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -38,14 +38,14 @@ const Scheduler = {
         genre: 'ambient' as Genre,
         drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0, volume: 0.5 },
         instrumentSettings: { 
-            bass: { name: "bass_jazz_warm", volume: 0.7, technique: 'walking' },
-            melody: { name: "blackAcoustic", volume: 0.8 },
-            accompaniment: { name: "organ_soft_jazz", volume: 0.7 },
-            harmony: { name: "violin", volume: 0.6 },
+            bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'walking' },
+            melody: { name: "blackAcoustic", volume: 0.5 },
+            accompaniment: { name: "organ_soft_jazz", volume: 0.5 },
+            harmony: { name: "violin", volume: 0.5 },
             pianoAccompaniment: { name: "piano", volume: 0.5 }
         },
         textureSettings: {
-            sparkles: { enabled: true, volume: 0.7 },
+            sparkles: { enabled: true, volume: 0.5 },
             sfx: { enabled: true, volume: 0.5 },
         },
         density: 0.5,
@@ -62,6 +62,10 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
+    /**
+     * #ЗАЧЕМ: Выбор активного якоря (ПЛАН №846).
+     * #ЧТО: Внедрена ротация для автоматического пула. Теперь треки не повторяются, пока не пройдет весь круг.
+     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
@@ -69,11 +73,13 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
+            // Ротация по ручному списку
             pickedId = manualFilter[this.filterRotationIndex % manualFilter.length];
         } else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
 
+            // Фильтруем по жанру и настроению
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -82,7 +88,8 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                pickedId = uniqueIds[Math.floor(Math.random() * uniqueIds.length)];
+                // ПЛАН №846: Используем циклическую ротацию вместо чистого рандома
+                pickedId = uniqueIds[this.filterRotationIndex % uniqueIds.length];
             }
         }
 
@@ -119,7 +126,7 @@ const Scheduler = {
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
-        fractalMusicEngine.initialize(true);
+        fractalMusicEngine.initialize(force_reset_lottery = true);
         
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
@@ -192,6 +199,7 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // ПЛАН №846: Смена донора при достижении лимита тактов
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
@@ -209,7 +217,6 @@ const Scheduler = {
         }
 
         if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
-            console.log(`%c${getTimestamp()} [Tempo] Axiom requested tempo change: ${this.settings.bpm} -> ${payload.newBpm} BPM`, 'color: #00FFFF; font-weight: bold;');
             this.settings.bpm = payload.newBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
