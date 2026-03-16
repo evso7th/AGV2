@@ -1,9 +1,7 @@
-
 /**
- * @fileOverview Ambient Brain V53.1 — "Shadow Pianist Integration Fixed".
- * #ЗАЧЕМ: Реализация Плана №843. Умное сопровождение в терцию.
- * #ЧТО: 1. Исправлена ошибка ReferenceError p is not defined.
- *       2. Пианист теперь подсвечивает мелодию параллельной терцией в тихом режиме.
+ * @fileOverview Ambient Brain V53.2 — "Shadow Pianist Frequency Unlock".
+ * #ЗАЧЕМ: Реализация Плана №845. Увеличение частоты вступления пианиста до 70%.
+ * #ЧТО: Снижен порог пропуска такта для пианиста.
  */
 
 import type { 
@@ -424,18 +422,18 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
+    private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, localTension);
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         return barNotes.map(n => ({
             type: type as any,
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, duration: n.d * TICK_TO_BEAT * timeScale, weight: 0.7,
-            technique: (tension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (tension * 1500) }
+            technique: (localTension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (localTension * 1500) }
         }));
     }
 
@@ -487,8 +485,8 @@ export class AmbientBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Усмирение пианиста. Шанс вступления 30%.
-        if (this.random.next() < 0.7) return { events: [], style: 'Breath' };
+        // #ЗАЧЕМ: Увеличение активности пианиста (ПЛАН №845). Шанс вступления 70%.
+        if (this.random.next() < 0.3) return { events: [], style: 'Breath' };
 
         // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
         if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };

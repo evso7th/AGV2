@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -30,10 +29,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V229.1 — "Shadow Pianist Protocol Fixed".
- * #ЗАЧЕМ: Реализация Плана №843. Пианист подсвечивает гитару в терцию.
- * #ЧТО: 1. Исправлена ошибка ReferenceError p is not defined.
- *       2. Внедрена логика Shadowing (Parallel Thirds).
+ * @fileOverview Blues Brain V229.2 — "Shadow Pianist Frequency Unlock".
+ * #ЗАЧЕМ: Реализация Плана №845. Увеличение частоты вступления пианиста до 70%.
+ * #ЧТО: Снижен порог пропуска такта для пианиста.
  */
 
 const TICKS_PER_BAR = 12;
@@ -509,8 +507,8 @@ export class BluesBrain {
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = []; 
       
-      // #ЗАЧЕМ: Усмирение пианиста. Шанс вступления 30%.
-      if (this.random.next() < 0.7) return { events: [], style: 'Breath' };
+      // #ЗАЧЕМ: Увеличение активности пианиста (ПЛАН №845). Шанс вступления 70%.
+      if (this.random.next() < 0.3) return { events: [], style: 'Breath' };
 
       // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
       if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };

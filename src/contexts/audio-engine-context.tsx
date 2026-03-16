@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.8 — "Golden Mix Calibration".
- * #ЧТО: ПЛАН №840 — Системные уровни пересчитаны так, чтобы 50% на слайдерах давали идеальный микс.
+ * #ЗАЧЕМ: Audio Engine Context V20.9 — "Mix Refinement".
+ * #ЧТО: ПЛАН №845 — Громкость аккомпанемента снижена на 25% (0.40 -> 0.30).
  */
 'use client';
 
@@ -28,18 +27,18 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 /**
- * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №840).
- * #ЧТО: Коэффициенты откалиброваны под скриншот пользователя (Цель: 50% в UI = Идеальный Микс).
+ * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №845).
+ * #ЧТО: Множитель аккомпанемента снижен для более мягкого фона.
  */
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.175,            // Было 0.35 (при 25% в UI)
-  melody: 0.45,           // Было 0.50 (при 45% в UI)
-  accompaniment: 0.40,    // Было 0.80 (при 25% в UI)
+  bass: 0.175,            
+  melody: 0.45,           
+  accompaniment: 0.30,    // Снижено с 0.40 (План 845)
   drums: 0.75,            
   sparkles: 0.45, 
   sfx: 0.55, 
-  harmony: 0.1425,        // Было 0.475 (при 15% в UI)
-  pianoAccompaniment: 0.15, // Было 0.5 (при 15% в UI)
+  harmony: 0.1425,        
+  pianoAccompaniment: 0.15, 
 };
 
 interface AudioEngineContextType {
