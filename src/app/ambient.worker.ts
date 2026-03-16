@@ -126,7 +126,8 @@ const Scheduler = {
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
-        fractalMusicEngine.initialize(force_reset_lottery = true);
+        // #ЗАЧЕМ: Исправление синтаксической ошибки (ПЛАН №847.1).
+        fractalMusicEngine.initialize(true);
         
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
