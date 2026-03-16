@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.9 — "Mix Refinement".
- * #ЧТО: ПЛАН №845 — Громкость аккомпанемента снижена на 25% (0.40 -> 0.30).
+ * #ЗАЧЕМ: Audio Engine Context V20.10 — "Arbiter Activation".
+ * #ЧТО: ПЛАН №847 — Порог красоты снижен до 0.75, добавлен лог находок Арбитра.
  */
 'use client';
 
@@ -28,12 +29,11 @@ import { globalAllNotesOff } from '@/lib/instrument-factory';
 
 /**
  * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №845).
- * #ЧТО: Множитель аккомпанемента снижен для более мягкого фона.
  */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.175,            
   melody: 0.45,           
-  accompaniment: 0.30,    // Снижено с 0.40 (План 845)
+  accompaniment: 0.30,    
   drums: 0.75,            
   sparkles: 0.45, 
   sfx: 0.55, 
@@ -240,7 +240,10 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    if (payload.beautyScore > 0.8 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                    
+                    // #ЗАЧЕМ: ПЛАН №847 — Порог Арбитра снижен до 0.75 для поощрения удачных тактов.
+                    if (payload.beautyScore >= 0.75 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                        console.log(`%c[AI Arbiter] Found a Masterpiece (Score: ${payload.beautyScore.toFixed(2)})! Synchronizing with Cloud...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, {
                             seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,
                             density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm,
