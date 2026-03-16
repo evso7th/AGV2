@@ -52,6 +52,37 @@ export function saveMasterpiece(db: Firestore, data: {
 }
 
 /**
+ * #ЗАЧЕМ: Сохранение системного документа в облако для консистентности AI-контекста.
+ */
+export function saveProjectDocument(db: Firestore, data: {
+    filename: string;
+    content: string;
+    category?: 'protocol' | 'spec' | 'backlog' | 'contract';
+    version?: string;
+}) {
+    const docId = data.filename.replace(/[^a-zA-Z0-9]/g, '_');
+    const docRef = doc(db, 'project_documents', docId);
+    
+    const payload = {
+        ...data,
+        timestamp: serverTimestamp()
+    };
+
+    setDoc(docRef, payload)
+        .then(() => {
+            toast({ title: "Manifest Synchronized", description: `${data.filename} is now in the Cloud.` });
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'write',
+                requestResourceData: payload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+}
+
+/**
  * #ЗАЧЕМ: Генерирую уникальный, но детерминированный ID для аксиомы.
  * #ЧТО: Предотвращает дубликаты на уровне базы данных.
  */

@@ -18,6 +18,12 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // --- System Knowledge Base ---
+    match /project_documents/{docId} {
+      // Critical manifest files - restricted to authenticated users
+      allow read, write: if isSignedIn();
+    }
+
     // --- Masterpieces ---
     match /masterpieces/{masterpieceId} {
       allow read, create: if isSignedIn();

@@ -27,7 +27,10 @@ import {
   Heart,
   Star,
   Eye,
-  EyeOff
+  EyeOff,
+  FileText,
+  Save,
+  RefreshCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -42,6 +45,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +69,7 @@ import {
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
-import { saveHeritageAxiom } from '@/lib/firebase-service';
+import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
 import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, keyToMidiRoot, DEGREE_TO_SEMITONE } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -166,6 +170,9 @@ export default function HypercubeDashboard() {
   const masterpiecesQuery = useMemoFirebase(() => query(collection(db, 'masterpieces')), [db]);
   const { data: globalMasterpieces, isLoading: isMpiecesLoading } = useCollection(masterpiecesQuery);
 
+  const manifestsQuery = useMemoFirebase(() => query(collection(db, 'project_documents')), [db]);
+  const { data: cloudManifests, isLoading: isManifestsLoading } = useCollection(manifestsQuery);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -195,6 +202,10 @@ export default function HypercubeDashboard() {
 
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editAxiomData, setEditAxiomData] = useState<any>(null);
+
+  // Manifest editing state
+  const [activeManifest, setActiveManifest] = useState<any>(null);
+  const [manifestContent, setManifestContent] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -307,121 +318,157 @@ export default function HypercubeDashboard() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    resetStaging();
-    const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-        let flattened: any[] = [];
-        const processAxiom = (ax: any, idx: number, compId: string) => {
-            const role = (ax.role || 'melody').toLowerCase();
-            const phrase = ax.phrase || [];
-            let maxTick = 0;
-            for(let i=0; i<phrase.length; i+=4) {
-                const end = (phrase[i] || 0) + (phrase[i+1] || 0);
-                if(end > maxTick) maxTick = end;
-            }
-            const calculatedBars = Math.max(1, Math.ceil(maxTick / 12));
-            const calculatedNoteCount = Math.floor(phrase.length / 4);
-            const repairedPhrase = repairLegacyPhrase(phrase);
-            const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
-            const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
-            return {
-                ...ax, phrase: repairedPhrase, role: role, id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
-                compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
-                mood: moods, commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
-                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, tags: ax.tags || [], narrative: ax.narrative || "Heritage component.",
-                nativeBpm: ax.nativeBpm || ax.bpm || null, nativeKey: ax.nativeKey || ax.key || null, timeSignature: ax.timeSignature || ax.ts || null,
-                barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount,
-                ignored: ax.ignored ?? false
+    
+    // Check if it's a JSON axiom or a TXT/MD manifest
+    if (file.name.endsWith('.json')) {
+        resetStaging();
+        const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const json = JSON.parse(event.target?.result as string);
+            let flattened: any[] = [];
+            const processAxiom = (ax: any, idx: number, compId: string) => {
+                const role = (ax.role || 'melody').toLowerCase();
+                const phrase = ax.phrase || [];
+                let maxTick = 0;
+                for(let i=0; i<phrase.length; i+=4) {
+                    const end = (phrase[i] || 0) + (phrase[i+1] || 0);
+                    if(end > maxTick) maxTick = end;
+                }
+                const calculatedBars = Math.max(1, Math.ceil(maxTick / 12));
+                const calculatedNoteCount = Math.floor(phrase.length / 4);
+                const repairedPhrase = repairLegacyPhrase(phrase);
+                const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
+                const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
+                return {
+                    ...ax, phrase: repairedPhrase, role: role, id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+                    compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
+                    mood: moods, commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
+                    vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, tags: ax.tags || [], narrative: ax.narrative || "Heritage component.",
+                    nativeBpm: ax.nativeBpm || ax.bpm || null, nativeKey: ax.nativeKey || ax.key || null, timeSignature: ax.timeSignature || ax.ts || null,
+                    barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount,
+                    ignored: ax.ignored ?? false
+                };
             };
-        };
 
-        if (json.header && json.tracks && Array.isArray(json.tracks)) {
-            const targetId = json.header.name || cleanFileName || "MIDI_Export";
-            const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
-            const timeSig = json.header.timeSignatures?.[0] ? `${json.header.timeSignatures[0].numerator}/${json.header.timeSignatures[0].denominator}` : '4/4';
-            json.tracks.forEach((track: any, tIdx: number) => {
-                if (!track.notes || track.notes.length === 0) return;
-                let totalPitch = 0; const phrase: number[] = [];
-                track.notes.forEach((note: any) => {
-                    totalPitch += note.midi;
-                    const tick = Math.round(note.time * 3); 
-                    const duration = Math.max(1, Math.round(note.duration * 3));
-                    const semitone = note.midi % 12;
-                    const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
-                    const degIdx = DEGREE_KEYS.indexOf(degName);
-                    const techIdx = TECHNIQUE_KEYS.indexOf('pick');
-                    phrase.push(tick, duration, degIdx, techIdx);
+            if (json.header && json.tracks && Array.isArray(json.tracks)) {
+                const targetId = json.header.name || cleanFileName || "MIDI_Export";
+                const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
+                const timeSig = json.header.timeSignatures?.[0] ? `${json.header.timeSignatures[0].numerator}/${json.header.timeSignatures[0].denominator}` : '4/4';
+                json.tracks.forEach((track: any, tIdx: number) => {
+                    if (!track.notes || track.notes.length === 0) return;
+                    let totalPitch = 0; const phrase: number[] = [];
+                    track.notes.forEach((note: any) => {
+                        totalPitch += note.midi;
+                        const tick = Math.round(note.time * 3); 
+                        const duration = Math.max(1, Math.round(note.duration * 3));
+                        const semitone = note.midi % 12;
+                        const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
+                        const degIdx = DEGREE_KEYS.indexOf(degName);
+                        const techIdx = TECHNIQUE_KEYS.indexOf('pick');
+                        phrase.push(tick, duration, degIdx, techIdx);
+                    });
+                    const noteCount = track.notes.length; const avgPitch = totalPitch / noteCount;
+                    const maxTime = Math.max(...track.notes.map((n: any) => n.time + n.duration));
+                    const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
+                    const density = noteCount / calculatedBars;
+                    let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
+                    
+                    const drumComponents = [
+                        { kw: 'kick', role: 'drums kick' }, { kw: 'snare', role: 'drums snare' }, { kw: 'hat', role: 'drums hat' },
+                        { kw: 'tom', role: 'drums tom' }, { kw: 'ride', role: 'drums ride' }, { kw: 'crash', role: 'drums crash' },
+                        { kw: 'rim', role: 'drums perc' }, { kw: 'clap', role: 'drums perc' }, { kw: 'cymbal', role: 'drums ride' },
+                        { kw: 'perc', role: 'drums perc' }, { kw: 'shaker', role: 'drums perc' }, { kw: 'tamb', role: 'drums perc' }
+                    ];
+                    const matchedDrum = drumComponents.find(c => lowerName.includes(c.kw));
+                    
+                    if (matchedDrum) {
+                        role = matchedDrum.role;
+                    } else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) {
+                        role = 'drums';
+                    } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
+                        role = 'bass';
+                    } else if (density > 10 || noteCount > 500) {
+                        role = 'accomp piano';
+                    } else {
+                        role = 'melody';
+                    }
+                    flattened.push(processAxiom({ phrase, role, nativeBpm: bpm, nativeKey: 'C', timeSignature: timeSig, narrative: `Imported from track: ${track.name || 'Unnamed'}` }, tIdx, targetId));
                 });
-                const noteCount = track.notes.length; const avgPitch = totalPitch / noteCount;
-                const maxTime = Math.max(...track.notes.map((n: any) => n.time + n.duration));
-                const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
-                const density = noteCount / calculatedBars;
-                let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
-                
-                const drumComponents = [
-                    { kw: 'kick', role: 'drums kick' }, { kw: 'snare', role: 'drums snare' }, { kw: 'hat', role: 'drums hat' },
-                    { kw: 'tom', role: 'drums tom' }, { kw: 'ride', role: 'drums ride' }, { kw: 'crash', role: 'drums crash' },
-                    { kw: 'rim', role: 'drums perc' }, { kw: 'clap', role: 'drums perc' }, { kw: 'cymbal', role: 'drums ride' },
-                    { kw: 'perc', role: 'drums perc' }, { kw: 'shaker', role: 'drums perc' }, { kw: 'tamb', role: 'drums perc' }
-                ];
-                const matchedDrum = drumComponents.find(c => lowerName.includes(c.kw));
-                
-                if (matchedDrum) {
-                    role = matchedDrum.role;
-                } else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) {
-                    role = 'drums';
-                } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
-                    role = 'bass';
-                } else if (density > 10 || noteCount > 500) {
-                    role = 'accomp piano';
-                } else {
-                    role = 'melody';
-                }
-                flattened.push(processAxiom({ phrase, role, nativeBpm: bpm, nativeKey: 'C', timeSignature: timeSig, narrative: `Imported from track: ${track.name || 'Unnamed'}` }, tIdx, targetId));
-            });
-        } else if (Array.isArray(json)) {
-            const targetId = cleanFileName || "Unknown_Heritage";
-            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
-        } else {
-            Object.entries(json).forEach(([trackName, licks]) => {
-                if (trackName === 'header' || trackName === 'tracks') {
-                    if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, cleanFileName)));
-                    return;
-                }
-                if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
-                else flattened.push(processAxiom(licks, 0, trackName));
-            });
-        }
-        if (flattened.length === 0) {
-            toast({ variant: "destructive", title: "Empty Payload", description: "No valid music data found in JSON." }); return;
-        }
-        const compGroups = new Map<string, any[]>();
-        flattened.forEach(ax => { if (!compGroups.has(ax.compositionId)) compGroups.set(ax.compositionId, []); compGroups.get(ax.compositionId)!.push(ax); });
-        compGroups.forEach((licks, compId) => {
-            let globalMinT = Infinity;
-            licks.forEach(lick => { const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) { if (phrase[i] < globalMinT) globalMinT = phrase[i]; } });
-            if (globalMinT !== Infinity && globalMinT > 0) {
-                const barShift = Math.floor(globalMinT / 12);
-                licks.forEach(lick => {
-                    const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) phrase[i] -= globalMinT;
-                    lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
-                    let maxTick = 0; for (let i = 0; i < phrase.length; i += 4) { const end = phrase[i] + phrase[i+1]; if (end > maxTick) maxTick = end; }
-                    lick.bars = Math.max(1, Math.ceil(maxTick / 12));
+            } else if (Array.isArray(json)) {
+                const targetId = cleanFileName || "Unknown_Heritage";
+                json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
+            } else {
+                Object.entries(json).forEach(([trackName, licks]) => {
+                    if (trackName === 'header' || trackName === 'tracks') {
+                        if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, cleanFileName)));
+                        return;
+                    }
+                    if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
+                    else flattened.push(processAxiom(licks, 0, trackName));
                 });
             }
-        });
-        setStagedAxioms(flattened);
-        setSelectedIds(new Set(flattened.map(a => a.id)));
-        setCurrentFileName(file.name);
-      } catch (err) {
-        console.error("[Parser] Error:", err);
-        toast({ variant: "destructive", title: "Parse Error", description: "Invalid AuraGroove DNA format." });
+            if (flattened.length === 0) {
+                toast({ variant: "destructive", title: "Empty Payload", description: "No valid music data found in JSON." }); return;
+            }
+            const compGroups = new Map<string, any[]>();
+            flattened.forEach(ax => { if (!compGroups.has(ax.compositionId)) compGroups.set(ax.compositionId, []); compGroups.get(ax.compositionId)!.push(ax); });
+            compGroups.forEach((licks, compId) => {
+                let globalMinT = Infinity;
+                licks.forEach(lick => { const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) { if (phrase[i] < globalMinT) globalMinT = phrase[i]; } });
+                if (globalMinT !== Infinity && globalMinT > 0) {
+                    const barShift = Math.floor(globalMinT / 12);
+                    licks.forEach(lick => {
+                        const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) phrase[i] -= globalMinT;
+                        lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
+                        let maxTick = 0; for (let i = 0; i < phrase.length; i += 4) { const end = phrase[i] + phrase[i+1]; if (end > maxTick) maxTick = end; }
+                        lick.bars = Math.max(1, Math.ceil(maxTick / 12));
+                    });
+                }
+            });
+            setStagedAxioms(flattened);
+            setSelectedIds(new Set(flattened.map(a => a.id)));
+            setCurrentFileName(file.name);
+          } catch (err) {
+            console.error("[Parser] Error:", err);
+            toast({ variant: "destructive", title: "Parse Error", description: "Invalid AuraGroove DNA format." });
+          }
+        };
+        reader.readAsText(file);
+    } else {
+        // Handle as Project Manifest (txt or md)
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const content = event.target?.result as string;
+            setManifestContent(content);
+            setActiveManifest({ filename: file.name, isNew: true });
+            toast({ title: "Manifest Staged", description: `Loaded ${file.name} for synchronization.` });
+        };
+        reader.readAsText(file);
+    }
+  };
+
+  const handleCommitManifest = async () => {
+      if (!activeManifest) return;
+      setIsProcessing(true);
+      try {
+          const categoryMatch = activeManifest.filename.toLowerCase().match(/backlog|protocol|spec|contract/);
+          const category = categoryMatch ? categoryMatch[0] : 'spec';
+          
+          await saveProjectDocument(db, {
+              filename: activeManifest.filename,
+              content: manifestContent,
+              category: category as any,
+              version: 'CloudSync'
+          });
+          setActiveManifest(null);
+          setManifestContent("");
+      } catch (e) {
+          toast({ variant: "destructive", title: "Sync Failed" });
+      } finally {
+          setIsProcessing(false);
       }
-    };
-    reader.readAsText(file);
   };
 
   const mapAxiomToChannel = (rawRole: string): string => {
@@ -654,12 +701,14 @@ export default function HypercubeDashboard() {
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent></Card>
         </div>
         <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid grid-cols-4 h-12 bg-muted/30 p-1 border border-border/50">
+          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Globe className="h-4 w-4 mr-2" /> Explore</TabsTrigger>
             <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Dna className="h-4 w-4 mr-2" /> Genetic Map</TabsTrigger>
             <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Star className="h-4 w-4 mr-2" /> Masterpieces</TabsTrigger>
+            <TabsTrigger value="manifests" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><FileText className="h-4 w-4 mr-2" /> Manifests</TabsTrigger>
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Upload className="h-4 w-4 mr-2" /> Inject DNA</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="explore" className="space-y-4">
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
@@ -742,10 +791,91 @@ export default function HypercubeDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+          
+          <TabsContent value="manifests" className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card className="border-border/50 shadow-xl bg-card/50 h-[600px] flex flex-col">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><RefreshCw className="h-5 w-5" /> Cloud Manifests</CardTitle>
+                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">System Knowledge Base (Protocols & Specs)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow overflow-hidden p-0">
+                        <ScrollArea className="h-full p-4">
+                            {isManifestsLoading ? (
+                                <div className="py-20 text-center opacity-40 animate-pulse font-bold uppercase text-[10px]">Querying Wisdom...</div>
+                            ) : cloudManifests?.length === 0 ? (
+                                <div className="py-20 text-center opacity-40 font-bold uppercase text-[10px]">Cloud is empty. Sync files!</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {cloudManifests?.map((m: any) => (
+                                        <div 
+                                            key={m.id} 
+                                            className={cn(
+                                                "p-3 border rounded-lg cursor-pointer transition-all hover:bg-primary/5 group",
+                                                activeManifest?.id === m.id ? "border-primary bg-primary/10" : "border-border/50"
+                                            )}
+                                            onClick={() => { setActiveManifest(m); setManifestContent(m.content); }}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="text-xs font-black uppercase truncate">{m.filename}</div>
+                                                <Badge variant="outline" className="text-[8px] font-black">{m.category}</Badge>
+                                            </div>
+                                            <div className="text-[9px] font-mono opacity-50 mt-1">
+                                                Sync: {new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </CardContent>
+                    <div className="p-4 border-t bg-muted/20">
+                        <Button variant="outline" className="w-full h-10 gap-2 font-bold uppercase text-xs" onClick={() => fileInputRef.current?.click()}>
+                            <Upload className="h-4 w-4" /> Load Local File
+                        </Button>
+                    </div>
+                </Card>
+
+                <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 flex flex-col">
+                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
+                        <div>
+                            <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
+                                <FileText className="h-5 w-5" /> {activeManifest ? activeManifest.filename : 'Select a document'}
+                            </CardTitle>
+                            <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Knowledge Integrity & Sync Control</CardDescription>
+                        </div>
+                        {activeManifest && (
+                            <Button size="sm" onClick={handleCommitManifest} disabled={isProcessing} className="gap-2 font-black uppercase text-[10px] h-8 shadow-lg">
+                                <Save className="h-3.5 w-3.5" /> Push to Cloud
+                            </Button>
+                        )}
+                    </CardHeader>
+                    <CardContent className="flex-grow p-0">
+                        {activeManifest ? (
+                            <div className="flex flex-col h-full">
+                                <Textarea 
+                                    className="flex-grow rounded-none border-0 border-t bg-background/30 font-mono text-xs p-6 resize-none focus-visible:ring-0" 
+                                    value={manifestContent}
+                                    onChange={(e) => setManifestContent(e.target.value)}
+                                    placeholder="Manifest content..."
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-full flex flex-col items-center justify-center opacity-30 p-10 text-center">
+                                <History className="h-16 w-16 mb-4 stroke-1" />
+                                <p className="font-bold uppercase text-xs tracking-widest">Select a manifest from the left to inspect or update system knowledge.</p>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+          </TabsContent>
+
           <TabsContent value="genetic" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription></CardHeader><CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent></Card><Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader><CardContent><ScrollArea className="h-[400px] px-4"><div className="space-y-3 pb-4">{dynastyStats.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count} phrases</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent></Card></div>
             <Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-4 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Dna className="h-5 w-5" /> Detailed Ancestry</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription></CardHeader><CardContent className="p-0"><ScrollArea className="h-[500px] p-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{dynastyStats.map((dynasty) => (<Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden"><CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader><CardContent className="p-4 pt-2 space-y-4"><div className="grid grid-cols-2 gap-x-4 gap-y-3"><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div><Progress value={dynasty.vector.t * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div><Progress value={dynasty.vector.b * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div><Progress value={dynasty.vector.e * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div><Progress value={dynasty.vector.h * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div></div><div className="space-y-1.5"><Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5"><History className="h-3 w-3" /> Member Records</Label><div className="flex flex-wrap gap-1">{dynasty.compositions.slice(0, 5).map(c => (<Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>))}{dynasty.compositions.length > 5 && (<Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>)}</div></div></CardContent></Card>))}</div></ScrollArea></CardContent></Card>
           </TabsContent>
+          
           <TabsContent value="masterpieces" className="space-y-4">
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
@@ -797,7 +927,7 @@ export default function HypercubeDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".json" className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black">Vector (t,b,e,h)</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 font-mono text-[10px] text-muted-foreground">[{ax.vector?.t?.toFixed(1) || 0}, {ax.vector?.b?.toFixed(1) || 0}, {ax.vector?.e?.toFixed(1) || 0}, {ax.vector?.h?.toFixed(1) || 0}]</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
+          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local Assets</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
         </Tabs>
       </div>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>

@@ -43,6 +43,19 @@
       },
       "required": ["phrase", "role", "compositionId", "vector"]
     },
+    "ProjectDocument": {
+      "title": "ProjectDocument",
+      "description": "System specifications, protocols, and architectural documents stored in the cloud for AI context consistency.",
+      "type": "object",
+      "properties": {
+        "filename": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string", "enum": ["protocol", "spec", "backlog", "contract"] },
+        "version": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["filename", "content"]
+    },
     "Masterpiece": {
       "title": "Masterpiece",
       "description": "A saved high-resonance musical configuration.",
@@ -76,6 +89,14 @@
           "entityName": "HeritageAxiom",
           "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
           "description": "Global shared library of musical fragments."
+        }
+      },
+      {
+        "path": "/project_documents/{docId}",
+        "definition": {
+          "entityName": "ProjectDocument",
+          "schema": { "$ref": "#/backend/entities/ProjectDocument" },
+          "description": "System manifest and knowledge base."
         }
       },
       {
