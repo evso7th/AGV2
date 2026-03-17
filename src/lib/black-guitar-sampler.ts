@@ -3,42 +3,50 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic с поддержкой гибридных транзиентов.
- * #ЧТО: ПЛАН №845 — Уровень снижен на 25%: 0.2 -> 0.15.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.0 — "Dynamic Timbre & Round Robin".
+ * #ЧТО: ПЛАН №851 — Реализована поддержка слоев динамики (p, mf, f) и Round Robin (rr1..rr4).
  */
-const BLACK_GUITAR_ORD_SAMPLES: Record<string, string> = {
-    'e3': '/assets/acoustic_guitar_samples/black/ord/twang_e3_f_rr3.ogg',
-    'f3': '/assets/acoustic_guitar_samples/black/ord/twang_f3_p_rr1.ogg',
-    'g3': '/assets/acoustic_guitar_samples/black/ord/twang_g3_mf_rr1.ogg',
-    'a3': '/assets/acoustic_guitar_samples/black/ord/twang_a3_f_rr2.ogg',
-    'b3': '/assets/acoustic_guitar_samples/black/ord/twang_b3_mf_rr3.ogg',
-    'c4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', 
-    'd4': '/assets/acoustic_guitar_samples/black/ord/twang_c4_mf_rr2.ogg', 
-    'e4': '/assets/acoustic_guitar_samples/black/ord/twang_e4_mf_rr1.ogg',
-    'f4': '/assets/acoustic_guitar_samples/black/ord/twang_f4_mf_rr1.ogg',
-    'g4': '/assets/acoustic_guitar_samples/black/ord/twang_g4_mf_rr2.ogg',
-    'a4': '/assets/acoustic_guitar_samples/black/ord/twang_a4_mf_rr2.ogg',
-    'b4': '/assets/acoustic_guitar_samples/black/ord/twang_b4_mf_rr2.ogg',
-    'c5': '/assets/acoustic_guitar_samples/black/ord/twang_c5_mf_rr3.ogg',
-    'd5': '/assets/acoustic_guitar_samples/black/ord/twang_d5_f_rr1.ogg',
-    'e5': '/assets/acoustic_guitar_samples/black/ord/twang_e5_f_rr1.ogg',
-    'f5': '/assets/acoustic_guitar_samples/black/ord/twang_f5_mf_rr3.ogg',
-    'g5': '/assets/acoustic_guitar_samples/black/ord/twang_g5_mf_rr2.ogg',
-    'a5': '/assets/acoustic_guitar_samples/black/ord/twang_a5_mf_rr2.ogg',
-    'b5': '/assets/acoustic_guitar_samples/black/ord/twang_b5_f_rr2.ogg',
-    'c6': '/assets/acoustic_guitar_samples/black/ord/twang_c6_f_rr1.ogg',
-    'd6': '/assets/acoustic_guitar_samples/black/ord/twang_d6_mf_rr1.ogg',
-    'e6': '/assets/acoustic_guitar_samples/black/ord/twang_e6_mf_rr1.ogg',
-};
 
-type SamplerInstrument = {
-    buffers: Map<number, AudioBuffer>;
+type VelocityLayer = 'p' | 'mf' | 'f';
+
+interface NoteBuffers {
+    p: AudioBuffer[];
+    mf: AudioBuffer[];
+    f: AudioBuffer[];
+}
+
+// Расширенная карта сэмплов с поддержкой слоев и RR
+const BLACK_GUITAR_MANIFEST = {
+    // Формат: [midi, layer, rr_count]
+    notes: [
+        { m: 52, key: 'e3', layers: { p: 3, mf: 3, f: 3 } },
+        { m: 53, key: 'f3', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 55, key: 'g3', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 57, key: 'a3', layers: { p: 1, mf: 3, f: 4 } }, // User examples
+        { m: 59, key: 'b3', layers: { p: 3, mf: 3, f: 3 } },
+        { m: 60, key: 'c4', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 64, key: 'e4', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 65, key: 'f4', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 67, key: 'g4', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 69, key: 'a4', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 71, key: 'b4', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 72, key: 'c5', layers: { p: 3, mf: 3, f: 3 } },
+        { m: 74, key: 'd5', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 76, key: 'e5', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 77, key: 'f5', layers: { p: 3, mf: 3, f: 3 } },
+        { m: 79, key: 'g5', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 81, key: 'a5', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 83, key: 'b5', layers: { p: 2, mf: 2, f: 2 } },
+        { m: 84, key: 'c6', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 86, key: 'd6', layers: { p: 1, mf: 1, f: 1 } },
+        { m: 88, key: 'e6', layers: { p: 1, mf: 1, f: 1 } },
+    ]
 };
 
 export class BlackGuitarSampler {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private instruments = new Map<string, SamplerInstrument>();
+    private noteBuffers = new Map<number, NoteBuffers>();
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
@@ -49,59 +57,66 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.15 (План 845).
-        this.preamp.gain.value = 0.15;
+        this.preamp.gain.value = 0.15; // Balanced for V20
         this.preamp.connect(this.destination);
     }
 
     async init(): Promise<boolean> {
-        return this.loadInstrument('blackAcoustic', BLACK_GUITAR_ORD_SAMPLES);
-    }
-
-    async loadInstrument(instrumentName: 'blackAcoustic', sampleMap: Record<string, string>): Promise<boolean> {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
 
+        console.log('%c[BlackSampler] Activating Dynamic Timbre Engine...', 'color: #DA70D6; font-weight: bold;');
+
         try {
-            const loadedBuffers = new Map<number, AudioBuffer>();
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
+                if (!response.ok) return null;
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
-            
-            const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
-                const midi = this.keyToMidi(key);
-                if (midi === null) return;
-                const buffer = await loadSample(url);
-                loadedBuffers.set(midi, buffer);
+
+            const loadPromises: Promise<void>[] = [];
+
+            BLACK_GUITAR_MANIFEST.notes.forEach(noteDef => {
+                const noteInfo: NoteBuffers = { p: [], mf: [], f: [] };
+                this.noteBuffers.set(noteDef.m, noteInfo);
+
+                (['p', 'mf', 'f'] as VelocityLayer[]).forEach(layer => {
+                    const count = noteDef.layers[layer];
+                    for (let rr = 1; rr <= count; rr++) {
+                        const url = `/assets/acoustic_guitar_samples/black/ord/twang_${noteDef.key}_${layer}_rr${rr}.ogg`;
+                        loadPromises.push(loadSample(url).then(buf => {
+                            if (buf) noteInfo[layer].push(buf);
+                        }));
+                    }
+                });
             });
 
-            await Promise.all(notePromises);
-            this.instruments.set(instrumentName, { buffers: loadedBuffers });
+            await Promise.all(loadPromises);
             this.isInitialized = true;
             this.isLoading = false;
+            console.log(`%c[BlackSampler] Loaded ${this.noteBuffers.size} dynamic notes with RR variations.`, 'color: #32CD32;');
             return true;
         } catch (error) {
+            console.error('[BlackSampler] Init failed:', error);
             this.isLoading = false;
             return false;
         }
     }
     
     public schedule(notes: Note[], time: number, tempo: number = 120, isTransientMode: boolean = false) {
-        const instrument = this.instruments.get('blackAcoustic');
-        if (!this.isInitialized || !instrument) return;
+        if (!this.isInitialized) return;
 
         notes.forEach(note => {
             if (!isTransientMode && note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
-                this.playPattern(instrument, note, time, tempo);
+                this.playPattern(note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time, isTransientMode);
+                this.playSingleNote(note, time, isTransientMode);
             }
         });
     }
 
-    private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
+    private playPattern(note: Note, barStartTime: number, tempo: number) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
         if (!patternData) return;
@@ -119,21 +134,47 @@ export class BlackGuitarSampler {
                 for (const stringIndex of event.stringIndices) {
                     if (stringIndex < voicing.length) {
                         const midiNote = voicing[voicing.length - 1 - stringIndex];
-                        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
-                        if (buffer) {
-                             const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
-                        }
+                        this.playSingleNote({
+                            ...note,
+                            midi: midiNote,
+                            time: noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex))
+                        }, barStartTime, false);
                     }
                 }
             }
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean = false) {
-        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
+    private playSingleNote(note: Note, startTime: number, isTransientMode: boolean = false) {
+        const velocity = note.velocity || 0.7;
+        const { buffer, sampleMidi } = this.findBestDynamicSample(note.midi, velocity);
         if (!buffer) return;
-        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7, isTransientMode);
+
+        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), velocity, isTransientMode);
+    }
+
+    private findBestDynamicSample(targetMidi: number, velocity: number): { buffer: AudioBuffer | null, sampleMidi: number } {
+        const availableMidis = Array.from(this.noteBuffers.keys());
+        if (availableMidis.length === 0) return { buffer: null, sampleMidi: targetMidi };
+
+        const closestMidi = availableMidis.reduce((prev, curr) => 
+            Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
+        );
+
+        const layers = this.noteBuffers.get(closestMidi);
+        if (!layers) return { buffer: null, sampleMidi: closestMidi };
+
+        // #ЗАЧЕМ: Выбор слоя на основе физики щипка.
+        let layerKey: VelocityLayer = 'mf';
+        if (velocity < 0.45) layerKey = 'p';
+        else if (velocity > 0.8) layerKey = 'f';
+
+        const pool = layers[layerKey].length > 0 ? layers[layerKey] : (layers.mf.length > 0 ? layers.mf : layers.f);
+        if (pool.length === 0) return { buffer: null, sampleMidi: closestMidi };
+
+        // #ЗАЧЕМ: Round Robin — выбираем случайный дубль из пула.
+        const buffer = pool[Math.floor(Math.random() * pool.length)];
+        return { buffer, sampleMidi: closestMidi };
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
@@ -155,34 +196,16 @@ export class BlackGuitarSampler {
             source.start(startTime);
             source.stop(startTime + 0.05);
         } else {
+            // Естественное затухание
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
         }
         
         this.activeSources.add(source);
-        
         source.onended = () => {
             this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
-    }
-
-    private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
-        const availableMidiNotes = Array.from(instrument.buffers.keys());
-        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
-        const closestMidi = availableMidiNotes.reduce((prev, curr) => 
-            Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
-        );
-        return { buffer: instrument.buffers.get(closestMidi) ?? null, midi: closestMidi };
-    }
-    
-    private keyToMidi(key: string): number | null {
-        const noteMatch = key.toLowerCase().match(/([a-g][b#]?)(\d)/);
-        if (!noteMatch) return null;
-        let [, name, octaveStr] = noteMatch;
-        const octave = parseInt(octaveStr, 10);
-        const noteMap: Record<string, number> = { 'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11 };
-        return 12 * (octave + 1) + (noteMap[name] ?? 0);
     }
 
     public stopAll() {
