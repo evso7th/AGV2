@@ -1,6 +1,7 @@
 /**
  * #ЗАЧЕМ: UI AuraGroove V3.1 — "Grand Studio Console".
  * #ЧТО: ПЛАН №864 — Полноэкранный микшер для десктопа с понятными названиями.
+ * #FIX: Добавлены DialogTitle и DialogDescription для соответствия требованиям доступности Radix UI.
  */
 'use client';
 
@@ -20,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -171,17 +172,17 @@ export function AuraGrooveV2({
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-none w-screen h-screen m-0 p-0 border-0 rounded-none bg-background/95 backdrop-blur-3xl flex flex-col z-[100]">
-                        <div className="flex-shrink-0 p-6 border-b border-primary/10 flex items-center justify-between bg-card/50">
+                        <DialogHeader className="flex-shrink-0 p-6 border-b border-primary/10 flex flex-row items-center justify-between space-y-0 bg-card/50">
                             <div>
-                                <h2 className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
                                     <Settings2 className="h-8 w-8" /> Grand Studio Console
-                                </h2>
-                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.1</p>
+                                </DialogTitle>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.1</DialogDescription>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsCalibrationModalOpen(false)} className="h-12 w-12 hover:bg-destructive/10 hover:text-destructive">
                                 <X className="h-8 w-8" />
                             </Button>
-                        </div>
+                        </DialogHeader>
 
                         <ScrollArea className="flex-grow">
                             <div className="flex gap-12 p-10 min-w-max h-[calc(100vh-120px)] items-stretch">
@@ -296,7 +297,10 @@ export function AuraGrooveV2({
                     <Button variant="ghost" className="h-9 w-9 px-2" aria-label="Open Equalizer">EQ</Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md border-primary/20 bg-card">
-                    <DialogHeader><DialogTitle className="text-primary uppercase font-black tracking-tight">System Equalizer</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle className="text-primary uppercase font-black tracking-tight">System Equalizer</DialogTitle>
+                        <DialogDescription className="sr-only">Adjust the frequency balance of the master audio stream.</DialogDescription>
+                    </DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">
                         {EQ_BANDS.map((band, index) => {
                         const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
@@ -394,7 +398,7 @@ export function AuraGrooveV2({
                                 <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-base">
                                     <Database className="h-5 w-5" /> DNA Selection Station
                                 </DialogTitle>
-                                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Define Genetic Anchor or Hybrid Mix</p>
+                                <DialogDescription className="text-[10px] text-muted-foreground uppercase font-black tracking-widest opacity-70">Define Genetic Anchor or Hybrid Mix</DialogDescription>
                             </DialogHeader>
                             
                             <div className="p-3 pb-1 space-y-3 bg-muted/20">
@@ -703,6 +707,7 @@ export function AuraGrooveV2({
         <DialogContent className="sm:max-w-md border-primary/20 bg-card/95 backdrop-blur-xl">
           <DialogHeader className="sr-only">
             <DialogTitle>Engine Synchronization</DialogTitle>
+            <DialogDescription>Warming up the generative engine before starting the broadcast.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center p-6 space-y-6">
             <div className="relative">
