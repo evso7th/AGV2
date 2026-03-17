@@ -11,6 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
  * #ЧТО: ПЛАН №855 — Реализован Legato Overlap для мелодии. Ноты наслаиваются друг на друга.
+ * #ОБНОВЛЕНО (Hotfix 855.1): Возвращен транзиентный слой для мелодии по требованию пользователя.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -142,9 +143,9 @@ export class MelodySynthManagerV2 {
         if (!this.synth) return;
         
         // #ЗАЧЕМ: Устранение механического щелчка (ПЛАН №855).
-        // #ЧТО: Транзиентный слой теперь подмешивается только в режиме 'bass'. 
-        //       Для 'melody' мы полагаемся на мягкую атаку основного сэмпла.
-        if (this.partName === 'bass' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
+        // #ЧТО: Подмешиваем транзиентный слой для гитарных и синтезаторных пресетов.
+        // #ОБНОВЛЕНО (Hotfix 855.1): Теперь слой подмешивается всегда (и для мелодии, и для баса).
+        if (currentActive.startsWith('guitar') || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
