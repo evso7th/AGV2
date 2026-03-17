@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V22.0 — "Precision Calibration Station".
- * #ЧТО: ПЛАН №862 — Реализована калибровка Баса и обновление имен каналов.
+ * #ЗАЧЕМ: Audio Engine Context V23.0 — "Sonic Lazy Load".
+ * #ЧТО: ПЛАН №866 — Двухэтапная загрузка. Кнопка Play активна после "Ядра".
  */
 'use client';
 
@@ -37,7 +38,6 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.15, 
 };
 
-// #ЗАЧЕМ: Заводские дефолты преампов.
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0,
     acoustic: 0.15,
@@ -46,7 +46,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     orchestral: 0.29,
     cs80: 0.1,
     chords: 1.2,
-    bass: 1.0 // New default
+    bass: 1.0
 };
 
 interface AudioEngineContextType {
@@ -99,7 +99,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
               const parsed = JSON.parse(saved);
-              return { bass: 1.0, ...parsed }; // Ensure bass key exists
+              return { bass: 1.0, ...parsed };
           }
       }
       return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
@@ -143,7 +143,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
-    
     if (gainNode && audioContextRef.current) {
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
@@ -153,19 +152,14 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
       if (!isInitialized) return;
       const m = gains.master;
       samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
-      
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
-      
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
-      
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
-
-      // #ЗАЧЕМ: Калибровка баса (ПЛАН №862).
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
   }, [isInitialized]);
 
@@ -242,15 +236,12 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             masterGainNodeRef.current = context.createGain();
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
-            
             samplersMasterGainRef.current.connect(masterGainNodeRef.current);
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
-            
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
             recDestRef.current = recDest;
-            
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
         
@@ -276,11 +267,20 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
+        // #ЗАЧЕМ: Двухэтапная загрузка (ПЛАН №866). 
+        // Сначала грузим только необходимое ядро для разблокировки кнопки Play.
+        console.log('%c[SonicLoader] Loading Minimal Core...', 'color: #00FFFF; font-weight: bold;');
         await Promise.all([
-            drumMachineRef.current.init(), blackGuitarSamplerRef.current.init(), telecasterSamplerRef.current.init(), 
-            darkTelecasterSamplerRef.current.init(), cs80SamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
-            melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), harmonyManagerRef.current.init(), 
-            pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
+            drumMachineRef.current.init(true), 
+            blackGuitarSamplerRef.current.init(true), 
+            telecasterSamplerRef.current.init(), // 27 files is fast
+            accompanimentManagerV2Ref.current.init(), 
+            melodyManagerV2Ref.current.init(), 
+            bassManagerV2Ref.current.init(), 
+            harmonyManagerRef.current.init(), // Excludes Flute
+            pianoAccompanimentManagerRef.current.init(), 
+            sparklePlayerRef.current.init(3), // Limit to 3 per cat
+            sfxSynthManagerRef.current.init(3) // Limit to 3 per cat
         ]);
         
         if (!workerRef.current) {
@@ -290,76 +290,59 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    
                     if (payload.beautyScore >= 0.75 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        saveMasterpiece(db, {
-                            seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,
-                            density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm,
-                            instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true
-                        });
+                        saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {
                     sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
-                } else if (type === 'error') {
-                    toast({ variant: "destructive", title: "Worker Error", description: error });
-                }
+                } else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
         }
         await refreshCloudAxioms();
+        
+        // РАЗБЛОКИРОВКА КНОПКИ PLAY
         setIsInitialized(true);
+        setIsInitializing(false);
+        initializationInFlightRef.current = false;
+        console.log('%c[SonicLoader] Core Ready. Play button UNLOCKED.', 'color: #32CD32; font-weight: bold;');
+
+        // ФОНОВАЯ ДОГРУЗКА ОСТАЛЬНОГО
+        setTimeout(() => {
+            console.log('%c[SonicLoader] Replenishing resources in background...', 'color: #FFD700;');
+            drumMachineRef.current?.init(); 
+            blackGuitarSamplerRef.current?.init();
+            sparklePlayerRef.current?.init();
+            sfxSynthManagerRef.current?.init();
+            cs80SamplerRef.current?.init();
+            darkTelecasterSamplerRef.current?.init();
+        }, 5000);
+
         return true;
     } catch (e) {
         toast({ variant: "destructive", title: "Audio Error" });
         return false;
-    } finally { 
-        setIsInitializing(false); 
-        initializationInFlightRef.current = false;
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
   const startRecording = useCallback(() => {
-    if (!isInitialized || !recDestRef.current) {
-        toast({ variant: "destructive", title: "Recording Failed", description: "Engine not ready." });
-        return;
-    }
-
+    if (!isInitialized || !recDestRef.current) return;
     try {
         recordedChunksRef.current = [];
         const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType: 'audio/webm' });
-        
-        recorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-                recordedChunksRef.current.push(e.data);
-            }
-        };
-
+        recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
         recorder.onstop = () => {
             const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = `AuraGroove_Session_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
-            toast({ title: "Recording Saved", description: "Your session has been downloaded." });
+            const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
+            document.body.appendChild(a); a.click();
+            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+            toast({ title: "Recording Saved" });
         };
-
-        recorder.start();
-        mediaRecorderRef.current = recorder;
-        setIsRecording(true);
-        toast({ title: "Recording Started", description: "Capturing master audio stream..." });
-    } catch (e) {
-        console.error('[Recording] Failed to start:', e);
-        toast({ variant: "destructive", title: "Recording Error" });
-    }
+        recorder.start(); mediaRecorderRef.current = recorder; setIsRecording(true);
+    } catch (e) { toast({ variant: "destructive", title: "Recording Error" }); }
   }, [isInitialized, toast]);
 
   const stopRecording = useCallback(() => {

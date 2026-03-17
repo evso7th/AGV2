@@ -114,16 +114,14 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_High_Tom': '/assets/drums/Sonor_Classix_High_Tom.ogg',
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
-
-    // Aliases
-    'kick': '/assets/drums/kick_drum6.ogg',
-    'hihat_closed': '/assets/drums/closed_hi_hat_ghost.ogg',
-    'hihat_open': '/assets/drums/open_hh_top2.ogg',
-    'crash': '/assets/drums/crash2.ogg',
-    'tom_high': '/assets/drums/hightom.ogg',
-    'tom_mid': '/assets/drums/midtom.ogg',
-    'tom_low': '/assets/drums/lowtom.ogg',
 };
+
+// #ЗАЧЕМ: Список инструментов для Blues Kit (ПЛАН №866).
+const BLUES_KIT_CORE = [
+    'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
+    '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
+    'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2'
+];
 
 type Sampler = {
     buffers: Map<string, AudioBuffer>;
@@ -136,39 +134,28 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 
     const load = async (samples: Record<string, string>) => {
         const promises = Object.entries(samples).map(async ([note, url]) => {
+            if (buffers.has(note)) return;
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch sample: ${url} (${response.statusText})`);
-                }
+                if (!response.ok) return;
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
                 buffers.set(note, audioBuffer);
-            } catch (error) {
-                console.error(`Error loading sample ${note} from ${url}:`, error);
-            }
+            } catch (error) {}
         });
         await Promise.all(promises);
-        console.log('[DrumMachine] Initialized and samples loaded:', Array.from(buffers.keys()));
     };
 
     const triggerAttack = (note: string, time: number, velocity = 1) => {
         const buffer = buffers.get(note);
         if (!buffer || !isFinite(time)) return;
-
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
-
         const gainNode = audioContext.createGain();
         gainNode.gain.value = velocity;
-
-        source.connect(gainNode);
-        gainNode.connect(output);
+        source.connect(gainNode).connect(output);
         source.start(time);
-
-        source.onended = () => {
-            gainNode.disconnect();
-        };
+        source.onended = () => gainNode.disconnect();
     };
 
     return { buffers, load, triggerAttack };
@@ -177,67 +164,44 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 export class DrumMachine {
     private audioContext: AudioContext;
     private sampler: Sampler | null = null;
-    private outputNode: AudioNode;
     private preamp: GainNode;
     public isInitialized = false;
-    private isInitializing = false;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
-        this.outputNode = destination;
-
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Системное снижение громкости ударных.
-        // #ЧТО: Гейн снижен с 2.25 до 0.85 для чистоты микса.
         this.preamp.gain.value = 0.85;
-        this.preamp.connect(this.outputNode);
+        this.preamp.connect(destination);
     }
 
-    async init() {
-        if (this.isInitialized || this.isInitializing) return;
-        this.isInitializing = true;
-        this.sampler = createSampler(this.audioContext, this.preamp);
-        await this.sampler.load(DRUM_SAMPLES);
-        this.isInitialized = true;
-        this.isInitializing = false;
+    async init(minimal = false) {
+        if (!this.sampler) this.sampler = createSampler(this.audioContext, this.preamp);
+        
+        if (minimal) {
+            const coreSamples: Record<string, string> = {};
+            BLUES_KIT_CORE.forEach(k => { if(DRUM_SAMPLES[k]) coreSamples[k] = DRUM_SAMPLES[k]; });
+            await this.sampler.load(coreSamples);
+            this.isInitialized = true;
+        } else {
+            await this.sampler.load(DRUM_SAMPLES);
+            this.isInitialized = true;
+        }
     }
 
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
-        if (!this.sampler || !this.isInitialized) {
-            return;
-        }
-        
+        if (!this.sampler || !this.isInitialized) return;
         const beatDuration = 60 / tempo;
-        
         for (const event of score) {
             const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
-            if (typeof eventType !== 'string' || (!eventType.startsWith('drum_') && !eventType.startsWith('perc-') && !Object.keys(DRUM_SAMPLES).some(key => key === eventType))) continue;
-            
+            if (typeof eventType !== 'string') continue;
             let sampleName = eventType;
-            if (!this.sampler.buffers.has(sampleName)) {
-                sampleName = eventType.replace('drum_', '');
-            }
-            
-            if (!this.sampler.buffers.has(sampleName)) {
-                 continue;
-            }
-
+            if (!this.sampler.buffers.has(sampleName)) sampleName = eventType.replace('drum_', '');
+            if (!this.sampler.buffers.has(sampleName)) continue;
             const absoluteTime = barStartTime + (event.time * beatDuration);
-            
-            if (!isFinite(absoluteTime)) {
-                console.error('[DrumMachine] Non-finite time scheduled for event:', event);
-                continue;
-            }
-
+            if (!isFinite(absoluteTime)) continue;
             let velocity = event.weight;
-            
-            // #ЗАЧЕМ: Балансировка громкости по категориям (ПЛАН №736).
-            if (eventType.startsWith('perc-') || eventType.includes('bongo') || eventType.includes('tube')) {
-                velocity *= 0.6; // Перкуссия чуть тише барабанов
-            } else if ((eventType as string).includes('ride')) {
-                velocity *= 0.7;
-            }
-            
+            if (eventType.startsWith('perc-')) velocity *= 0.6;
+            else if (eventType.includes('ride')) velocity *= 0.7;
             this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
         }
     }

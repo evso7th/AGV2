@@ -112,102 +112,77 @@ const SFX_SAMPLES: Record<string, string[]> = {
     ]
 };
 
-
 export class SfxSynthManager {
     private context: AudioContext;
-    private destination: GainNode;
     private isReady = false;
     private buffers: Map<string, AudioBuffer[]> = new Map();
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     private preamp: GainNode;
 
-
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
-        this.destination = destination;
-
         this.preamp = this.context.createGain();
         this.preamp.gain.value = 0.16;
-        this.preamp.connect(this.destination);
+        this.preamp.connect(destination);
     }
 
-    public async init(): Promise<void> {
-        if (this.isReady) return;
-        
-        console.log('[SFX] Initializing Sampler Manager...');
-        
+    public async init(limitPerCategory: number = -1): Promise<void> {
         const allCategories = Object.keys(SFX_SAMPLES);
         for (const category of allCategories) {
             const urls = SFX_SAMPLES[category];
-            const categoryBuffers: AudioBuffer[] = [];
-            const promises = urls.map(url => this.loadSample(url).then(buffer => {
+            const targetUrls = limitPerCategory > 0 ? urls.slice(0, limitPerCategory) : urls;
+            
+            if (!this.buffers.has(category)) this.buffers.set(category, []);
+            const categoryBuffers = this.buffers.get(category)!;
+
+            const promises = targetUrls.map(url => this.loadSample(url).then(buffer => {
                 if(buffer) categoryBuffers.push(buffer);
             }));
             await Promise.all(promises);
-            this.buffers.set(category, categoryBuffers);
         }
-        
         this.isReady = true;
-        console.log('[SFX] Sampler Manager initialized and ready.');
     }
     
     private async loadSample(url: string): Promise<AudioBuffer | null> {
         try {
             const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch sample: ${url} (${response.statusText})`);
-            }
+            if (!response.ok) return null;
             const arrayBuffer = await response.arrayBuffer();
             return await this.context.decodeAudioData(arrayBuffer);
         } catch (error) {
-            console.error(`Error loading SFX sample ${url}:`, error);
             return null;
         }
     }
 
-
     public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
         if (!this.isReady) return;
-
         events.forEach(event => {
             if (event.type !== 'sfx') return;
-
             const { mood, genre, rules } = event.params as { mood: Mood, genre: Genre, rules?: SfxRule };
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
-
             if (!samplePool || samplePool.length === 0) return;
-
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
             source.buffer = buffer;
             source.connect(this.preamp);
-
             const beatDuration = 60 / tempo;
             const startTime = barStartTime + (event.time * beatDuration);
-
             source.start(startTime);
-            
             this.activeSources.add(source);
-            source.onended = () => {
-                this.activeSources.delete(source);
-                source.disconnect();
-            };
+            source.onended = () => { this.activeSources.delete(source); source.disconnect(); };
         });
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
-        // #ЗАЧЕМ: Повышена доступность голосов.
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
-
             for (const category of rules.categories) {
                 rand -= category.weight;
                 if (rand <= 0) return category.name;
             }
         }
-        
         const rand = Math.random();
         if (genre === 'blues') {
             if (rand < 0.15) return 'voice'; 
@@ -215,20 +190,16 @@ export class SfxSynthManager {
             return 'common';
         }
         if (genre === 'trance' || genre === 'house' || genre === 'progressive' || genre === 'ambient') {
-            if (rand < 0.4) return 'voice'; // Голоса теперь слышны чаще в Амбиенте
+            if (rand < 0.4) return 'voice';
             if (rand < 0.7) return 'laser';
             return 'common';
         }
-        if (mood === 'dark' || mood === 'anxious') {
-            return rand < 0.6 ? 'dark' : 'voice';
-        }
+        if (mood === 'dark' || mood === 'anxious') return rand < 0.6 ? 'dark' : 'voice';
         return 'common';
     }
     
     public allNotesOff() {
-       this.activeSources.forEach(source => {
-            try { source.stop(0); } catch(e) {}
-       });
+       this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
        this.activeSources.clear();
     }
 }
