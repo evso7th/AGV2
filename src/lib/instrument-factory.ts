@@ -2,6 +2,7 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика инструментов V4.8 — "Protective Master Shield".
  * #ЧТО: ПЛАН №842 — Лимитер настроен на -12dB для предотвращения взрывных скачков.
+ * #FIX: Исправлена инициализация частоты второго фильтра в режиме 24dB.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -256,6 +257,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     comp.connect(filt);
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
+        const cutoff = p.lpf?.cutoff ?? 2000;
+        filt.frequency.value = cutoff;
+        filt2.frequency.value = cutoff;
+        
         if (p.lpf?.mode === '24dB') { filt.connect(filt2); filt2.connect(chorus.input); }
         else { filt.connect(chorus.input); }
     };
@@ -313,7 +318,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         setPreset: (p: any) => { 
             currentPreset = p; 
             rebuild(p); 
-            filt.frequency.value = p.lpf?.cutoff ?? 2000; 
             chorus.setMix(p.chorus?.on ? (p.chorus?.mix ?? 0.3) : 0); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.18; 
         }

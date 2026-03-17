@@ -118,7 +118,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'synth',
     name: 'Crystal Lead', 
-    volume: 0.14, 
+    volume: 0.45, 
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.8 },
       { type: 'triangle', detune: 0, octave: 0, gain: 0.2 },

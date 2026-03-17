@@ -2,6 +2,7 @@
 /**
  * #ЗАЧЕМ: Audio Engine Context V23.0 — "Sonic Lazy Load".
  * #ЧТО: ПЛАН №866 — Двухэтапная загрузка. Кнопка Play активна после "Ядра".
+ * #FIX: Интеграция MelodyManagerV2 в систему калибровки (ПЛАН №869).
  */
 'use client';
 
@@ -86,7 +87,7 @@ export const useAudioEngine = () => {
   return context;
 };
 
-export const AudioEngineProvider = ({ children }: { children: React.SetAction<React.ReactNode> }) => {
+export const AudioEngineProvider = ({ children }: { children: React.SetAction<React.SetAction<React.ReactNode>> }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
@@ -152,15 +153,21 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
       if (!isInitialized) return;
       const m = gains.master;
       samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
+      
+      // Самплеры
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
+      
+      // Менеджеры инструментов (V2 Engines)
+      melodyManagerV2Ref.current?.setPreampGain(gains.electric); // Управляем через Electric (Telecaster) слайдер
+      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
+      
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
-      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
   }, [isInitialized]);
 
   useEffect(() => {
