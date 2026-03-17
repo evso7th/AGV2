@@ -29,9 +29,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V229.2 — "Shadow Pianist Frequency Unlock".
- * #ЗАЧЕМ: Реализация Плана №845. Увеличение частоты вступления пианиста до 70%.
- * #ЧТО: Снижен порог пропуска такта для пианиста.
+ * @fileOverview Blues Brain V230.0 — "Shadow Pianist Frequency Unlock (Plan 850)".
+ * #ЗАЧЕМ: Реализация Плана №850. Пианист переведен в режим 100% сопровождения мелодии.
+ * #ЧТО: Удален порог пропуска такта для пианиста.
  */
 
 const TICKS_PER_BAR = 12;
@@ -507,17 +507,14 @@ export class BluesBrain {
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = []; 
       
-      // #ЗАЧЕМ: Увеличение активности пианиста (ПЛАН №845). Шанс вступления 70%.
-      if (this.random.next() < 0.3) return { events: [], style: 'Breath' };
-
-      // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
+      // #ЗАЧЕМ: Разблокировка Пианиста (ПЛАН №850). Шанс пропуска удален — постоянное дублирование.
       if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
 
       const isMinor = chord.chordType === 'minor';
       const thirdInterval = isMinor ? 3 : 4;
       
       melodyEvents.forEach((m, i) => {
-          // Выбираем каждую вторую ноту для разреженности (через раз)
+          // #ЧТО: Пианист дублирует каждую вторую ноту мелодии в терцию.
           if (i % 2 === 0) {
               events.push({ 
                   ...m,

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V53.2 — "Shadow Pianist Frequency Unlock".
- * #ЗАЧЕМ: Реализация Плана №845. Увеличение частоты вступления пианиста до 70%.
- * #ЧТО: Снижен порог пропуска такта для пианиста.
+ * @fileOverview Ambient Brain V54.0 — "Shadow Pianist Frequency Unlock (Plan 850)".
+ * #ЗАЧЕМ: Реализация Плана №850. Пианист переведен в режим 100% сопровождения мелодии.
+ * #ЧТО: Удален порог пропуска такта для пианиста.
  */
 
 import type { 
@@ -485,23 +485,20 @@ export class AmbientBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Увеличение активности пианиста (ПЛАН №845). Шанс вступления 70%.
-        if (this.random.next() < 0.3) return { events: [], style: 'Breath' };
-
-        // #ЗАЧЕМ: ПЛАН №843. Теневое дублирование в терцию.
+        // #ЗАЧЕМ: Разблокировка Пианиста (ПЛАН №850). Шанс пропуска удален — постоянное дублирование.
         if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
 
         const isMinor = chord.chordType === 'minor';
         const thirdInterval = isMinor ? 3 : 4;
         
         melodyEvents.forEach((m, i) => {
-            // Выбираем каждую вторую ноту для разреженности
+            // #ЧТО: Пианист дублирует каждую вторую ноту мелодии в терцию.
             if (i % 2 === 0) {
                 events.push({ 
                     ...m,
                     type: 'pianoAccompaniment', 
                     note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
-                    weight: 0.25, // Бренчание
+                    weight: 0.25, // Очень тихо (бренчание)
                     technique: 'hit', 
                     dynamics: 'p', 
                     phrasing: 'staccato', 
@@ -517,7 +514,7 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         if (timbre === 'guitarChords') {
-            return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root), time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
+            return [{ type: 'harmony', note: note, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
         }
         return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
