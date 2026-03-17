@@ -1,7 +1,6 @@
 /**
- * @fileOverview Ambient Brain V54.0 — "Shadow Pianist Frequency Unlock (Plan 850)".
- * #ЗАЧЕМ: Реализация Плана №850. Пианист переведен в режим 100% сопровождения мелодии.
- * #ЧТО: Удален порог пропуска такта для пианиста.
+ * @fileOverview Ambient Brain V55.0 — "Mood Context Injection".
+ * #ЗАЧЕМ: Реализация Плана №853. Проброс настроения в параметры событий для тембральной фильтрации.
  */
 
 import type { 
@@ -270,12 +269,12 @@ export class AmbientBrain {
         events.push({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12),
             time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 2.5 }
+            params: { attack: 2.0, release: 2.5, mood: this.mood }
         });
         if (hints.melody) {
             events.push({
                 type: 'melody', note: root + 24, time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 2.5, release: 3.0 }
+                params: { attack: 2.5, release: 3.0, mood: this.mood }
             });
         }
         return events;
@@ -377,7 +376,7 @@ export class AmbientBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -433,7 +432,8 @@ export class AmbientBrain {
             note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, duration: n.d * TICK_TO_BEAT * timeScale, weight: 0.7,
             technique: (localTension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (localTension * 1500) }
+            // #ЗАЧЕМ: ПЛАН №853. Проброс настроения.
+            params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
         }));
     }
 
@@ -460,7 +460,8 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: type, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition, this.PAD_CEILING + 12),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
+            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { mood: this.mood }
         }));
     }
 
@@ -469,7 +470,7 @@ export class AmbientBrain {
         return [{
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
             time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800) }
+            params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         }];
     }
 
@@ -478,31 +479,29 @@ export class AmbientBrain {
         return [{
             type: 'melody', note: Math.min(chord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200) }
+            params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         }];
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Разблокировка Пианиста (ПЛАН №850). Шанс пропуска удален — постоянное дублирование.
         if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
 
         const isMinor = chord.chordType === 'minor';
         const thirdInterval = isMinor ? 3 : 4;
         
         melodyEvents.forEach((m, i) => {
-            // #ЧТО: Пианист дублирует каждую вторую ноту мелодии в терцию.
             if (i % 2 === 0) {
                 events.push({ 
                     ...m,
                     type: 'pianoAccompaniment', 
                     note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
-                    weight: 0.25, // Очень тихо (бренчание)
+                    weight: 0.25, 
                     technique: 'hit', 
                     dynamics: 'p', 
                     phrasing: 'staccato', 
-                    params: { release: 2.0 } 
+                    params: { ...m.params, release: 2.0 } 
                 });
             }
         });
@@ -514,9 +513,9 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         if (timbre === 'guitarChords') {
-            return [{ type: 'harmony', note: note, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A' }];
+            return [{ type: 'harmony', note: note, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
         }
-        return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+        return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {

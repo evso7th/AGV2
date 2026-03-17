@@ -3,26 +3,31 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.0 — "Dynamic Timbre & Round Robin".
- * #ЧТО: ПЛАН №851 — Реализована поддержка слоев динамики (p, mf, f) и Round Robin (rr1..rr4).
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.1 — "Sonic Consistency & Telemetry".
+ * #ЧТО: 1. ПЛАН №853 — Громкость теперь фиксирована (gain 1.0), вариативность только в тембре.
+ *       2. Внедрена телеметрия (логирование сэмплов).
+ *       3. Для меланхоличных стилей ограничено использование слоев: в основном _p и редко _mf.
  */
 
 type VelocityLayer = 'p' | 'mf' | 'f';
 
-interface NoteBuffers {
-    p: AudioBuffer[];
-    mf: AudioBuffer[];
-    f: AudioBuffer[];
+interface NamedBuffer {
+    buffer: AudioBuffer;
+    name: string;
 }
 
-// Расширенная карта сэмплов с поддержкой слоев и RR
+interface NoteBuffers {
+    p: NamedBuffer[];
+    mf: NamedBuffer[];
+    f: NamedBuffer[];
+}
+
 const BLACK_GUITAR_MANIFEST = {
-    // Формат: [midi, layer, rr_count]
     notes: [
         { m: 52, key: 'e3', layers: { p: 3, mf: 3, f: 3 } },
         { m: 53, key: 'f3', layers: { p: 1, mf: 1, f: 1 } },
         { m: 55, key: 'g3', layers: { p: 1, mf: 1, f: 1 } },
-        { m: 57, key: 'a3', layers: { p: 1, mf: 3, f: 4 } }, // User examples
+        { m: 57, key: 'a3', layers: { p: 1, mf: 3, f: 4 } },
         { m: 59, key: 'b3', layers: { p: 3, mf: 3, f: 3 } },
         { m: 60, key: 'c4', layers: { p: 2, mf: 2, f: 2 } },
         { m: 64, key: 'e4', layers: { p: 1, mf: 1, f: 1 } },
@@ -57,7 +62,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15; // Balanced for V20
+        this.preamp.gain.value = 0.15; 
         this.preamp.connect(this.destination);
     }
 
@@ -65,14 +70,13 @@ export class BlackGuitarSampler {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
 
-        console.log('%c[BlackSampler] Activating Dynamic Timbre Engine...', 'color: #DA70D6; font-weight: bold;');
-
         try {
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
                 if (!response.ok) return null;
                 const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioData(arrayBuffer);
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                return audioBuffer;
             };
 
             const loadPromises: Promise<void>[] = [];
@@ -84,9 +88,10 @@ export class BlackGuitarSampler {
                 (['p', 'mf', 'f'] as VelocityLayer[]).forEach(layer => {
                     const count = noteDef.layers[layer];
                     for (let rr = 1; rr <= count; rr++) {
-                        const url = `/assets/acoustic_guitar_samples/black/ord/twang_${noteDef.key}_${layer}_rr${rr}.ogg`;
+                        const fileName = `twang_${noteDef.key}_${layer}_rr${rr}.ogg`;
+                        const url = `/assets/acoustic_guitar_samples/black/ord/${fileName}`;
                         loadPromises.push(loadSample(url).then(buf => {
-                            if (buf) noteInfo[layer].push(buf);
+                            if (buf) noteInfo[layer].push({ buffer: buf, name: fileName });
                         }));
                     }
                 });
@@ -95,7 +100,6 @@ export class BlackGuitarSampler {
             await Promise.all(loadPromises);
             this.isInitialized = true;
             this.isLoading = false;
-            console.log(`%c[BlackSampler] Loaded ${this.noteBuffers.size} dynamic notes with RR variations.`, 'color: #32CD32;');
             return true;
         } catch (error) {
             console.error('[BlackSampler] Init failed:', error);
@@ -147,38 +151,46 @@ export class BlackGuitarSampler {
 
     private playSingleNote(note: Note, startTime: number, isTransientMode: boolean = false) {
         const velocity = note.velocity || 0.7;
-        const { buffer, sampleMidi } = this.findBestDynamicSample(note.midi, velocity);
+        const mood = note.params?.mood;
+        const { buffer, sampleMidi, name } = this.findBestDynamicSample(note.midi, velocity, mood);
         if (!buffer) return;
 
-        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), velocity, isTransientMode);
+        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), velocity, name, mood, isTransientMode);
     }
 
-    private findBestDynamicSample(targetMidi: number, velocity: number): { buffer: AudioBuffer | null, sampleMidi: number } {
+    private findBestDynamicSample(targetMidi: number, velocity: number, mood?: string): { buffer: AudioBuffer | null, sampleMidi: number, name: string } {
         const availableMidis = Array.from(this.noteBuffers.keys());
-        if (availableMidis.length === 0) return { buffer: null, sampleMidi: targetMidi };
+        if (availableMidis.length === 0) return { buffer: null, sampleMidi: targetMidi, name: 'none' };
 
         const closestMidi = availableMidis.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
 
         const layers = this.noteBuffers.get(closestMidi);
-        if (!layers) return { buffer: null, sampleMidi: closestMidi };
+        if (!layers) return { buffer: null, sampleMidi: closestMidi, name: 'none' };
 
-        // #ЗАЧЕМ: Выбор слоя на основе физики щипка.
+        // #ЗАЧЕМ: ПЛАН №853 — Умный отбор слоев для спокойных блюзов.
         let layerKey: VelocityLayer = 'mf';
-        if (velocity < 0.45) layerKey = 'p';
-        else if (velocity > 0.8) layerKey = 'f';
+        const isSoftMood = mood === 'melancholic' || mood === 'calm' || mood === 'gloomy' || mood === 'dreamy';
+
+        if (isSoftMood) {
+            // В мягких стилях используем только _p (85% шанс) или _mf (15% шанс), игнорируем _f.
+            layerKey = Math.random() < 0.15 ? 'mf' : 'p';
+        } else {
+            if (velocity < 0.45) layerKey = 'p';
+            else if (velocity > 0.8) layerKey = 'f';
+            else layerKey = 'mf';
+        }
 
         const pool = layers[layerKey].length > 0 ? layers[layerKey] : (layers.mf.length > 0 ? layers.mf : layers.f);
-        if (pool.length === 0) return { buffer: null, sampleMidi: closestMidi };
+        if (pool.length === 0) return { buffer: null, sampleMidi: closestMidi, name: 'none' };
 
-        // #ЗАЧЕМ: Round Robin — выбираем случайный дубль из пула.
-        const buffer = pool[Math.floor(Math.random() * pool.length)];
-        return { buffer, sampleMidi: closestMidi };
+        const namedBuf = pool[Math.floor(Math.random() * pool.length)];
+        return { buffer: namedBuf.buffer, sampleMidi: closestMidi, name: namedBuf.name };
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
-        if (!isFinite(startTime) || !isFinite(velocity)) return;
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, name: string, mood?: string, isTransientMode: boolean = false) {
+        if (!isFinite(startTime)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -188,19 +200,24 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
+        // #ЗАЧЕМ: ПЛАН №853 — Константная громкость. 
+        // #ЧТО: Мы игнорируем velocity для GainNode, так как сэмплы нормализованы.
+        const fixedGain = 1.0; 
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
+        gainNode.gain.linearRampToValueAtTime(fixedGain, startTime + 0.005);
         
         if (isTransientMode) {
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
             source.start(startTime);
             source.stop(startTime + 0.05);
         } else {
-            // Естественное затухание
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
         }
         
+        // #ЗАЧЕМ: ПЛАН №853 — Телеметрия сэмплов.
+        console.log(`%c[BlackSampler] Playing: ${name} | Context: ${mood || 'default'} | Velocity: ${velocity.toFixed(2)}`, 'color: #DA70D6');
+
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);
