@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.0 — "Unified Studio Console".
- * #ЧТО: ПЛАН №863 — Все каналы и преампы объединены в один горизонтальный микшер для десктопа.
+ * #ЗАЧЕМ: UI AuraGroove V3.1 — "Grand Studio Console".
+ * #ЧТО: ПЛАН №864 — Полноэкранный микшер для десктопа с понятными названиями.
  */
 'use client';
 
@@ -41,11 +41,11 @@ const CALIBRATION_CHANNELS = [
     { key: 'master', label: 'Master Gain', color: 'text-primary' },
     { key: 'acoustic', label: 'Black Acoustic', color: 'text-orange-400' },
     { key: 'electric', label: 'Telecaster', color: 'text-blue-400' },
-    { key: 'piano', label: 'Celestial Piano', color: 'text-yellow-200' },
-    { key: 'orchestral', label: 'Orchestral Silk', color: 'text-purple-400' },
+    { key: 'piano', label: 'Piano', color: 'text-yellow-200' },
+    { key: 'orchestral', label: 'Violin & Flute', color: 'text-purple-400' },
     { key: 'cs80', label: 'CS80', color: 'text-cyan-400' },
     { key: 'chords', label: 'Guitar Chords', color: 'text-green-400' },
-    { key: 'bass', label: 'Bass Preamp', color: 'text-red-400' }
+    { key: 'bass', label: 'Bass', color: 'text-red-400' }
 ];
 
 type MoodCategory = 'light' | 'neutral' | 'dark';
@@ -163,26 +163,155 @@ export function AuraGrooveV2({
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
             
             {isClient && (
-              <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" className="h-9 w-9 px-2" aria-label="Open Equalizer">EQ</Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md border-primary/20 bg-card">
-                  <DialogHeader><DialogTitle className="text-primary uppercase font-black tracking-tight">System Equalizer</DialogTitle></DialogHeader>
-                  <div className="flex justify-around items-end pt-4 h-48">
-                    {EQ_BANDS.map((band, index) => {
-                      const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
-                      return (
-                        <div key={index} className="flex flex-col items-center justify-end space-y-2">
-                          <span className="text-xs font-mono text-muted-foreground">{val > 0 ? '+' : ''}{val.toFixed(1)}</span>
-                          <Slider value={[val]} min={-10} max={10} step={0.5} onValueChange={(v) => handleEqChange(index, v[0])} orientation="vertical" className="h-32" />
-                          <Label className="text-xs text-muted-foreground">{band.label}</Label>
+              <>
+                <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Studio Console">
+                            <Settings2 className="h-5 w-5" />
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-none w-screen h-screen m-0 p-0 border-0 rounded-none bg-background/95 backdrop-blur-3xl flex flex-col z-[100]">
+                        <div className="flex-shrink-0 p-6 border-b border-primary/10 flex items-center justify-between bg-card/50">
+                            <div>
+                                <h2 className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
+                                    <Settings2 className="h-8 w-8" /> Grand Studio Console
+                                </h2>
+                                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.1</p>
+                            </div>
+                            <Button variant="ghost" size="icon" onClick={() => setIsCalibrationModalOpen(false)} className="h-12 w-12 hover:bg-destructive/10 hover:text-destructive">
+                                <X className="h-8 w-8" />
+                            </Button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </DialogContent>
-              </Dialog>
+
+                        <ScrollArea className="flex-grow">
+                            <div className="flex gap-12 p-10 min-w-max h-[calc(100vh-120px)] items-stretch">
+                                {/* 1. System Preamps (Calibration) */}
+                                <div className="flex flex-col gap-6 pr-12 border-r border-primary/10">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+                                        <TowerControl className="h-4 w-4" /> System Preamps
+                                    </h3>
+                                    <div className="flex gap-8 h-full pb-12">
+                                        {CALIBRATION_CHANNELS.map(ch => (
+                                            <div key={ch.key} className="flex flex-col items-center gap-4 w-20 group">
+                                                <span className="text-xs font-mono text-primary font-black bg-primary/10 px-2 py-1 rounded">
+                                                    {Math.round((calibrationGains[ch.key] || 1.0) * 100)}%
+                                                </span>
+                                                <Slider 
+                                                    value={[calibrationGains[ch.key] || 1.0]} 
+                                                    min={0} max={2} step={0.01} 
+                                                    onValueChange={(v) => handleCalibrationChange(ch.key, v[0])} 
+                                                    orientation="vertical"
+                                                    className="h-full"
+                                                />
+                                                <Label className={cn("text-[10px] font-black uppercase text-center leading-tight h-10 flex items-center justify-center transition-colors group-hover:text-primary", ch.color)}>
+                                                    {ch.label}
+                                                </Label>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 2. Channel Strips (Parts & Selection) */}
+                                <div className="flex flex-col gap-6">
+                                    <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
+                                        <Mic2 className="h-4 w-4" /> Ensemble Mixer
+                                    </h3>
+                                    <div className="flex gap-8 h-full pb-12">
+                                        {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).concat(['drums', 'sparkles', 'sfx'] as any).map((partKey) => {
+                                            const isPart = partKey in instrumentSettings;
+                                            const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey] || drumSettings;
+                                            
+                                            let instrumentList: string[] = [];
+                                            if (partKey === 'bass') instrumentList = bassInstrumentList;
+                                            else if (partKey === 'melody') instrumentList = melodyInstrumentList;
+                                            else if (partKey === 'accompaniment') instrumentList = textureInstrumentList;
+                                            else if (partKey === 'harmony') instrumentList = harmonyInstrumentList;
+                                            else if (partKey === 'pianoAccompaniment') instrumentList = ['piano'];
+
+                                            return (
+                                                <div key={partKey} className="flex flex-col items-center gap-4 w-32 bg-card/30 rounded-xl p-4 border border-primary/5 hover:border-primary/20 transition-all group">
+                                                    <span className="text-[10px] font-mono text-muted-foreground font-bold">{Math.round((settings.volume || 0) * 100)}%</span>
+                                                    
+                                                    <Slider 
+                                                        value={[settings.volume || 0]} 
+                                                        max={1} step={0.01} 
+                                                        onValueChange={(v) => handleVolumeChange(partKey as any, v[0])} 
+                                                        orientation="vertical"
+                                                        className="h-full"
+                                                    />
+
+                                                    <div className="w-full space-y-3 mt-auto">
+                                                        {isPart && partKey !== 'pianoAccompaniment' && (
+                                                            <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(partKey as any, v as any)} disabled={composerControl}>
+                                                                <SelectTrigger className="h-8 text-[10px] bg-background/50 font-bold border-primary/10">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {instrumentList.map(inst => (
+                                                                        <SelectItem key={inst} value={inst} className="text-xs font-bold">{displayNames[inst] || inst}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                        
+                                                        {partKey === 'drums' && (
+                                                            <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isPlaying}>
+                                                                <SelectTrigger className="h-8 text-[10px] bg-background/50 font-bold border-primary/10">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="none" className="text-xs font-bold">None</SelectItem>
+                                                                    <SelectItem value="ambient_beat" className="text-xs font-bold">Ambient</SelectItem>
+                                                                    <SelectItem value="composer" className="text-xs font-bold">Composer</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+
+                                                        {['sparkles', 'sfx'].includes(partKey) && (
+                                                            <div className="flex justify-center py-1">
+                                                                <Switch checked={settings.enabled} onCheckedChange={(c) => handleTextureEnabledChange(partKey as any, c)} />
+                                                            </div>
+                                                        )}
+
+                                                        <Label className="text-[10px] font-black uppercase text-center block text-muted-foreground group-hover:text-primary transition-colors truncate w-full">
+                                                            <span className="flex items-center justify-center gap-2">
+                                                                {getPartIcon(partKey as string)}
+                                                                {partKey === 'pianoAccompaniment' ? 'Piano' : partKey}
+                                                            </span>
+                                                        </Label>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                            <ScrollBar orientation="horizontal" />
+                        </ScrollArea>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
+                    <DialogTrigger asChild>
+                    <Button variant="ghost" className="h-9 w-9 px-2" aria-label="Open Equalizer">EQ</Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md border-primary/20 bg-card">
+                    <DialogHeader><DialogTitle className="text-primary uppercase font-black tracking-tight">System Equalizer</DialogTitle></DialogHeader>
+                    <div className="flex justify-around items-end pt-4 h-48">
+                        {EQ_BANDS.map((band, index) => {
+                        const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
+                        return (
+                            <div key={index} className="flex flex-col items-center justify-end space-y-2">
+                            <span className="text-xs font-mono text-muted-foreground">{val > 0 ? '+' : ''}{val.toFixed(1)}</span>
+                            <Slider value={[val]} min={-10} max={10} step={0.5} onValueChange={(v) => handleEqChange(index, v[0])} orientation="vertical" className="h-32" />
+                            <Label className="text-xs text-muted-foreground">{band.label}</Label>
+                            </div>
+                        );
+                        })}
+                    </div>
+                    </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
         </div>
@@ -230,10 +359,9 @@ export function AuraGrooveV2({
       {/* Content */}
       <main className="flex-grow overflow-hidden flex flex-col">
         <Tabs defaultValue="composition" className="w-full h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 h-8 shrink-0">
+          <TabsList className="grid w-full grid-cols-3 h-8 shrink-0">
             <TabsTrigger value="composition" className="text-xs">Composition</TabsTrigger>
-            <TabsTrigger value="studio" className="text-xs hidden md:inline-flex">Studio Console</TabsTrigger>
-            <TabsTrigger value="instruments" className="text-xs md:hidden">Instruments</TabsTrigger>
+            <TabsTrigger value="instruments" className="text-xs">Instruments</TabsTrigger>
             <TabsTrigger value="samples" className="text-xs">Samples</TabsTrigger>
           </TabsList>
           
@@ -459,111 +587,7 @@ export function AuraGrooveV2({
               </Card>
             </TabsContent>
 
-            <TabsContent value="studio" className="h-full px-1">
-                <ScrollArea className="w-full h-full pb-4">
-                    <div className="flex gap-6 p-4 min-w-max h-[420px]">
-                        {/* 1. System Preamps (Calibration) */}
-                        <div className="flex flex-col gap-4 pr-6 border-r border-primary/10">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-2 flex items-center gap-2">
-                                <TowerControl className="h-3 w-3" /> System Preamps
-                            </h3>
-                            <div className="flex gap-4 h-full">
-                                {CALIBRATION_CHANNELS.map(ch => (
-                                    <div key={ch.key} className="flex flex-col items-center gap-3 w-16">
-                                        <span className="text-[9px] font-mono text-primary font-bold">{Math.round((calibrationGains[ch.key] || 1.0) * 100)}%</span>
-                                        <Slider 
-                                            value={[calibrationGains[ch.key] || 1.0]} 
-                                            min={0} max={2} step={0.01} 
-                                            onValueChange={(v) => handleCalibrationChange(ch.key, v[0])} 
-                                            orientation="vertical"
-                                            className="h-full"
-                                        />
-                                        <Label className={cn("text-[8px] font-black uppercase text-center leading-tight h-8 flex items-center", ch.color)}>
-                                            {ch.label}
-                                        </Label>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* 2. Channel Strips (Parts & Selection) */}
-                        <div className="flex flex-col gap-4">
-                            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-2 flex items-center gap-2">
-                                <Mic2 className="h-3 w-3" /> Ensemble Mixer
-                            </h3>
-                            <div className="flex gap-4 h-full">
-                                {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).concat(['drums', 'sparkles', 'sfx'] as any).map((partKey) => {
-                                    const isPart = partKey in instrumentSettings;
-                                    const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey] || drumSettings;
-                                    
-                                    let instrumentList: string[] = [];
-                                    if (partKey === 'bass') instrumentList = bassInstrumentList;
-                                    else if (partKey === 'melody') instrumentList = melodyInstrumentList;
-                                    else if (partKey === 'accompaniment') instrumentList = textureInstrumentList;
-                                    else if (partKey === 'harmony') instrumentList = harmonyInstrumentList;
-                                    else if (partKey === 'pianoAccompaniment') instrumentList = ['piano'];
-
-                                    return (
-                                        <div key={partKey} className="flex flex-col items-center gap-3 w-24 bg-background/20 rounded-lg p-2 border border-primary/5">
-                                            <span className="text-[9px] font-mono text-muted-foreground">{Math.round((settings.volume || 0) * 100)}%</span>
-                                            
-                                            <Slider 
-                                                value={[settings.volume || 0]} 
-                                                max={1} step={0.01} 
-                                                onValueChange={(v) => handleVolumeChange(partKey as any, v[0])} 
-                                                orientation="vertical"
-                                                className="h-full"
-                                            />
-
-                                            <div className="w-full space-y-2 mt-auto">
-                                                {isPart && partKey !== 'pianoAccompaniment' && (
-                                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(partKey as any, v as any)} disabled={composerControl}>
-                                                        <SelectTrigger className="h-6 text-[8px] bg-background/50 px-1 border-primary/10">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {instrumentList.map(inst => (
-                                                                <SelectItem key={inst} value={inst} className="text-[10px]">{displayNames[inst] || inst}</SelectItem>
-                                                            ))}
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                                
-                                                {partKey === 'drums' && (
-                                                    <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isPlaying}>
-                                                        <SelectTrigger className="h-6 text-[8px] bg-background/50 px-1 border-primary/10">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="none" className="text-[10px]">None</SelectItem>
-                                                            <SelectItem value="ambient_beat" className="text-[10px]">Ambient</SelectItem>
-                                                            <SelectItem value="composer" className="text-[10px]">Composer</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-
-                                                {['sparkles', 'sfx'].includes(partKey) && (
-                                                    <div className="flex justify-center">
-                                                        <Switch checked={settings.enabled} onCheckedChange={(c) => handleTextureEnabledChange(partKey as any, c)} className="scale-75" />
-                                                    </div>
-                                                )}
-
-                                                <Label className="text-[9px] font-black uppercase text-center block text-muted-foreground truncate w-full">
-                                                    {getPartIcon(partKey as string)}
-                                                    {partKey === 'pianoAccompaniment' ? 'Piano' : partKey}
-                                                </Label>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-            </TabsContent>
-
-            <TabsContent value="instruments" className="space-y-1 pt-0 px-1 md:hidden">
+            <TabsContent value="instruments" className="space-y-1 pt-0 px-1">
                <Card className="border-0 shadow-none bg-transparent">
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
