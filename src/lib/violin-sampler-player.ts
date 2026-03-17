@@ -10,7 +10,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.2 — "Calibration Support".
+ * #ЗАЧЕМ: Сэмплер скрипки V4.3 — "Active Sources Fix".
+ * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -18,6 +19,7 @@ export class ViolinSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -102,7 +104,12 @@ export class ViolinSamplerPlayer {
             source.playbackRate.value = playbackRate;
 
             source.start(startTime);
-            source.onended = () => { try { gainNode.disconnect(); } catch(e){} };
+            this.activeSources.add(source);
+
+            source.onended = () => { 
+                this.activeSources.delete(source);
+                try { gainNode.disconnect(); } catch(e){} 
+            };
         });
     }
 
@@ -134,5 +141,5 @@ export class ViolinSamplerPlayer {
         this.activeSources.clear();
     }
 
-    public dispose() { this.outputNode.disconnect(); }
+    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
 }

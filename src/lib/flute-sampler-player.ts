@@ -10,7 +10,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты V4.2 — "Calibration Support".
+ * #ЗАЧЕМ: Сэмплер флейты V4.3 — "Active Sources Fix".
+ * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -18,6 +19,7 @@ export class FluteSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -114,8 +116,10 @@ export class FluteSamplerPlayer {
             source.playbackRate.value = playbackRate;
 
             source.start(startTime);
+            this.activeSources.add(source);
 
             source.onended = () => {
+                this.activeSources.delete(source);
                 try { gainNode.disconnect(); } catch(e) {}
             };
         });
@@ -161,6 +165,12 @@ export class FluteSamplerPlayer {
         return 12 * (octave + 1) + noteIndex;
     }
 
-    public stopAll() {}
-    public dispose() { this.outputNode.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
 }
