@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.12 — "Precision Calibration Console".
- * #ЧТО: ПЛАН №862 — Переименованы каналы калибровки и добавлен регулятор Bass.
+ * #ЗАЧЕМ: UI AuraGroove V3.0 — "Unified Studio Console".
+ * #ЧТО: ПЛАН №863 — Все каналы и преампы объединены в один горизонтальный микшер для десктопа.
  */
 'use client';
 
@@ -10,7 +10,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock, Dna
+  Guitar, Lock, Dna, Settings2, Mic2
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,6 @@ import { formatTime, cn } from "@/lib/utils";
 import type { Mood, Genre, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
-import { SYNTH_PRESETS } from "@/lib/synth-presets";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -39,14 +38,14 @@ const EQ_BANDS = [
 ];
 
 const CALIBRATION_CHANNELS = [
-    { key: 'master', label: 'Master Sampler' },
-    { key: 'acoustic', label: 'Black Acoustic' },
-    { key: 'electric', label: 'Telecaster' },
-    { key: 'piano', label: 'Piano' },
-    { key: 'orchestral', label: 'Violin & Flute' },
-    { key: 'cs80', label: 'CS80' },
-    { key: 'chords', label: 'Acoustic Chords' },
-    { key: 'bass', label: 'Bass' }
+    { key: 'master', label: 'Master Gain', color: 'text-primary' },
+    { key: 'acoustic', label: 'Black Acoustic', color: 'text-orange-400' },
+    { key: 'electric', label: 'Telecaster', color: 'text-blue-400' },
+    { key: 'piano', label: 'Celestial Piano', color: 'text-yellow-200' },
+    { key: 'orchestral', label: 'Orchestral Silk', color: 'text-purple-400' },
+    { key: 'cs80', label: 'CS80', color: 'text-cyan-400' },
+    { key: 'chords', label: 'Guitar Chords', color: 'text-green-400' },
+    { key: 'bass', label: 'Bass Preamp', color: 'text-red-400' }
 ];
 
 type MoodCategory = 'light' | 'neutral' | 'dark';
@@ -62,7 +61,6 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
   neutral: 'text-primary/75',
   dark: 'text-primary/50',
 };
-
 
 export function AuraGrooveV2({
   isPlaying, isInitializing, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
@@ -113,7 +111,12 @@ export function AuraGrooveV2({
     'mellotron': 'Majestic Strings',
     'mellotron_flute_intimate': 'Intimate Flute',
     'guitar_shineOn': 'Shine On Guitar',
-    'synth_ambient_pad_lush': 'Lush Pad'
+    'synth_ambient_pad_lush': 'Lush Pad',
+    'piano': 'Acoustic Piano',
+    'violin': 'Solo Violin',
+    'flute': 'Silver Flute',
+    'bass_jazz_warm': 'Warm Jazz Bass',
+    'blackAcoustic': 'Black Acoustic'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {
@@ -122,13 +125,16 @@ export function AuraGrooveV2({
       return matchesSearch && matchesSelected;
   });
 
-  const getPartIcon = (part: InstrumentPart) => {
+  const getPartIcon = (part: string) => {
     switch(part) {
         case 'bass': return <Waves className="h-4 w-4"/>;
         case 'melody': return <GitBranch className="h-4 w-4"/>;
         case 'accompaniment': return <Piano className="h-4 w-4"/>;
         case 'harmony': return <Waves className="h-4 w-4"/>;
         case 'pianoAccompaniment': return <Piano className="h-4 w-4"/>;
+        case 'drums': return <Drum className="h-4 w-4"/>;
+        case 'sparkles': return <Sparkles className="h-4 w-4"/>;
+        case 'sfx': return <Sprout className="h-4 w-4"/>;
         default: return <Music className="h-4 w-4"/>;
     }
   };
@@ -144,7 +150,7 @@ export function AuraGrooveV2({
   const isBpmSliderDisabled = isInitializing || (isPlaying && selectedCompositionIds.length === 0);
 
   return (
-    <div className="w-full h-full flex flex-col p-3 bg-card">
+    <div className="w-full h-full flex flex-col p-3 bg-card overflow-hidden">
       {/* Header */}
       <header className="flex-shrink-0 pb-2">
         <div className="flex items-center justify-between">
@@ -156,40 +162,6 @@ export function AuraGrooveV2({
             <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} aria-label="Open Dashboard"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
             
-            {isClient && (
-              <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Open Calibration"><SlidersHorizontal className="h-5 w-5" /></Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md border-primary/20 bg-card shadow-2xl">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-primary uppercase font-black tracking-tight">
-                        <TowerControl className="h-5 w-5" /> Sampler Calibration
-                    </DialogTitle>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-70">Preamp gain & system balance (0-200%)</p>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {CALIBRATION_CHANNELS.map((ch) => (
-                      <div key={ch.key} className="space-y-1.5 px-2">
-                        <div className="flex justify-between items-center">
-                            <Label className="text-[11px] font-black uppercase tracking-tighter">{ch.label}</Label>
-                            <span className="text-[10px] font-mono text-primary">{Math.round((calibrationGains[ch.key] || 1.0) * 100)}%</span>
-                        </div>
-                        <Slider 
-                            value={[calibrationGains[ch.key] || 1.0]} 
-                            min={0} max={2} step={0.01} 
-                            onValueChange={(v) => handleCalibrationChange(ch.key, v[0])} 
-                        />
-                      </div>
-                    ))}
-                  </div>
-                  <DialogFooter className="bg-muted/20 p-2 rounded-b-lg">
-                      <p className="text-[9px] text-center w-full text-muted-foreground italic">These settings calibrate the foundation of the Imperial Sound Engine.</p>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
             {isClient && (
               <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
                 <DialogTrigger asChild>
@@ -256,16 +228,17 @@ export function AuraGrooveV2({
       </header>
 
       {/* Content */}
-      <main className="flex-grow overflow-y-auto pr-2 -mr-2">
-        <Tabs defaultValue="composition" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-8">
+      <main className="flex-grow overflow-hidden flex flex-col">
+        <Tabs defaultValue="composition" className="w-full h-full flex flex-col">
+          <TabsList className="grid w-full grid-cols-3 md:grid-cols-4 h-8 shrink-0">
             <TabsTrigger value="composition" className="text-xs">Composition</TabsTrigger>
-            <TabsTrigger value="instruments" className="text-xs">Instruments</TabsTrigger>
+            <TabsTrigger value="studio" className="text-xs hidden md:inline-flex">Studio Console</TabsTrigger>
+            <TabsTrigger value="instruments" className="text-xs md:hidden">Instruments</TabsTrigger>
             <TabsTrigger value="samples" className="text-xs">Samples</TabsTrigger>
           </TabsList>
           
-          <div className="grid">
-            <TabsContent value="composition" className="space-y-1.5 pt-2 col-start-1 row-start-1 px-1">
+          <div className="flex-grow overflow-y-auto mt-2">
+            <TabsContent value="composition" className="space-y-1.5 pt-0 px-1">
               <Card className="border-0 shadow-none bg-transparent">
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
@@ -486,7 +459,111 @@ export function AuraGrooveV2({
               </Card>
             </TabsContent>
 
-            <TabsContent value="instruments" className="space-y-1 pt-2 col-start-1 row-start-1 px-1">
+            <TabsContent value="studio" className="h-full px-1">
+                <ScrollArea className="w-full h-full pb-4">
+                    <div className="flex gap-6 p-4 min-w-max h-[420px]">
+                        {/* 1. System Preamps (Calibration) */}
+                        <div className="flex flex-col gap-4 pr-6 border-r border-primary/10">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-2 flex items-center gap-2">
+                                <TowerControl className="h-3 w-3" /> System Preamps
+                            </h3>
+                            <div className="flex gap-4 h-full">
+                                {CALIBRATION_CHANNELS.map(ch => (
+                                    <div key={ch.key} className="flex flex-col items-center gap-3 w-16">
+                                        <span className="text-[9px] font-mono text-primary font-bold">{Math.round((calibrationGains[ch.key] || 1.0) * 100)}%</span>
+                                        <Slider 
+                                            value={[calibrationGains[ch.key] || 1.0]} 
+                                            min={0} max={2} step={0.01} 
+                                            onValueChange={(v) => handleCalibrationChange(ch.key, v[0])} 
+                                            orientation="vertical"
+                                            className="h-full"
+                                        />
+                                        <Label className={cn("text-[8px] font-black uppercase text-center leading-tight h-8 flex items-center", ch.color)}>
+                                            {ch.label}
+                                        </Label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 2. Channel Strips (Parts & Selection) */}
+                        <div className="flex flex-col gap-4">
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70 mb-2 flex items-center gap-2">
+                                <Mic2 className="h-3 w-3" /> Ensemble Mixer
+                            </h3>
+                            <div className="flex gap-4 h-full">
+                                {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).concat(['drums', 'sparkles', 'sfx'] as any).map((partKey) => {
+                                    const isPart = partKey in instrumentSettings;
+                                    const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey] || drumSettings;
+                                    
+                                    let instrumentList: string[] = [];
+                                    if (partKey === 'bass') instrumentList = bassInstrumentList;
+                                    else if (partKey === 'melody') instrumentList = melodyInstrumentList;
+                                    else if (partKey === 'accompaniment') instrumentList = textureInstrumentList;
+                                    else if (partKey === 'harmony') instrumentList = harmonyInstrumentList;
+                                    else if (partKey === 'pianoAccompaniment') instrumentList = ['piano'];
+
+                                    return (
+                                        <div key={partKey} className="flex flex-col items-center gap-3 w-24 bg-background/20 rounded-lg p-2 border border-primary/5">
+                                            <span className="text-[9px] font-mono text-muted-foreground">{Math.round((settings.volume || 0) * 100)}%</span>
+                                            
+                                            <Slider 
+                                                value={[settings.volume || 0]} 
+                                                max={1} step={0.01} 
+                                                onValueChange={(v) => handleVolumeChange(partKey as any, v[0])} 
+                                                orientation="vertical"
+                                                className="h-full"
+                                            />
+
+                                            <div className="w-full space-y-2 mt-auto">
+                                                {isPart && partKey !== 'pianoAccompaniment' && (
+                                                    <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(partKey as any, v as any)} disabled={composerControl}>
+                                                        <SelectTrigger className="h-6 text-[8px] bg-background/50 px-1 border-primary/10">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {instrumentList.map(inst => (
+                                                                <SelectItem key={inst} value={inst} className="text-[10px]">{displayNames[inst] || inst}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                                
+                                                {partKey === 'drums' && (
+                                                    <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isPlaying}>
+                                                        <SelectTrigger className="h-6 text-[8px] bg-background/50 px-1 border-primary/10">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none" className="text-[10px]">None</SelectItem>
+                                                            <SelectItem value="ambient_beat" className="text-[10px]">Ambient</SelectItem>
+                                                            <SelectItem value="composer" className="text-[10px]">Composer</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+
+                                                {['sparkles', 'sfx'].includes(partKey) && (
+                                                    <div className="flex justify-center">
+                                                        <Switch checked={settings.enabled} onCheckedChange={(c) => handleTextureEnabledChange(partKey as any, c)} className="scale-75" />
+                                                    </div>
+                                                )}
+
+                                                <Label className="text-[9px] font-black uppercase text-center block text-muted-foreground truncate w-full">
+                                                    {getPartIcon(partKey as string)}
+                                                    {partKey === 'pianoAccompaniment' ? 'Piano' : partKey}
+                                                </Label>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="instruments" className="space-y-1 pt-0 px-1 md:hidden">
                <Card className="border-0 shadow-none bg-transparent">
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
@@ -511,7 +588,7 @@ export function AuraGrooveV2({
                             <div key={part} className="p-2 border rounded-md space-y-2 bg-background/30 border-primary/10">
                                <div className="grid grid-cols-2 items-center gap-2">
                                     <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
-                                        {getPartIcon(part as InstrumentPart)}
+                                        {getPartIcon(part as string)}
                                         {part === 'pianoAccompaniment' ? 'Piano' : part}
                                     </Label>
                                     {part !== 'pianoAccompaniment' ? (
@@ -540,7 +617,7 @@ export function AuraGrooveV2({
               </Card>
             </TabsContent>
 
-            <TabsContent value="samples" className="space-y-1.5 pt-2 col-start-1 row-start-1 px-1">
+            <TabsContent value="samples" className="space-y-1.5 pt-0 px-1">
                <Card className="border-0 shadow-none bg-transparent">
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Atom className="h-4 w-4"/> Sampled Textures</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
