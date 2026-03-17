@@ -1,12 +1,11 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
-import { FirebaseClientProvider } from '@/firebase/client-provider';
-import { AudioEngineProvider } from '@/contexts/audio-engine-context';
+import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: Использует прямые импорты провайдеров для предотвращения ChunkLoadError.
+ * #ЧТО: ПЛАН №849 — Провайдеры консолидированы в единый компонент для стабильной загрузки чанков.
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
@@ -27,11 +26,9 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
-        <FirebaseClientProvider>
-          <AudioEngineProvider>
-            {children}
-          </AudioEngineProvider>
-        </FirebaseClientProvider>
+        <Providers>
+          {children}
+        </Providers>
         <Toaster />
       </body>
     </html>
