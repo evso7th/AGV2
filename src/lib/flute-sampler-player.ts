@@ -10,8 +10,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты с защитой от ошибок.
- * #ЧТО: ПЛАН №682 — Усилена валидация всех параметров AudioParam (isFinite).
+ * #ЗАЧЕМ: Сэмплер флейты V4.2 — "Calibration Support".
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -29,6 +28,12 @@ export class FluteSamplerPlayer {
         this.outputNode.connect(destination);
     }
     
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
+    }
+
     public setVolume(volume: number) {
         if (!isFinite(volume)) return;
         this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
@@ -90,7 +95,6 @@ export class FluteSamplerPlayer {
             const startTime = time + note.time;
             const velocity = note.velocity ?? 0.7;
 
-            // #ЗАЧЕМ: Усиленная защита от краха AudioParam.
             if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(note.midi) || !isFinite(sampleMidi)) return;
 
             const source = this.audioContext.createBufferSource();

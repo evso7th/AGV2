@@ -1,15 +1,12 @@
-
 import type { Note } from "@/types/music";
 
 type SamplerInstrument = {
-    buffers: Map<number, AudioBuffer>; // Map from MIDI note to AudioBuffer
+    buffers: Map<number, AudioBuffer>; 
     noteRange: [number, number];
 };
 
 /**
- * #ЗАЧЕМ: Универсальный сэмплер с поддержкой естественных хвостов.
- * #ЧТО: 1. ПЛАН №760 — Снижен базовый уровень усиления (preamp) для устранения громкости.
- *       2. ПЛАН №787 — Корректировка preamp для обеспечения слышимости при audition.
+ * #ЗАЧЕМ: Универсальный сэмплер V4.2 — "Calibration Support".
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -25,16 +22,18 @@ export class SamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: ПЛАН №787. Гейн поднят до 0.6 для адекватной громкости при audition.
         this.preamp.gain.value = 0.6; 
         this.preamp.connect(this.outputNode);
         
         this.outputNode.connect(destination);
     }
     
-    /**
-     * #ЗАЧЕМ: Прямое управление громкостью внутри сэмплера.
-     */
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
+    }
+
     public setVolume(volume: number) {
         if (isFinite(volume)) {
             this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);

@@ -10,8 +10,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки с системной калибровкой громкости.
- * #ЧТО: ПЛАН №702 — Громкость снижена в 4 раза (1.16 -> 0.29) для баланса.
+ * #ЗАЧЕМ: Сэмплер скрипки V4.2 — "Calibration Support".
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -24,12 +23,17 @@ export class ViolinSamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Снижение громкости скрипок в 4 раза по требованию пользователя.
         this.preamp.gain.value = 0.29; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
+    }
+
     public setVolume(volume: number) {
         if (!isFinite(volume)) return;
         this.outputNode.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
@@ -123,6 +127,12 @@ export class ViolinSamplerPlayer {
         return 12 * (octave + 1) + (noteMap[noteName] ?? 0);
     }
 
-    public stopAll() {}
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
     public dispose() { this.outputNode.disconnect(); }
 }

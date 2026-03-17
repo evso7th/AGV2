@@ -1,7 +1,10 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+
+/**
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.2 — "Calibration Support".
+ */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
     'c6': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_C6.ogg',
@@ -33,7 +36,6 @@ const TELECASTER_SAMPLES: Record<string, string> = {
     'e2': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_E2.ogg',
 };
 
-// Distortion curve function for Fuzz effect
 function makeDistortionCurve(amount: number) {
   const k = isFinite(amount) ? amount : 50;
   const n_samples = 44100;
@@ -46,7 +48,6 @@ function makeDistortionCurve(amount: number) {
   return curve;
 };
 
-
 type SamplerInstrument = {
     buffers: Map<number, AudioBuffer>;
 };
@@ -58,11 +59,11 @@ export class DarkTelecasterSampler {
     public isInitialized = false;
     private isLoading = false;
 
-    // Effects chain nodes
     private preamp: GainNode;
     private distortion: WaveShaperNode;
     private compressor: DynamicsCompressorNode;
     private cabinetFilter: BiquadFilterNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -87,11 +88,16 @@ export class DarkTelecasterSampler {
         this.cabinetFilter.frequency.value = 3200;
         this.cabinetFilter.Q.value = 0.7;
         
-        // --- Routing ---
         this.preamp.connect(this.distortion);
         this.distortion.connect(this.cabinetFilter);
         this.cabinetFilter.connect(this.compressor);
         this.compressor.connect(this.destination);
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
 
     async init(): Promise<boolean> {
@@ -208,13 +214,12 @@ export class DarkTelecasterSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-
-        // #ЗАЧЕМ: Закон Сохранения Хвостов.
-        // #ЧТО: Удалено обрезание по note.duration.
         gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
         
         source.start(startTime);
+        this.activeSources.add(source);
         source.onended = () => {
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
@@ -249,6 +254,12 @@ export class DarkTelecasterSampler {
         }
     }
 
-    public stopAll() {}
-    public dispose() { this.preamp.disconnect(); }
+    public stopAll() {
+        this.activeSources.forEach(source => {
+            try { source.stop(0); } catch(e) {}
+        });
+        this.activeSources.clear();
+    }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); }
 }

@@ -35,8 +35,7 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster с поддержкой гибридных транзиентов.
- * #ЧТО: ПЛАН №852 — Гейн уменьшен на 25% (с 0.2 до 0.15) для баланса микса.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.2 — "Calibration Support".
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -51,9 +50,14 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.15.
         this.preamp.gain.value = 0.15;
         this.preamp.connect(this.destination);
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
 
     async init(): Promise<boolean> {

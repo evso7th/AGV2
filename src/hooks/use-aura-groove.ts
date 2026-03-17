@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.6 — "Unified UI Defaults".
- * #ЧТО: ПЛАН №809 — Установлен дефолтный уровень 50 (0.5) для всех инструментов и текстур.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.7 — "Calibration Unlock".
+ * #ЧТО: ПЛАН №854 — Проброс настроек калибровки преампов в UI.
  */
 'use client';
 
@@ -49,7 +48,7 @@ export type AuraGrooveProps = {
   setDensity: (value: number) => void;
   composerControlsInstruments: boolean;
   setComposerControlsInstruments: (value: boolean) => void;
-  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782.
+  useHeritage: boolean; 
   setUseHeritage: (value: boolean) => void;
   handleGoHome: () => void;
   handleExit?: () => void;
@@ -57,6 +56,10 @@ export type AuraGrooveProps = {
   setIsEqModalOpen: (isOpen: boolean) => void;
   eqSettings: number[];
   handleEqChange: (bandIndex: number, gain: number) => void;
+  isCalibrationModalOpen: boolean;
+  setIsCalibrationModalOpen: (isOpen: boolean) => void;
+  calibrationGains: Record<string, number>;
+  handleCalibrationChange: (key: string, value: number) => void;
   timerSettings: TimerSettings;
   handleTimerDurationChange: (minutes: number) => void;
   handleToggleTimer: () => void;
@@ -73,12 +76,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, resetWorker, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
-    setEQGain
+    setEQGain, setCalibrationGain, calibrationGains
   } = useAudioEngine(); 
   
   const db = useFirestore();
   
-  // #ЗАЧЕМ: Унификация дефолтов (ПЛАН №809). Все уровни на 0.5 (50%).
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
@@ -97,9 +99,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [genre, setGenre] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
-  const [useHeritage, setUseHeritage] = useState(true); // #ЗАЧЕМ: Глобальный флаг классов.
+  const [useHeritage, setUseHeritage] = useState(true); 
   const [mood, setMood] = useState<Mood>('melancholic');
-  const [introBars, setIntroBars] = useState(8); // #ЗАЧЕМ: Жесткое 8-тактное интро по дефолту.
+  const [introBars, setIntroBars] = useState(8); 
   
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
   
@@ -111,6 +113,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
 
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
+  const [isCalibrationModalOpen, setIsCalibrationModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
 
   useEffect(() => { initialize(); }, [initialize]);
@@ -211,6 +214,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         setEqSettings(next);
         setEQGain(index, value);
     },
+    isCalibrationModalOpen, setIsCalibrationModalOpen,
+    calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,

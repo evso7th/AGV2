@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.10 — "Audition Mode Unlock".
- * #ЧТО: ПЛАН №803 — Слайдер BPM теперь доступен во время игры, если выбран Генетический Якорь.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.11 — "Sampler Calibration Console".
+ * #ЧТО: ПЛАН №854 — Добавлено модальное окно для ручной регулировки системной громкости сэмплеров.
  */
 'use client';
 
@@ -39,19 +38,22 @@ const EQ_BANDS = [
   { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
 ];
 
+const CALIBRATION_CHANNELS = [
+    { key: 'master', label: 'Master Sampler Gain' },
+    { key: 'acoustic', label: 'Acoustic Core' },
+    { key: 'electric', label: 'Electric Lead' },
+    { key: 'piano', label: 'Celestial Piano' },
+    { key: 'orchestral', label: 'Orchestral Silk' },
+    { key: 'cs80', label: 'Vangelis Pad' },
+    { key: 'chords', label: 'Guitar Chords' }
+];
+
 type MoodCategory = 'light' | 'neutral' | 'dark';
 
 const MOOD_CATEGORIES: Record<Mood, MoodCategory> = {
-  epic: 'light',
-  joyful: 'light',
-  enthusiastic: 'light',
-  dreamy: 'neutral',
-  contemplative: 'neutral',
-  calm: 'neutral',
-  melancholic: 'dark',
-  dark: 'dark',
-  anxious: 'dark',
-  gloomy: 'dark'
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
 
 const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
@@ -66,6 +68,7 @@ export function AuraGrooveV2({
   setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
+  isCalibrationModalOpen, setIsCalibrationModalOpen, calibrationGains, handleCalibrationChange,
   timerSettings, handleTimerDurationChange, handleToggleTimer,
   composerControlsInstruments, setComposerControlsInstruments,
   useHeritage, setUseHeritage,
@@ -83,7 +86,6 @@ export function AuraGrooveV2({
     setIsClient(true);
   }, []);
 
-  // --- Instrument & Options Definitions ---
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
   
@@ -138,7 +140,6 @@ export function AuraGrooveV2({
       return `DNA Hybrid (${count})`;
   };
 
-  // #ЗАЧЕМ: ПЛАН №803. BPM разблокирован в режиме прослушивания Якоря.
   const isBpmSliderDisabled = isInitializing || (isPlaying && selectedCompositionIds.length === 0);
 
   return (
@@ -153,13 +154,48 @@ export function AuraGrooveV2({
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} aria-label="Open Dashboard"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
+            
+            {isClient && (
+              <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="Open Calibration"><SlidersHorizontal className="h-5 w-5" /></Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md border-primary/20 bg-card shadow-2xl">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-primary uppercase font-black tracking-tight">
+                        <TowerControl className="h-5 w-5" /> Sampler Calibration
+                    </DialogTitle>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-70">Preamp gain & system balance (0-200%)</p>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    {CALIBRATION_CHANNELS.map((ch) => (
+                      <div key={ch.key} className="space-y-1.5 px-2">
+                        <div className="flex justify-between items-center">
+                            <Label className="text-[11px] font-black uppercase tracking-tighter">{ch.label}</Label>
+                            <span className="text-[10px] font-mono text-primary">{Math.round((calibrationGains[ch.key] || 1.0) * 100)}%</span>
+                        </div>
+                        <Slider 
+                            value={[calibrationGains[ch.key] || 1.0]} 
+                            min={0} max={2} step={0.01} 
+                            onValueChange={(v) => handleCalibrationChange(ch.key, v[0])} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <DialogFooter className="bg-muted/20 p-2 rounded-b-lg">
+                      <p className="text-[9px] text-center w-full text-muted-foreground italic">These settings calibrate the foundation of the Imperial Sound Engine.</p>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
             {isClient && (
               <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
                 <DialogTrigger asChild>
                   <Button variant="ghost" className="h-9 w-9 px-2" aria-label="Open Equalizer">EQ</Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-md border-primary/20">
-                  <DialogHeader><DialogTitle>System Equalizer</DialogTitle></DialogHeader>
+                <DialogContent className="sm:max-w-md border-primary/20 bg-card">
+                  <DialogHeader><DialogTitle className="text-primary uppercase font-black tracking-tight">System Equalizer</DialogTitle></DialogHeader>
                   <div className="flex justify-around items-end pt-4 h-48">
                     {EQ_BANDS.map((band, index) => {
                       const val = eqSettings && eqSettings[index] !== undefined ? eqSettings[index] : 0;
@@ -525,7 +561,7 @@ export function AuraGrooveV2({
                           </div>
                           <div className="flex items-center gap-2">
                               <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
-                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange(part as any, v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
+                              <Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx' as any, v[0])} disabled={isInitializing || !textureSettings.sfx.enabled}/>
                                <span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span>
                           </div>
                       </div>

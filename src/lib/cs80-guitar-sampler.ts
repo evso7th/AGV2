@@ -1,8 +1,7 @@
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 (Guitar Mode).
- * #ЧТО: ПЛАН №801 — Уровень установлен на 0.1 по директиве пользователя.
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.2 — "Calibration Support".
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -32,9 +31,14 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Пользовательская калибровка. Гейн установлен на 0.1.
         this.preamp.gain.value = 0.1; 
         this.preamp.connect(this.destination);
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
 
     async init(): Promise<boolean> {

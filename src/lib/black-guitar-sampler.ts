@@ -3,10 +3,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.1 — "Sonic Consistency & Telemetry".
- * #ЧТО: 1. ПЛАН №853 — Громкость теперь фиксирована (gain 1.0), вариативность только в тембре.
- *       2. Внедрена телеметрия (логирование сэмплов).
- *       3. Для меланхоличных стилей ограничено использование слоев: в основном _p и редко _mf.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.2 — "Calibration Support".
+ * #ЧТО: Добавлен метод setPreampGain для внешнего управления громкостью.
  */
 
 type VelocityLayer = 'p' | 'mf' | 'f';
@@ -64,6 +62,12 @@ export class BlackGuitarSampler {
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.15; 
         this.preamp.connect(this.destination);
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
 
     async init(): Promise<boolean> {
@@ -169,12 +173,10 @@ export class BlackGuitarSampler {
         const layers = this.noteBuffers.get(closestMidi);
         if (!layers) return { buffer: null, sampleMidi: closestMidi, name: 'none' };
 
-        // #ЗАЧЕМ: ПЛАН №853 — Умный отбор слоев для спокойных блюзов.
         let layerKey: VelocityLayer = 'mf';
         const isSoftMood = mood === 'melancholic' || mood === 'calm' || mood === 'gloomy' || mood === 'dreamy';
 
         if (isSoftMood) {
-            // В мягких стилях используем только _p (85% шанс) или _mf (15% шанс), игнорируем _f.
             layerKey = Math.random() < 0.15 ? 'mf' : 'p';
         } else {
             if (velocity < 0.45) layerKey = 'p';
@@ -200,8 +202,6 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        // #ЗАЧЕМ: ПЛАН №853 — Константная громкость. 
-        // #ЧТО: Мы игнорируем velocity для GainNode, так как сэмплы нормализованы.
         const fixedGain = 1.0; 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(fixedGain, startTime + 0.005);
@@ -215,12 +215,11 @@ export class BlackGuitarSampler {
             source.start(startTime);
         }
         
-        // #ЗАЧЕМ: ПЛАН №853 — Телеметрия сэмплов.
         console.log(`%c[BlackSampler] Playing: ${name} | Context: ${mood || 'default'} | Velocity: ${velocity.toFixed(2)}`, 'color: #DA70D6');
 
         this.activeSources.add(source);
         source.onended = () => {
-            this.activeSources.delete(source);
+            this.activeSources.add(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }

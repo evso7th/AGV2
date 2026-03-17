@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V20.10 — "Arbiter Activation".
- * #ЧТО: ПЛАН №847 — Порог красоты снижен до 0.75, добавлен лог находок Арбитра.
+ * #ЗАЧЕМ: Audio Engine Context V21.0 — "Sampler Calibration Console".
+ * #ЧТО: ПЛАН №854 — Реализована система калибровки преампов всех сэмплеров.
  */
 'use client';
 
@@ -27,9 +26,6 @@ import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 
-/**
- * #ЗАЧЕМ: Золотое сечение ансамбля (ПЛАН №845).
- */
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.175,            
   melody: 0.45,           
@@ -39,6 +35,17 @@ const VOICE_BALANCE: Record<string, number> = {
   sfx: 0.55, 
   harmony: 0.1425,        
   pianoAccompaniment: 0.15, 
+};
+
+// #ЗАЧЕМ: Заводские дефолты преампов.
+const SAMPLER_DEFAULTS: Record<string, number> = {
+    master: 1.0,
+    acoustic: 0.15,
+    electric: 0.15,
+    piano: 0.6,
+    orchestral: 0.29,
+    cs80: 0.1,
+    chords: 1.2
 };
 
 interface AudioEngineContextType {
@@ -58,6 +65,8 @@ interface AudioEngineContextType {
   setBassTechnique: (technique: BassTechnique) => void;
   setTextureSettings: (settings: Omit<TextureSettings, 'pads' | 'sfx'>) => void;
   setEQGain: (bandIndex: number, gain: number) => void;
+  setCalibrationGain: (key: string, value: number) => void;
+  calibrationGains: Record<string, number>;
   startMasterFadeOut: (durationInSeconds: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: () => void;
@@ -84,6 +93,15 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
   
+  // #ЗАЧЕМ: Состояние калибровки преампов.
+  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
+      if (typeof window !== 'undefined') {
+          const saved = localStorage.getItem('AuraGroove_Calibration');
+          if (saved) return JSON.parse(saved);
+      }
+      return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0 };
+  });
+
   const initializationInFlightRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -109,6 +127,7 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
+  const samplersMasterGainRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
@@ -126,6 +145,30 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
+
+  // #ЗАЧЕМ: Применение калибровки в реальном времени.
+  const applyCalibration = useCallback((gains: Record<string, number>) => {
+      if (!isInitialized) return;
+      const m = gains.master;
+      samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
+      
+      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
+      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
+      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); // Dark has high default
+      cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
+      
+      // Самплеры через Piano и Orchestral
+      pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
+      harmonyManagerRef.current?.setVolume(gains.orchestral); 
+      
+      // Guitar Chords
+      const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
+      if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
+  }, [isInitialized]);
+
+  useEffect(() => {
+      if (isInitialized) applyCalibration(calibrationGains);
+  }, [isInitialized, calibrationGains, applyCalibration]);
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
     if (!db || !workerRef.current) return;
@@ -194,7 +237,10 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain();
+            samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
+            
+            samplersMasterGainRef.current.connect(masterGainNodeRef.current);
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
             
@@ -209,7 +255,9 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
                 gainNodesRef.current[p] = context.createGain();
-                gainNodesRef.current[p].connect(masterGainNodeRef.current!);
+                // Сэмплеры идут через Samplers Master Gain, синты напрямую
+                const isSamplerPart = ['melody', 'harmony', 'pianoAccompaniment'].includes(p);
+                gainNodesRef.current[p].connect(isSamplerPart ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
             }
         });
         
@@ -241,7 +289,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                     
-                    // #ЗАЧЕМ: ПЛАН №847 — Порог Арбитра снижен до 0.75 для поощрения удачных тактов.
                     if (payload.beautyScore >= 0.75 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         console.log(`%c[AI Arbiter] Found a Masterpiece (Score: ${payload.beautyScore.toFixed(2)})! Synchronizing with Cloud...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, {
@@ -358,16 +405,21 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
             else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(name);
             else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
             else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
-            else if (part === 'pianoAccompaniment' && pianoAccompanimentManagerRef.current) {
-                // Fixed instrument
-            }
         },
         setBassTechnique: () => {}, 
         setTextureSettings: (s) => {
             setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
             setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
         },
-        setEQGain: () => {}, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {},
+        setEQGain: () => {}, 
+        setCalibrationGain: (key, val) => {
+            const next = { ...calibrationGains, [key]: val };
+            setCalibrationGains(next);
+            localStorage.setItem('AuraGroove_Calibration', JSON.stringify(next));
+            applyCalibration(next);
+        },
+        calibrationGains,
+        startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {},
         toggleBroadcast: () => {
             if (broadcastEngineRef.current && audioContextRef.current) {
                 const now = audioContextRef.current.currentTime;
