@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V55.0 — "Mood Context Injection".
- * #ЗАЧЕМ: Реализация Плана №853. Проброс настроения в параметры событий для тембральной фильтрации.
+ * @fileOverview Ambient Brain V56.0 — "Melodic Tie Integration".
+ * #ЗАЧЕМ: Реализация Плана №860. Склеивание одинаковых последовательных нот мелодии в длинные линии.
  */
 
 import type { 
@@ -26,8 +26,7 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
-    safeSemitoneToDegree,
-    getWalkingDegree,
+    mergeIdenticalNotes,
     keyToMidiRoot
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
@@ -338,6 +337,12 @@ export class AmbientBrain {
         if (cloudAxiom) {
             this.currentNativeRoot = keyToMidiRoot(cloudAxiom.nativeKey);
             let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
+            
+            // #ЗАЧЕМ: Применяем Melodic Tie (ПЛАН №860).
+            if (cloudAxiom.role === 'melody') {
+                rawPhrase = mergeIdenticalNotes(rawPhrase);
+            }
+
             const phrasesToNormalize = [rawPhrase];
             const cid = this.normalizeStr(cloudAxiom.compositionId);
             
@@ -376,7 +381,7 @@ export class AmbientBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -512,10 +517,11 @@ export class AmbientBrain {
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
+        const note = this.constrainAccompanimentOctave(root + colorDegree);
         if (timbre === 'guitarChords') {
             return [{ type: 'harmony', note: note, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
         }
-        return [{ type: 'harmony', note: this.constrainAccompanimentOctave(root + colorDegree), time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
+        return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {

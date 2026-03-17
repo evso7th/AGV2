@@ -3,9 +3,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * @fileOverview Black Acoustic Sampler V4.5 — "Atomic Precision Update".
- * #ЗАЧЕМ: ПЛАН №858 — Манифест синхронизирован с физическим списком файлов.
- * #ЧТО: Индексы Round Robin теперь задаются явными массивами, исключая 404 ошибки для отсутствующих rr1 и др.
+ * @fileOverview Black Acoustic Sampler V4.6 — "Silent Precision Update".
+ * #ЗАЧЕМ: ПЛАН №860 — Полное удаление логов проигрывания сэмплов для чистой консоли.
  */
 
 type VelocityLayer = 'p' | 'mf' | 'f';
@@ -242,8 +241,6 @@ export class BlackGuitarSampler {
             source.start(startTime);
         }
         
-        console.log(`%c[BlackSampler] Playing: ${name} | Context: ${mood || 'default'} | Velocity: ${velocity.toFixed(2)}`, 'color: #DA70D6');
-
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);

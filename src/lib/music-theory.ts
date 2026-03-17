@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V2.9 — "Resonance Alignment".
- * #ОБНОВЛЕНО (ПЛАН №791): Внедрен keyToMidiRoot для поддержки Гармонического Резонанса.
+ * @fileOverview Universal Music Theory Utilities V3.0 — "Melodic Tie Update".
+ * #ОБНОВЛЕНО (ПЛАН №860): Внедрена функция mergeIdenticalNotes для объединения последовательных нот.
  */
 
 import type { 
@@ -65,6 +65,34 @@ export function safeSemitoneToDegree(s: number): string {
     const base = SEMITONE_TO_DEGREE[norm] || 'R';
     if (s >= 12 && base === 'R') return 'R+8';
     return base;
+}
+
+/**
+ * #ЗАЧЕМ: Объединение последовательных одинаковых нот (ПЛАН №860).
+ * #ЧТО: Если ноты имеют одну высоту и стоят впритык — превращаем их в одну длинную.
+ */
+export function mergeIdenticalNotes(phrase: any[]): any[] {
+    if (!phrase || phrase.length <= 1) return phrase || [];
+    
+    // Сначала сортируем по времени для корректного поиска соседей
+    const sorted = [...phrase].sort((a, b) => a.t - b.t);
+    const merged: any[] = [];
+    let current = { ...sorted[0] };
+
+    for (let i = 1; i < sorted.length; i++) {
+        const next = sorted[i];
+        // Проверяем: та же ступень И следующая нота начинается там, где кончилась текущая
+        // Используем небольшой допуск (0.01) для исключения ошибок округления
+        if (next.deg === current.deg && Math.abs(next.t - (current.t + current.d)) < 0.01) {
+            current.d += next.d;
+            // Технику оставляем от первой ноты (атака всей фразы)
+        } else {
+            merged.push(current);
+            current = { ...next };
+        }
+    }
+    merged.push(current);
+    return merged;
 }
 
 const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {

@@ -23,14 +23,15 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
-    keyToMidiRoot
+    keyToMidiRoot,
+    mergeIdenticalNotes
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V231.0 — "Mood Context Injection".
- * #ЗАЧЕМ: Реализация Плана №853. Проброс настроения в параметры событий для сэмплеров.
+ * @fileOverview Blues Brain V232.0 — "Melodic Tie Integration".
+ * #ЗАЧЕМ: Реализация Плана №860. Автоматическое объединение последовательных одинаковых нот в мелодии.
  */
 
 const TICKS_PER_BAR = 12;
@@ -414,6 +415,13 @@ export class BluesBrain {
                       this.state.recentLicks.push(selected.id); if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
                       this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                       let rawPhrase = decompressCompactPhrase(selected.phrase); const phrasesToNormalize = [rawPhrase];
+                      
+                      // #ЗАЧЕМ: Применяем Melodic Tie (ПЛАН №860).
+                      // #ЧТО: Склеиваем одинаковые ноты мелодии в одну длинную линию.
+                      if (selected.role === 'melody') {
+                          rawPhrase = mergeIdenticalNotes(rawPhrase);
+                      }
+
                       const cid = this.normalize(selected.compositionId);
                       const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
