@@ -30,8 +30,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V232.0 — "Melodic Tie Integration".
- * #ЗАЧЕМ: Реализация Плана №860. Автоматическое объединение последовательных одинаковых нот в мелодии.
+ * @fileOverview Blues Brain V233.0 — "Ensemble Balance Update".
+ * #ЗАЧЕМ: Реализация Плана №868. Правило "Одного музыканта" в слое гармонии.
  */
 
 const TICKS_PER_BAR = 12;
@@ -103,6 +103,10 @@ export class BluesBrain {
   
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
+
+  /** #ЗАЧЕМ: Состояние "Музыканта-Мультиинструменталиста" (ПЛАН №868) */
+  private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
+  private lastHarmonySwitchBar: number = -1;
 
   private state: BluesCognitiveState & { 
       lastMutationType: string,
@@ -202,6 +206,31 @@ export class BluesBrain {
 
   private constrainAccompanimentOctave(note: number): number {
       let finalNote = note; while (finalNote > 71) finalNote -= 12; while (finalNote < 48) finalNote += 12; return finalNote;
+  }
+
+  /**
+   * #ЗАЧЕМ: Выбор инструмента для гармонии (ПЛАН №868).
+   * #ЧТО: Смена каждые 4 такта. Приоритет Наследия vs Tension.
+   */
+  private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
+      // Смена только на границе фраз
+      if (epoch % 4 === 0 && epoch !== this.lastHarmonySwitchBar) {
+          this.lastHarmonySwitchBar = epoch;
+          const rand = this.random.next();
+
+          if (hasHeritageStrings) {
+              // Правило 1: Если донор дает скрипки — играем их в 70% случаев.
+              // В 30% случаев берем гитару для отдыха слуха.
+              this.activeHarmonyInstrument = rand < 0.7 ? 'violin' : 'guitarChords';
+          } else {
+              // Правило 2: Если донор не дает гармонию — включаем Tension-дирижера.
+              if (tension > 0.85 || tension < 0.15) {
+                  this.activeHarmonyInstrument = 'violin';
+              } else {
+                  this.activeHarmonyInstrument = 'guitarChords';
+              }
+          }
+      }
   }
 
   public generateBar(
@@ -317,10 +346,18 @@ export class BluesBrain {
         pianoInfo = { style: p.style, count: p.events.length };
     }
     
+    // --- HARMONY BALANCE LOGIC (Plan №868) ---
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        const rand = this.random.next();
-        if (tension > 0.85 || tension < 0.15 || rand < 0.25) events.push(...this.renderDerivativeHarmony(resChord, epoch, 'violin'));
-        if (rand < 0.85) events.push(...this.renderDerivativeHarmony(resChord, epoch, 'guitarChords'));
+        // Проверяем наличие донорских скрипок
+        const hasHeritageStrings = this.currentAccompAxioms.some(ax => 
+            ax.role.includes('strings') || ax.role.includes('violin')
+        );
+
+        // Выбираем инструмент согласно новым правилам (один музыкант)
+        this.selectHarmonyInstrument(epoch, tension, hasHeritageStrings);
+        
+        // Рендерим только выбранный инструмент
+        events.push(...this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument));
     }
 
     events.push(...melodyEvents);
@@ -335,9 +372,10 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
-            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
+            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
+            harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
-        narrative: `Blues ${modeStr}: ${this.currentTrackName} [${this.state.lastMutationType}] [Chronos Mode]`
+        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Harmony: ${this.activeHarmonyInstrument}] [Chronos Mode]`
     };
   }
 
@@ -416,8 +454,6 @@ export class BluesBrain {
                       this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                       let rawPhrase = decompressCompactPhrase(selected.phrase); const phrasesToNormalize = [rawPhrase];
                       
-                      // #ЗАЧЕМ: Применяем Melodic Tie (ПЛАН №860).
-                      // #ЧТО: Склеиваем одинаковые ноты мелодии в одну длинную линию.
                       if (selected.role === 'melody') {
                           rawPhrase = mergeIdenticalNotes(rawPhrase);
                       }
@@ -454,7 +490,6 @@ export class BluesBrain {
         technique: n.tech as any, 
         dynamics: 'p', 
         phrasing: 'legato',
-        // #ЗАЧЕМ: ПЛАН №853. Проброс настроения для тембральной фильтрации в сэмплерах.
         params: { ...n.params, mood: this.mood }
     }));
   }
@@ -545,20 +580,18 @@ export class BluesBrain {
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = []; 
       
-      // #ЗАЧЕМ: Разблокировка Пианиста (ПЛАН №850). Шанс пропуска удален — постоянное дублирование.
       if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
 
       const isMinor = chord.chordType === 'minor';
       const thirdInterval = isMinor ? 3 : 4;
       
       melodyEvents.forEach((m, i) => {
-          // #ЧТО: Пианист дублирует каждую вторую ноту мелодии в терцию.
           if (i % 2 === 0) {
               events.push({ 
                   ...m,
                   type: 'pianoAccompaniment', 
                   note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
-                  weight: 0.25, // Очень тихо (бренчание)
+                  weight: 0.25, 
                   technique: 'hit', 
                   dynamics: 'p', 
                   phrasing: 'staccato', 
