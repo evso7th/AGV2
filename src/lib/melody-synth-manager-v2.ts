@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -11,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №839 — Динамическое управление громкостью (volumeMultiplier) полностью отключено.
+ * #ЧТО: ПЛАН №855 — Реализован Legato Overlap для мелодии. Ноты наслаиваются друг на друга.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -83,14 +82,21 @@ export class MelodySynthManagerV2 {
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
-        const notesToPlay = events.filter(e => e.type === this.partName).map(e => ({ 
-            midi: e.note, 
-            time: e.time * beatDuration, 
-            duration: e.duration * beatDuration, 
-            velocity: e.weight, 
-            technique: e.technique, 
-            params: e.params 
-        }));
+        
+        // #ЗАЧЕМ: Наслоение нот (ПЛАН №855).
+        // #ЧТО: Если это мелодия, мы искусственно увеличиваем duration каждой ноты на 0.4с.
+        //       Это создает эффект Legato, когда хвост предыдущей ноты перекрывает следующую.
+        const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
+            const extraDuration = this.partName === 'melody' ? 0.4 : 0;
+            return { 
+                midi: e.note, 
+                time: e.time * beatDuration, 
+                duration: (e.duration * beatDuration) + extraDuration, 
+                velocity: e.weight, 
+                technique: e.technique, 
+                params: e.params 
+            };
+        });
         
         if (instrumentHint && this.partName === 'melody') {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
@@ -135,9 +141,10 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Динамическое управление громкостью отключено.
-        // #ЧТО: Удален volumeMultiplier.
-        if (this.partName === 'melody' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
+        // #ЗАЧЕМ: Устранение механического щелчка (ПЛАН №855).
+        // #ЧТО: Транзиентный слой теперь подмешивается только в режиме 'bass'. 
+        //       Для 'melody' мы полагаемся на мягкую атаку основного сэмпла.
+        if (this.partName === 'bass' && (currentActive.startsWith('guitar') || currentActive === 'synth')) {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         

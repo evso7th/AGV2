@@ -3,8 +3,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.2 — "Calibration Support".
- * #ЧТО: Добавлен метод setPreampGain для внешнего управления громкостью.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.3 — "Melodic Silk Update".
+ * #ЧТО: ПЛАН №855 — Атака смягчена до 22мс для устранения эффекта пулемета в мелодии.
  */
 
 type VelocityLayer = 'p' | 'mf' | 'f';
@@ -204,7 +204,8 @@ export class BlackGuitarSampler {
 
         const fixedGain = 1.0; 
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(fixedGain, startTime + 0.005);
+        // #ЗАЧЕМ: Мягкая атака (ПЛАН №855). С 0.005 до 0.022 для ликвидации стаккато.
+        gainNode.gain.linearRampToValueAtTime(fixedGain, startTime + 0.022);
         
         if (isTransientMode) {
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
@@ -219,7 +220,7 @@ export class BlackGuitarSampler {
 
         this.activeSources.add(source);
         source.onended = () => {
-            this.activeSources.add(source);
+            this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
