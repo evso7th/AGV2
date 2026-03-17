@@ -3,9 +3,9 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.4 — "Asset Integrity Alignment".
- * #ЧТО: ПЛАН №856 — Карта сэмплов приведена в строгое соответствие с физическим списком файлов.
- *       Удалены несуществующие слои p/mf для предотвращения 404 ошибок.
+ * @fileOverview Black Acoustic Sampler V4.5 — "Atomic Precision Update".
+ * #ЗАЧЕМ: ПЛАН №858 — Манифест синхронизирован с физическим списком файлов.
+ * #ЧТО: Индексы Round Robin теперь задаются явными массивами, исключая 404 ошибки для отсутствующих rr1 и др.
  */
 
 type VelocityLayer = 'p' | 'mf' | 'f';
@@ -23,53 +23,53 @@ interface NoteBuffers {
 
 const BLACK_GUITAR_MANIFEST = {
     notes: [
-        { m: 52, key: 'e3', layers: { p: 2, mf: 0, f: 3 } },
-        { m: 53, key: 'f3', layers: { p: 2, mf: 4, f: 0 } },
-        { m: 54, key: 'gb3', layers: { p: 2, mf: 3, f: 2 } },
-        { m: 55, key: 'g3', layers: { p: 1, mf: 3, f: 1 } },
-        { m: 56, key: 'ab3', layers: { p: 0, mf: 4, f: 3 } },
-        { m: 57, key: 'a3', layers: { p: 1, mf: 3, f: 4 } },
-        { m: 58, key: 'bb3', layers: { p: 1, mf: 4, f: 4 } },
-        { m: 59, key: 'b3', layers: { p: 1, mf: 4, f: 1 } },
-        { m: 60, key: 'c4', layers: { p: 2, mf: 2, f: 4 } },
-        { m: 61, key: 'db4', layers: { p: 2, mf: 3, f: 1 } },
-        { m: 62, key: 'd4', layers: { p: 0, mf: 3, f: 4 } },
-        { m: 63, key: 'eb4', layers: { p: 2, mf: 2, f: 0 } },
-        { m: 64, key: 'e4', layers: { p: 1, mf: 4, f: 2 } },
-        { m: 65, key: 'f4', layers: { p: 0, mf: 4, f: 4 } },
-        { m: 66, key: 'gb4', layers: { p: 0, mf: 1, f: 3 } },
-        { m: 67, key: 'g4', layers: { p: 0, mf: 4, f: 4 } },
-        { m: 68, key: 'ab4', layers: { p: 1, mf: 4, f: 4 } },
-        { m: 69, key: 'a4', layers: { p: 1, mf: 3, f: 3 } },
-        { m: 70, key: 'bb4', layers: { p: 0, mf: 4, f: 0 } },
-        { m: 71, key: 'b4', layers: { p: 1, mf: 2, f: 1 } },
-        { m: 72, key: 'c5', layers: { p: 2, mf: 3, f: 3 } },
-        { m: 73, key: 'db5', layers: { p: 2, mf: 3, f: 4 } },
-        { m: 74, key: 'd5', layers: { p: 2, mf: 0, f: 1 } },
-        { m: 75, key: 'eb5', layers: { p: 2, mf: 2, f: 2 } },
-        { m: 76, key: 'e5', layers: { p: 2, mf: 0, f: 3 } },
-        { m: 77, key: 'f5', layers: { p: 2, mf: 4, f: 4 } },
-        { m: 78, key: 'gb5', layers: { p: 0, mf: 2, f: 4 } },
-        { m: 79, key: 'g5', layers: { p: 2, mf: 4, f: 0 } },
-        { m: 80, key: 'ab5', layers: { p: 2, mf: 0, f: 4 } },
-        { m: 81, key: 'a5', layers: { p: 2, mf: 4, f: 4 } },
-        { m: 82, key: 'bb5', layers: { p: 2, mf: 3, f: 3 } },
-        { m: 83, key: 'b5', layers: { p: 2, mf: 3, f: 3 } },
-        { m: 84, key: 'c6', layers: { p: 2, mf: 4, f: 4 } },
-        { m: 85, key: 'db6', layers: { p: 0, mf: 4, f: 4 } },
-        { m: 86, key: 'd6', layers: { p: 2, mf: 1, f: 4 } },
-        { m: 87, key: 'eb6', layers: { p: 2, mf: 2, f: 4 } },
-        { m: 88, key: 'e6', layers: { p: 1, mf: 1, f: 0 } },
-        { m: 89, key: 'f6', layers: { p: 2, mf: 1, f: 1 } },
-        { m: 90, key: 'gb6', layers: { p: 0, mf: 2, f: 2 } },
-        { m: 91, key: 'g6', layers: { p: 0, mf: 2, f: 2 } },
-        { m: 92, key: 'ab6', layers: { p: 1, mf: 0, f: 1 } },
-        { m: 93, key: 'a6', layers: { p: 0, mf: 0, f: 2 } },
-        { m: 94, key: 'bb6', layers: { p: 2, mf: 2, f: 2 } },
-        { m: 95, key: 'b6', layers: { p: 2, mf: 2, f: 0 } },
-        { m: 96, key: 'c7', layers: { p: 2, mf: 0, f: 1 } },
-        { m: 97, key: 'db7', layers: { p: 2, mf: 2, f: 2 } },
-        { m: 98, key: 'd7', layers: { p: 0, mf: 2, f: 2 } },
+        { m: 52, key: 'e3', layers: { p: [2], mf: [], f: [2, 3] } },
+        { m: 53, key: 'f3', layers: { p: [1, 2], mf: [2, 4], f: [] } },
+        { m: 54, key: 'gb3', layers: { p: [2], mf: [3], f: [2] } },
+        { m: 55, key: 'g3', layers: { p: [1], mf: [1, 3], f: [1] } },
+        { m: 56, key: 'ab3', layers: { p: [], mf: [3, 4], f: [3] } },
+        { m: 57, key: 'a3', layers: { p: [1], mf: [3], f: [2, 4] } },
+        { m: 58, key: 'bb3', layers: { p: [1], mf: [4], f: [3, 4] } },
+        { m: 59, key: 'b3', layers: { p: [1], mf: [1, 2, 3, 4], f: [1] } },
+        { m: 60, key: 'c4', layers: { p: [1, 2], mf: [2], f: [2, 3, 4] } },
+        { m: 61, key: 'db4', layers: { p: [1, 2], mf: [2, 3], f: [1] } },
+        { m: 62, key: 'd4', layers: { p: [], mf: [3], f: [1, 2, 3, 4] } },
+        { m: 63, key: 'eb4', layers: { p: [1, 2], mf: [2], f: [] } },
+        { m: 64, key: 'e4', layers: { p: [1], mf: [1, 4], f: [1, 2] } },
+        { m: 65, key: 'f4', layers: { p: [], mf: [1, 2, 3, 4], f: [1, 4] } },
+        { m: 66, key: 'gb4', layers: { p: [], mf: [1], f: [1, 3] } },
+        { m: 67, key: 'g4', layers: { p: [], mf: [2, 4], f: [3, 4] } },
+        { m: 68, key: 'ab4', layers: { p: [1], mf: [2, 4], f: [2, 3, 4] } },
+        { m: 69, key: 'a4', layers: { p: [2], mf: [2, 3], f: [1, 3] } },
+        { m: 70, key: 'bb4', layers: { p: [], mf: [2, 3, 4], f: [] } },
+        { m: 71, key: 'b4', layers: { p: [1], mf: [2], f: [1] } },
+        { m: 72, key: 'c5', layers: { p: [2], mf: [3], f: [3] } },
+        { m: 73, key: 'db5', layers: { p: [2], mf: [3], f: [1, 2, 4] } },
+        { m: 74, key: 'd5', layers: { p: [2], mf: [], f: [1] } },
+        { m: 75, key: 'eb5', layers: { p: [2], mf: [1, 2], f: [2] } },
+        { m: 76, key: 'e5', layers: { p: [1, 2], mf: [], f: [1, 2, 3] } },
+        { m: 77, key: 'f5', layers: { p: [2], mf: [2, 3, 4], f: [1, 2, 4] } },
+        { m: 78, key: 'gb5', layers: { p: [], mf: [2], f: [4] } },
+        { m: 79, key: 'g5', layers: { p: [2], mf: [2, 4], f: [] } },
+        { m: 80, key: 'ab5', layers: { p: [1, 2], mf: [], f: [1, 3, 4] } },
+        { m: 81, key: 'a5', layers: { p: [2], mf: [1, 2, 4], f: [2, 3, 4] } },
+        { m: 82, key: 'bb5', layers: { p: [1, 2], mf: [1, 3], f: [3] } },
+        { m: 83, key: 'b5', layers: { p: [2], mf: [1, 3], f: [2, 3] } },
+        { m: 84, key: 'c6', layers: { p: [1, 2], mf: [1, 2, 3, 4], f: [1, 2, 4] } },
+        { m: 85, key: 'db6', layers: { p: [], mf: [1, 4], f: [2, 4] } },
+        { m: 86, key: 'd6', layers: { p: [2], mf: [1], f: [1, 4] } },
+        { m: 87, key: 'eb6', layers: { p: [1, 2], mf: [1, 2], f: [1, 3, 4] } },
+        { m: 88, key: 'e6', layers: { p: [1], mf: [1], f: [] } },
+        { m: 89, key: 'f6', layers: { p: [1, 2], mf: [1], f: [1] } },
+        { m: 90, key: 'gb6', layers: { p: [], mf: [2], f: [2] } },
+        { m: 91, key: 'g6', layers: { p: [], mf: [1, 2], f: [2] } },
+        { m: 92, key: 'ab6', layers: { p: [1], mf: [], f: [1] } },
+        { m: 93, key: 'a6', layers: { p: [], mf: [], f: [2] } },
+        { m: 94, key: 'bb6', layers: { p: [1, 2], mf: [2], f: [2] } },
+        { m: 95, key: 'b6', layers: { p: [2], mf: [2], f: [] } },
+        { m: 96, key: 'c7', layers: { p: [1, 2], mf: [], f: [1] } },
+        { m: 97, key: 'db7', layers: { p: [1, 2], mf: [1, 2], f: [1, 2] } },
+        { m: 98, key: 'd7', layers: { p: [], mf: [2], f: [2] } },
     ]
 };
 
@@ -117,14 +117,14 @@ export class BlackGuitarSampler {
                 this.noteBuffers.set(noteDef.m, noteInfo);
 
                 (['p', 'mf', 'f'] as VelocityLayer[]).forEach(layer => {
-                    const count = noteDef.layers[layer];
-                    for (let rr = 1; rr <= count; rr++) {
-                        const fileName = `twang_${noteDef.key}_${layer}_rr${rr}.ogg`;
+                    const rrIndices = (noteDef.layers as any)[layer] as number[];
+                    rrIndices.forEach(rrIndex => {
+                        const fileName = `twang_${noteDef.key}_${layer}_rr${rrIndex}.ogg`;
                         const url = `/assets/acoustic_guitar_samples/black/ord/${fileName}`;
                         loadPromises.push(loadSample(url).then(buf => {
                             if (buf) noteInfo[layer].push({ buffer: buf, name: fileName });
                         }));
-                    }
+                    });
                 });
             });
 
