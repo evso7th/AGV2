@@ -30,7 +30,8 @@ import {
   EyeOff,
   FileText,
   Save,
-  RefreshCw
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -51,7 +52,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
@@ -203,7 +203,6 @@ export default function HypercubeDashboard() {
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editAxiomData, setEditAxiomData] = useState<any>(null);
 
-  // Manifest editing state
   const [activeManifest, setActiveManifest] = useState<any>(null);
   const [manifestContent, setManifestContent] = useState("");
 
@@ -319,7 +318,6 @@ export default function HypercubeDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check if it's a JSON axiom or a TXT/MD manifest
     if (file.name.endsWith('.json')) {
         resetStaging();
         const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
@@ -374,7 +372,6 @@ export default function HypercubeDashboard() {
                     const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
                     const density = noteCount / calculatedBars;
                     let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
-                    
                     const drumComponents = [
                         { kw: 'kick', role: 'drums kick' }, { kw: 'snare', role: 'drums snare' }, { kw: 'hat', role: 'drums hat' },
                         { kw: 'tom', role: 'drums tom' }, { kw: 'ride', role: 'drums ride' }, { kw: 'crash', role: 'drums crash' },
@@ -382,18 +379,11 @@ export default function HypercubeDashboard() {
                         { kw: 'perc', role: 'drums perc' }, { kw: 'shaker', role: 'drums perc' }, { kw: 'tamb', role: 'drums perc' }
                     ];
                     const matchedDrum = drumComponents.find(c => lowerName.includes(c.kw));
-                    
-                    if (matchedDrum) {
-                        role = matchedDrum.role;
-                    } else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) {
-                        role = 'drums';
-                    } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
-                        role = 'bass';
-                    } else if (density > 10 || noteCount > 500) {
-                        role = 'accomp piano';
-                    } else {
-                        role = 'melody';
-                    }
+                    if (matchedDrum) role = matchedDrum.role;
+                    else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) role = 'drums';
+                    else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) role = 'bass';
+                    else if (density > 10 || noteCount > 500) role = 'accomp piano';
+                    else role = 'melody';
                     flattened.push(processAxiom({ phrase, role, nativeBpm: bpm, nativeKey: 'C', timeSignature: timeSig, narrative: `Imported from track: ${track.name || 'Unnamed'}` }, tIdx, targetId));
                 });
             } else if (Array.isArray(json)) {
@@ -437,7 +427,6 @@ export default function HypercubeDashboard() {
         };
         reader.readAsText(file);
     } else {
-        // Handle as Project Manifest (txt or md)
         const reader = new FileReader();
         reader.onload = (event) => {
             const content = event.target?.result as string;
@@ -449,13 +438,40 @@ export default function HypercubeDashboard() {
     }
   };
 
+  const handleBootstrapKnowledgeBase = async () => {
+      setIsProcessing(true);
+      try {
+          const manifests = [
+              { filename: 'Omega3.txt', category: 'protocol', content: 'ПРОТОКОЛ-ОМЕГА (Версия 3.0 "Зеркало Истины")\nГЛАВНЫЙ ПРИНЦИП: РАБОТАЕТ - НЕ ТРОГАТЬ!' },
+              { filename: 'backlog.md', category: 'backlog', content: '# Проектный Бэклог "AuraGroove"\nПлан 887: Живые Ударные и др.' },
+              { filename: 'AXIOM_PROTOCOL.md', category: 'protocol', content: '# Протокол Аксиом AuraGroove (v1.0)' },
+              { filename: 'SYSTEM_PROTOCOL.md', category: 'protocol', content: '### Системный Протокол Управления v4.5 "Pure V2 Domain"' },
+              { filename: 'SOCIAL_CONTRACT.md', category: 'contract', content: '# Социальный Контракт v1.7 "Absolute Fidelity"' },
+              { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' }
+          ];
+
+          for (const m of manifests) {
+              await saveProjectDocument(db, {
+                  filename: m.filename,
+                  content: m.content,
+                  category: m.category as any,
+                  version: 'Bootstrap'
+              });
+          }
+          toast({ title: "Bootstrap Complete", description: "Core knowledge synchronized to Cloud." });
+      } catch (e) {
+          toast({ variant: "destructive", title: "Bootstrap Failed" });
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
   const handleCommitManifest = async () => {
       if (!activeManifest) return;
       setIsProcessing(true);
       try {
           const categoryMatch = activeManifest.filename.toLowerCase().match(/backlog|protocol|spec|contract/);
           const category = categoryMatch ? categoryMatch[0] : 'spec';
-          
           await saveProjectDocument(db, {
               filename: activeManifest.filename,
               content: manifestContent,
@@ -517,7 +533,6 @@ export default function HypercubeDashboard() {
     else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
     else if (channelType === 'harmony') hints.harmony = 'violin';
     else hints.accompaniment = 'organ_soft_jazz';
-    
     playRawEvents(events, hints, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
     const maxDuration = Math.max(...events.map(e => e.time + e.duration));
@@ -804,7 +819,7 @@ export default function HypercubeDashboard() {
                             {isManifestsLoading ? (
                                 <div className="py-20 text-center opacity-40 animate-pulse font-bold uppercase text-[10px]">Querying Wisdom...</div>
                             ) : cloudManifests?.length === 0 ? (
-                                <div className="py-20 text-center opacity-40 font-bold uppercase text-[10px]">Cloud is empty. Sync files!</div>
+                                <div className="py-20 text-center opacity-40 font-bold uppercase text-[10px]">Cloud is empty. Bootstrap knowledge!</div>
                             ) : (
                                 <div className="space-y-2">
                                     {cloudManifests?.map((m: any) => (
@@ -829,9 +844,12 @@ export default function HypercubeDashboard() {
                             )}
                         </ScrollArea>
                     </CardContent>
-                    <div className="p-4 border-t bg-muted/20">
+                    <div className="p-4 border-t bg-muted/20 flex flex-col gap-2">
                         <Button variant="outline" className="w-full h-10 gap-2 font-bold uppercase text-xs" onClick={() => fileInputRef.current?.click()}>
                             <Upload className="h-4 w-4" /> Load Local File
+                        </Button>
+                        <Button variant="secondary" className="w-full h-10 gap-2 font-black uppercase text-xs" onClick={handleBootstrapKnowledgeBase} disabled={isProcessing}>
+                            <Zap className="h-4 w-4" /> Bootstrap Knowledge
                         </Button>
                     </div>
                 </Card>
@@ -927,7 +945,7 @@ export default function HypercubeDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local Assets</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
+          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local Assets</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black">Vector (t,b,e,h)</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
         </Tabs>
       </div>
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
