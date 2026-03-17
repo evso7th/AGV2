@@ -10,8 +10,8 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №855 — Реализован Legato Overlap для мелодии. Ноты наслаиваются друг на друга.
- * #ОБНОВЛЕНО (Hotfix 855.1): Возвращен транзиентный слой для мелодии по требованию пользователя.
+ * #ЧТО: ПЛАН №861 — Реализован автоматический аттенюатор для синтезаторов.
+ *       Громкость падает в 2 раза для синтов и органов, сохраняется для гитар.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -75,6 +75,19 @@ export class MelodySynthManagerV2 {
                 preset: preset,
                 output: this.destination
             });
+            
+            // #ЗАЧЕМ: Применение интеллектуального множителя громкости (ПЛАН №861).
+            // #ЧТО: Если это мелодия и это синтезатор/орган — понижаем громкость в 2 раза.
+            if (this.partName === 'melody' && this.synth) {
+                const isGuitar = presetName.toLowerCase().includes('guitar') || 
+                                 presetName.toLowerCase().includes('acoustic') ||
+                                 presetName.toLowerCase().includes('telecaster');
+                
+                const multiplier = isGuitar ? 1.0 : 0.5;
+                const baseVolume = preset.volume || 0.7;
+                this.synth.setVolume(baseVolume * multiplier);
+            }
+
             this.activePresetName = presetName;
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
@@ -84,9 +97,6 @@ export class MelodySynthManagerV2 {
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
         
-        // #ЗАЧЕМ: Наслоение нот (ПЛАН №855).
-        // #ЧТО: Если это мелодия, мы искусственно увеличиваем duration каждой ноты на 0.4с.
-        //       Это создает эффект Legato, когда хвост предыдущей ноты перекрывает следующую.
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
             const extraDuration = this.partName === 'melody' ? 0.4 : 0;
             return { 
@@ -142,9 +152,6 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Устранение механического щелчка (ПЛАН №855).
-        // #ЧТО: Подмешиваем транзиентный слой для гитарных и синтезаторных пресетов.
-        // #ОБНОВЛЕНО (Hotfix 855.1): Теперь слой подмешивается всегда (и для мелодии, и для баса).
         if (currentActive.startsWith('guitar') || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
