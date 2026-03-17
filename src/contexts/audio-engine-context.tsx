@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V21.0 — "Sampler Calibration Console".
- * #ЧТО: ПЛАН №854 — Реализована система калибровки преампов всех сэмплеров.
+ * #ЗАЧЕМ: Audio Engine Context V22.0 — "Precision Calibration Station".
+ * #ЧТО: ПЛАН №862 — Реализована калибровка Баса и обновление имен каналов.
  */
 'use client';
 
@@ -45,7 +45,8 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     piano: 0.6,
     orchestral: 0.29,
     cs80: 0.1,
-    chords: 1.2
+    chords: 1.2,
+    bass: 1.0 // New default
 };
 
 interface AudioEngineContextType {
@@ -93,13 +94,15 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
   
-  // #ЗАЧЕМ: Состояние калибровки преампов.
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
-          if (saved) return JSON.parse(saved);
+          if (saved) {
+              const parsed = JSON.parse(saved);
+              return { bass: 1.0, ...parsed }; // Ensure bass key exists
+          }
       }
-      return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0 };
+      return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
   });
 
   const initializationInFlightRef = useRef(false);
@@ -146,7 +149,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
     }
   }, []);
 
-  // #ЗАЧЕМ: Применение калибровки в реальном времени.
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!isInitialized) return;
       const m = gains.master;
@@ -154,16 +156,17 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
       
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
-      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); // Dark has high default
+      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
       
-      // Самплеры через Piano и Orchestral
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
       
-      // Guitar Chords
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
+
+      // #ЗАЧЕМ: Калибровка баса (ПЛАН №862).
+      bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
   }, [isInitialized]);
 
   useEffect(() => {
@@ -255,7 +258,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
                 gainNodesRef.current[p] = context.createGain();
-                // Сэмплеры идут через Samplers Master Gain, синты напрямую
                 const isSamplerPart = ['melody', 'harmony', 'pianoAccompaniment'].includes(p);
                 gainNodesRef.current[p].connect(isSamplerPart ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
             }
@@ -290,7 +292,6 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
                     nextBarTimeRef.current += payload.barDuration;
                     
                     if (payload.beautyScore >= 0.75 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        console.log(`%c[AI Arbiter] Found a Masterpiece (Score: ${payload.beautyScore.toFixed(2)})! Synchronizing with Cloud...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, {
                             seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre,
                             density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm,

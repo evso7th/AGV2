@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V2.9.11 — "Sampler Calibration Console".
- * #ЧТО: ПЛАН №854 — Добавлено модальное окно для ручной регулировки системной громкости сэмплеров.
+ * #ЗАЧЕМ: UI AuraGroove V2.9.12 — "Precision Calibration Console".
+ * #ЧТО: ПЛАН №862 — Переименованы каналы калибровки и добавлен регулятор Bass.
  */
 'use client';
 
@@ -39,13 +39,14 @@ const EQ_BANDS = [
 ];
 
 const CALIBRATION_CHANNELS = [
-    { key: 'master', label: 'Master Sampler Gain' },
-    { key: 'acoustic', label: 'Acoustic Core' },
-    { key: 'electric', label: 'Electric Lead' },
-    { key: 'piano', label: 'Celestial Piano' },
-    { key: 'orchestral', label: 'Orchestral Silk' },
-    { key: 'cs80', label: 'Vangelis Pad' },
-    { key: 'chords', label: 'Guitar Chords' }
+    { key: 'master', label: 'Master Sampler' },
+    { key: 'acoustic', label: 'Black Acoustic' },
+    { key: 'electric', label: 'Telecaster' },
+    { key: 'piano', label: 'Piano' },
+    { key: 'orchestral', label: 'Violin & Flute' },
+    { key: 'cs80', label: 'CS80' },
+    { key: 'chords', label: 'Acoustic Chords' },
+    { key: 'bass', label: 'Bass' }
 ];
 
 type MoodCategory = 'light' | 'neutral' | 'dark';

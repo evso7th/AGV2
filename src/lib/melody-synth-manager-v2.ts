@@ -10,8 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №861 — Реализован автоматический аттенюатор для синтезаторов.
- *       Громкость падает в 2 раза для синтов и органов, сохраняется для гитар.
+ * #ЧТО: ПЛАН №862 — Добавлен системный преамп для калибровки через центральную консоль.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -26,6 +25,7 @@ export class MelodySynthManagerV2 {
     private cs80Sampler: CS80GuitarSampler;
     
     private activePresetName: string = 'none';
+    private preamp: GainNode;
 
     constructor(
         audioContext: AudioContext, 
@@ -43,6 +43,10 @@ export class MelodySynthManagerV2 {
         this.darkTelecasterSampler = darkTelecasterSampler;
         this.cs80Sampler = cs80Sampler;
         this.partName = partName;
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
     }
 
     async init() {
@@ -50,6 +54,12 @@ export class MelodySynthManagerV2 {
         const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
         await this.setInstrument(initialPresetName);
         this.isInitialized = true;
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
@@ -73,11 +83,10 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.destination
+                output: this.preamp // Connect to internal preamp
             });
             
             // #ЗАЧЕМ: Применение интеллектуального множителя громкости (ПЛАН №861).
-            // #ЧТО: Если это мелодия и это синтезатор/орган — понижаем громкость в 2 раза.
             if (this.partName === 'melody' && this.synth) {
                 const isGuitar = presetName.toLowerCase().includes('guitar') || 
                                  presetName.toLowerCase().includes('acoustic') ||
@@ -152,6 +161,7 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
+        // #ЗАЧЕМ: Возвращенная атака мелодии (ПЛАН №855.1)
         if (currentActive.startsWith('guitar') || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
@@ -202,5 +212,6 @@ export class MelodySynthManagerV2 {
     public dispose() { 
         this.stop(); 
         if (this.synth) this.synth.disconnect();
+        this.preamp.disconnect();
     }
 }
