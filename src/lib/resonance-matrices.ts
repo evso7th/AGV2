@@ -1,3 +1,4 @@
+
 import type { FractalEvent, ResonanceMatrix, Mood, Genre, Technique, BassSynthParams, InstrumentType } from '@/types/fractal';
 import { getScaleForMood } from './music-theory';
 
@@ -27,16 +28,16 @@ function isOnSnareBeat(timeInBeats: number): boolean {
 
 // Функции-предикаты для типов событий
 const isGhostNote = (event: FractalEvent): boolean => event.technique === 'ghost';
-const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick';
-const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare';
+const isKick = (event: FractalEvent): boolean => event.type === 'drum_kick' || event.type === 'drum_kick_reso' || event.type === 'drum_kick_soft' || event.type === 'drum_kick_drum6';
+const isSnare = (event: FractalEvent): boolean => event.type === 'drum_snare' || event.type === 'drum_snare_off' || event.type === 'drum_snare_ghost_note';
 const isBass = (event: FractalEvent): boolean => event.type === 'bass';
-const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash';
+const isCrash = (event: FractalEvent): boolean => event.type === 'drum_crash' || event.type === 'drum_crash2';
 const isFill = (event: FractalEvent): boolean => event.technique === 'fill';
-const isTom = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_tom');
+const isTom = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_tom') || (event.type as string).startsWith('drum_Sonor');
 const isAccompaniment = (event: FractalEvent): boolean => event.type === 'accompaniment';
 const isHarmony = (event: FractalEvent): boolean => event.type === 'harmony';
 
-const isTonal = (event: FractalEvent): boolean => isBass(event) || isAccompaniment(event) || isHarmony(event);
+const isTonal = (event: FractalEvent): boolean => isBass(event) || isAccompaniment(event) || isHarmony(event) || event.type === 'melody';
 const isRhythmic = (event: FractalEvent): boolean => (event.type as string).startsWith('drum_') || (event.type as string).startsWith('perc-');
 
 // === МАТРИЦЫ РЕЗОНАНСА ===
@@ -173,24 +174,24 @@ export const AmbientK: ResonanceMatrix = (
 
 /**
  * Матрица для "живых" жанров (рок, блюз, баллады).
- * На данный момент является копией электронной матрицы для обеспечения базовой функциональности.
  */
 export const TraditionalK = ElectronicK;
 
 /**
  * #ЗАЧЕМ: Матрица резонанса для меланхоличного минора.
- * #ОБНОВЛЕНО (ПЛАН №287): Повышена базовая щедрость для тональных пар до 0.75.
+ * #ОБНОВЛЕНО (ПЛАН №882): Повышено одобрение консонансов для стимуляции работы Арбитра.
  */
 export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB: FractalEvent, context: { mood: Mood; tempo: number; delta: number, genre: Genre }): number => {
     if (!eventA || !eventB) { return 0.5; }
 
     const event1IsBass = isBass(eventA);
     const event2IsBass = isBass(eventB);
-    const event1IsDrums = eventA.type.toString().startsWith('drum_') || eventA.type.toString().startsWith('perc-');
-    const event2IsDrums = eventB.type.toString().startsWith('drum_') || eventB.type.toString().startsWith('perc-');
+    const event1IsDrums = isRhythmic(eventA);
+    const event2IsDrums = isRhythmic(eventB);
     const event1IsAccomp = isAccompaniment(eventA);
     const event2IsAccomp = isAccompaniment(eventB);
-
+    const event1IsTonal = isTonal(eventA);
+    const event2IsTonal = isTonal(eventB);
 
     if ((event1IsBass && event2IsDrums) || (event1IsDrums && event2IsBass)) {
         const bassEvent = event1IsBass ? eventA : eventB;
@@ -204,7 +205,7 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         if (isKick(drumEvent)) {
             if (areSimultaneous(bassEvent.time, drumEvent.time) && isOnStrongBeat(bassEvent.time)) return 1.0;
             if (Math.abs(bassEvent.time - drumEvent.time - 0.5) < 0.1 && isOnStrongBeat(drumEvent.time)) return 0.85; 
-            return 0.4; // Повышен пол
+            return 0.4; 
         }
         if (isSnare(drumEvent)) {
             if (areSimultaneous(eventA.time, eventB.time) && isOnSnareBeat(eventA.time)) {
@@ -214,20 +215,19 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         }
     }
 
-
-    if ((event1IsBass && event2IsAccomp) || (event1IsAccomp && event2IsBass)) {
+    if (event1IsTonal && event2IsTonal) {
         const scale = getScaleForMood(context.mood);
         const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
         const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
-        if (!noteAInScale || !noteBInScale) return 0.2; 
+        if (!noteAInScale || !noteBInScale) return 0.15; 
 
         const interval = Math.abs(eventA.note - eventB.note) % 12;
-        if ([3, 4, 7, 8, 9].includes(interval)) return 0.99;
-        // #ЗАЧЕМ: Повышение базовой красоты для всех "правильных" пар.
-        // #ОБНОВЛЕНО (ПЛАН №287): С 0.60 до 0.75.
-        return 0.75; 
+        // #ЗАЧЕМ: ПЛАН №882. Идеальный резонанс (1.0) для терций и квинт.
+        if ([3, 4, 7].includes(interval)) return 1.0;
+        if ([0, 8, 9].includes(interval)) return 0.95;
+        
+        return 0.8; 
     }
-
 
     if (event1IsDrums && event2IsDrums) {
         if ((isKick(eventA) && isSnare(eventB)) || (isSnare(eventA) && isKick(eventB))) {
@@ -236,7 +236,7 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
             if (isOnStrongBeat(kickTime) && isOnSnareBeat(snareTime)) {
                 return 0.95; 
             }
-            return 0.6; // Повышено одобрение базового ритма
+            return 0.6; 
         }
         return 0.6;
     }
@@ -246,27 +246,12 @@ export const MelancholicMinorK: ResonanceMatrix = (eventA: FractalEvent, eventB:
         return !isOnStrongBeat(time) ? 0.9 : 0.2;
     }
     
-    if ((event1IsBass && event2IsBass && eventA.note !== eventB.note) || (event1IsAccomp && event2IsAccomp)) {
-        const scale = getScaleForMood(context.mood);
-        const noteAInScale = scale.some(scaleNote => (eventA.note % 12) === (scaleNote % 12));
-        const noteBInScale = scale.some(scaleNote => (eventB.note % 12) === (scaleNote % 12));
-        
-        if (isFill(eventA) && isFill(eventB)) {
-             return noteAInScale && noteBInScale ? 0.95 : 0.2;
-        }
-
-        // #ЗАЧЕМ: Повышено одобрение тональной связности внутри слоев.
-        // #ОБНОВЛЕНО (ПЛАН №287): С 0.90 до 0.95.
-        return noteAInScale && noteBInScale ? 0.95 : 0.4;
-    }
-    
     if (context.delta > 0.9) { 
         if (isTom(eventA) || isTom(eventB)) return 0.85;
         if ((isCrash(eventA) || isCrash(eventB)) && context.genre !== 'ambient') return 1.0;
     } else {
         if (isCrash(eventA) || isCrash(eventB)) return 0.05;
     }
-
 
     return 0.5;
 };

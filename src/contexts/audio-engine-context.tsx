@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V26.0 — "AI Arbiter Revived".
- * #ЧТО: ПЛАН №879 — Уровень срабатывания Арбитра установлен на 0.85.
+ * #ЗАЧЕМ: Audio Engine Context V27.0 — "Visible Arbiter".
+ * #ЧТО: ПЛАН №882 — Порог Арбитра 0.82 + Уведомления о находках.
  */
 'use client';
 
@@ -271,7 +271,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
-        console.log('%c[SonicLoader] Loading Minimal Core (Synth Rhodes Active)...', 'color: #00FFFF; font-weight: bold;');
         await Promise.all([
             drumMachineRef.current.init(true), 
             blackGuitarSamplerRef.current.init(true), 
@@ -291,11 +290,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    // #ЗАЧЕМ: Активация AI Арбитра (ПЛАН №879).
-                    // #ЧТО: Порог срабатывания установлен на 0.85 для отбора только высококачественных резонансов.
-                    if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                    
+                    // #ЗАЧЕМ: ПЛАН №882. Порог Арбитра снижен для более частого обнаружения.
+                    if (payload.beautyScore >= 0.82 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
+                        
+                        // Визуальный фидбек о работе Арбитра
+                        toast({ title: "AI Arbiter: Insight Captured", description: `Discovered a high-resonance masterpiece (${Math.round(payload.beautyScore*100)}%)` });
                     }
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
@@ -309,11 +311,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true);
         setIsInitializing(false);
         initializationInFlightRef.current = false;
-        console.log('%c[SonicLoader] Core Ready. Play button UNLOCKED.', 'color: #32CD32; font-weight: bold;');
 
-        // Background replenishing
         setTimeout(() => {
-            console.log('%c[SonicLoader] Replenishing remaining resources (Harmony & Variations)...', 'color: #FFD700;');
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();
             harmonyManagerRef.current?.init(); 

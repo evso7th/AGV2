@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №875 — Внедрена гибридная инъекция транзиентов для разных пресетов.
+ * #ЧТО: ПЛАН №882 — Внедрен Semantic Timbre Resolver для динамического выбора гитар.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -67,9 +67,7 @@ export class MelodySynthManagerV2 {
         if (this.synth) {
             const fadingSynth = this.synth;
             setTimeout(() => {
-                try { 
-                    fadingSynth.disconnect(); 
-                } catch (e) {}
+                try { fadingSynth.disconnect(); } catch (e) {}
             }, 10000); 
             this.synth = null;
         }
@@ -84,10 +82,9 @@ export class MelodySynthManagerV2 {
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.preamp // Connect to internal preamp
+                output: this.preamp
             });
             
-            // #ЗАЧЕМ: Применение интеллектуального множителя громкости (ПЛАН №861).
             if (this.partName === 'melody' && this.synth) {
                 const isGuitar = presetName.toLowerCase().includes('guitar') || 
                                  presetName.toLowerCase().includes('acoustic') ||
@@ -104,8 +101,23 @@ export class MelodySynthManagerV2 {
         }
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №882. Разрешение семантических имен инструментов.
+     * #ЧТО: "guitar" -> динамический выбор на основе Tension.
+     */
+    private resolveSemanticTimbre(hint: string, tension: number): string {
+        const clean = hint.toLowerCase().trim();
+        if (clean === 'guitar' || clean === 'electric guitar') {
+            if (tension < 0.4) return 'telecaster';
+            if (tension > 0.75) return 'guitar_muffLead';
+            return 'guitar_shineOn';
+        }
+        return V1_TO_V2_PRESET_MAP[hint] || hint;
+    }
+
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
+        const currentTension = events[0]?.params?.tension ?? 0.5;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
             const extraDuration = this.partName === 'melody' ? 0.4 : 0;
@@ -120,7 +132,7 @@ export class MelodySynthManagerV2 {
         });
         
         if (instrumentHint && this.partName === 'melody') {
-            const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
+            const mappedHint = this.resolveSemanticTimbre(instrumentHint, currentTension);
             if (mappedHint !== this.activePresetName) {
                 const isPhraseBoundary = barCount % 4 === 0;
                 const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none';
@@ -162,12 +174,9 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Гибридная инъекция транзиентов (ПЛАН №875)
         if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
-            // Shine On получает металлический щипок Telecaster
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
-            // Muff Lead получает мягкий деревянный щипок Black Acoustic
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
