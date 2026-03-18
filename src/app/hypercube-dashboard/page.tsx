@@ -91,7 +91,7 @@ const AVAILABLE_MOODS: Mood[] = [
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
 const INSTRUMENT_OPTIONS = [
-    'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
+    'guitar', 'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
     'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'synth', 'synth_ambient_pad_lush',
     'theremin', 'mellotron', 'mellotron_flute_intimate', 'violin', 'none'
 ];
@@ -348,24 +348,24 @@ export default function HypercubeDashboard() {
                 const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
                 const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
                 return {
-                    ...ax, 
-                    phrase: repairedPhrase, 
-                    role: role, 
+                    ...ax,
+                    phrase: repairedPhrase,
+                    role: role,
                     id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
-                    compositionId: compId, 
+                    compositionId: compId,
                     genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
-                    mood: moods, 
+                    mood: moods,
                     commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
-                    vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, 
-                    tags: ax.tags || [], 
+                    vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
+                    tags: ax.tags || [],
                     narrative: ax.narrative || "Heritage component.",
-                    nativeBpm: ax.nativeBpm || ax.bpm || null, 
-                    nativeKey: ax.nativeKey || ax.key || null, 
+                    nativeBpm: ax.nativeBpm || ax.bpm || null,
+                    nativeKey: ax.nativeKey || ax.key || null,
                     timeSignature: ax.timeSignature || ax.ts || null,
-                    barOffset: ax.barOffset ?? 0, 
-                    bars: ax.bars || calculatedBars, 
+                    barOffset: ax.barOffset ?? 0,
+                    bars: ax.bars || calculatedBars,
                     noteCount: ax.noteCount || calculatedNoteCount,
-                    ignored: ax.ignored ?? false, 
+                    ignored: ax.ignored ?? false,
                     preferredInstrument: ax.preferredInstrument || null
                 };
             };
