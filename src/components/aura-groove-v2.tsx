@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.2 — "Rhodes Evolution".
- * #ЧТО: ПЛАН №871 — Переименование Piano в Rhodes в микшере и списках.
+ * #ЗАЧЕМ: UI AuraGroove V3.3 — "Sonic Minimalism".
+ * #ЧТО: ПЛАН №872 — Исключение Rhodes из списков выбора и удаление Piano из гармонии.
  */
 'use client';
 
@@ -87,12 +87,19 @@ export function AuraGrooveV2({
   }, []);
 
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
-  const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass');
+  
+  // #ЗАЧЕМ: Исключение Rhodes из списков выбора (ПЛАН №872).
+  const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => 
+    V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && 
+    k !== 'ep_rhodes_warm'
+  );
   
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
 
-  const harmonyInstrumentList: ('piano' | 'guitarChords' | 'flute' | 'violin' | 'none')[] = ['piano', 'guitarChords', 'flute', 'violin', 'none'];
+  // #ЗАЧЕМ: Удаление Piano из гармонии (ПЛАН №872).
+  const harmonyInstrumentList: ('guitarChords' | 'flute' | 'violin' | 'none')[] = ['guitarChords', 'violin', 'none'];
+  
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
   
   const isFractalStyle = score === 'neuro_f_matrix';
@@ -177,7 +184,7 @@ export function AuraGrooveV2({
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
                                     <Settings2 className="h-8 w-8" /> Grand Studio Console
                                 </DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.2</DialogDescription>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.3</DialogDescription>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsCalibrationModalOpen(false)} className="h-12 w-12 hover:bg-destructive/10 hover:text-destructive">
                                 <X className="h-8 w-8" />
@@ -226,7 +233,7 @@ export function AuraGrooveV2({
                                             if (partKey === 'bass') instrumentList = bassInstrumentList;
                                             else if (partKey === 'melody') instrumentList = melodyInstrumentList;
                                             else if (partKey === 'accompaniment') instrumentList = textureInstrumentList;
-                                            else if (partKey === 'harmony') instrumentList = harmonyInstrumentList;
+                                            else if (partKey === 'harmony') instrumentList = harmonyInstrumentList as any;
                                             else if (partKey === 'pianoAccompaniment') instrumentList = ['piano'];
 
                                             return (
@@ -606,7 +613,7 @@ export function AuraGrooveV2({
                           } else if (part === 'accompaniment') {
                               instrumentList = textureInstrumentList;
                           } else if (part === 'harmony') {
-                              instrumentList = harmonyInstrumentList;
+                              instrumentList = harmonyInstrumentList as any;
                           } else if (part === 'pianoAccompaniment') {
                               instrumentList = ['piano'];
                           }

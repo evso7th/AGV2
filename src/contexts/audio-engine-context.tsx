@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V24.0 — "Rhodes Revolution".
- * #ЧТО: ПЛАН №871 — Полное удаление сэмплированного пианино. Rhodes теперь работает на синтезе.
+ * #ЗАЧЕМ: Audio Engine Context V25.0 — "Sonic Minimalism".
+ * #ЧТО: ПЛАН №872 — 1. Изъятие Piano Samples. 2. Перенос Harmony (Violin) в фон.
  */
 'use client';
 
@@ -279,7 +279,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
-            harmonyManagerRef.current.init(), 
             pianoAccompanimentManagerRef.current.init(), 
             sparklePlayerRef.current.init(3), 
             sfxSynthManagerRef.current.init(3) 
@@ -310,10 +309,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         initializationInFlightRef.current = false;
         console.log('%c[SonicLoader] Core Ready. Play button UNLOCKED.', 'color: #32CD32; font-weight: bold;');
 
+        // Background replenishing
         setTimeout(() => {
-            console.log('%c[SonicLoader] Replenishing remaining resources...', 'color: #FFD700;');
+            console.log('%c[SonicLoader] Replenishing remaining resources (Harmony & Variations)...', 'color: #FFD700;');
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();
+            harmonyManagerRef.current?.init(); // Скрипки и гитарные аккорды теперь грузятся в фоне
             sparklePlayerRef.current?.init();
             sfxSynthManagerRef.current?.init();
             cs80SamplerRef.current?.init();

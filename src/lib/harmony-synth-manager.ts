@@ -3,22 +3,21 @@ import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
-import { PIANO_SAMPLES, VIOLIN_SAMPLES } from "@/lib/samples";
+import { VIOLIN_SAMPLES } from "@/lib/samples";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V3.1.
- * #ЧТО: ПЛАН №866 — Flute полностью исключен из инициализации.
+ * #ЗАЧЕМ: Менеджер слоя гармонии V4.0.
+ * #ЧТО: ПЛАН №872 — Полное удаление сэмплированного пианино. Загрузка скрипок и гитар вынесена в фон.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
-    private activeInstrumentName: string = 'piano';
+    private activeInstrumentName: string = 'guitarChords';
     public isInitialized = false;
 
-    private piano: SamplerPlayer;
     private guitarChords: GuitarChordsSampler;
     private violin: ViolinSamplerPlayer;
     
@@ -29,7 +28,6 @@ export class HarmonySynthManager {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        this.piano = new SamplerPlayer(audioContext, this.destination);
         this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
@@ -37,23 +35,23 @@ export class HarmonySynthManager {
     async init() {
         if (this.isInitialized) return;
         
-        console.log('[HarmonyManager] Initializing Hybrid Core (Piano, Guitar, Violin)...');
+        console.log('%c[HarmonyManager] Initializing Heritage Harmony (Guitar & Violin)...', 'color: #DA70D6;');
 
+        // Загружаем только то, что осталось после ликвидации пианино
         await Promise.all([
-            this.piano.loadInstrument('piano', PIANO_SAMPLES),
             this.guitarChords.init(),
             this.violin.loadInstrument('violin', VIOLIN_SAMPLES),
         ]);
         
         this.isInitialized = true;
-        this.piano.setVolume(0.85);
         this.guitarChords.setVolume(1.0);
         this.violin.setVolume(1.0);
     }
     
     private async loadSynth(presetName: string) {
         if (this.synth) {
-            this.synth.disconnect();
+            const oldSynth = this.synth;
+            setTimeout(() => { try { oldSynth.disconnect(); } catch(e){} }, 10000);
             this.synth = null;
         }
         
@@ -77,7 +75,7 @@ export class HarmonySynthManager {
         if (!this.isInitialized) return;
         
         const targetInstrument = instrumentHint || this.activeInstrumentName;
-        if (targetInstrument === 'none' || targetInstrument === 'flute') return;
+        if (targetInstrument === 'none' || targetInstrument === 'flute' || targetInstrument === 'piano') return;
 
         const harmonyEvents = events.filter(e => e.type === 'harmony');
         if (harmonyEvents.length === 0) return;
@@ -92,11 +90,10 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        const isSampler = ['piano', 'guitarChords', 'violin'].includes(targetInstrument);
+        const isSampler = ['guitarChords', 'violin'].includes(targetInstrument);
 
         if (isSampler) {
             switch (targetInstrument) {
-                case 'piano': this.piano.schedule('piano', notes, barStartTime); break;
                 case 'guitarChords': this.guitarChords.schedule(notes, barStartTime); break;
                 case 'violin': this.violin.schedule(notes, barStartTime); break;
             }
@@ -116,21 +113,19 @@ export class HarmonySynthManager {
         if (!this.isInitialized) return;
         this.activeInstrumentName = instrumentName;
         
-        const isSampler = ['piano', 'guitarChords', 'violin'].includes(instrumentName);
-        if (!isSampler && instrumentName !== 'none' && instrumentName !== 'flute') {
+        const isSampler = ['guitarChords', 'violin'].includes(instrumentName);
+        if (!isSampler && instrumentName !== 'none' && instrumentName !== 'flute' && instrumentName !== 'piano') {
             await this.loadSynth(instrumentName);
         }
     }
 
     public setVolume(volume: number) {
-        this.piano.setVolume(volume * 0.85);
         this.guitarChords.setVolume(volume);
         this.violin.setVolume(volume);
         if (this.synth) this.synth.setVolume(volume);
     }
 
     public allNotesOff() {
-        this.piano.stopAll();
         this.guitarChords.stopAll();
         this.violin.stopAll();
         if (this.synth) this.synth.allNotesOff();
@@ -139,7 +134,6 @@ export class HarmonySynthManager {
     public stop() { this.allNotesOff(); }
     public dispose() {
         this.stop();
-        this.piano.dispose();
         this.guitarChords.dispose();
         this.violin.dispose();
         if (this.synth) this.synth.disconnect();
