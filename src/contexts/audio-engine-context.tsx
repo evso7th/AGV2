@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V25.0 — "Sonic Minimalism".
- * #ЧТО: ПЛАН №872 — 1. Изъятие Piano Samples. 2. Перенос Harmony (Violin) в фон.
+ * #ЗАЧЕМ: Audio Engine Context V26.0 — "AI Arbiter Revived".
+ * #ЧТО: ПЛАН №879 — Уровень срабатывания Арбитра установлен на 0.85.
  */
 'use client';
 
@@ -291,7 +291,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    if (payload.beautyScore >= 0.75 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                    // #ЗАЧЕМ: Активация AI Арбитра (ПЛАН №879).
+                    // #ЧТО: Порог срабатывания установлен на 0.85 для отбора только высококачественных резонансов.
+                    if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
@@ -314,7 +316,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             console.log('%c[SonicLoader] Replenishing remaining resources (Harmony & Variations)...', 'color: #FFD700;');
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();
-            harmonyManagerRef.current?.init(); // Скрипки и гитарные аккорды теперь грузятся в фоне
+            harmonyManagerRef.current?.init(); 
             sparklePlayerRef.current?.init();
             sfxSynthManagerRef.current?.init();
             cs80SamplerRef.current?.init();
