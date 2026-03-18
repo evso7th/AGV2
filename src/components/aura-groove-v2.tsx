@@ -1,7 +1,7 @@
+
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.1 — "Grand Studio Console".
- * #ЧТО: ПЛАН №864 — Полноэкранный микшер для десктопа с понятными названиями.
- * #FIX: Добавлены DialogTitle и DialogDescription для соответствия требованиям доступности Radix UI.
+ * #ЗАЧЕМ: UI AuraGroove V3.2 — "Rhodes Evolution".
+ * #ЧТО: ПЛАН №871 — Переименование Piano в Rhodes в микшере и списках.
  */
 'use client';
 
@@ -42,7 +42,7 @@ const CALIBRATION_CHANNELS = [
     { key: 'master', label: 'Master Gain', color: 'text-primary' },
     { key: 'acoustic', label: 'Black Acoustic', color: 'text-orange-400' },
     { key: 'electric', label: 'Telecaster', color: 'text-blue-400' },
-    { key: 'piano', label: 'Piano', color: 'text-yellow-200' },
+    { key: 'piano', label: 'Rhodes', color: 'text-yellow-200' },
     { key: 'orchestral', label: 'Violin & Flute', color: 'text-purple-400' },
     { key: 'cs80', label: 'CS80', color: 'text-cyan-400' },
     { key: 'chords', label: 'Guitar Chords', color: 'text-green-400' },
@@ -113,7 +113,7 @@ export function AuraGrooveV2({
     'mellotron_flute_intimate': 'Intimate Flute',
     'guitar_shineOn': 'Shine On Guitar',
     'synth_ambient_pad_lush': 'Lush Pad',
-    'piano': 'Acoustic Piano',
+    'piano': 'Rhodes EPiano',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
@@ -177,7 +177,7 @@ export function AuraGrooveV2({
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
                                     <Settings2 className="h-8 w-8" /> Grand Studio Console
                                 </DialogTitle>
-                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.1</DialogDescription>
+                                <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.2</DialogDescription>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsCalibrationModalOpen(false)} className="h-12 w-12 hover:bg-destructive/10 hover:text-destructive">
                                 <X className="h-8 w-8" />
@@ -277,7 +277,7 @@ export function AuraGrooveV2({
                                                         <Label className="text-[10px] font-black uppercase text-center block text-muted-foreground group-hover:text-primary transition-colors truncate w-full">
                                                             <span className="flex items-center justify-center gap-2">
                                                                 {getPartIcon(partKey as string)}
-                                                                {partKey === 'pianoAccompaniment' ? 'Piano' : partKey}
+                                                                {partKey === 'pianoAccompaniment' ? 'Rhodes' : partKey}
                                                             </span>
                                                         </Label>
                                                     </div>
@@ -617,7 +617,7 @@ export function AuraGrooveV2({
                                <div className="grid grid-cols-2 items-center gap-2">
                                     <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
                                         {getPartIcon(part as string)}
-                                        {part === 'pianoAccompaniment' ? 'Piano' : part}
+                                        {part === 'pianoAccompaniment' ? 'Rhodes' : part}
                                     </Label>
                                     {part !== 'pianoAccompaniment' ? (
                                         <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>

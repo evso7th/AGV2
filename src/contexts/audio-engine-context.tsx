@@ -1,8 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V23.0 — "Sonic Lazy Load".
- * #ЧТО: ПЛАН №866 — Двухэтапная загрузка. Кнопка Play активна после "Ядра".
- * #FIX: Интеграция MelodyManagerV2 в систему калибровки (ПЛАН №869).
+ * #ЗАЧЕМ: Audio Engine Context V24.0 — "Rhodes Revolution".
+ * #ЧТО: ПЛАН №871 — Полное удаление сэмплированного пианино. Rhodes теперь работает на синтезе.
  */
 'use client';
 
@@ -87,7 +86,7 @@ export const useAudioEngine = () => {
   return context;
 };
 
-export const AudioEngineProvider = ({ children }: { children: React.SetAction<React.SetAction<React.ReactNode>> }) => {
+export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
@@ -154,14 +153,12 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
       const m = gains.master;
       samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
       
-      // Самплеры
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
       
-      // Менеджеры инструментов (V2 Engines)
-      melodyManagerV2Ref.current?.setPreampGain(gains.electric); // Управляем через Electric (Telecaster) слайдер
+      melodyManagerV2Ref.current?.setPreampGain(gains.electric); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
@@ -274,20 +271,18 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
-        // #ЗАЧЕМ: Двухэтапная загрузка (ПЛАН №866). 
-        // Сначала грузим только необходимое ядро для разблокировки кнопки Play.
-        console.log('%c[SonicLoader] Loading Minimal Core...', 'color: #00FFFF; font-weight: bold;');
+        console.log('%c[SonicLoader] Loading Minimal Core (Synth Rhodes Active)...', 'color: #00FFFF; font-weight: bold;');
         await Promise.all([
             drumMachineRef.current.init(true), 
             blackGuitarSamplerRef.current.init(true), 
-            telecasterSamplerRef.current.init(), // 27 files is fast
+            telecasterSamplerRef.current.init(), 
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
-            harmonyManagerRef.current.init(), // Excludes Flute
+            harmonyManagerRef.current.init(), 
             pianoAccompanimentManagerRef.current.init(), 
-            sparklePlayerRef.current.init(3), // Limit to 3 per cat
-            sfxSynthManagerRef.current.init(3) // Limit to 3 per cat
+            sparklePlayerRef.current.init(3), 
+            sfxSynthManagerRef.current.init(3) 
         ]);
         
         if (!workerRef.current) {
@@ -310,15 +305,13 @@ export const AudioEngineProvider = ({ children }: { children: React.SetAction<Re
         }
         await refreshCloudAxioms();
         
-        // РАЗБЛОКИРОВКА КНОПКИ PLAY
         setIsInitialized(true);
         setIsInitializing(false);
         initializationInFlightRef.current = false;
         console.log('%c[SonicLoader] Core Ready. Play button UNLOCKED.', 'color: #32CD32; font-weight: bold;');
 
-        // ФОНОВАЯ ДОГРУЗКА ОСТАЛЬНОГО
         setTimeout(() => {
-            console.log('%c[SonicLoader] Replenishing resources in background...', 'color: #FFD700;');
+            console.log('%c[SonicLoader] Replenishing remaining resources...', 'color: #FFD700;');
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();
             sparklePlayerRef.current?.init();
