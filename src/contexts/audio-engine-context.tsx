@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V27.0 — "Visible Arbiter".
- * #ЧТО: ПЛАН №882 — Порог Арбитра 0.82 + Уведомления о находках.
+ * #ЗАЧЕМ: Audio Engine Context V28.0 — "Lightweight Start".
+ * #ЧТО: ПЛАН №884 — SFX и Sparkles вынесены из критического пути инициализации в фон.
  */
 'use client';
 
@@ -278,9 +278,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
-            pianoAccompanimentManagerRef.current.init(), 
-            sparklePlayerRef.current.init(3), 
-            sfxSynthManagerRef.current.init(3) 
+            pianoAccompanimentManagerRef.current.init()
+            // #ЗАЧЕМ: ПЛАН №884 — SFX и Sparkles удалены из критического пути.
         ]);
         
         if (!workerRef.current) {
@@ -291,12 +290,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                     
-                    // #ЗАЧЕМ: ПЛАН №882. Порог Арбитра снижен для более частого обнаружения.
                     if (payload.beautyScore >= 0.82 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
-                        
-                        // Визуальный фидбек о работе Арбитра
                         toast({ title: "AI Arbiter: Insight Captured", description: `Discovered a high-resonance masterpiece (${Math.round(payload.beautyScore*100)}%)` });
                     }
                 } else if (type === 'BPM_SYNC' && payload) {
@@ -312,6 +308,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         initializationInFlightRef.current = false;
 
+        // #ЗАЧЕМ: ПЛАН №884 — Полная загрузка всех текстур и тяжелых инструментов в фоне.
         setTimeout(() => {
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();

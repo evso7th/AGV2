@@ -72,6 +72,28 @@ body {
   }
 }
 
+/* --- LIGHTER SCROLLBARS (PLAN №884) --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.4);
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.6);
+  background-clip: content-box;
+}
+
 @keyframes bounce-dot {
   0%, 100% {
     transform: translateY(0);

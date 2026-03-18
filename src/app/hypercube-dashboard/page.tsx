@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -43,7 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -458,16 +457,28 @@ export default function HypercubeDashboard() {
     }
   };
 
+  /**
+   * #ЗАЧЕМ: Расширение Bootstrap Knowledge (ПЛАН №884).
+   * #ЧТО: В список включены все критические спецификации и протоколы проекта.
+   */
   const handleBootstrapKnowledgeBase = async () => {
       setIsProcessing(true);
       try {
           const manifests = [
-              { filename: 'Omega3.txt', category: 'protocol', content: 'ПРОТОКОЛ-ОМЕГА (Версия 3.0 "Зеркало Истины")\nГЛАВНЫЙ ПРИНЦИП: РАБОТАЕТ - НЕ ТРОГАТЬ!' },
-              { filename: 'backlog.md', category: 'backlog', content: '# Проектный Бэклог "AuraGroove"\nПлан 887: Живые Ударные и др.' },
-              { filename: 'AXIOM_PROTOCOL.md', category: 'protocol', content: '# Протокол Аксиом AuraGroove (v1.0)' },
               { filename: 'SYSTEM_PROTOCOL.md', category: 'protocol', content: '### Системный Протокол Управления v4.5 "Pure V2 Domain"' },
               { filename: 'SOCIAL_CONTRACT.md', category: 'contract', content: '# Социальный Контракт v1.7 "Absolute Fidelity"' },
               { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' },
+              { filename: 'FORGE_MASTER_SPEC.md', category: 'spec', content: '# Спецификация Завода AuraGroove: Heritage Axiom Protocol (v2.2)' },
+              { filename: 'SOR_SPECIFICATION.md', category: 'spec', content: '# Техническая Спецификация: СОР (Система Обеспечения Разнообразия) v2.20' },
+              { filename: 'AXIOM_PROTOCOL.md', category: 'protocol', content: '# Протокол Аксиом AuraGroove (v1.0)' },
+              { filename: 'TECHNIQUE_GUIDE.md', category: 'spec', content: '# Справочник Техник Исполнения (AuraGroove)' },
+              { filename: 'FRACTAL_ENGINE_IMPLEMENTATION_PLAN.md', category: 'spec', content: '# План Реализации Фрактального Движка' },
+              { filename: 'GENERATIVE_MUSIC_CONCEPT.md', category: 'spec', content: '# Концепция: "Музыкальный Геном" и "Эволюционный Движок"' },
+              { filename: 'TECHNICAL_OVERVIEW.md', category: 'spec', content: '# EtherMusic: Технический обзор проекта' },
+              { filename: 'STRATEGIC_CHOICE.md', category: 'spec', content: '# Стратегический выбор: Два пути к чистому звуку' },
+              { filename: 'PROJECT_ANALYSIS_RU.md', category: 'spec', content: '### Сводный Анализ Проекта "AuraGroove"' },
+              { filename: 'README.md', category: 'spec', content: '# AuraGroove V2' },
+              { filename: 'Omega3.txt', category: 'protocol', content: 'ПРОТОКОЛ-ОМЕГА (Версия 3.0 "Зеркало Истины")' },
               { filename: 'project_history.md', category: 'spec', content: '# Журнал Проекта AuraGroove' }
           ];
 
@@ -479,7 +490,7 @@ export default function HypercubeDashboard() {
                   version: 'Bootstrap'
               });
           }
-          toast({ title: "Bootstrap Complete", description: "Core knowledge synchronized to Cloud." });
+          toast({ title: "Full Bootstrap Complete", description: "Global knowledge base synchronized." });
       } catch (e) {
           toast({ variant: "destructive", title: "Bootstrap Failed" });
       } finally {
@@ -543,7 +554,7 @@ export default function HypercubeDashboard() {
           technique: n.tech as any,
           dynamics: 'p',
           phrasing: 'legato',
-          params: { attack: 0.05, release: 0.5, barCount: 0 },
+          params: { ...n.params, attack: 0.05, release: 0.5, barCount: 0 },
           chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined
       };
     });
@@ -730,12 +741,12 @@ export default function HypercubeDashboard() {
   const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8 font-body">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div className="min-h-screen bg-background p-4 sm:p-8 font-body overflow-x-hidden">
+      <div className="w-full mx-auto space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station [Wide Mode]</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -744,7 +755,7 @@ export default function HypercubeDashboard() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="bg-primary/5 border-primary/20 shadow-lg">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Global Capacity</CardTitle></CardHeader>
               <CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent>
@@ -763,8 +774,8 @@ export default function HypercubeDashboard() {
             </Card>
         </div>
 
-        <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50">
+        <Tabs defaultValue="explore" className="space-y-6 w-full">
+          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50 w-full">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Globe className="h-4 w-4 mr-2" /> Explore</TabsTrigger>
             <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Dna className="h-4 w-4 mr-2" /> Genetic Map</TabsTrigger>
             <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Star className="h-4 w-4 mr-2" /> Masterpieces</TabsTrigger>
@@ -772,19 +783,19 @@ export default function HypercubeDashboard() {
             <TabsTrigger value="manifests" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><FileText className="h-4 w-4 mr-2" /> Manifests</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="explore" className="space-y-4">
-            <Card className="border-border/50 shadow-xl bg-card/50">
+          <TabsContent value="explore" className="space-y-4 w-full">
+            <Card className="border-border/50 shadow-xl bg-card/50 w-full">
               <CardHeader className="pb-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle>
                     <CardDescription className="text-[10px] uppercase font-bold">Inspect and Curate Heritage Axioms</CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {filtersActive && (<Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>)}
-                    <div className="relative group"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" /><Input placeholder="Search composition..." className="pl-9 h-9 w-[180px] text-xs bg-background/50" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} /></div>
-                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Filter Genre" className="w-[130px] h-9" />
-                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Filter Mood" className="w-[130px] h-9" />
+                    <div className="relative group"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" /><Input placeholder="Search composition..." className="pl-9 h-9 w-[220px] text-xs bg-background/50" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} /></div>
+                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Filter Genre" className="w-[150px] h-9" />
+                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Filter Mood" className="w-[150px] h-9" />
                     <Button variant="outline" size="sm" onClick={handlePurgeAll} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10 h-9"><ShieldAlert className="h-4 w-4 mr-2" /> Wipe Base</Button>
                   </div>
                 </div>
@@ -808,14 +819,14 @@ export default function HypercubeDashboard() {
                   </div>
                 )}
               </CardHeader>
-              <CardContent className="p-0 border-t">
-                <ScrollArea className="h-[600px] px-4 py-2 relative">
+              <CardContent className="p-0 border-t w-full">
+                <ScrollArea className="h-[700px] px-4 py-2 relative">
                   {isDbLoading ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse"><Database className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Reading Cloud...</p></div>
                   ) : groupedAxioms.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20 opacity-40"><Database className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">{filtersActive ? "No matching DNA" : "No DNA Found"}</p></div>
                   ) : (
-                    <Accordion type="multiple" className="space-y-2">
+                    <Accordion type="multiple" className="space-y-2 w-full">
                       {groupedAxioms.map(([compId, licks]) => {
                         const filteredLicks = getSortedLicks(licks).filter(ax => {
                           const roleMatch = !axiomFilterRole || ax.role.toLowerCase().includes(axiomFilterRole.toLowerCase());
@@ -823,7 +834,7 @@ export default function HypercubeDashboard() {
                           return roleMatch && offsetMatch;
                         });
                         return (
-                          <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
+                          <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30 w-full">
                             <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border/50 hover:bg-primary/5 transition-colors group">
                               <div className="flex items-center justify-between py-4 px-4">
                                   <div className="flex items-center gap-4 flex-grow">
@@ -834,7 +845,7 @@ export default function HypercubeDashboard() {
                                       </Badge>
                                     </AccordionTrigger>
                                       {editingGroupId === compId ? (
-                                          <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
+                                          <div className="flex flex-col gap-3 w-full max-w-4xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
                                             <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} className="h-8 text-sm" autoFocus /></div>
                                             <div className="grid grid-cols-2 gap-4">
                                               <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Select genres..." className="w-full" /></div>
@@ -863,67 +874,71 @@ export default function HypercubeDashboard() {
                                   </div>
                               </div>
                             </div>
-                            <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible">
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-sm border-collapse min-w-[1000px]">
-                                  <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
-                                    <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                                      <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
-                                      <th className="p-3 font-black w-32">Timbre</th>
-                                      <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
-                                      <th className="p-3 font-black w-40"><div className="space-y-1"><span>Struct (O/B/N)</span><Input placeholder="Offset..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterOffset} onChange={(e) => setAxiomFilterOffset(e.target.value)} /></div></th>
-                                      <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
-                                      <th className="p-3 font-black">Narrative</th>
-                                      <th className="p-3 font-black text-right w-32">Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-border/20">
-                                    {filteredLicks.map((ax: any) => (
-                                      <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                        <td className="p-3 pl-12">
-                                          {editingAxiomId === ax.id ? (
-                                            <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
-                                          ) : (
-                                            <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
-                                          )}
-                                        </td>
-                                        <td className="p-3">
-                                          {editingAxiomId === ax.id ? (
-                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{i}</SelectItem>)}</SelectContent></Select>
-                                          ) : (
-                                            ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {ax.preferredInstrument}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
-                                          )}
-                                        </td>
-                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
-                                        <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
-                                        <td className="p-3">
-                                          {editingAxiomId === ax.id ? (
-                                            <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
-                                          ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
-                                        </td>
-                                        <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
-                                        <td className="p-3 text-right">
-                                          <div className="flex items-center justify-end gap-1">
-                                            {editingAxiomId === ax.id ? (
-                                              <>
-                                                <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
-                                                <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                              </>
-                                            )}
-                                          </div>
-                                        </td>
+                            <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible w-full">
+                              {/* --- HORIZONTAL SCROLLING FOR AXIOMS (PLAN №884) --- */}
+                              <ScrollArea className="w-full">
+                                <div className="min-w-[1200px]">
+                                  <table className="w-full text-sm border-collapse">
+                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
+                                      <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
+                                        <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
+                                        <th className="p-3 font-black w-32">Timbre</th>
+                                        <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
+                                        <th className="p-3 font-black w-40"><div className="space-y-1"><span>Struct (O/B/N)</span><Input placeholder="Offset..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterOffset} onChange={(e) => setAxiomFilterOffset(e.target.value)} /></div></th>
+                                        <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
+                                        <th className="p-3 font-black">Narrative</th>
+                                        <th className="p-3 font-black text-right w-32">Actions</th>
                                       </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/20">
+                                      {filteredLicks.map((ax: any) => (
+                                        <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
+                                          <td className="p-3 pl-12">
+                                            {editingAxiomId === ax.id ? (
+                                              <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
+                                            ) : (
+                                              <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
+                                            )}
+                                          </td>
+                                          <td className="p-3">
+                                            {editingAxiomId === ax.id ? (
+                                              <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{i}</SelectItem>)}</SelectContent></Select>
+                                            ) : (
+                                              ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {ax.preferredInstrument}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
+                                            )}
+                                          </td>
+                                          <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
+                                          <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
+                                          <td className="p-3">
+                                            {editingAxiomId === ax.id ? (
+                                              <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
+                                            ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
+                                          </td>
+                                          <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
+                                          <td className="p-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                              {editingAxiomId === ax.id ? (
+                                                <>
+                                                  <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
+                                                  <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
+                                                  <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
+                                                  <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
+                                                  <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                </>
+                                              )}
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                                <ScrollBar orientation="horizontal" />
+                              </ScrollArea>
                             </AccordionContent>
                           </AccordionItem>
                         );
@@ -935,7 +950,7 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="genetic" className="space-y-6">
+          <TabsContent value="genetic" className="space-y-6 w-full">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden">
                 <CardHeader className="pb-2">
@@ -988,7 +1003,7 @@ export default function HypercubeDashboard() {
               </CardHeader>
               <CardContent className="p-0">
                 <ScrollArea className="h-[500px] p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {dynastyStats.map((dynasty) => (
                       <Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden">
                         <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
@@ -1035,8 +1050,8 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="masterpieces" className="space-y-4">
-            <Card className="border-border/50 shadow-xl bg-card/50">
+          <TabsContent value="masterpieces" className="space-y-4 w-full">
+            <Card className="border-border/50 shadow-xl bg-card/50 w-full">
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Registry</CardTitle>
                 <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Saved Musical States: AI Finds & User Likes</CardDescription>
@@ -1052,13 +1067,13 @@ export default function HypercubeDashboard() {
                         <Progress value={(masterpieceStats.arbiterFinds / (masterpieceStats.total || 1)) * 100} className="h-2 bg-muted" />
                     </div>
                 </div>
-                <ScrollArea className="h-[400px] mt-4">
+                <ScrollArea className="h-[500px] mt-4">
                     {isMpiecesLoading ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse"><Star className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Querying Registry...</p></div>
                     ) : globalMasterpieces?.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 opacity-40"><Heart className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">No Masterpieces yet</p></div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-1">
                             {globalMasterpieces?.map((m: any) => (
                                 <Card key={m.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all p-4 space-y-3 group relative overflow-hidden">
                                     <div className="flex items-center justify-between">
@@ -1087,7 +1102,7 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500 w-full">
             <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner">
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider">
@@ -1099,7 +1114,7 @@ export default function HypercubeDashboard() {
               </div>
             </div>
             {stagedAxioms.length > 0 && (
-              <Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 w-full">
                 <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
                   <div>
                     <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle>
@@ -1113,43 +1128,46 @@ export default function HypercubeDashboard() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto max-h-[550px]">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted sticky top-0 z-10 border-b">
-                        <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                          <th className="p-4 w-12 text-center">
-                            <Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} />
-                          </th>
-                          <th className="p-4 font-black">Source</th>
-                          <th className="p-4 font-black">Role</th>
-                          <th className="p-4 font-black">Struct (O/B/N)</th>
-                          <th className="p-4 font-black">Native Meta</th>
-                          <th className="p-4 font-black text-right">Preview</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/30">
-                        {getSortedLicks(stagedAxioms).map((ax) => (
-                          <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
-                            <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td>
-                            <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td>
-                            <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
-                            <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td>
-                            <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td>
-                            <td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td>
+                <CardContent className="p-0">
+                  <ScrollArea className="w-full">
+                    <div className="min-w-[1000px]">
+                      <table className="w-full text-sm border-collapse">
+                        <thead className="bg-muted sticky top-0 z-10 border-b">
+                          <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
+                            <th className="p-4 w-12 text-center">
+                              <Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} />
+                            </th>
+                            <th className="p-4 font-black">Source</th>
+                            <th className="p-4 font-black">Role</th>
+                            <th className="p-4 font-black">Struct (O/B/N)</th>
+                            <th className="p-4 font-black">Native Meta</th>
+                            <th className="p-4 font-black text-right">Preview</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                          {getSortedLicks(stagedAxioms).map((ax) => (
+                            <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
+                              <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td>
+                              <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td>
+                              <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
+                              <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td>
+                              <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td>
+                              <td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                  </ScrollArea>
                 </CardContent>
               </Card>
             )}
           </TabsContent>
 
-          <TabsContent value="manifests" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="border-border/50 shadow-xl bg-card/50 h-[600px] flex flex-col">
+          <TabsContent value="manifests" className="space-y-4 w-full">
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 w-full">
+                <Card className="xl:col-span-1 border-border/50 shadow-xl bg-card/50 h-[700px] flex flex-col">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><RefreshCw className="h-5 w-5" /> Cloud Manifests</CardTitle>
                         <CardDescription className="text-[10px] uppercase font-bold tracking-widest">System Knowledge Base (Protocols & Specs)</CardDescription>
@@ -1194,7 +1212,7 @@ export default function HypercubeDashboard() {
                     </div>
                 </Card>
 
-                <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 flex flex-col">
+                <Card className="xl:col-span-3 border-border/50 shadow-xl bg-card/50 flex flex-col h-[700px]">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                         <div>
                             <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
