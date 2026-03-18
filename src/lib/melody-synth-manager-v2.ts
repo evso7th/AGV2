@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №862 — Добавлен системный преамп для калибровки через центральную консоль.
+ * #ЧТО: ПЛАН №875 — Внедрена гибридная инъекция транзиентов для разных пресетов.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -161,9 +162,13 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // #ЗАЧЕМ: Возвращенная атака мелодии (ПЛАН №855.1)
-        if (currentActive.startsWith('guitar') || currentActive === 'synth') {
+        // #ЗАЧЕМ: Гибридная инъекция транзиентов (ПЛАН №875)
+        if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
+            // Shine On получает металлический щипок Telecaster
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
+        } else if (currentActive === 'guitar_muffLead') {
+            // Muff Lead получает мягкий деревянный щипок Black Acoustic
+            this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
         notesToPlay.forEach(note => {

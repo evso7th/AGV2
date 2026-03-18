@@ -140,18 +140,24 @@ export const V2_PRESETS = {
   },
 
   guitar_muffLead: {
-    type: 'guitar',
-    name: 'Muff Lead Guitar',
+    /**
+     * #ЗАЧЕМ: ПЛАН №875 — Реформа Muff Lead.
+     * #ЧТО: Теперь это синт-гитара, идентичная Shine On, но с другой транзиентной душой.
+     */
+    type: 'synth',
+    name: 'Muff Reform Guitar',
     volume: 0.24, 
-    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
-    pickup: { cutoff: 3200, q: 1.2 },
-    drive: { type: 'muff', amount: 0.65 }, 
-    comp: { threshold: -20, ratio: 4, attack: 0.005, release: 0.1, makeup: 4 },
-    post: { lpf: 4700 },
-    phaser: { on: true, rate: 0.18, depth: 700, mix: 0.18 },
-    delayA: { on: true, time: 0.38, fb: 0.26, hc: 3600, mix: 0.16 },
-    delayB: { on: true, time: 0.52, fb: 0.22, hc: 3600, mix: 0.12 },
-    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 1.8 }, 
+    osc: [
+      { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
+      { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
+      { type: 'sawtooth', detune: 5, octave: 1, gain: 0.03 }
+    ],
+    noise: { on: true, gain: 0.015 },
+    adsr: { a: 0.006, d: 0.45, s: 0.75, r: 1.4 }, 
+    lpf: { cutoff: 2150, q: 1.3, mode: '24dB' }, 
+    lfo: { shape: 'sine', rate: 4.5, amount: 3.5, target: 'pitch' },
+    chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.12 },
+    delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
     reverbMix: 0.25
   },
 
