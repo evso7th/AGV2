@@ -20,6 +20,7 @@
       "properties": {
         "phrase": { "type": "array", "items": { "type": "number" }, "description": "Compressed MIDI data [t, d, deg, tech]" },
         "role": { "type": "string", "description": "Role of the fragment: melody, bass, drums, or 'accomp [instrument_name]'" },
+        "preferredInstrument": { "type": "string", "description": "Override instrument name (e.g., 'telecaster', 'blackAcoustic')" },
         "compositionId": { "type": "string", "description": "Original track name" },
         "barOffset": { "type": "number", "description": "Offset in bars from start of original track" },
         "bars": { "type": "number", "description": "Total duration in bars" },
@@ -27,7 +28,7 @@
         "genre": { "type": "array", "items": { "type": "string" } },
         "mood": { "type": "array", "items": { "type": "string" } },
         "commonMood": { "type": "array", "items": { "type": "string" } },
-        "vector": { 
+        "vector": {
           "type": "object",
           "properties": {
             "t": { "type": "number" },

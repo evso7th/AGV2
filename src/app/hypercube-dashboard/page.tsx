@@ -1,13 +1,14 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { 
-  Database, 
-  Play, 
+import {
+  Database,
+  Play,
   Square,
-  Upload, 
-  Music, 
-  Wind, 
+  Upload,
+  Music,
+  Wind,
   ShieldAlert,
   ArrowLeft,
   Search,
@@ -30,7 +31,8 @@ import {
   FileText,
   Save,
   RefreshCw,
-  Zap
+  Zap,
+  Guitar
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -56,16 +58,16 @@ import {
   AlertDialogTitle,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
-import { 
-  Radar, 
-  RadarChart, 
-  PolarGrid, 
-  PolarAngleAxis, 
-  PolarRadiusAxis, 
-  ResponsiveContainer, 
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
   Tooltip as RechartsTooltip,
   Legend as RechartsLegend
-} from 'recharts'; 
+} from 'recharts';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -87,6 +89,12 @@ const AVAILABLE_MOODS: Mood[] = [
 ];
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+
+const INSTRUMENT_OPTIONS = [
+    'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
+    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'synth', 'synth_ambient_pad_lush',
+    'theremin', 'mellotron', 'mellotron_flute_intimate', 'violin', 'none'
+];
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
   'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
@@ -113,20 +121,20 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 };
 
 const ROLE_OPTIONS = [
-    'melody', 'accomp', 'bass', 
+    'melody', 'accomp', 'bass',
     'drums', 'drums kick', 'drums snare', 'drums hat', 'drums tom', 'drums ride', 'drums crash', 'drums perc'
 ];
 
-function MultiSelector<T extends string>({ 
-  options, 
-  values, 
-  onValuesChange, 
+function MultiSelector<T extends string>({
+  options,
+  values,
+  onValuesChange,
   placeholder,
-  className 
-}: { 
-  options: T[], 
-  values: T[], 
-  onValuesChange: (vals: T[]) => void, 
+  className
+}: {
+  options: T[],
+  values: T[],
+  onValuesChange: (vals: T[]) => void,
   placeholder: string,
   className?: string
 }) {
@@ -143,7 +151,7 @@ function MultiSelector<T extends string>({
       <PopoverContent className="w-[200px] p-0" align="start">
         <ScrollArea className="h-48 p-2">
           {options.map(opt => (
-            <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group" 
+            <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group"
                  onClick={() => {
                    const next = values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt];
                    onValuesChange(next);
@@ -163,7 +171,7 @@ export default function HypercubeDashboard() {
   const router = useRouter();
   const { toast } = useToast();
   const { isInitialized, initialize, playRawEvents, stopAllSounds } = useAudioEngine();
-  
+
   const axiomsQuery = useMemoFirebase(() => query(collection(db, 'heritage_axioms')), [db]);
   const { data: globalAxioms, isLoading: isDbLoading } = useCollection(axiomsQuery);
 
@@ -181,7 +189,7 @@ export default function HypercubeDashboard() {
   const [selectedGenre, setSelectedGenre] = useState<Genre[]>(['blues']);
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
-  
+
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
   const [axiomFilterRole, setAxiomFilterRole] = useState("");
@@ -226,16 +234,16 @@ export default function HypercubeDashboard() {
       const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
       const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
       const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-      
+
       genres.forEach(g => { acc.genres[g] = (acc.genres[g] || 0) + 1; });
       moods.forEach(m => { acc.moods[m] = (acc.moods[m] || 0) + 1; });
       commons.forEach(cm => { acc.commonMoods[cm] = (acc.commonMoods[cm] || 0) + 1; });
       return acc;
-    }, { 
-        total: 0, 
-        genres: {} as Record<string, number>, 
-        moods: {} as Record<string, number>, 
-        commonMoods: {} as Record<string, number> 
+    }, {
+        total: 0,
+        genres: {} as Record<string, number>,
+        moods: {} as Record<string, number>,
+        commonMoods: {} as Record<string, number>
     });
   }, [globalAxioms]);
 
@@ -257,7 +265,7 @@ export default function HypercubeDashboard() {
       acc[id].push(ax);
       return acc;
     }, {} as Record<string, any[]>);
-    
+
     return Object.entries(groups)
       .filter(([id, licks]) => {
         const matchesSearch = id.toLowerCase().includes(explorerSearch.toLowerCase());
@@ -317,7 +325,7 @@ export default function HypercubeDashboard() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     if (file.name.endsWith('.json')) {
         resetStaging();
         const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
@@ -346,7 +354,7 @@ export default function HypercubeDashboard() {
                     vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, tags: ax.tags || [], narrative: ax.narrative || "Heritage component.",
                     nativeBpm: ax.nativeBpm || ax.bpm || null, nativeKey: ax.nativeKey || ax.key || null, timeSignature: ax.timeSignature || ax.ts || null,
                     barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount,
-                    ignored: ax.ignored ?? false
+                    ignored: ax.ignored ?? false, preferredInstrument: ax.preferredInstrument || null
                 };
             };
 
@@ -359,7 +367,7 @@ export default function HypercubeDashboard() {
                     let totalPitch = 0; const phrase: number[] = [];
                     track.notes.forEach((note: any) => {
                         totalPitch += note.midi;
-                        const tick = Math.round(note.time * 3); 
+                        const tick = Math.round(note.time * 3);
                         const duration = Math.max(1, Math.round(note.duration * 3));
                         const semitone = note.midi % 12;
                         const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
@@ -438,6 +446,10 @@ export default function HypercubeDashboard() {
     }
   };
 
+  /**
+   * #ЗАЧЕМ: Обновление базовых знаний (Bootstrap).
+   * #ЧТО: ПЛАН №881 — project_history.md включен в список обязательных документов.
+   */
   const handleBootstrapKnowledgeBase = async () => {
       setIsProcessing(true);
       try {
@@ -447,7 +459,8 @@ export default function HypercubeDashboard() {
               { filename: 'AXIOM_PROTOCOL.md', category: 'protocol', content: '# Протокол Аксиом AuraGroove (v1.0)' },
               { filename: 'SYSTEM_PROTOCOL.md', category: 'protocol', content: '### Системный Протокол Управления v4.5 "Pure V2 Domain"' },
               { filename: 'SOCIAL_CONTRACT.md', category: 'contract', content: '# Социальный Контракт v1.7 "Absolute Fidelity"' },
-              { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' }
+              { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' },
+              { filename: 'project_history.md', category: 'spec', content: '# Журнал Проекта AuraGroove' }
           ];
 
           for (const m of manifests) {
@@ -513,23 +526,23 @@ export default function HypercubeDashboard() {
     const minTick = Math.min(...phrase.map(n => n.t));
     const channelType = mapAxiomToChannel(axiom.role || 'melody');
     const events: FractalEvent[] = phrase.map((n: any) => {
-      return { 
-          type: channelType, 
-          note: (axiom.role === 'bass' ? 31 : (axiom.role.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0), 
-          time: (n.t - minTick) / 3, 
-          duration: n.d / 3, 
-          weight: 0.8, 
-          technique: n.tech as any, 
-          dynamics: 'p', 
-          phrasing: 'legato', 
-          params: { attack: 0.05, release: 0.5, barCount: 0 }, 
-          chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined 
+      return {
+          type: channelType,
+          note: (axiom.role === 'bass' ? 31 : (axiom.role.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
+          time: (n.t - minTick) / 3,
+          duration: n.d / 3,
+          weight: 0.8,
+          technique: n.tech as any,
+          dynamics: 'p',
+          phrasing: 'legato',
+          params: { attack: 0.05, release: 0.5, barCount: 0 },
+          chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined
       };
     });
     const hints: InstrumentHints = {};
-    if (channelType === 'melody') hints.melody = 'organ_soft_jazz';
+    if (channelType === 'melody') hints.melody = axiom.preferredInstrument || 'organ_soft_jazz';
     else if (channelType === 'bass') hints.bass = 'bass_jazz_warm';
-    else if (channelType === 'drums') hints.drums = 'melancholic'; 
+    else if (channelType === 'drums') hints.drums = 'melancholic';
     else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
     else if (channelType === 'harmony') hints.harmony = 'violin';
     else hints.accompaniment = 'organ_soft_jazz';
@@ -628,7 +641,20 @@ export default function HypercubeDashboard() {
         const ref = doc(db, 'heritage_axioms', editAxiomData.id);
         const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        await updateDoc(ref, { role: editAxiomData.role, narrative: editAxiomData.narrative, vector: editAxiomData.vector, mood: newMoods, commonMood: newCommons, nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null, nativeKey: editAxiomData.nativeKey, timeSignature: editAxiomData.timeSignature, barOffset: editAxiomData.barOffset ?? 0, bars: editAxiomData.bars, noteCount: editAxiomData.noteCount });
+        await updateDoc(ref, {
+            role: editAxiomData.role,
+            narrative: editAxiomData.narrative,
+            vector: editAxiomData.vector,
+            mood: newMoods,
+            commonMood: newCommons,
+            nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
+            nativeKey: editAxiomData.nativeKey,
+            timeSignature: editAxiomData.timeSignature,
+            barOffset: editAxiomData.barOffset ?? 0,
+            bars: editAxiomData.bars,
+            noteCount: editAxiomData.noteCount,
+            preferredInstrument: editAxiomData.preferredInstrument || null
+        });
         toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
     } catch (e) { toast({ variant: "destructive", title: "Update Failed", description: String(e) }); }
     finally { setIsProcessing(false); }
@@ -713,7 +739,7 @@ export default function HypercubeDashboard() {
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Global Capacity</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Masterpieces (Likes)</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isMpiecesLoading ? '---' : masterpieceStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Genre Map</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1.5">{Object.entries(globalStats.genres).map(([g, count]) => (<Badge key={g} variant="secondary" className="text-[10px] uppercase font-bold py-0.5">{g}: {count}</Badge>))}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent>
         </div>
         <Tabs defaultValue="explore" className="space-y-6">
           <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50">
@@ -723,7 +749,7 @@ export default function HypercubeDashboard() {
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Upload className="h-4 w-4 mr-2" /> Inject DNA</TabsTrigger>
             <TabsTrigger value="manifests" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><FileText className="h-4 w-4 mr-2" /> Manifests</TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="explore" className="space-y-4">
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
@@ -761,10 +787,11 @@ export default function HypercubeDashboard() {
                             </div>
                             <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible">
                               <div className="overflow-x-auto">
-                                <table className="w-full text-sm border-collapse min-w-[900px]">
+                                <table className="w-full text-sm border-collapse min-w-[1000px]">
                                   <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
                                     <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
                                       <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
+                                      <th className="p-3 font-black w-32">Timbre</th>
                                       <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
                                       <th className="p-3 font-black w-40"><div className="space-y-1"><span>Struct (O/B/N)</span><Input placeholder="Offset..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterOffset} onChange={(e) => setAxiomFilterOffset(e.target.value)} /></div></th>
                                       <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
@@ -780,6 +807,13 @@ export default function HypercubeDashboard() {
                                             <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
                                           ) : (
                                             <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
+                                          )}
+                                        </td>
+                                        <td className="p-3">
+                                          {editingAxiomId === ax.id ? (
+                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{i}</SelectItem>)}</SelectContent></Select>
+                                          ) : (
+                                            ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {ax.preferredInstrument}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
                                           )}
                                         </td>
                                         <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
@@ -808,10 +842,10 @@ export default function HypercubeDashboard() {
           </TabsContent>
 
           <TabsContent value="genetic" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription></CardHeader><CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent></Card><Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader><CardContent><ScrollArea className="h-[400px] px-4"><div className="space-y-3 pb-4">{dynastyStats.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count} phrases</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent></Card></div>
-            <Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-4 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Dna className="h-5 w-5" /> Detailed Ancestry</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription></CardHeader><CardContent className="p-0"><ScrollArea className="h-[500px] p-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{dynastyStats.map((dynasty) => (<Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden"><CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader><CardContent className="p-4 pt-2 space-y-4"><div className="grid grid-cols-2 gap-x-4 gap-y-3"><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div><Progress value={dynasty.vector.t * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div><Progress value={dynasty.vector.b * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div><Progress value={dynasty.vector.e * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div><Progress value={dynasty.vector.h * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div></div><div className="space-y-1.5"><Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5"><History className="h-3 w-3" /> Member Records</Label><div className="flex flex-wrap gap-1">{dynasty.compositions.slice(0, 5).map(c => (<Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>))}{dynasty.compositions.length > 5 && (<Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>)}</div></div></CardContent></Card>))}</div></ScrollArea></CardContent></Card>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden"><CardHeader className="pb-2"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription></CardHeader><CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent></Card><Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader><CardContent><ScrollArea className="h-[400px] px-4"><div className="space-y-3 pb-4">{dynastyStats.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count} phrases</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent></Card></div>
+            <Card className="border-border/50 shadow-xl bg-card/50"><CardHeader className="pb-4 border-b"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Dna className="h-5 w-5" /> Detailed Ancestry</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription></CardHeader><CardContent className="p-0"><ScrollArea className="h-[500px] p-4"><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{dynastyStats.map((dynasty) => (<Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden"><CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader><CardContent className="p-4 pt-2 space-y-4"><div className="grid grid-cols-2 gap-x-4 gap-y-3"><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div><Progress value={dynasty.vector.t * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div><Progress value={dynasty.vector.b * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div><Progress value={dynasty.vector.e * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div><Progress value={dynasty.vector.h * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div></div><div className="space-y-1.5"><Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5"><History className="h-3 w-3" /> Member Records</Label><div className="flex flex-wrap gap-1">{dynasty.compositions.slice(0, 5).map(c => (<Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>)){dynasty.compositions.length > 5 && (<Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>)}</div></div></CardContent></Card>))}</div></ScrollArea></CardContent></Card>
           </TabsContent>
-          
+
           <TabsContent value="masterpieces" className="space-y-4">
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
@@ -864,7 +898,7 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local Assets</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black">Vector (t,b,e,h)</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
+          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500"><div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner"><input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" /><Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local Assets</Button><div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div></div>{stagedAxioms.length > 0 && (<Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500"><CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4"><div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription></div><div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div></CardHeader><CardContent><div className="overflow-x-auto max-h-[550px]"><table className="w-full text-sm"><thead className="bg-muted sticky top-0 z-10 border-b"><tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest"><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4 font-black">Source</th><th className="p-4 font-black">Role</th><th className="p-4 font-black">Struct (O/B/N)</th><th className="p-4 font-black">Native Meta</th><th className="p-4 font-black text-right">Preview</th></tr></thead><tbody className="divide-y divide-border/30">{getSortedLicks(stagedAxioms).map((ax) => (<tr key={ax.id} className="hover:bg-primary/5 transition-colors group"><td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td><td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td><td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td><td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td><td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td></tr>))}</tbody></table></div></CardContent></Card>)}</TabsContent>
 
           <TabsContent value="manifests" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -882,8 +916,8 @@ export default function HypercubeDashboard() {
                             ) : (
                                 <div className="space-y-2">
                                     {cloudManifests?.map((m: any) => (
-                                        <div 
-                                            key={m.id} 
+                                        <div
+                                            key={m.id}
                                             className={cn(
                                                 "p-3 border rounded-lg cursor-pointer transition-all hover:bg-primary/5 group",
                                                 activeManifest?.id === m.id ? "border-primary bg-primary/10" : "border-border/50"
@@ -930,8 +964,8 @@ export default function HypercubeDashboard() {
                     <CardContent className="flex-grow p-0">
                         {activeManifest ? (
                             <div className="flex flex-col h-full">
-                                <Textarea 
-                                    className="flex-grow rounded-none border-0 border-t bg-background/30 font-mono text-xs p-6 resize-none focus-visible:ring-0" 
+                                <Textarea
+                                    className="flex-grow rounded-none border-0 border-t bg-background/30 font-mono text-xs p-6 resize-none focus-visible:ring-0"
                                     value={manifestContent}
                                     onChange={(e) => setManifestContent(e.target.value)}
                                     placeholder="Manifest content..."
