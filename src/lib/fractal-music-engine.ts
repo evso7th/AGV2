@@ -51,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V35.0 — "Ensemble Lottery".
- * #ЧТО: ПЛАН №844 — Динамическая активация пар инструментов на тактах 0, 3 и 6.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V35.1 — "Tension-Based Timbres".
+ * #ЧТО: ПЛАН №877 — Динамическое переключение лид-инструмента в Dark Blues на основе Tension.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -71,7 +71,6 @@ export class FractalMusicEngine {
   private activatedParts: Set<InstrumentPart> = new Set();
   private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
   
-  /** #ЗАЧЕМ: Расписание вступлений, определенное жребием. */
   private lotterySchedule: Map<InstrumentPart, number> = new Map();
   
   constructor(config: EngineConfig, blueprint: MusicBlueprint) {
@@ -119,18 +118,13 @@ export class FractalMusicEngine {
     this.activeTimbres = {};
     this.lotterySchedule.clear();
 
-    // --- ENSEMBLE LOTTERY SETUP ---
-    // #ЗАЧЕМ: Жеребьевка вступления (ПЛАН №844).
     const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
     const shuffled = this.random.shuffle(pool);
     
-    // Пара 1: Такт 0
     this.lotterySchedule.set(shuffled[0], 0);
     this.lotterySchedule.set(shuffled[1], 0);
-    // Пара 2: Такт 3
     this.lotterySchedule.set(shuffled[2], 3);
     this.lotterySchedule.set(shuffled[3], 3);
-    // Остальные: Такт 6
     for (let i = 4; i < shuffled.length; i++) {
         this.lotterySchedule.set(shuffled[i], 6);
     }
@@ -240,19 +234,16 @@ export class FractalMusicEngine {
     const activeLayers = navInfo.currentPart.layers || {};
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
 
-    // --- ACTIVATION LOGIC (Lottery Integration) ---
     Object.keys(activeLayers).forEach(layer => {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
             let shouldActivate = false;
             
-            // #ЗАЧЕМ: Проверка жребия в интро.
             if (isIntro && this.lotterySchedule.has(part)) {
                 if (this.epoch >= this.lotterySchedule.get(part)!) {
                     shouldActivate = true;
                 }
             } else if (!isIntro) {
-                // В основных частях активируем все разрешенные слои сразу (или по шансу)
                 const rule = currentInstructions ? currentInstructions[part] : null;
                 if (this.random.next() < (rule ? (rule.activationChance ?? 1.0) : 1.0)) {
                     shouldActivate = true;
@@ -277,14 +268,12 @@ export class FractalMusicEngine {
 
     const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
     
-    // --- HINT GENERATION ---
     this.activatedParts.forEach(part => {
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
             (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
         }
     });
     
-    // Special handling for pianoAccompaniment to respect lottery if it's considered part of layering
     if (navInfo.currentPart.layers.pianoAccompaniment && !this.activatedParts.has('pianoAccompaniment' as any)) {
         if (isIntro && this.lotterySchedule.get('pianoAccompaniment' as any) !== undefined) {
             if (this.epoch >= this.lotterySchedule.get('pianoAccompaniment' as any)!) {
@@ -298,6 +287,18 @@ export class FractalMusicEngine {
     if (this.activatedParts.has('pianoAccompaniment' as any)) {
         if (navInfo.currentPart.layers.pianoAccompaniment || isTransition) {
             instrumentHints.pianoAccompaniment = 'piano';
+        }
+    }
+
+    // --- TENSION-BASED OVERRIDES (PLAN №877) ---
+    // #ЗАЧЕМ: Динамическое переключение тембра в Dark Blues на основе Tension.
+    if (this.config.genre === 'blues' && this.config.mood === 'dark' && instrumentHints.melody) {
+        if (tension < 0.35) {
+            instrumentHints.melody = 'cs80';
+        } else if (tension <= 0.75) {
+            instrumentHints.melody = 'guitar_shineOn';
+        } else {
+            instrumentHints.melody = 'guitar_muffLead';
         }
     }
 
