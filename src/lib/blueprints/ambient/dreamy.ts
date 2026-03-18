@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.2).
- * #ОБНОВЛЕНО (ПЛАН №795): Флейта удалена из гармонии.
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в мелодии.
  */
 export const DreamyAmbientBlueprint: MusicBlueprint = {
   id: 'dreamy_ambient',
@@ -42,7 +41,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                     drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
-                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
                 }
             },
             {
@@ -55,7 +54,6 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
             {
                 duration: { percent: 25 },
                 instrumentation: {
-                    // #ЗАЧЕМ: Флейта удалена.
                     harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
                     sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
                 }
@@ -73,7 +71,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
         layers: { bass: true, melody: true, accompaniment: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
         instrumentation: {
             accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 0.5 }, { name: 'synth', weight: 0.5 }] },
-            melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 0.4 }, { name: 'ep_rhodes_warm', weight: 0.6 }] }
+            melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 0.4 }, { name: 'organ_soft_jazz', weight: 0.6 }] }
         },
         instrumentRules: {
             drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },

@@ -4,6 +4,7 @@ import type { MusicBlueprint } from '@/types/music';
  * #ЗАЧЕМ: Блюпринт "Stable Geography" (Calm Ambient v12.0).
  * #ЧТО: 1. Внедрена лотерея интро.
  *       2. Реализована поддержка маршрута (3 локации).
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в мелодии.
  */
 export const CalmAmbientBlueprint: MusicBlueprint = {
   id: 'calm_ambient',
@@ -39,7 +40,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                     drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
-                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                    melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
                 }
             },
             {
@@ -69,7 +70,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
         layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, melody: true, harmony: true, pianoAccompaniment: true },
         instrumentation: {
           accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-          melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+          melody: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] }
         },
         instrumentRules: {
            drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 } },

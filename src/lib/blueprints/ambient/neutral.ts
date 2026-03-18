@@ -2,8 +2,7 @@ import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "Contemplative Atlas" (Neutral Ambient v13.0).
- * #ЧТО: 1. Лотерея интро.
- *       2. Маршрут из 3-х географических локаций.
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Emerald Pad в мелодии.
  */
 export const NeutralAmbientBlueprint: MusicBlueprint = {
     id: 'neutral_ambient',
@@ -35,7 +34,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'calm', weight: 1.0 }] },
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'synth', weight: 1.0 }] }
                         }
                     },
                     {
@@ -65,7 +64,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, sparkles: true, bass: true, drums: true, harmony: true, melody: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                  instrumentRules: {
                    drums: { pattern: 'ambient_beat', density: { min: 0.3, max: 0.5 }, useGhostHat: true },

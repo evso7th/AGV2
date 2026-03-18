@@ -3,6 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v31.0 - Lottery Ready).
  * #ЧТО: ПЛАН №844 — INTRO очищено от жестких сценариев для работы Ensemble Lottery.
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в аккомпанементе.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -32,7 +33,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
-                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                    melody: { strategy: 'weighted', options: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] },
                    harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] },
                    sfx: { strategy: 'weighted', options: [ { name: 'voice', weight: 1.0 } ] }
@@ -105,7 +106,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'MAIN_3', name: 'Introspection', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
-                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                   accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 1.0 }] },
                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
@@ -157,7 +158,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 id: 'OUTRO', name: 'Final Breath', duration: { percent: 4 }, 
                 layers: { bass: true, accompaniment: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },

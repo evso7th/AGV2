@@ -3,6 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v7.3).
  * #ЧТО: ПЛАН №817 — Добавлен Soft Jazz орган для глубоких размышлений.
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в аккомпанементе.
  */
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
@@ -58,8 +59,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic', weight: 1.0 } ] },
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'blackAcoustic', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: ПЛАН №817. Ротация органов.
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.6 }, { name: 'ep_rhodes_warm', weight: 0.4 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
@@ -84,8 +84,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
-                           // #ЗАЧЕМ: ПЛАН №817. Soft Jazz орган как основная текстура.
-                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 0.7 }, { name: 'ep_rhodes_warm', weight: 0.3 } ] },
+                           accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
                            harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'violin', weight: 0.4 } ] }
                         }
                     }

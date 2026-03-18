@@ -3,7 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Ступень Йоги 3 — JOYFUL: «Чистое Присутствие».
  * #ЧТО: Кристально чистый Ionian амбиент. Модель Harold Budd.
- * #ОБНОВЛЕНО (ПЛАН №435): Мелодия теперь гарантирована (activationChance 1.0).
+ * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Emerald Pad в мелодии.
  */
 export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
@@ -35,8 +35,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            // #ЗАЧЕМ: Мелодия гарантирована.
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'synth', weight: 1.0 }] }
                         }
                     },
                     {
@@ -65,7 +64,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'The Clarity Atlas', duration: { percent: 75 },
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 0.5 }, { name: 'guitarChords', weight: 0.5 }] }
                 },
