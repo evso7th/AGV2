@@ -1,13 +1,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.3).
- * #ЧТО: ПЛАН №870 — Мелодия теперь строго закреплена за Shine On (Crystal Lead) на всех этапах.
+ * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.4).
+ * #ЧТО: ПЛАН №873 — Расширение палитры: Shine On + Muff Lead (50/50).
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
     name: 'Ritual of Smoldering Textures',
-    description: 'A heavy, ritualistic blues in E Phrygian. Features strict unison between bass and pad, and locked Shine-On lead.',
+    description: 'A heavy, ritualistic blues in E Phrygian. Features strict unison between bass and pad, and dual guitar leads.',
     mood: 'dark',
     musical: {
         key: { root: 'E', scale: 'phrygian', octave: 1 },
@@ -62,7 +62,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                             bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_808', weight: 1.0 }] },
                             accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'organ', weight: 0.6 }, { name: 'organ_soft_jazz', weight: 0.4 }] },
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 }] }
                         }
                     },
                     {
@@ -70,13 +70,13 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'blues_dark', weight: 1.0 }] },
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 }] }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 1.0 }] },
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 }] },
                             sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
                         }
                     },
@@ -85,7 +85,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                             harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 }] },
                             sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] },
-                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 1.0 }] }
+                            melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 }] }
                         }
                     }
                 ],
@@ -103,7 +103,7 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                    drums: { strategy: 'weighted', options: [ { name: 'blues_melancholic_master', weight: 1.0 } ] },
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
                    accompaniment: { strategy: 'weighted', v2Options: [ { name: 'organ', weight: 0.7 }, { name: 'organ_soft_jazz', weight: 0.3 } ] },
-                   melody: { strategy: 'weighted', v2Options: [ { name: 'guitar_shineOn', weight: 1.0 } ] },
+                   melody: { strategy: 'weighted', v2Options: [ { name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 } ] },
                    pianoAccompaniment: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] },
                    harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'violin', weight: 0.2 } ] }
                 },
