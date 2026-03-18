@@ -141,12 +141,12 @@ export const V2_PRESETS = {
 
   guitar_muffLead: {
     /**
-     * #ЗАЧЕМ: ПЛАН №875 — Реформа Muff Lead.
-     * #ЧТО: Теперь это синт-гитара, идентичная Shine On, но с другой транзиентной душой.
+     * #ЗАЧЕМ: ПЛАН №876 — Снижение громкости.
+     * #ЧТО: Уменьшена громкость в 3 раза (0.24 -> 0.08) по просьбе пользователя.
      */
     type: 'synth',
     name: 'Muff Reform Guitar',
-    volume: 0.24, 
+    volume: 0.08, 
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
