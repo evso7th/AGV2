@@ -71,7 +71,8 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    volume: 0.17, 
+    /** #ЗАЧЕМ: ПЛАН №878. Снижение громкости на 20% (0.17 -> 0.136). */
+    volume: 0.136, 
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -82,12 +83,11 @@ export const V2_PRESETS = {
   
   organ_soft_jazz: {
     /**
-     * #ЗАЧЕМ: ПЛАН №761. Устранение пронзительности.
-     * #ЧТО: Снижен LPF, ослаблены высокие регистры, добавлен саб-бас.
+     * #ЗАЧЕМ: ПЛАН №878. Снижение громкости на 20% (0.1 -> 0.08).
      */
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.1, 
+    volume: 0.08, 
     drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
     lpf: 3200, 
     hpf: 80,
@@ -100,8 +100,9 @@ export const V2_PRESETS = {
 
   organ_jimmy_smith: {
     type: 'organ',
+    /** #ЗАЧЕМ: ПЛАН №878. Снижение громкости на 20% (0.16 -> 0.128). */
     name: 'Jimmy Smith Trio',
-    volume: 0.16, 
+    volume: 0.128, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 8000,
     hpf: 100,
