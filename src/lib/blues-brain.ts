@@ -1,4 +1,3 @@
-
 import {
   FractalEvent,
   GhostChord,
@@ -25,14 +24,15 @@ import {
     retrogradePhrase,
     applyRhythmicJitter,
     keyToMidiRoot,
-    mergeIdenticalNotes
+    mergeIdenticalNotes,
+    resolveSemanticTimbre
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V234.0 — "Axiom Sovereignty Implementation".
- * #ЗАЧЕМ: Реализация Плана №881. Приоритет инструмента аксиомы над Блюпринтом.
+ * @fileOverview Blues Brain V235.0 — "Semantic Resolving Implementation".
+ * #ЗАЧЕМ: ПЛАН №890. Перенос разрешения тембров в мозг для прозрачности логов.
  */
 
 const TICKS_PER_BAR = 12;
@@ -313,9 +313,9 @@ export class BluesBrain {
     let accStatus = 'none';
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
-    // #ЗАЧЕМ: ПЛАН №881. Применение Вето Аксиомы на инструмент.
+    // #ЗАЧЕМ: ПЛАН №881 & №890. Применение и РАЗРЕШЕНИЕ инструмента Аксиомы.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-        instrumentOverrides.melody = this.currentPreferredInstrument;
+        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
 
     if (!isAccompResting) {
@@ -328,8 +328,10 @@ export class BluesBrain {
                 const role = ax.role.toLowerCase();
                 const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
-                    // #ЗАЧЕМ: Override для аккомпанемента от аксиомы.
-                    if (ax.preferredInstrument) instrumentOverrides[targetType] = ax.preferredInstrument as any;
+                    // #ЗАЧЕМ: ПЛАН №890. Разрешаем тембр аккомпанемента сразу.
+                    if (ax.preferredInstrument) {
+                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType);
+                    }
 
                     accompanimentEvents.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension));
                     usedTargetLayers.add(targetType);
@@ -424,7 +426,7 @@ export class BluesBrain {
               filteredPool = poolToUse.filter(ax => {
                   const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                   const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                  return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
+                  return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
               });
           }
           if (filteredPool.length > 0) {

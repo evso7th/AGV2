@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V3.0 — "Melodic Tie Update".
- * #ОБНОВЛЕНО (ПЛАН №860): Внедрена функция mergeIdenticalNotes для объединения последовательных нот.
+ * @fileOverview Universal Music Theory Utilities V3.1 — "Semantic Resolver Update".
+ * #ОБНОВЛЕНО (ПЛАН №890): Внедрена функция resolveSemanticTimbre для прозрачности логов.
  */
 
 import type { 
@@ -14,7 +14,7 @@ import type {
     AxiomVector
 } from '@/types/music';
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
-import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
+import { V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 
 export const MODE_SEMITONES: Record<string, number[]> = {
     ionian: [0, 2, 4, 5, 7, 9, 11],
@@ -41,6 +41,30 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: ПЛАН №890. Разрешение семантических имен (guitar, bass) в конкретные тембры.
+ * #ЧТО: Теперь эта логика живет в Worker, чтобы логи были прозрачными.
+ */
+export function resolveSemanticTimbre(hint: string | undefined | null, tension: number, part: string): string {
+    if (!hint) return 'none';
+    const clean = hint.toLowerCase().trim();
+
+    // 1. Разрешение гитар (Melody/Lead)
+    if (clean === 'guitar' || clean === 'electric guitar') {
+        if (tension < 0.4) return 'telecaster';
+        if (tension > 0.75) return 'guitar_muffLead';
+        return 'guitar_shineOn';
+    }
+
+    // 2. Разрешение баса
+    if (part === 'bass') {
+        return BASS_PRESET_MAP[hint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+    }
+
+    // 3. V1 -> V2 Маппинг для остальных
+    return V1_TO_V2_PRESET_MAP[hint] || V1_TO_V2_PRESET_MAP[clean] || hint;
+}
 
 /**
  * #ЗАЧЕМ: Перевод текстовой тональности в MIDI-корень для Резонанса.

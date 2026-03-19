@@ -1,10 +1,9 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
 import { AmbientBrain } from './ambient-brain';
-import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic } from './music-theory';
+import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic, resolveSemanticTimbre } from './music-theory';
 import { MelancholicMinorK } from './resonance-matrices';
 
 function seededRandom(seed: number) {
@@ -52,8 +51,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V36.0 — "Axiom Sovereignty Implementation".
- * #ЧТО: ПЛАН №881 — Реализован приоритет предпочтительного инструмента аксиомы (Override).
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V37.0 — "Semantic Resolving Implementation".
+ * #ЧТО: ПЛАН №890 — Реализовано разрешение семантических имен тембров прямо в Worker для прозрачности логов.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -262,7 +261,9 @@ export class FractalMusicEngine {
                 else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
                 else if (part === 'harmony') defaultInst = (this.config.genre === 'blues' ? 'guitarChords' : 'violin');
 
-                this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
+                // #ЗАЧЕМ: ПЛАН №890. Разрешаем семантический тембр сразу после выбора из пула.
+                const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
+                this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part);
             }
         }
     });
@@ -271,7 +272,7 @@ export class FractalMusicEngine {
 
     this.activatedParts.forEach(part => {
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
-            (instrumentHints as any)[part] = this.activeTimbres[part] || 'synth';
+            instrumentHints[part] = this.activeTimbres[part] || 'synth';
         }
     });
 
@@ -291,7 +292,7 @@ export class FractalMusicEngine {
         }
     }
 
-    // --- TENSION-BASED OVERRIDES (PLAN №877) ---
+    // --- TENSION-BASED OVERRIDES (PLAN №877 & №890) ---
     if (this.config.genre === 'blues' && this.config.mood === 'dark' && instrumentHints.melody) {
         if (tension < 0.35) {
             instrumentHints.melody = 'cs80';
@@ -315,7 +316,7 @@ export class FractalMusicEngine {
         result = { events: createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch) };
     }
 
-    // #ЗАЧЕМ: ПЛАН №881. Слияние хинтов от Блюпринта и Оверрайдов от Аксиомы (Brains).
+    // #ЗАЧЕМ: ПЛАН №881 & №890. Слияние хинтов от Блюпринта и Оверрайдов от Аксиомы (Brains).
     if (result.instrumentOverrides) {
         Object.assign(instrumentHints, result.instrumentOverrides);
     }

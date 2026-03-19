@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Ambient Brain V57.0 — "Axiom Sovereignty Implementation".
- * #ЗАЧЕМ: Реализация Плана №881. Поддержка предпочтительного инструмента донора.
+ * @fileOverview Ambient Brain V58.0 — "Semantic Resolving Implementation".
+ * #ЗАЧЕМ: ПЛАН №890. Перенос разрешения тембров в мозг для прозрачности логов.
  */
 
 import type {
@@ -28,7 +27,8 @@ import {
     retrogradePhrase,
     applyRhythmicJitter,
     mergeIdenticalNotes,
-    keyToMidiRoot
+    keyToMidiRoot,
+    resolveSemanticTimbre
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -186,9 +186,9 @@ export class AmbientBrain {
 
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: ПЛАН №881. Применение Вето Аксиомы.
+        // #ЗАЧЕМ: ПЛАН №881 & №890. Применение и РАЗРЕШЕНИЕ инструмента Аксиомы.
         if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-            instrumentOverrides.melody = this.currentPreferredInstrument;
+            instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody');
         }
 
         let accStatus = 'none';
@@ -198,8 +198,10 @@ export class AmbientBrain {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType]) {
-                    // #ЗАЧЕМ: Override для аккомпанемента.
-                    if (ax.preferredInstrument) instrumentOverrides[targetType] = ax.preferredInstrument as any;
+                    // #ЗАЧЕМ: ПЛАН №890. Разрешаем тембр аккомпанемента сразу.
+                    if (ax.preferredInstrument) {
+                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
+                    }
 
                     events.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension));
                     if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
@@ -223,7 +225,6 @@ export class AmbientBrain {
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                // Assuming `activePhrase` would come from `currentTheme.phrase`
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
             } else {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);

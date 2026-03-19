@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -11,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №882 — Внедрен Semantic Timbre Resolver для динамического выбора гитар.
+ * #ЧТО: ПЛАН №890 — Удален локальный Semantic Resolver. Воркер теперь присылает готовое имя.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -79,7 +78,7 @@ export class MelodySynthManagerV2 {
         if (!preset) return;
         
         try {
-            this.synth = await buildMultiInstrument(this.audioContext, {
+            this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
                 output: this.preamp
@@ -101,23 +100,8 @@ export class MelodySynthManagerV2 {
         }
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №882. Разрешение семантических имен инструментов.
-     * #ЧТО: "guitar" -> динамический выбор на основе Tension.
-     */
-    private resolveSemanticTimbre(hint: string, tension: number): string {
-        const clean = hint.toLowerCase().trim();
-        if (clean === 'guitar' || clean === 'electric guitar') {
-            if (tension < 0.4) return 'telecaster';
-            if (tension > 0.75) return 'guitar_muffLead';
-            return 'guitar_shineOn';
-        }
-        return V1_TO_V2_PRESET_MAP[hint] || hint;
-    }
-
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
-        const currentTension = events[0]?.params?.tension ?? 0.5;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
             const extraDuration = this.partName === 'melody' ? 0.4 : 0;
@@ -131,19 +115,13 @@ export class MelodySynthManagerV2 {
             };
         });
         
-        if (instrumentHint && this.partName === 'melody') {
-            const mappedHint = this.resolveSemanticTimbre(instrumentHint, currentTension);
-            if (mappedHint !== this.activePresetName) {
-                const isPhraseBoundary = barCount % 4 === 0;
-                const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none';
-                if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
-                    await this.setInstrument(mappedHint);
-                }
-            }
-        } else if (instrumentHint && this.partName === 'bass') {
-            const mappedHint = BASS_PRESET_MAP[instrumentHint] || instrumentHint;
-            if (mappedHint !== this.activePresetName) {
-                await this.setInstrument(mappedHint);
+        // #ЗАЧЕМ: ПЛАН №890. Воркер уже прислал разрешенное имя в instrumentHint.
+        // #ЧТО: Мы только проверяем необходимость переключения.
+        if (instrumentHint && instrumentHint !== this.activePresetName) {
+            const isPhraseBoundary = barCount % 4 === 0;
+            const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none' || this.activePresetName === 'bass_jazz_warm';
+            if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
+                await this.setInstrument(instrumentHint);
             }
         }
 
