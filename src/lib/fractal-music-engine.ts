@@ -51,8 +51,9 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V37.0 — "Semantic Resolving Implementation".
- * #ЧТО: ПЛАН №890 — Реализовано разрешение семантических имен тембров прямо в Worker для прозрачности логов.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V38.0 — "Axiom Sovereignty Implementation".
+ * #ЧТО: ПЛАН №896 — Удалены жестко захардкоженные оверрайды тембра для Dark Blues. 
+ *       Это возвращает контроль пользователю через DNA Auditor.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -261,7 +262,6 @@ export class FractalMusicEngine {
                 else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
                 else if (part === 'harmony') defaultInst = (this.config.genre === 'blues' ? 'guitarChords' : 'violin');
 
-                // #ЗАЧЕМ: ПЛАН №890. Разрешаем семантический тембр сразу после выбора из пула.
                 const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
                 this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part);
             }
@@ -292,17 +292,6 @@ export class FractalMusicEngine {
         }
     }
 
-    // --- TENSION-BASED OVERRIDES (PLAN №877 & №890) ---
-    if (this.config.genre === 'blues' && this.config.mood === 'dark' && instrumentHints.melody) {
-        if (tension < 0.35) {
-            instrumentHints.melody = 'cs80';
-        } else if (tension <= 0.75) {
-            instrumentHints.melody = 'guitar_shineOn';
-        } else {
-            instrumentHints.melody = 'guitar_muffLead';
-        }
-    }
-
     const foundChord = this.suiteDNA.harmonyTrack.find(chord => this.epoch >= chord.bar && this.epoch < chord.bar + chord.durationBars);
     let currentChord: GhostChord = foundChord || this.previousChord || this.suiteDNA.harmonyTrack[0];
     this.previousChord = currentChord;
@@ -316,7 +305,6 @@ export class FractalMusicEngine {
         result = { events: createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch) };
     }
 
-    // #ЗАЧЕМ: ПЛАН №881 & №890. Слияние хинтов от Блюпринта и Оверрайдов от Аксиомы (Brains).
     if (result.instrumentOverrides) {
         Object.assign(instrumentHints, result.instrumentOverrides);
     }

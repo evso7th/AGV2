@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V3.1 — "Semantic Resolver Update".
- * #ОБНОВЛЕНО (ПЛАН №890): Внедрена функция resolveSemanticTimbre для прозрачности логов.
+ * @fileOverview Universal Music Theory Utilities V3.2 — "Axiom Sovereignty Update".
+ * #ОБНОВЛЕНО (ПЛАН №896): Резолвер теперь игнорирует специфические имена, защищая выбор пользователя.
  */
 
 import type { 
@@ -43,16 +43,21 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №890. Разрешение семантических имен (guitar, bass) в конкретные тембры.
- * #ЧТО: Теперь эта логика живет в Worker, чтобы логи были прозрачными.
+ * #ЗАЧЕМ: ПЛАН №896. Разрешение семантических имен с защитой специфического выбора.
+ * #ЧТО: Если имя уже является конкретным пресетом (muffLead, telecaster и т.д.) — оно не меняется.
  */
 export function resolveSemanticTimbre(hint: string | undefined | null, tension: number, part: string): string {
-    if (!hint) return 'none';
+    if (!hint || hint === 'none') return 'none';
     const clean = hint.toLowerCase().trim();
 
-    // 1. Разрешение гитар (Melody/Lead)
-    if (clean === 'guitar' || clean === 'electric guitar') {
-        if (tension < 0.4) return 'telecaster';
+    // Защита: Если это уже конкретный технический пресет V2, не трогаем его
+    if (clean.includes('lead') || clean.includes('on') || clean.includes('acoustic') || clean.includes('telecaster') || clean.includes('808') || clean.includes('cs80')) {
+        return hint; // Возвращаем как есть (регистр важен для маппинга)
+    }
+
+    // 1. Разрешение гитар (Melody/Lead) — только для общих имен
+    if (clean === 'guitar' || clean === 'electric guitar' || clean === 'melody') {
+        if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
@@ -74,7 +79,6 @@ export function keyToMidiRoot(key: string | null | undefined): number | null {
     const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
     const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
     const offset = noteMap[rootName] || 0;
-    // Возвращаем корень в октаве 2 (базовый диапазон движка 48-60)
     return 48 + offset;
 }
 
@@ -93,23 +97,16 @@ export function safeSemitoneToDegree(s: number): string {
 
 /**
  * #ЗАЧЕМ: Объединение последовательных одинаковых нот (ПЛАН №860).
- * #ЧТО: Если ноты имеют одну высоту и стоят впритык — превращаем их в одну длинную.
  */
 export function mergeIdenticalNotes(phrase: any[]): any[] {
     if (!phrase || phrase.length <= 1) return phrase || [];
-    
-    // Сначала сортируем по времени для корректного поиска соседей
     const sorted = [...phrase].sort((a, b) => a.t - b.t);
     const merged: any[] = [];
     let current = { ...sorted[0] };
-
     for (let i = 1; i < sorted.length; i++) {
         const next = sorted[i];
-        // Проверяем: та же ступень И следующая нота начинается там, где кончилась текущая
-        // Используем небольшой допуск (0.01) для исключения ошибок округления
         if (next.deg === current.deg && Math.abs(next.t - (current.t + current.d)) < 0.01) {
             current.d += next.d;
-            // Технику оставляем от первой ноты (атака всей фразы)
         } else {
             merged.push(current);
             current = { ...next };
@@ -118,16 +115,6 @@ export function mergeIdenticalNotes(phrase: any[]): any[] {
     merged.push(current);
     return merged;
 }
-
-const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
-    ambient: [[0.6, 0.2, 0.1, 0.1], [0.4, 0.4, 0.1, 0.1], [0.5, 0.1, 0.3, 0.1], [0.4, 0.2, 0.2, 0.2]],
-    trance: [[0.7, 0.1, 0.2], [0.3, 0.5, 0.2], [0.4, 0.1, 0.5]],
-    blues: [[0.5, 0.4, 0.1], [0.6, 0.3, 0.1], [0.7, 0.1, 0.2]]
-};
-
-const GENRE_STATES: Record<string, number[]> = {
-    ambient: [0, 5, 7, 9], trance: [0, 8, 10], blues: [0, 5, 7]       
-};
 
 export function decompressCompactPhrase(compact: number[]): any[] {
     const result = [];
