@@ -89,10 +89,6 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
-/**
- * #ЗАЧЕМ: Список инструментов для назначения аксиомам.
- * #ЧТО: Включает telecaster, blackAcoustic и динамическую guitar.
- */
 const INSTRUMENT_OPTIONS = [
     'guitar', 
     'telecaster', 
@@ -112,6 +108,26 @@ const INSTRUMENT_OPTIONS = [
     'violin', 
     'none'
 ];
+
+const DISPLAY_NAMES: Record<string, string> = {
+    'guitar': 'Dynamic Guitar',
+    'telecaster': 'Telecaster Clean',
+    'blackAcoustic': 'Black Acoustic',
+    'darkTelecaster': 'Fuzzed Telecaster',
+    'cs80': 'CS-80 Brass',
+    'guitar_shineOn': 'Shine On Lead',
+    'guitar_muffLead': 'Muff Reform Lead',
+    'organ': 'Cathedral Organ',
+    'organ_soft_jazz': 'Soft Jazz Organ',
+    'organ_jimmy_smith': 'Jimmy Smith B3',
+    'organ_prog': 'Prog Rock Organ',
+    'synth': 'Emerald Pad',
+    'synth_ambient_pad_lush': 'Lush Pad',
+    'theremin': 'Vocal Theremin',
+    'mellotron': 'Mellotron Strings',
+    'violin': 'Solo Violin',
+    'none': 'No Override'
+};
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
   'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
@@ -910,7 +926,7 @@ export default function HypercubeDashboard() {
                                             {editingAxiomId === ax.id ? (
                                               <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{i}</SelectItem>)}</SelectContent></Select>
                                             ) : (
-                                              ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {ax.preferredInstrument}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
+                                              ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
                                             )}
                                           </td>
                                           <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>

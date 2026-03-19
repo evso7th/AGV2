@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V3.3 — "Markov Integrity Update".
- * #ОБНОВЛЕНО (ПЛАН №897): Добавлены недостающие определения GENRE_STATES и GENRE_HARMONY_MATRICES.
+ * @fileOverview Universal Music Theory Utilities V3.4 — "Case Insensitive Sovereignty".
+ * #ОБНОВЛЕНО (ПЛАН №898): Реализовано разрешение имен инструментов без учета регистра.
  */
 
 import type { 
@@ -14,7 +14,8 @@ import type {
     AxiomVector
 } from '@/types/music';
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
-import { V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
+import { BASS_PRESETS } from './bass-presets';
 
 export const MODE_SEMITONES: Record<string, number[]> = {
     ionian: [0, 2, 4, 5, 7, 9, 11],
@@ -26,9 +27,6 @@ export const MODE_SEMITONES: Record<string, number[]> = {
     locrian: [0, 1, 3, 5, 6, 8, 10]
 };
 
-/**
- * #ЗАЧЕМ: Строгое соответствие Forge Master Spec v2.2.
- */
 export const DEGREE_TO_SEMITONE: Record<string, number> = {
     'R': 0, 'b2': 1, '2': 2, 'b3': 3, '3': 4, '4': 5, '#4': 6, '5': 7,
     'b6': 8, '6': 9, 'b7': 10, '7': 11, 'R+8': 12, '9': 14, '11': 17
@@ -42,69 +40,67 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-// ───── HARMONY MATRICES (PLAN №897) ─────
-
 const GENRE_STATES: Record<string, number[]> = {
-    ambient: [0, 5, 7, 9, 3, 10], // I, IV, V, vi, bIII, bVII
-    blues: [0, 5, 7],             // I, IV, V
-    trance: [0, 3, 5, 8, 10]      // i, bIII, iv, bVI, bVII
+    ambient: [0, 5, 7, 9, 3, 10], 
+    blues: [0, 5, 7],             
+    trance: [0, 3, 5, 8, 10]      
 };
 
 const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
     ambient: [
-        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], // from I
-        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     // from IV
-        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     // from V
-        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     // from vi
-        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     // from bIII
-        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      // from bVII
+        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
+        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
+        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     
+        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     
+        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     
+        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      
     ],
     blues: [
-        [0.6, 0.3, 0.1], // from I
-        [0.4, 0.4, 0.2], // from IV
-        [0.5, 0.2, 0.3]  // from V
+        [0.6, 0.3, 0.1], 
+        [0.4, 0.4, 0.2], 
+        [0.5, 0.2, 0.3]  
     ],
     trance: [
-        [0.6, 0.1, 0.1, 0.1, 0.1], // from i
-        [0.2, 0.5, 0.2, 0.1, 0.0], // from bIII
-        [0.3, 0.1, 0.5, 0.1, 0.0], // from iv
-        [0.2, 0.1, 0.1, 0.5, 0.1], // from bVI
-        [0.4, 0.0, 0.1, 0.1, 0.4]  // from bVII
+        [0.6, 0.1, 0.1, 0.1, 0.1], 
+        [0.2, 0.5, 0.2, 0.1, 0.0], 
+        [0.3, 0.1, 0.5, 0.1, 0.0], 
+        [0.2, 0.1, 0.1, 0.5, 0.1], 
+        [0.4, 0.0, 0.1, 0.1, 0.4]  
     ]
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №896. Разрешение семантических имен с защитой специфического выбора.
- * #ЧТО: Если имя уже является конкретным пресетом (muffLead, telecaster и т.д.) — оно не меняется.
+ * #ЗАЧЕМ: ПЛАН №898. Case-insensitive matching.
+ * #ЧТО: Если в базе "GUITAR_SHINEON", а в коде "guitar_shineOn", функция найдет правильный ключ.
  */
 export function resolveSemanticTimbre(hint: string | undefined | null, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
     const clean = hint.toLowerCase().trim();
 
-    // Защита: Если это уже конкретный технический пресет V2, не трогаем его
-    if (clean.includes('lead') || clean.includes('on') || clean.includes('acoustic') || clean.includes('telecaster') || clean.includes('808') || clean.includes('cs80')) {
-        return hint; // Возвращаем как есть (регистр важен для маппинга)
-    }
+    // 1. Поиск точного ключа (без учета регистра) в V2 и Bass пресетах
+    const v2Keys = Object.keys(V2_PRESETS);
+    const bassKeys = Object.keys(BASS_PRESETS);
+    const matchedV2 = v2Keys.find(k => k.toLowerCase() === clean);
+    if (matchedV2) return matchedV2;
+    
+    const matchedBass = bassKeys.find(k => k.toLowerCase() === clean);
+    if (matchedBass) return matchedBass;
 
-    // 1. Разрешение гитар (Melody/Lead) — только для общих имен
+    // 2. Разрешение гитар (только для абстрактных имен)
     if (clean === 'guitar' || clean === 'electric guitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
 
-    // 2. Разрешение баса
+    // 3. Fallback маппинг
     if (part === 'bass') {
         return BASS_PRESET_MAP[hint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     }
 
-    // 3. V1 -> V2 Маппинг для остальных
     return V1_TO_V2_PRESET_MAP[hint] || V1_TO_V2_PRESET_MAP[clean] || hint;
 }
 
-/**
- * #ЗАЧЕМ: Перевод текстовой тональности в MIDI-корень для Резонанса.
- */
 export function keyToMidiRoot(key: string | null | undefined): number | null {
     if (!key) return null;
     const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
@@ -126,9 +122,6 @@ export function safeSemitoneToDegree(s: number): string {
     return base;
 }
 
-/**
- * #ЗАЧЕМ: Объединение последовательных одинаковых нот (ПЛАН №860).
- */
 export function mergeIdenticalNotes(phrase: any[]): any[] {
     if (!phrase || phrase.length <= 1) return phrase || [];
     const sorted = [...phrase].sort((a, b) => a.t - b.t);
