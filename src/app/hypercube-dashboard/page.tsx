@@ -430,7 +430,16 @@ export default function HypercubeDashboard() {
                     else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) role = 'bass';
                     else if (density > 10 || noteCount > 500) role = 'accomp piano';
                     else role = 'melody';
-                    flattened.push(processAxiom({ phrase, role, nativeBpm: bpm, nativeKey: 'C', timeSignature: timeSig, narrative: `Imported from track: ${track.name || 'Unnamed'}` }, tIdx, targetId));
+                    
+                    const instName = track.instrument?.name || track.name || 'Unnamed Instrument';
+                    flattened.push(processAxiom({ 
+                        phrase, 
+                        role, 
+                        nativeBpm: bpm, 
+                        nativeKey: 'C', 
+                        timeSignature: timeSig, 
+                        narrative: `${instName} Imported from track ${tIdx}` 
+                    }, tIdx, targetId));
                 });
             } else if (Array.isArray(json)) {
                 const targetId = cleanFileName || "Unknown_Heritage";
@@ -1028,13 +1037,7 @@ export default function HypercubeDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {dynastyStats.map((dynasty) => (
                       <Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden">
-                        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
-                          <div className="space-y-0.5">
-                            <CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle>
-                            <CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription>
-                          </div>
-                          <Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge>
-                        </CardHeader>
+                        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader>
                         <CardContent className="p-4 pt-2 space-y-4">
                           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                             <div className="space-y-1">
@@ -1142,13 +1145,7 @@ export default function HypercubeDashboard() {
                     <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle>
                     <CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription>
                   </div>
-                  <div className="flex gap-3">
-                    <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button>
-                    <Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl">
-                      <Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />
-                      Inject {selectedIds.size} Axioms
-                    </Button>
-                  </div>
+                  <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <ScrollArea className="w-full">
