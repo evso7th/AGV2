@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №890 — Удален локальный Semantic Resolver. Воркер теперь присылает готовое имя.
+ * #ЧТО: ПЛАН №893 — Исправлена критическая ошибка именования (instrument -> synth). Тело звука восстановлено.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -78,7 +78,8 @@ export class MelodySynthManagerV2 {
         if (!preset) return;
         
         try {
-            this.instrument = await buildMultiInstrument(this.audioContext, {
+            // #ЧТО: Исправлена привязка к переменной this.synth.
+            this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
                 output: this.preamp
@@ -115,8 +116,6 @@ export class MelodySynthManagerV2 {
             };
         });
         
-        // #ЗАЧЕМ: ПЛАН №890. Воркер уже прислал разрешенное имя в instrumentHint.
-        // #ЧТО: Мы только проверяем необходимость переключения.
         if (instrumentHint && instrumentHint !== this.activePresetName) {
             const isPhraseBoundary = barCount % 4 === 0;
             const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none' || this.activePresetName === 'bass_jazz_warm';
@@ -152,6 +151,7 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
+        // Транзиентная подсветка для гитарных пресетов
         if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
@@ -182,8 +182,8 @@ export class MelodySynthManagerV2 {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
        } else {
            if (this.synth) {
-               const oldSynth = this.synth;
-               setTimeout(() => { try { oldSynth.disconnect(); } catch(e) {} }, 10000);
+               const fadingSynth = this.synth;
+               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 10000);
                this.synth = null;
            }
            this.activePresetName = instrumentName;

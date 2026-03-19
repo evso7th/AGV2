@@ -118,22 +118,22 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     /**
-     * #ЗАЧЕМ: ПЛАН №874 — "Recalibration". 
-     * #ЧТО: 1. Громкость уменьшена в 2 раза. 
-     *       2. Синус заменен на треугольник для "гитарности".
-     *       3. Cutoff снижен для мягкости.
+     * #ЗАЧЕМ: ПЛАН №893 — "Body Restoration". 
+     * #ЧТО: 1. Громкость увеличена для баланса с транзиентом.
+     *       2. Атака замедлена до 25мс для мягкого входа после щелчка.
+     *       3. Тон стал ярче (LPF 3200).
      */
     type: 'synth',
     name: 'Crystal Lead', 
-    volume: 0.22, 
+    volume: 0.42, 
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
       { type: 'sawtooth', detune: 5, octave: 1, gain: 0.03 }
     ],
-    noise: { on: true, gain: 0.015 }, // Небольшой шум щипка
-    adsr: { a: 0.006, d: 0.45, s: 0.75, r: 1.4 }, 
-    lpf: { cutoff: 2150, q: 1.3, mode: '24dB' }, 
+    noise: { on: true, gain: 0.015 }, 
+    adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
+    lpf: { cutoff: 3200, q: 1.3, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 4.5, amount: 3.5, target: 'pitch' },
     chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.12 },
     delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
@@ -142,20 +142,20 @@ export const V2_PRESETS = {
 
   guitar_muffLead: {
     /**
-     * #ЗАЧЕМ: ПЛАН №876 — Снижение громкости.
-     * #ЧТО: Уменьшена громкость в 3 раза (0.24 -> 0.08) по просьбе пользователя.
+     * #ЗАЧЕМ: ПЛАН №893 — Снижение громкости.
+     * #ЧТО: Громкость тела значительно поднята (0.08 -> 0.38).
      */
     type: 'synth',
     name: 'Muff Reform Guitar',
-    volume: 0.08, 
+    volume: 0.38, 
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
       { type: 'sawtooth', detune: 5, octave: 1, gain: 0.03 }
     ],
     noise: { on: true, gain: 0.015 },
-    adsr: { a: 0.006, d: 0.45, s: 0.75, r: 1.4 }, 
-    lpf: { cutoff: 2150, q: 1.3, mode: '24dB' }, 
+    adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
+    lpf: { cutoff: 2800, q: 1.3, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 4.5, amount: 3.5, target: 'pitch' },
     chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.12 },
     delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
