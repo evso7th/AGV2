@@ -9,8 +9,8 @@ import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V4.0.
- * #ЧТО: ПЛАН №872 — Полное удаление сэмплированного пианино. Загрузка скрипок и гитар вынесена в фон.
+ * #ЗАЧЕМ: Менеджер слоя гармонии V4.1 — "Lazy Loading Support".
+ * #ЧТО: ПЛАН №888 — Добавлена поддержка поэтапной инициализации (minimal флаг).
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -32,20 +32,23 @@ export class HarmonySynthManager {
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
 
-    async init() {
-        if (this.isInitialized) return;
+    /**
+     * #ЗАЧЕМ: Поэтапная загрузка.
+     * #ЧТО: minimal=true загружает только гитарные аккорды.
+     */
+    async init(minimal = false) {
+        if (this.isInitialized && !minimal) return;
         
-        console.log('%c[HarmonyManager] Initializing Heritage Harmony (Guitar & Violin)...', 'color: #DA70D6;');
-
-        // Загружаем только то, что осталось после ликвидации пианино
-        await Promise.all([
-            this.guitarChords.init(),
-            this.violin.loadInstrument('violin', VIOLIN_SAMPLES),
-        ]);
-        
-        this.isInitialized = true;
-        this.guitarChords.setVolume(1.0);
-        this.violin.setVolume(1.0);
+        if (minimal) {
+            console.log('%c[HarmonyManager] Level 1: Initializing Guitar Chords...', 'color: #DA70D6;');
+            await this.guitarChords.init();
+            this.isInitialized = true;
+            this.guitarChords.setVolume(1.0);
+        } else {
+            console.log('%c[HarmonyManager] Level 2: Initializing Violin...', 'color: #DA70D6;');
+            await this.violin.loadInstrument('violin', VIOLIN_SAMPLES);
+            this.violin.setVolume(1.0);
+        }
     }
     
     private async loadSynth(presetName: string) {

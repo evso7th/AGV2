@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V28.0 — "Lightweight Start".
- * #ЧТО: ПЛАН №884 — SFX и Sparkles вынесены из критического пути инициализации в фон.
+ * #ЗАЧЕМ: Audio Engine Context V29.0 — "Sonic Lazy Load 3.0".
+ * #ЧТО: ПЛАН №888 — Реализована 3-уровневая стратегия загрузки ресурсов.
  */
 'use client';
 
@@ -271,6 +271,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
+        // #ЗАЧЕМ: Level 1 — Минимальное ядро для старта.
         await Promise.all([
             drumMachineRef.current.init(true), 
             blackGuitarSamplerRef.current.init(true), 
@@ -278,8 +279,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
-            pianoAccompanimentManagerRef.current.init()
-            // #ЗАЧЕМ: ПЛАН №884 — SFX и Sparkles удалены из критического пути.
+            pianoAccompanimentManagerRef.current.init(),
+            harmonyManagerRef.current.init(true) 
         ]);
         
         if (!workerRef.current) {
@@ -308,16 +309,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         initializationInFlightRef.current = false;
 
-        // #ЗАЧЕМ: ПЛАН №884 — Полная загрузка всех текстур и тяжелых инструментов в фоне.
+        // #ЗАЧЕМ: Level 2 — Фоновое пополнение (через 5 сек).
         setTimeout(() => {
             drumMachineRef.current?.init(); 
             blackGuitarSamplerRef.current?.init();
             harmonyManagerRef.current?.init(); 
+        }, 5000);
+
+        // #ЗАЧЕМ: Level 3 — Текстуры и тяжелый синтез (через 10 сек).
+        setTimeout(() => {
             sparklePlayerRef.current?.init();
             sfxSynthManagerRef.current?.init();
             cs80SamplerRef.current?.init();
             darkTelecasterSamplerRef.current?.init();
-        }, 5000);
+        }, 10000);
 
         return true;
     } catch (e) {
