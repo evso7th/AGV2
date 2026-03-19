@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -29,9 +30,9 @@ import {
   EyeOff,
   FileText,
   Save,
-  RefreshCw,
   Zap,
-  Guitar
+  Guitar,
+  Settings2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -42,8 +43,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,7 +93,7 @@ const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 
 const INSTRUMENT_OPTIONS = [
     'guitar', 'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
     'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'synth', 'synth_ambient_pad_lush',
-    'theremin', 'mellotron', 'mellotron_flute_intimate', 'violin', 'none'
+    'theremin', 'mellotron', 'violin', 'none'
 ];
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -107,16 +108,9 @@ const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
 };
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
-  epic: 'light',
-  joyful: 'light',
-  enthusiastic: 'light',
-  dreamy: 'neutral',
-  contemplative: 'neutral',
-  calm: 'neutral',
-  melancholic: 'dark',
-  dark: 'dark',
-  anxious: 'dark',
-  gloomy: 'dark'
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
 
 const ROLE_OPTIONS = [
@@ -457,10 +451,6 @@ export default function HypercubeDashboard() {
     }
   };
 
-  /**
-   * #ЗАЧЕМ: Расширение Bootstrap Knowledge (ПЛАН №884).
-   * #ЧТО: В список включены все критические спецификации и протоколы проекта.
-   */
   const handleBootstrapKnowledgeBase = async () => {
       setIsProcessing(true);
       try {
@@ -746,7 +736,7 @@ export default function HypercubeDashboard() {
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station [Wide Mode]</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -848,8 +838,8 @@ export default function HypercubeDashboard() {
                                           <div className="flex flex-col gap-3 w-full max-w-4xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
                                             <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} className="h-8 text-sm" autoFocus /></div>
                                             <div className="grid grid-cols-2 gap-4">
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Select genres..." className="w-full" /></div>
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Select moods..." className="w-full" /></div>
+                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={vals => setEditGenreValue(vals)} placeholder="Select genres..." className="w-full" /></div>
+                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={vals => setEditMoodValue(vals)} placeholder="Select moods..." className="w-full" /></div>
                                             </div>
                                             <div className="grid grid-cols-3 gap-4">
                                               <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">BPM</Label><Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" /></div>
@@ -875,7 +865,6 @@ export default function HypercubeDashboard() {
                               </div>
                             </div>
                             <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible w-full">
-                              {/* --- HORIZONTAL SCROLLING FOR AXIOMS (PLAN №884) --- */}
                               <ScrollArea className="w-full">
                                 <div className="min-w-[1200px]">
                                   <table className="w-full text-sm border-collapse">
@@ -1110,7 +1099,7 @@ export default function HypercubeDashboard() {
               </Button>
               <div className="flex items-center gap-3 pl-6 border-l border-border/50">
                 <Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label>
-                <MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" />
+                <MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={vals => setSelectedGenre(vals)} placeholder="Select genres..." className="w-[240px] h-10 font-bold" />
               </div>
             </div>
             {stagedAxioms.length > 0 && (
@@ -1169,7 +1158,7 @@ export default function HypercubeDashboard() {
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 w-full">
                 <Card className="xl:col-span-1 border-border/50 shadow-xl bg-card/50 h-[700px] flex flex-col">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><RefreshCw className="h-5 w-5" /> Cloud Manifests</CardTitle>
+                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><History className="h-5 w-5" /> Cloud Manifests</CardTitle>
                         <CardDescription className="text-[10px] uppercase font-bold tracking-widest">System Knowledge Base (Protocols & Specs)</CardDescription>
                     </CardHeader>
                     <CardContent className="flex-grow overflow-hidden p-0">
@@ -1238,7 +1227,7 @@ export default function HypercubeDashboard() {
                             </div>
                         ) : (
                             <div className="h-full flex flex-col items-center justify-center opacity-30 p-10 text-center">
-                                <History className="h-16 w-16 mb-4 stroke-1" />
+                                <Settings2 className="h-16 w-16 mb-4 stroke-1" />
                                 <p className="font-bold uppercase text-xs tracking-widest">Select a manifest from the left to inspect or update system knowledge.</p>
                             </div>
                         )}
