@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -115,6 +114,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
 export class SfxSynthManager {
     private context: AudioContext;
     private isReady = false;
+    private isFullyInitialized = false;
     private buffers: Map<string, AudioBuffer[]> = new Map();
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     private preamp: GainNode;
@@ -127,6 +127,9 @@ export class SfxSynthManager {
     }
 
     public async init(limitPerCategory: number = -1): Promise<void> {
+        if (this.isFullyInitialized) return;
+        if (limitPerCategory > 0 && this.isReady) return;
+
         const allCategories = Object.keys(SFX_SAMPLES);
         for (const category of allCategories) {
             const urls = SFX_SAMPLES[category];
@@ -136,11 +139,12 @@ export class SfxSynthManager {
             const categoryBuffers = this.buffers.get(category)!;
 
             const promises = targetUrls.map(url => this.loadSample(url).then(buffer => {
-                if(buffer) categoryBuffers.push(buffer);
+                if(buffer && !categoryBuffers.includes(buffer)) categoryBuffers.push(buffer);
             }));
             await Promise.all(promises);
         }
         this.isReady = true;
+        if (limitPerCategory === -1) this.isFullyInitialized = true;
     }
     
     private async loadSample(url: string): Promise<AudioBuffer | null> {

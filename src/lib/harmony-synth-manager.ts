@@ -8,14 +8,15 @@ import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V4.2 — "Strict Lazy Load".
- * #ЧТО: ПЛАН №888 — minimal флаг теперь корректно ограничивает загрузку аккордов.
+ * #ЗАЧЕМ: Менеджер слоя гармонии V4.3 — "Strict Lazy Load Fix".
+ * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
     private destination: AudioNode;
     private activeInstrumentName: string = 'guitarChords';
     public isInitialized = false;
+    private isFullyInitialized = false;
 
     private guitarChords: GuitarChordsSampler;
     private violin: ViolinSamplerPlayer;
@@ -33,10 +34,10 @@ export class HarmonySynthManager {
 
     /**
      * #ЗАЧЕМ: Поэтапная загрузка.
-     * #ЧТО: minimal=true загружает только 11 базовых гитарных аккордов.
      */
     async init(minimal = false) {
-        if (this.isInitialized && !minimal) return;
+        if (this.isFullyInitialized) return;
+        if (minimal && this.isInitialized) return;
         
         if (minimal) {
             console.log('%c[HarmonyManager] Level 1: Initializing CORE Guitar Chords...', 'color: #DA70D6;');
@@ -50,6 +51,8 @@ export class HarmonySynthManager {
                 this.violin.loadInstrument('violin', VIOLIN_SAMPLES)
             ]);
             this.violin.setVolume(1.0);
+            this.isInitialized = true;
+            this.isFullyInitialized = true;
         }
     }
     

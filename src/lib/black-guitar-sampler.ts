@@ -72,6 +72,7 @@ export class BlackGuitarSampler {
     private destination: AudioNode;
     private noteBuffers = new Map<number, NoteBuffers>();
     public isInitialized = false;
+    private isFullyInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
@@ -89,7 +90,8 @@ export class BlackGuitarSampler {
     }
 
     async init(minimal = false): Promise<boolean> {
-        if (this.isInitialized && !minimal) return true;
+        if (this.isFullyInitialized) return true;
+        if (minimal && this.isInitialized) return true;
         this.isLoading = true;
 
         try {
@@ -109,12 +111,9 @@ export class BlackGuitarSampler {
                 const noteInfo = this.noteBuffers.get(noteDef.m)!;
 
                 (['p', 'mf', 'f'] as VelocityLayer[]).forEach(layer => {
-                    // #ЗАЧЕМ: Level 1 — Супер-минимальный старт.
-                    // #ЧТО: Грузим только MF слой (универсальный). P и F - на втором этапе.
                     if (minimal && layer !== 'mf') return;
 
                     const rrIndices = (noteDef.layers as any)[layer] as number[];
-                    // Загрузка только первой доступной вариации для минимального режима
                     const targetIndices = minimal ? (rrIndices.length > 0 ? [rrIndices[0]] : []) : rrIndices;
                     
                     targetIndices.forEach(rrIndex => {
@@ -132,6 +131,7 @@ export class BlackGuitarSampler {
 
             await Promise.all(loadPromises);
             this.isInitialized = true;
+            if (!minimal) this.isFullyInitialized = true;
             this.isLoading = false;
             return true;
         } catch (error) {

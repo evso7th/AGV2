@@ -4,8 +4,8 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.3 — "Lazy Load Optimized".
- * #ЧТО: ПЛАН №888 — Реализована фильтрация для мгновенного старта.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.4 — "Lazy Load Optimized".
+ * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки в фоновом режиме.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -13,6 +13,7 @@ export class GuitarChordsSampler {
     private loadedUrls: Set<string> = new Set();
     public output: GainNode;
     public isInitialized: boolean = false;
+    private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
 
@@ -35,21 +36,21 @@ export class GuitarChordsSampler {
 
     /**
      * #ЗАЧЕМ: Поэтапная инициализация.
-     * #ЧТО: Если minimal=true, грузим только 11 базовых аккордов по 1 сэмплу.
+     * #ЧТО: Теперь корректно разрешает дозагрузку после минимального старта.
      */
     async init(minimal = false) {
-        if (this.isInitialized && !minimal) return;
+        if (this.isFullyInitialized) return;
+        if (minimal && this.isInitialized) return;
+        
         this.isLoading = true;
         
         const coreChords = ['C', 'Cm', 'G', 'D', 'Dm', 'A', 'Am', 'E', 'Em', 'F', 'Bm'];
         
         const loadTasks: Promise<void>[] = [];
         for (const chordName in CHORD_SAMPLE_MAP) {
-            // В минимальном режиме игнорируем расширенные аккорды
             if (minimal && !coreChords.includes(chordName)) continue;
             
             const urls = CHORD_SAMPLE_MAP[chordName];
-            // В минимальном режиме берем только первую вариацию
             const targetUrls = minimal ? [urls[0]] : urls;
             
             loadTasks.push(this.loadChordBuffers(chordName, targetUrls));
@@ -57,6 +58,7 @@ export class GuitarChordsSampler {
 
         await Promise.all(loadTasks);
         this.isInitialized = true;
+        if (!minimal) this.isFullyInitialized = true;
         this.isLoading = false;
     }
 

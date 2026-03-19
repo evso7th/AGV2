@@ -1,4 +1,3 @@
-
 import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
@@ -186,6 +185,7 @@ export class SparklePlayer {
     private electronicBuffers: AudioBuffer[] = [];
     private ambientCommonBuffers: AudioBuffer[] = [];
     public isInitialized = false;
+    private isFullyInitialized = false;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -198,6 +198,8 @@ export class SparklePlayer {
     }
 
     async init(limitPerCategory: number = -1) {
+        if (this.isFullyInitialized) return;
+        
         try {
             const categories = Object.keys(SPARKLE_SAMPLES) as (keyof typeof SPARKLE_SAMPLES)[];
             const loadTasks: Promise<void>[] = [];
@@ -222,6 +224,7 @@ export class SparklePlayer {
 
             await Promise.all(loadTasks);
             this.isInitialized = true;
+            if (limitPerCategory === -1) this.isFullyInitialized = true;
         } catch (e) {
             console.error('[SparklePlayer] Failed to initialize:', e);
         }
