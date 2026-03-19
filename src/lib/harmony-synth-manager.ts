@@ -1,4 +1,3 @@
-
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -9,8 +8,8 @@ import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V4.1 — "Lazy Loading Support".
- * #ЧТО: ПЛАН №888 — Добавлена поддержка поэтапной инициализации (minimal флаг).
+ * #ЗАЧЕМ: Менеджер слоя гармонии V4.2 — "Strict Lazy Load".
+ * #ЧТО: ПЛАН №888 — minimal флаг теперь корректно ограничивает загрузку аккордов.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -34,19 +33,22 @@ export class HarmonySynthManager {
 
     /**
      * #ЗАЧЕМ: Поэтапная загрузка.
-     * #ЧТО: minimal=true загружает только гитарные аккорды.
+     * #ЧТО: minimal=true загружает только 11 базовых гитарных аккордов.
      */
     async init(minimal = false) {
         if (this.isInitialized && !minimal) return;
         
         if (minimal) {
-            console.log('%c[HarmonyManager] Level 1: Initializing Guitar Chords...', 'color: #DA70D6;');
-            await this.guitarChords.init();
+            console.log('%c[HarmonyManager] Level 1: Initializing CORE Guitar Chords...', 'color: #DA70D6;');
+            await this.guitarChords.init(true);
             this.isInitialized = true;
             this.guitarChords.setVolume(1.0);
         } else {
-            console.log('%c[HarmonyManager] Level 2: Initializing Violin...', 'color: #DA70D6;');
-            await this.violin.loadInstrument('violin', VIOLIN_SAMPLES);
+            console.log('%c[HarmonyManager] Level 2: Finishing Chords & Loading Violin...', 'color: #DA70D6;');
+            await Promise.all([
+                this.guitarChords.init(false),
+                this.violin.loadInstrument('violin', VIOLIN_SAMPLES)
+            ]);
             this.violin.setVolume(1.0);
         }
     }

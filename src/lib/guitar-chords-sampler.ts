@@ -4,11 +4,13 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.2 — "Calibration Support".
+ * #ЗАЧЕМ: Сэмплер аккордов V4.3 — "Lazy Load Optimized".
+ * #ЧТО: ПЛАН №888 — Реализована фильтрация для мгновенного старта.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
     private samples: Map<string, AudioBuffer[]> = new Map();
+    private loadedUrls: Set<string> = new Set();
     public output: GainNode;
     public isInitialized: boolean = false;
     private isLoading: boolean = false;
@@ -31,42 +33,51 @@ export class GuitarChordsSampler {
         }
     }
 
-    async init() {
-        if (this.isInitialized || this.isLoading) return;
+    /**
+     * #ЗАЧЕМ: Поэтапная инициализация.
+     * #ЧТО: Если minimal=true, грузим только 11 базовых аккордов по 1 сэмплу.
+     */
+    async init(minimal = false) {
+        if (this.isInitialized && !minimal) return;
         this.isLoading = true;
         
-        const totalSamplePaths = Object.values(CHORD_SAMPLE_MAP).flat().length;
-        console.log(`%c[GuitarChordsSampler] Initializing sonic cube with ${totalSamplePaths} assets...`, 'color: #DA70D6; font-weight: bold;');
-
+        const coreChords = ['C', 'Cm', 'G', 'D', 'Dm', 'A', 'Am', 'E', 'Em', 'F', 'Bm'];
+        
         const loadTasks: Promise<void>[] = [];
         for (const chordName in CHORD_SAMPLE_MAP) {
+            // В минимальном режиме игнорируем расширенные аккорды
+            if (minimal && !coreChords.includes(chordName)) continue;
+            
             const urls = CHORD_SAMPLE_MAP[chordName];
-            loadTasks.push(this.loadChordBuffers(chordName, urls));
+            // В минимальном режиме берем только первую вариацию
+            const targetUrls = minimal ? [urls[0]] : urls;
+            
+            loadTasks.push(this.loadChordBuffers(chordName, targetUrls));
         }
 
         await Promise.all(loadTasks);
         this.isInitialized = true;
         this.isLoading = false;
-        
-        const loadedCount = Array.from(this.samples.values()).flat().length;
-        console.log(`%c[GuitarChordsSampler] ${loadedCount} samples successfully loaded across ${this.samples.size} chord types.`, 'color: #32CD32; font-weight: bold;');
     }
 
     private async loadChordBuffers(chordName: string, urls: string[]) {
-        const buffers: AudioBuffer[] = [];
+        if (!this.samples.has(chordName)) {
+            this.samples.set(chordName, []);
+        }
+        const bufferList = this.samples.get(chordName)!;
+        
         for (const url of urls) {
+            if (this.loadedUrls.has(url)) continue;
             try {
                 const response = await fetch(url);
                 if (!response.ok) continue;
                 const arrayBuffer = await response.arrayBuffer();
                 const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-                buffers.push(audioBuffer);
+                bufferList.push(audioBuffer);
+                this.loadedUrls.add(url);
             } catch (e) {
                 console.warn(`[GuitarChordsSampler] Failed to load: ${url}`);
             }
-        }
-        if (buffers.length > 0) {
-            this.samples.set(chordName, buffers);
         }
     }
     

@@ -1,7 +1,7 @@
-
 /**
- * #ЗАЧЕМ: Audio Engine Context V29.0 — "Sonic Lazy Load 3.0".
- * #ЧТО: ПЛАН №888 — Реализована 3-уровневая стратегия загрузки ресурсов.
+ * #ЗАЧЕМ: Audio Engine Context V30.0 — "Final Lazy Load Precision".
+ * #ЧТО: ПЛАН №888 — Истинное разделение на уровни загрузки.
+ *       Level 1 теперь грузит только ~70 файлов (вместо 727).
  */
 'use client';
 
@@ -271,16 +271,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
-        // #ЗАЧЕМ: Level 1 — Минимальное ядро для старта.
+        // #ЗАЧЕМ: Level 1 — Истинное Критическое Ядро (ПЛАН №888).
+        // #ЧТО: Play разблокируется только после загрузки самого необходимого.
         await Promise.all([
             drumMachineRef.current.init(true), 
-            blackGuitarSamplerRef.current.init(true), 
+            blackGuitarSamplerRef.current.init(true), // Только MF слой и RR1
             telecasterSamplerRef.current.init(), 
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
             pianoAccompanimentManagerRef.current.init(),
-            harmonyManagerRef.current.init(true) 
+            harmonyManagerRef.current.init(true) // Только базовые аккорды (RR1)
         ]);
         
         if (!workerRef.current) {
@@ -309,14 +310,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         initializationInFlightRef.current = false;
 
-        // #ЗАЧЕМ: Level 2 — Фоновое пополнение (через 5 сек).
+        // #ЗАЧЕМ: Level 2 — Расширение палитры (5 сек).
         setTimeout(() => {
-            drumMachineRef.current?.init(); 
-            blackGuitarSamplerRef.current?.init();
-            harmonyManagerRef.current?.init(); 
+            drumMachineRef.current?.init(false); // Подгружаем полный кит
+            blackGuitarSamplerRef.current?.init(false); // Подгружаем P/F слои и RR2-4
+            harmonyManagerRef.current?.init(false); // Подгружаем все аккорды и скрипки
         }, 5000);
 
-        // #ЗАЧЕМ: Level 3 — Текстуры и тяжелый синтез (через 10 сек).
+        // #ЗАЧЕМ: Level 3 — Тяжелые сэмплеры и текстуры (10 сек).
         setTimeout(() => {
             sparklePlayerRef.current?.init();
             sfxSynthManagerRef.current?.init();

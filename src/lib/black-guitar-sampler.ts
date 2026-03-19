@@ -1,4 +1,3 @@
-
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
@@ -110,14 +109,18 @@ export class BlackGuitarSampler {
                 const noteInfo = this.noteBuffers.get(noteDef.m)!;
 
                 (['p', 'mf', 'f'] as VelocityLayer[]).forEach(layer => {
+                    // #ЗАЧЕМ: Level 1 — Супер-минимальный старт.
+                    // #ЧТО: Грузим только MF слой (универсальный). P и F - на втором этапе.
+                    if (minimal && layer !== 'mf') return;
+
                     const rrIndices = (noteDef.layers as any)[layer] as number[];
-                    // #ЗАЧЕМ: Загрузка только первой доступной вариации для быстрого старта.
+                    // Загрузка только первой доступной вариации для минимального режима
                     const targetIndices = minimal ? (rrIndices.length > 0 ? [rrIndices[0]] : []) : rrIndices;
                     
                     targetIndices.forEach(rrIndex => {
                         const fileName = `twang_${noteDef.key}_${layer}_rr${rrIndex}.ogg`;
                         const url = `/assets/acoustic_guitar_samples/black/ord/${fileName}`;
-                        // Skip if already loaded
+                        
                         if (noteInfo[layer].some(b => b.name === fileName)) return;
 
                         loadPromises.push(loadSample(url).then(buf => {
@@ -181,14 +184,18 @@ export class BlackGuitarSampler {
         const closestMidi = availableMidis.reduce((prev, curr) => Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev);
         const layers = this.noteBuffers.get(closestMidi);
         if (!layers) return { buffer: null, sampleMidi: closestMidi, name: 'none' };
+        
         let layerKey: VelocityLayer = 'mf';
         const isSoftMood = mood === 'melancholic' || mood === 'calm' || mood === 'gloomy' || mood === 'dreamy';
-        if (isSoftMood) layerKey = (layers.p.length > 0 && Math.random() < 0.85) ? 'p' : (layers.mf.length > 0 ? 'mf' : 'f');
-        else {
+        
+        if (isSoftMood) {
+            layerKey = (layers.p.length > 0 && Math.random() < 0.85) ? 'p' : (layers.mf.length > 0 ? 'mf' : 'f');
+        } else {
             if (velocity < 0.45 && layers.p.length > 0) layerKey = 'p';
             else if (velocity > 0.8 && layers.f.length > 0) layerKey = 'f';
             else layerKey = layers.mf.length > 0 ? 'mf' : (layers.f.length > 0 ? 'f' : 'p');
         }
+        
         const pool = layers[layerKey].length > 0 ? layers[layerKey] : (layers.mf.length > 0 ? layers.mf : layers.f);
         if (pool.length === 0) return { buffer: null, sampleMidi: closestMidi, name: 'none' };
         const namedBuf = pool[Math.floor(Math.random() * pool.length)];
