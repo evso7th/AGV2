@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V3.2 — "Axiom Sovereignty Update".
- * #ОБНОВЛЕНО (ПЛАН №896): Резолвер теперь игнорирует специфические имена, защищая выбор пользователя.
+ * @fileOverview Universal Music Theory Utilities V3.3 — "Markov Integrity Update".
+ * #ОБНОВЛЕНО (ПЛАН №897): Добавлены недостающие определения GENRE_STATES и GENRE_HARMONY_MATRICES.
  */
 
 import type { 
@@ -40,6 +40,37 @@ export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'har
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
+};
+
+// ───── HARMONY MATRICES (PLAN №897) ─────
+
+const GENRE_STATES: Record<string, number[]> = {
+    ambient: [0, 5, 7, 9, 3, 10], // I, IV, V, vi, bIII, bVII
+    blues: [0, 5, 7],             // I, IV, V
+    trance: [0, 3, 5, 8, 10]      // i, bIII, iv, bVI, bVII
+};
+
+const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
+    ambient: [
+        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], // from I
+        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     // from IV
+        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     // from V
+        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     // from vi
+        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     // from bIII
+        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      // from bVII
+    ],
+    blues: [
+        [0.6, 0.3, 0.1], // from I
+        [0.4, 0.4, 0.2], // from IV
+        [0.5, 0.2, 0.3]  // from V
+    ],
+    trance: [
+        [0.6, 0.1, 0.1, 0.1, 0.1], // from i
+        [0.2, 0.5, 0.2, 0.1, 0.0], // from bIII
+        [0.3, 0.1, 0.5, 0.1, 0.0], // from iv
+        [0.2, 0.1, 0.1, 0.5, 0.1], // from bVI
+        [0.4, 0.0, 0.1, 0.1, 0.4]  // from bVII
+    ]
 };
 
 /**
