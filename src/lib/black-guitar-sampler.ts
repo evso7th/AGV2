@@ -212,10 +212,12 @@ export class BlackGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
+        
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
+            // #ЗАЧЕМ: Сокращение длины транзиента до 12мс (ПЛАН №895).
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.012, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.05);
+            source.stop(startTime + 0.03);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);

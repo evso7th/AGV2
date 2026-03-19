@@ -35,8 +35,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.3 — "Melodic Silk Update".
- * #ЧТО: ПЛАН №855 — Атака смягчена до 22мс.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.4 — "Transient Sharpening".
+ * #ЧТО: ПЛАН №895 — Длина транзиента сокращена до 12мс.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -145,13 +145,13 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        // #ЗАЧЕМ: Мягкая атака (ПЛАН №855). С 0.005 до 0.022.
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.02, 0.005);
+            // #ЗАЧЕМ: Сокращение длины транзиента до 12мс (ПЛАН №895).
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.012, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.05);
+            source.stop(startTime + 0.03);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
