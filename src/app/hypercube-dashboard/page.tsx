@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -90,10 +89,28 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
+/**
+ * #ЗАЧЕМ: Список инструментов для назначения аксиомам.
+ * #ЧТО: Включает telecaster, blackAcoustic и динамическую guitar.
+ */
 const INSTRUMENT_OPTIONS = [
-    'guitar', 'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
-    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'synth', 'synth_ambient_pad_lush',
-    'theremin', 'mellotron', 'violin', 'none'
+    'guitar', 
+    'telecaster', 
+    'blackAcoustic', 
+    'darkTelecaster', 
+    'cs80', 
+    'guitar_shineOn', 
+    'guitar_muffLead',
+    'organ', 
+    'organ_soft_jazz', 
+    'organ_jimmy_smith', 
+    'organ_prog', 
+    'synth', 
+    'synth_ambient_pad_lush',
+    'theremin', 
+    'mellotron', 
+    'violin', 
+    'none'
 ];
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -784,8 +801,8 @@ export default function HypercubeDashboard() {
                   <div className="flex flex-wrap items-center gap-2">
                     {filtersActive && (<Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>)}
                     <div className="relative group"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" /><Input placeholder="Search composition..." className="pl-9 h-9 w-[220px] text-xs bg-background/50" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} /></div>
-                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Filter Genre" className="w-[150px] h-9" />
-                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Filter Mood" className="w-[150px] h-9" />
+                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={vals => setSelectedFilterGenres(vals)} placeholder="Filter Genre" className="w-[150px] h-9" />
+                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={vals => setSelectedFilterMoods(vals)} placeholder="Filter Mood" className="w-[150px] h-9" />
                     <Button variant="outline" size="sm" onClick={handlePurgeAll} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10 h-9"><ShieldAlert className="h-4 w-4 mr-2" /> Wipe Base</Button>
                   </div>
                 </div>
