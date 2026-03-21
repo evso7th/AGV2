@@ -171,7 +171,7 @@ export const V2_PRESETS = {
     volume: 0.21, 
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600 },
-    drive: { type: 'soft', amount: 0.25 },
+    drive: { type: 'soft', amount: 0.02 }, // #ЗАЧЕМ: ПЛАН №910. Убираем дисторшн почти до 0.
     comp: { threshold: -18, ratio: 3, makeup: 3 },
     post: { lpf: 5200 },
     adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
@@ -186,7 +186,7 @@ export const V2_PRESETS = {
     volume: 0.19, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 2800 },
-    drive: { type: 'muff', amount: 0.65 },
+    drive: { type: 'muff', amount: 0.02 }, // #ЗАЧЕМ: ПЛАН №910. Убираем дисторшн почти до 0.
     comp: { threshold: -20, ratio: 4, attack: 0.008, release: 0.15, makeup: 4 },
     post: { lpf: 4500 },
     adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
