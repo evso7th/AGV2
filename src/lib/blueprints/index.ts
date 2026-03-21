@@ -1,3 +1,4 @@
+
 import type { MusicBlueprint, Genre, Mood } from '@/types/music';
 
 // --- Static Imports for All Blueprints ---
@@ -29,6 +30,7 @@ import { EpicBluesBlueprint } from './blues/epic';
 import { AnxiousBluesBlueprint } from './blues/anxious';
 import { ContemplativeBluesBlueprint } from './blues/contemplative';
 import { WinterBluesBlueprint } from './blues/winter';
+import { MelancholicReggaeBlueprint } from './reggae/melancholic';
 
 // --- Bridge Blueprints ---
 import { DarkBridgeBlueprint } from './bridges/dark';
@@ -69,7 +71,18 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         epic: EpicBluesBlueprint,
         anxious: AnxiousBluesBlueprint,
     },
-    progressive: {}, rock: {}, house: {}, rnb: {}, ballad: {}, reggae: {}, celtic: {},
+    reggae: {
+        melancholic: MelancholicReggaeBlueprint,
+        dark: MelancholicReggaeBlueprint, // Fallbacks for MVP
+        calm: MelancholicReggaeBlueprint,
+        dreamy: MelancholicReggaeBlueprint,
+        joyful: MelancholicReggaeBlueprint,
+        enthusiastic: MelancholicReggaeBlueprint,
+        contemplative: MelancholicReggaeBlueprint,
+        epic: MelancholicReggaeBlueprint,
+        anxious: MelancholicReggaeBlueprint,
+    },
+    progressive: {}, rock: {}, house: {}, rnb: {}, ballad: {}, celtic: {},
 };
 
 export const BRIDGE_LIBRARY: Partial<Record<Mood, MusicBlueprint>> = {

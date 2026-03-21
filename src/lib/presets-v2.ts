@@ -146,6 +146,21 @@ export const V2_PRESETS = {
     reverbMix: 0.12
   },
 
+  reggae_organ: {
+    /**
+     * #ЗАЧЕМ: ПЛАН №908. Перкуссионный орган для Bubbling.
+     */
+    type: 'organ',
+    name: 'Roots Bubbler',
+    volume: 0.04,
+    drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
+    lpf: 2500,
+    adsr: { a: 0.005, d: 0.08, s: 0.0, r: 0.1 }, // Очень короткий звук
+    keyClick: 0.01,
+    leslie: { mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.5 },
+    reverbMix: 0.1
+  },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // GUITAR (Full Pipeline Compatible)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -178,6 +193,21 @@ export const V2_PRESETS = {
     chorus: { on: true, mix: 0.12 },
     delayA: { time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
     reverbMix: 0.25
+  },
+
+  reggae_guitar: {
+    /**
+     * #ЗАЧЕМ: ПЛАН №908. "Сухая" гитара для Сканка.
+     */
+    type: 'guitar',
+    name: 'Tuff Gong Skank',
+    volume: 0.18,
+    osc: { width: 0.42, detune: 3, mainGain: 0.9, detGain: 0.1, subGain: 0.1 },
+    pickup: { cutoff: 4500 },
+    drive: { type: 'soft', amount: 0.05 },
+    comp: { threshold: -25, ratio: 8, attack: 0.002, release: 0.1, makeup: 5 },
+    adsr: { a: 0.002, d: 0.1, s: 0.0, r: 0.05 },
+    reverbMix: 0.05
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
