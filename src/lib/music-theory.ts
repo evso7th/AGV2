@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V3.7 — "Strict Axiom Sovereignty".
- * #ОБНОВЛЕНО (ПЛАН №916): Исправлен приоритет явных инструментов над автоматикой Tension.
+ * @fileOverview Universal Music Theory Utilities V3.8 — "Absolute Axiom Sovereignty".
+ * #ОБНОВЛЕНО (ПЛАН №918): Установлен абсолютный приоритет для явно указанных инструментов Аксиом.
  */
 
 import type { 
@@ -42,7 +42,8 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №916. Поддержка Multi-Timbre Аксиом with Strict Identity.
+ * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
+ * #ЧТО: ПЛАН №918. Если инструмент определен явно (ID), он возвращается сразу.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
@@ -58,11 +59,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
 
     if (!targetHint || targetHint === 'none') return 'none';
     
-    // Удаляем все пробелы и подчеркивания для сравнения
     const clean = String(targetHint).toLowerCase().replace(/[\s_]/g, '');
 
-    // 2. ПРИОРИТЕТ: Прямое сопоставление с V2 и Bass пресетами (Strict ID)
-    // #ЗАЧЕМ: Если в базе написано 'blackAcoustic' или 'cs80', мы ДОЛЖНЫ вернуть это сразу.
+    // 2. АБСОЛЮТНЫЙ ПРИОРИТЕТ: Прямые ID пресетов (V2 и Bass)
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedV2) return matchedV2;
@@ -71,13 +70,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
-    // 3. Явные синонимы для Аксиом
+    // 3. Явные маппинги для Аксиом (чтобы не перехватила автоматика)
     if (clean === 'shineon') return 'guitar_shineOn';
     if (clean === 'mufflead') return 'guitar_muffLead';
     if (clean === 'blackacoustic' || clean === 'black') return 'blackAcoustic';
     if (clean === 'cavepad' || clean === 'cave') return 'synth_cave_pad';
+    if (clean === 'cs80') return 'cs80';
 
-    // 4. Логика "Generic" (только если не нашли точного совпадения выше)
+    // 4. ТЕРРИТОРИЯ АВТОМАТИКИ (срабатывает только если не найден ID выше)
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';

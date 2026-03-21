@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.1 — "Thread Safety Protocol".
- * #ЧТО: ПЛАН №916 — Деферированное обновление состояния для устранения ошибок React при рендеринге.
+ * #ЗАЧЕМ: Audio Engine Context V32.2 — "Thread Safety Fix".
+ * #ЧТО: ПЛАН №918 — Деферированное обновление состояния для устранения ошибок React при рендеринге.
  */
 'use client';
 
@@ -199,7 +199,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const load = () => {
           const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
           const parsed = saved ? JSON.parse(saved) : {};
-          // ПЛАН №916: Деферированное обновление для устранения ошибки React
+          
+          // #ЗАЧЕМ: ПЛАН №918. Деферированное обновление для устранения ошибки React
           setTimeout(() => {
               setTimbreOverrides(parsed);
               timbreOverridesRef.current = parsed;

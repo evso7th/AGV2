@@ -76,7 +76,7 @@ import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
-import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE, keyToMidiRoot } from '@/lib/music-theory';
+import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE, keyToMidiRoot, resolveSemanticTimbre } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -429,7 +429,6 @@ export default function HypercubeDashboard() {
                     let totalPitch = 0; const phrase: number[] = [];
                     track.notes.forEach((note: any) => {
                         totalPitch += note.midi;
-                        // ПЛАН №911: Точный расчет тиков на основе PPQ
                         const tick = Math.round((note.ticks / ppq) * 3);
                         const duration = Math.max(1, Math.round((note.durationTicks / ppq) * 3));
                         const semitone = note.midi % 12;
@@ -616,7 +615,7 @@ export default function HypercubeDashboard() {
       };
     });
     const hints: InstrumentHints = {};
-    const tension = 0.5; // Audition tension
+    const tension = 0.5;
     const resolvedInst = axiom.preferredInstrument ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) : 'organ_soft_jazz';
 
     if (channelType === 'melody') hints.melody = resolvedInst;
@@ -646,7 +645,6 @@ export default function HypercubeDashboard() {
     setIsProcessing(true); let addedCount = 0;
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
-      // ПЛАН №917: Передаем индекс для гарантии уникальности ID в Firestore
       for (let i = 0; i < toInject.length; i++) {
         const ax = toInject[i];
         const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
@@ -806,9 +804,9 @@ export default function HypercubeDashboard() {
 
   const getSortedLicks = (licks: any[]) => {
       return [...licks].sort((a, b) => {
-          if (a.barOffset !== b.barOffset) return a.barOffset - b.barOffset;
+          if ((a.barOffset ?? 0) !== (b.barOffset ?? 0)) return (a.barOffset ?? 0) - (b.barOffset ?? 0);
           const roleOrder = ['melody', 'bass', 'drums', 'accomp'];
-          const getRoleWeight = (r: string) => { const base = String(r).split(' ')[0].toLowerCase(); const idx = roleOrder.indexOf(base); return idx === -1 ? 99 : idx; };
+          const getRoleWeight = (r: string) => { const base = String(r || 'melody').split(' ')[0].toLowerCase(); const idx = roleOrder.indexOf(base); return idx === -1 ? 99 : idx; };
           return getRoleWeight(a.role) - getRoleWeight(b.role);
       });
   };
@@ -905,8 +903,8 @@ export default function HypercubeDashboard() {
                     <Accordion type="multiple" className="space-y-2 w-full">
                       {groupedAxioms.map(([compId, licks]) => {
                         const filteredLicks = getSortedLicks(licks).filter(ax => {
-                          const roleMatch = !axiomFilterRole || ax.role.toLowerCase().includes(axiomFilterRole.toLowerCase());
-                          const offsetMatch = !axiomFilterOffset || String(ax.barOffset) === axiomFilterOffset;
+                          const roleMatch = !axiomFilterRole || (ax.role || 'melody').toLowerCase().includes(axiomFilterRole.toLowerCase());
+                          const offsetMatch = !axiomFilterOffset || String(ax.barOffset ?? 0) === axiomFilterOffset;
                           return roleMatch && offsetMatch;
                         });
                         return (
@@ -954,7 +952,7 @@ export default function HypercubeDashboard() {
                               <ScrollArea className="w-full">
                                 <div className="min-w-[1200px]">
                                   <table className="w-full text-sm border-collapse">
-                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
+                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-0 z-20 border-b border-border/50">
                                       <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
                                         <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
                                         <th className="p-3 font-black w-64">Timbre Configuration</th>
@@ -1103,22 +1101,7 @@ export default function HypercubeDashboard() {
                   <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle>
                   <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription>
                 </CardHeader>
-                <CardContent className="h-[450px] p-4 pt-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                      <PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} />
-                      <PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                      {dynastyStats.map(dyn => (
-                        dyn.count > 0 && (
-                          <Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />
-                        )
-                      ))}
-                      <RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} />
-                      <RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </CardContent>
+                <CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent>
               </Card>
               <Card className="border-border/50 shadow-xl bg-card/50">
                 <CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader>

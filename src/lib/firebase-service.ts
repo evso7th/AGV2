@@ -82,11 +82,10 @@ export function saveProjectDocument(db: Firestore, data: {
 }
 
 /**
- * #ЗАЧЕМ: Генерирую уникальный, но детерминированный ID для аксиомы.
- * #ЧТО: ПЛАН №917. Добавлен индекс и JSON-сериализация для предотвращения коллизий.
+ * #ЗАЧЕМ: Генерирую уникальный ID для аксиомы.
+ * #ЧТО: ПЛАН №918. Используем глубокую сериализацию и индекс для исключения коллизий.
  */
 function generateAxiomId(compositionId: string, role: string, phrase: any[], index: number = 0): string {
-    // Используем JSON.stringify чтобы избежать [object Object] при хешировании
     const phraseContent = typeof phrase[0] === 'object' ? JSON.stringify(phrase) : phrase.join(',');
     const content = `${compositionId}_${role}_${phraseContent}_I${index}`;
     let hash = 0;
@@ -100,7 +99,7 @@ function generateAxiomId(compositionId: string, role: string, phrase: any[], ind
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: ПЛАН №917. Индекс теперь является обязательным для уникальности.
+ * #ЧТО: ПЛАН №918. Индекс обязателен для уникальности.
  */
 export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
     const compositionId = data.compositionId || 'Unknown_Heritage';
