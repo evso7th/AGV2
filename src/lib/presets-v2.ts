@@ -151,38 +151,32 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    type: 'synth',
+    type: 'guitar', // #ЗАЧЕМ: ПЛАН №907. Доступ к узлу Distortion.
     name: 'Crystal Lead', 
     volume: 0.21, 
-    osc: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
-      { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
-      { type: 'sawtooth', detune: 5, octave: 1, gain: 0.03 }
-    ],
-    noise: { on: true, gain: 0.015 }, 
+    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
+    pickup: { cutoff: 3600 },
+    drive: { type: 'soft', amount: 0.25 },
+    comp: { threshold: -18, ratio: 3, makeup: 3 },
+    post: { lpf: 5200 },
     adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
-    lpf: { cutoff: 3200, q: 1.3, mode: '24dB' }, 
-    lfo: { shape: 'sine', rate: 4.5, amount: 3.5, target: 'pitch' },
-    chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.12 },
-    delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
+    chorus: { on: true, mix: 0.12 },
+    delayA: { time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
     reverbMix: 0.22
   },
 
   guitar_muffLead: {
-    type: 'synth',
+    type: 'guitar', // #ЗАЧЕМ: ПЛАН №907. Доступ к узлу Distortion.
     name: 'Muff Reform Guitar',
     volume: 0.19, 
-    osc: [
-      { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
-      { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
-      { type: 'sawtooth', detune: 5, octave: 1, gain: 0.03 }
-    ],
-    noise: { on: true, gain: 0.015 },
+    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    pickup: { cutoff: 2800 },
+    drive: { type: 'muff', amount: 0.65 },
+    comp: { threshold: -20, ratio: 4, attack: 0.008, release: 0.15, makeup: 4 },
+    post: { lpf: 4500 },
     adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
-    lpf: { cutoff: 2800, q: 1.3, mode: '24dB' }, 
-    lfo: { shape: 'sine', rate: 4.5, amount: 3.5, target: 'pitch' },
-    chorus: { on: true, rate: 0.2, depth: 0.003, mix: 0.12 },
-    delay: { on: true, time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
+    chorus: { on: true, mix: 0.12 },
+    delayA: { time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
     reverbMix: 0.25
   },
 

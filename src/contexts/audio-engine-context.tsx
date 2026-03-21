@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Audio Engine Context V31.1 — "Bug Fix: Recording Restoration".
- * #ЧТО: Исправлена ошибка ReferenceError путем восстановления функций startRecording и stopRecording.
+ * #ЗАЧЕМ: Audio Engine Context V32.0 — "Timbre Lab Real-time Engine".
+ * #ЧТО: ПЛАН №907 — Внедрена поддержка зацикливания теста и real-time обновлений пресета.
  */
 'use client';
 
@@ -49,12 +50,23 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     bass: 1.0
 };
 
+// #ЗАЧЕМ: ПЛАН №907. Расширенная тестовая последовательность (в 3 раза длиннее).
+const EPIC_TEST_SEQUENCE = [
+    { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 1.0 }, { m: 72, t: 2.0, d: 2.0 },
+    { m: 67, t: 4.0, d: 0.3 }, { m: 65, t: 4.3, d: 0.3 }, { m: 64, t: 4.6, d: 0.4 }, { m: 62, t: 5.0, d: 1.0 },
+    { m: 60, t: 6.0, d: 0.2 }, { m: 60, t: 6.2, d: 0.2 }, { m: 60, t: 6.4, d: 0.2 }, { m: 60, t: 6.6, d: 0.2 },
+    { m: 67, t: 7.0, d: 3.0 }, { m: 74, t: 10.0, d: 0.5 }, { m: 76, t: 10.5, d: 0.5 }, { m: 79, t: 11.0, d: 5.0 },
+    { m: 60, t: 16.0, d: 8.0 } // Экстремально длинная нота для теста релиза
+];
+
 interface AudioEngineContextType {
   isInitialized: boolean;
   isInitializing: boolean;
   isPlaying: boolean;
   isRecording: boolean;
   isBroadcastActive: boolean;
+  isPreviewPlaying: boolean;
+  isPreviewLooping: boolean;
   availableCompositions: { id: string; count: number }[];
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
@@ -76,7 +88,10 @@ interface AudioEngineContextType {
   getWorker: () => Worker | null;
   playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => void;
   stopAllSounds: () => void;
-  previewPreset: (preset: any, type: string) => Promise<void>;
+  startPreview: (preset: any, type: string, loop: boolean) => Promise<void>;
+  stopPreview: () => void;
+  updatePreviewPreset: (preset: any) => void;
+  togglePreviewLoop: () => void;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -93,6 +108,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPlaying, setIsPlayingState] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
+  
+  // #ЗАЧЕМ: Состояния для Лаборатории Тембров.
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [isPreviewLooping, setIsPreviewLooping] = useState(false);
+
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
   
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
@@ -137,6 +157,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   
+  // #ЗАЧЕМ: Ссылки для управления превью.
+  const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
+  const previewTimeoutRef = useRef<any>(null);
+  const loopingRef = useRef(false);
+
   const { toast } = useToast();
   const db = useFirestore();
   const auth = useAuth();
@@ -329,24 +354,60 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
-  const previewPreset = useCallback(async (preset: any, type: string) => {
+  // #ЗАЧЕМ: ПЛАН №907. Управление превью в реальном времени.
+  const stopPreview = useCallback(() => {
+      if (previewTimeoutRef.current) {
+          clearTimeout(previewTimeoutRef.current);
+          previewTimeoutRef.current = null;
+      }
+      if (previewInstrumentRef.current) {
+          previewInstrumentRef.current.allNotesOff();
+          previewInstrumentRef.current.disconnect();
+          previewInstrumentRef.current = null;
+      }
+      setIsPreviewPlaying(false);
+  }, []);
+
+  const startPreview = useCallback(async (preset: any, type: string, loop: boolean) => {
       if (!isInitialized) await initialize();
+      stopPreview(); 
+      loopingRef.current = loop;
+      setIsPreviewLooping(loop);
+      setIsPreviewPlaying(true);
+
       const ctx = audioContextRef.current!;
       const previewInst = await buildMultiInstrument(ctx, { type, preset, output: masterGainNodeRef.current! });
-      
-      const now = ctx.currentTime + 0.1;
-      const sequence = [
-          { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 2.0 },
-          { m: 65, t: 3.0, d: 0.3 }, { m: 64, t: 3.3, d: 0.3 }, { m: 62, t: 3.6, d: 0.4 },
-          { m: 60, t: 4.0, d: 4.0 } 
-      ];
+      previewInstrumentRef.current = previewInst;
 
-      sequence.forEach(n => {
-          previewInst.noteOn(n.m, now + n.t, 0.8, n.d);
-      });
+      const scheduleSequence = () => {
+          const now = ctx.currentTime + 0.1;
+          EPIC_TEST_SEQUENCE.forEach(n => {
+              previewInst.noteOn(n.m, now + n.t, 0.8, n.d);
+          });
 
-      setTimeout(() => previewInst.disconnect(), 10000);
-  }, [isInitialized, initialize]);
+          const totalDuration = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0;
+          
+          if (loopingRef.current) {
+              previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000);
+          } else {
+              previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000);
+          }
+      };
+
+      scheduleSequence();
+  }, [isInitialized, initialize, stopPreview]);
+
+  const updatePreviewPreset = useCallback((preset: any) => {
+      if (previewInstrumentRef.current) {
+          previewInstrumentRef.current.setPreset(preset);
+          previewInstrumentRef.current.setVolume(preset.volume || 0.7);
+      }
+  }, []);
+
+  const togglePreviewLoop = useCallback(() => {
+      loopingRef.current = !loopingRef.current;
+      setIsPreviewLooping(loopingRef.current);
+  }, []);
 
   const startRecording = useCallback(() => {
     if (!recDestRef.current || isRecording) return;
@@ -379,7 +440,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return (
     <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize,
+        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
         setIsPlaying: async (playing) => {
             const context = audioContextRef.current;
             if (!context || !workerRef.current) return;
@@ -453,7 +514,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         stopAllSounds,
         startRecording,
         stopRecording,
-        previewPreset
+        startPreview,
+        stopPreview,
+        updatePreviewPreset,
+        togglePreviewLoop
     }}>
       {children}
     </AudioEngineContext.Provider>
