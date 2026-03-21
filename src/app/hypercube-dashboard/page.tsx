@@ -401,7 +401,7 @@ export default function HypercubeDashboard() {
                     role: role,
                     id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
                     compositionId: compId,
-                    genre: Array.isArray(ax.genre) ? ax.genre : (data.genre ? [data.genre] : []),
+                    genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
                     mood: moods,
                     commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
                     vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
@@ -418,6 +418,8 @@ export default function HypercubeDashboard() {
                 };
             };
 
+            const ppq = json.header?.ppq || 480;
+
             if (json.header && json.tracks && Array.isArray(json.tracks)) {
                 const targetId = json.header.name || cleanFileName || "MIDI_Export";
                 const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
@@ -427,8 +429,9 @@ export default function HypercubeDashboard() {
                     let totalPitch = 0; const phrase: number[] = [];
                     track.notes.forEach((note: any) => {
                         totalPitch += note.midi;
-                        const tick = Math.round(note.time * 3);
-                        const duration = Math.max(1, Math.round(note.duration * 3));
+                        // ПЛАН №911: Точный расчет тиков на основе PPQ
+                        const tick = Math.round((note.ticks / ppq) * 3);
+                        const duration = Math.max(1, Math.round((note.durationTicks / ppq) * 3));
                         const semitone = note.midi % 12;
                         const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
                         const degIdx = DEGREE_KEYS.indexOf(degName);
@@ -460,7 +463,7 @@ export default function HypercubeDashboard() {
                         nativeBpm: bpm, 
                         nativeKey: 'C', 
                         timeSignature: timeSig, 
-                        narrative: `${instName} Imported from track ${tIdx}` 
+                        narrative: `Ch${tIdx}: ${instName} (${track.instrument?.number || '0'})` 
                     }, tIdx, targetId));
                 });
             } else if (Array.isArray(json)) {
@@ -614,14 +617,15 @@ export default function HypercubeDashboard() {
     });
     const hints: InstrumentHints = {};
     const tension = 0.5; // Audition tension
-    const resolvedInst = axiom.preferredInstrument ? (typeof axiom.preferredInstrument === 'string' ? axiom.preferredInstrument : axiom.preferredInstrument.mid) : 'organ_soft_jazz';
+    const resolvedInst = axiom.preferredInstrument ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) : 'organ_soft_jazz';
 
     if (channelType === 'melody') hints.melody = resolvedInst;
-    else if (channelType === 'bass') hints.bass = 'bass_jazz_warm';
+    else if (channelType === 'bass') hints.bass = resolvedInst === 'none' ? 'bass_jazz_warm' : resolvedInst;
     else if (channelType === 'drums') hints.drums = 'melancholic';
     else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
     else if (channelType === 'harmony') hints.harmony = 'violin';
     else hints.accompaniment = 'organ_soft_jazz';
+    
     playRawEvents(events, hints, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
     const maxDuration = Math.max(...events.map(e => e.time + e.duration));
@@ -642,10 +646,12 @@ export default function HypercubeDashboard() {
     setIsProcessing(true); let addedCount = 0;
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
-      for (const ax of toInject) {
+      // ПЛАН №917: Передаем индекс для гарантии уникальности ID в Firestore
+      for (let i = 0; i < toInject.length; i++) {
+        const ax = toInject[i];
         const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        await saveHeritageAxiom(db, { ...ax, genre: selectedGenre, mood: newMoods, commonMood: newCommons, barOffset: ax.barOffset ?? 0, origin: `Manual_Forge_Injection_${currentFileName}`, timestamp: new Date().toISOString() as any, narrative: ax.narrative || "Heritage component.", ignored: false });
+        await saveHeritageAxiom(db, { ...ax, genre: selectedGenre, mood: newMoods, commonMood: newCommons, barOffset: ax.barOffset ?? 0, origin: `Manual_Forge_Injection_${currentFileName}`, timestamp: new Date().toISOString() as any, narrative: ax.narrative || "Heritage component.", ignored: false }, i);
         addedCount++;
       }
       setProcessedFiles(prev => [...new Set([...prev, currentFileName])]);

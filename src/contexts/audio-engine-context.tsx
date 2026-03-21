@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.0 — "Timbre Lab Real-time Engine".
- * #ЧТО: ПЛАН №907 — Внедрена поддержка зацикливания теста и real-time обновлений пресета.
+ * #ЗАЧЕМ: Audio Engine Context V32.1 — "Thread Safety Protocol".
+ * #ЧТО: ПЛАН №916 — Деферированное обновление состояния для устранения ошибок React при рендеринге.
  */
 'use client';
 
@@ -23,10 +23,12 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, getDocs, query, where, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
+import { V2_PRESETS } from '@/lib/presets-v2';
+import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.175,            
@@ -50,13 +52,12 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     bass: 1.0
 };
 
-// #ЗАЧЕМ: ПЛАН №907. Расширенная тестовая последовательность (в 3 раза длиннее).
 const EPIC_TEST_SEQUENCE = [
     { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 1.0 }, { m: 72, t: 2.0, d: 2.0 },
     { m: 67, t: 4.0, d: 0.3 }, { m: 65, t: 4.3, d: 0.3 }, { m: 64, t: 4.6, d: 0.4 }, { m: 62, t: 5.0, d: 1.0 },
     { m: 60, t: 6.0, d: 0.2 }, { m: 60, t: 6.2, d: 0.2 }, { m: 60, t: 6.4, d: 0.2 }, { m: 60, t: 6.6, d: 0.2 },
     { m: 67, t: 7.0, d: 3.0 }, { m: 74, t: 10.0, d: 0.5 }, { m: 76, t: 10.5, d: 0.5 }, { m: 79, t: 11.0, d: 5.0 },
-    { m: 60, t: 16.0, d: 8.0 } // Экстремально длинная нота для теста релиза
+    { m: 60, t: 16.0, d: 8.0 } 
 ];
 
 interface AudioEngineContextType {
@@ -108,13 +109,42 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPlaying, setIsPlayingState] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
-  
-  // #ЗАЧЕМ: Состояния для Лаборатории Тембров.
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
-
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
+  const [timbreOverrides, setTimbreOverrides] = useState<Record<string, any>>({});
   
+  const timbreOverridesRef = useRef<Record<string, any>>({});
+  const initializationInFlightRef = useRef(false);
+  const workerRef = useRef<Worker | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const settingsRef = useRef<WorkerSettings | null>(null);
+  const lastSavedArbiterSeedRef = useRef<number | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
+  const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const drumMachineRef = useRef<DrumMachine | null>(null);
+  const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
+  const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
+  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
+  const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
+  const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
+  const sparklePlayerRef = useRef<SparklePlayer | null>(null);
+  const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
+  const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
+  const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
+  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
+  const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
+  const masterGainNodeRef = useRef<GainNode | null>(null);
+  const samplersMasterGainRef = useRef<GainNode | null>(null);
+  const speakerGainNodeRef = useRef<GainNode | null>(null);
+  const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
+  const gainNodesRef = useRef<Record<string, GainNode>>({});
+  const nextBarTimeRef = useRef<number>(0);
+  const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
+  const previewTimeoutRef = useRef<any>(null);
+  const loopingRef = useRef(false);
+
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
@@ -126,45 +156,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
   });
 
-  const initializationInFlightRef = useRef(false);
-  const workerRef = useRef<Worker | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const settingsRef = useRef<WorkerSettings | null>(null);
-  const lastSavedArbiterSeedRef = useRef<number | null>(null);
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
-  const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  
-  const drumMachineRef = useRef<DrumMachine | null>(null);
-  const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
-  const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
-  const harmonyManagerRef = useRef<HarmonySynthManager | null>(null);
-  const pianoAccompanimentManagerRef = useRef<PianoAccompanimentManager | null>(null);
-  const sparklePlayerRef = useRef<SparklePlayer | null>(null);
-  const sfxSynthManagerRef = useRef<SfxSynthManager | null>(null);
-  
-  const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
-  const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
-  const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
-  const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
-  
-  const masterGainNodeRef = useRef<GainNode | null>(null);
-  const samplersMasterGainRef = useRef<GainNode | null>(null);
-  const speakerGainNodeRef = useRef<GainNode | null>(null);
-  const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
-  const gainNodesRef = useRef<Record<string, GainNode>>({});
-  const nextBarTimeRef = useRef<number>(0);
-  
-  // #ЗАЧЕМ: Ссылки для управления превью.
-  const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
-  const previewTimeoutRef = useRef<any>(null);
-  const loopingRef = useRef(false);
-
   const { toast } = useToast();
   const db = useFirestore();
   const auth = useAuth();
+
+  const getEffectivePreset = useCallback((presetName: string) => {
+      const base = (V2_PRESETS as any)[presetName] || (BASS_PRESETS as any)[presetName];
+      if (!base) return null;
+      const override = timbreOverridesRef.current[presetName];
+      return override ? { ...base, ...override } : base;
+  }, []);
 
   const setVolumeCallback = useCallback((part: string, volume: number) => {
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
@@ -178,17 +179,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (!isInitialized) return;
       const m = gains.master;
       samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
-      
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
-      
       melodyManagerV2Ref.current?.setPreampGain(gains.electric); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
-      
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
   }, [isInitialized]);
@@ -196,6 +194,50 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   useEffect(() => {
       if (isInitialized) applyCalibration(calibrationGains);
   }, [isInitialized, calibrationGains, applyCalibration]);
+
+  useEffect(() => {
+      const load = () => {
+          const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
+          const parsed = saved ? JSON.parse(saved) : {};
+          // ПЛАН №916: Деферированное обновление для устранения ошибки React
+          setTimeout(() => {
+              setTimbreOverrides(parsed);
+              timbreOverridesRef.current = parsed;
+              if (isInitialized) {
+                  const managers = [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef];
+                  managers.forEach(m => {
+                      const name = (m.current as any)?.activePresetName;
+                      if (name && name !== 'none') {
+                          const preset = getEffectivePreset(name);
+                          if (preset) m.current?.setInstrument(preset);
+                      }
+                  });
+              }
+          }, 0);
+      };
+      window.addEventListener('AG_TIMBRE_UPDATE', load);
+      load();
+      return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
+  }, [isInitialized, getEffectivePreset]);
+
+  // ПЛАН №914: Подписка на коллекцию наследия
+  useEffect(() => {
+      if (!db) return;
+      const unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
+          const counts: Record<string, number> = {};
+          const axioms: any[] = [];
+          snapshot.docs.forEach(d => {
+              const data = { id: d.id, ...d.data() };
+              axioms.push(data);
+              const compId = data.compositionId;
+              if (compId) counts[compId] = (counts[compId] || 0) + 1;
+          });
+          const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
+          setAvailableCompositions(meta);
+          if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+      });
+      return () => unsubscribe();
+  }, [db]);
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
     if (!db || !workerRef.current) return;
@@ -315,11 +357,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    
-                    if (payload.beautyScore >= 0.82 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                    if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
-                        toast({ title: "AI Arbiter: Insight Captured", description: `Discovered a high-resonance masterpiece (${Math.round(payload.beautyScore*100)}%)` });
                     }
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
@@ -329,24 +369,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             };
         }
         await refreshCloudAxioms();
-        
         setIsInitialized(true);
         setIsInitializing(false);
         initializationInFlightRef.current = false;
-
-        setTimeout(() => {
-            drumMachineRef.current?.init(false);
-            blackGuitarSamplerRef.current?.init(false);
-            harmonyManagerRef.current?.init(false);
-        }, 5000);
-
-        setTimeout(() => {
-            sparklePlayerRef.current?.init();
-            sfxSynthManagerRef.current?.init();
-            cs80SamplerRef.current?.init();
-            darkTelecasterSamplerRef.current?.init();
-        }, 10000);
-
         return true;
     } catch (e) {
         toast({ variant: "destructive", title: "Audio Error" });
@@ -354,17 +379,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
-  // #ЗАЧЕМ: ПЛАН №907. Управление превью в реальном времени.
   const stopPreview = useCallback(() => {
-      if (previewTimeoutRef.current) {
-          clearTimeout(previewTimeoutRef.current);
-          previewTimeoutRef.current = null;
-      }
-      if (previewInstrumentRef.current) {
-          previewInstrumentRef.current.allNotesOff();
-          previewInstrumentRef.current.disconnect();
-          previewInstrumentRef.current = null;
-      }
+      if (previewTimeoutRef.current) { clearTimeout(previewTimeoutRef.current); previewTimeoutRef.current = null; }
+      if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; }
       setIsPreviewPlaying(false);
   }, []);
 
@@ -374,26 +391,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       loopingRef.current = loop;
       setIsPreviewLooping(loop);
       setIsPreviewPlaying(true);
-
       const ctx = audioContextRef.current!;
       const previewInst = await buildMultiInstrument(ctx, { type, preset, output: masterGainNodeRef.current! });
       previewInstrumentRef.current = previewInst;
-
       const scheduleSequence = () => {
           const now = ctx.currentTime + 0.1;
-          EPIC_TEST_SEQUENCE.forEach(n => {
-              previewInst.noteOn(n.m, now + n.t, 0.8, n.d);
-          });
-
+          EPIC_TEST_SEQUENCE.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); });
           const totalDuration = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0;
-          
-          if (loopingRef.current) {
-              previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000);
-          } else {
-              previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000);
-          }
+          if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000); }
+          else { previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000); }
       };
-
       scheduleSequence();
   }, [isInitialized, initialize, stopPreview]);
 
@@ -413,30 +420,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!recDestRef.current || isRecording) return;
     recordedChunksRef.current = [];
     const mediaRecorder = new MediaRecorder(recDestRef.current.stream);
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
-    };
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
     mediaRecorder.onstop = () => {
       const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`;
-      a.click();
+      const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click();
     };
     mediaRecorder.start();
     mediaRecorderRef.current = mediaRecorder;
     setIsRecording(true);
-    toast({ title: "Recording Started", description: "Capturing high-fidelity stream..." });
-  }, [isRecording, toast]);
+  }, [isRecording]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      toast({ title: "Recording Stopped", description: "Saving session to downloads." });
-    }
-  }, [isRecording, toast]);
+    if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); }
+  }, [isRecording]);
 
   return (
     <AudioEngineContext.Provider value={{
@@ -471,10 +468,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setVolume: setVolumeCallback, 
         setInstrument: async (part, name) => {
             if (!isInitialized) return;
-            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(name);
-            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(name);
-            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(name);
-            else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(name as any);
+            const preset = typeof name === 'string' ? getEffectivePreset(name) : name;
+            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(preset || name);
         },
         setBassTechnique: () => {}, 
         setTextureSettings: (s) => {

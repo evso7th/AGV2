@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V3.6 — "Polymorphic Resolving".
- * #ОБНОВЛЕНО (ПЛАН №902): Реализована поддержка Multi-Timbre объектов {low, mid, high} в Аксиомах.
+ * @fileOverview Universal Music Theory Utilities V3.7 — "Strict Axiom Sovereignty".
+ * #ОБНОВЛЕНО (ПЛАН №916): Исправлен приоритет явных инструментов над автоматикой Tension.
  */
 
 import type { 
@@ -41,38 +41,8 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-export const GENRE_STATES: Record<string, number[]> = {
-    ambient: [0, 5, 7, 9, 3, 10], 
-    blues: [0, 5, 7],             
-    trance: [0, 3, 5, 8, 10]      
-};
-
-export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
-    ambient: [
-        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
-        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
-        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     
-        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     
-        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     
-        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      
-    ],
-    blues: [
-        [0.6, 0.3, 0.1], 
-        [0.4, 0.4, 0.2], 
-        [0.5, 0.2, 0.3]  
-    ],
-    trance: [
-        [0.6, 0.1, 0.1, 0.1, 0.1], 
-        [0.2, 0.5, 0.2, 0.1, 0.0], 
-        [0.3, 0.1, 0.5, 0.1, 0.0], 
-        [0.2, 0.1, 0.1, 0.5, 0.1], 
-        [0.4, 0.0, 0.1, 0.1, 0.4]  
-    ]
-};
-
 /**
- * #ЗАЧЕМ: ПЛАН №902. Поддержка Multi-Timbre Аксиом.
- * #ЧТО: Если hint это объект {low, mid, high}, выбираем инструмент по Tension.
+ * #ЗАЧЕМ: ПЛАН №916. Поддержка Multi-Timbre Аксиом with Strict Identity.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
@@ -91,13 +61,8 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     // Удаляем все пробелы и подчеркивания для сравнения
     const clean = String(targetHint).toLowerCase().replace(/[\s_]/g, '');
 
-    // Явные синонимы для Аксиом
-    if (clean === 'shineon') return 'guitar_shineOn';
-    if (clean === 'mufflead') return 'guitar_muffLead';
-    if (clean === 'blackacoustic' || clean === 'black') return 'blackAcoustic';
-    if (clean === 'cavepad' || clean === 'cave') return 'synth_cave_pad';
-
-    // 2. Поиск в V2 и Bass пресетах с игнорированием регистра и пробелов
+    // 2. ПРИОРИТЕТ: Прямое сопоставление с V2 и Bass пресетами (Strict ID)
+    // #ЗАЧЕМ: Если в базе написано 'blackAcoustic' или 'cs80', мы ДОЛЖНЫ вернуть это сразу.
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedV2) return matchedV2;
@@ -106,14 +71,20 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
-    // 3. Разрешение гитар (только для абстрактных имен)
+    // 3. Явные синонимы для Аксиом
+    if (clean === 'shineon') return 'guitar_shineOn';
+    if (clean === 'mufflead') return 'guitar_muffLead';
+    if (clean === 'blackacoustic' || clean === 'black') return 'blackAcoustic';
+    if (clean === 'cavepad' || clean === 'cave') return 'synth_cave_pad';
+
+    // 4. Логика "Generic" (только если не нашли точного совпадения выше)
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
 
-    // 4. Fallback маппинг
+    // 5. Fallback маппинг
     if (part === 'bass') {
         return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     }
@@ -226,6 +197,17 @@ export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number
     VOID: { fog: 0.9, depth: 0.8, reg: 0 }
 };
 
+export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
+    if (!isFinite(step) || modulo <= 0) return 0;
+    let num = Math.abs(Math.floor(step + start));
+    let sum = 0;
+    while (num > 0) {
+        sum += num % base;
+        num = Math.floor(num / base);
+    }
+    return sum % modulo;
+}
+
 export function getScaleForMood(mood: Mood, key: number = 60): number[] {
     const root = key % 12;
     let mode = 'aeolian';
@@ -236,17 +218,6 @@ export function getScaleForMood(mood: Mood, key: number = 60): number[] {
     if (mood === 'dark' || mood === 'gloomy') mode = 'aeolian';
     const intervals = MODE_SEMITONES[mode] || MODE_SEMITONES.aeolian;
     return intervals.map(i => (root + i) % 12);
-}
-
-export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
-    if (!isFinite(step) || modulo <= 0) return 0;
-    let num = Math.abs(Math.floor(step + start));
-    let sum = 0;
-    while (num > 0) {
-        sum += num % base;
-        num = Math.floor(num / base);
-    }
-    return sum % modulo;
 }
 
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
@@ -389,3 +360,32 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
         chordName: chord.chordType === 'minor' ? 'Am' : 'E', params: { barCount: epoch }
     }));
 }
+
+export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
+    ambient: [
+        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
+        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
+        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     
+        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     
+        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     
+        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      
+    ],
+    blues: [
+        [0.6, 0.3, 0.1], 
+        [0.4, 0.4, 0.2], 
+        [0.5, 0.2, 0.3]  
+    ],
+    trance: [
+        [0.6, 0.1, 0.1, 0.1, 0.1], 
+        [0.2, 0.5, 0.2, 0.1, 0.0], 
+        [0.3, 0.1, 0.5, 0.1, 0.0], 
+        [0.2, 0.1, 0.1, 0.5, 0.1], 
+        [0.4, 0.0, 0.1, 0.1, 0.4]  
+    ]
+};
+
+export const GENRE_STATES: Record<string, number[]> = {
+    ambient: [0, 5, 7, 9, 3, 10], 
+    blues: [0, 5, 7],             
+    trance: [0, 3, 5, 8, 10]      
+};

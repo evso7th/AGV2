@@ -6,7 +6,6 @@ import { toast } from '@/hooks/use-toast';
 
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
- * #ЧТО: ПЛАН №734 — Добавлена визуальная обратная связь и поддержка Arbiter флага.
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -52,7 +51,7 @@ export function saveMasterpiece(db: Firestore, data: {
 }
 
 /**
- * #ЗАЧЕМ: Сохранение системного документа в облако для консистентности AI-контекста.
+ * #ЗАЧЕМ: Сохранение системного документа в облако.
  */
 export function saveProjectDocument(db: Firestore, data: {
     filename: string;
@@ -84,29 +83,31 @@ export function saveProjectDocument(db: Firestore, data: {
 
 /**
  * #ЗАЧЕМ: Генерирую уникальный, но детерминированный ID для аксиомы.
- * #ЧТО: Предотвращает дубликаты на уровне базы данных.
+ * #ЧТО: ПЛАН №917. Добавлен индекс и JSON-сериализация для предотвращения коллизий.
  */
-function generateAxiomId(compositionId: string, role: string, phrase: number[]): string {
-    const content = `${compositionId}_${role}_${phrase.join(',')}`;
+function generateAxiomId(compositionId: string, role: string, phrase: any[], index: number = 0): string {
+    // Используем JSON.stringify чтобы избежать [object Object] при хешировании
+    const phraseContent = typeof phrase[0] === 'object' ? JSON.stringify(phrase) : phrase.join(',');
+    const content = `${compositionId}_${role}_${phraseContent}_I${index}`;
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
         hash = ((hash << 5) - hash) + content.charCodeAt(i);
-        hash |= 0; // Convert to 32bit integer
+        hash |= 0; 
     }
     const cleanCompId = compositionId.replace(/[^a-zA-Z0-9]/g, '_');
-    return `${cleanCompId}_${role}_${Math.abs(hash).toString(36)}`;
+    return `${cleanCompId}_${role.replace(/\s+/g, '_')}_${Math.abs(hash).toString(36)}`;
 }
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: ПЛАН №838 — Добавлена поддержка флага ignored.
+ * #ЧТО: ПЛАН №917. Индекс теперь является обязательным для уникальности.
  */
-export function saveHeritageAxiom(db: Firestore, data: any) {
+export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
     const compositionId = data.compositionId || 'Unknown_Heritage';
     const role = data.role || 'melody';
     const phrase = data.phrase || [];
     
-    const axiomId = generateAxiomId(compositionId, role, phrase);
+    const axiomId = generateAxiomId(compositionId, role, phrase, index);
     const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
     const payload = {
@@ -127,6 +128,7 @@ export function saveHeritageAxiom(db: Firestore, data: any) {
         nativeKey: data.nativeKey ?? data.key ?? null,
         timeSignature: data.timeSignature ?? data.ts ?? null,
         ignored: data.ignored ?? false,
+        preferredInstrument: data.preferredInstrument || null,
         timestamp: serverTimestamp()
     };
 
