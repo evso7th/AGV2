@@ -1,3 +1,4 @@
+
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -115,7 +116,6 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
 };
 
-// #ЗАЧЕМ: Список инструментов для Blues Kit (ПЛАН №866).
 const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
@@ -125,7 +125,7 @@ const BLUES_KIT_CORE = [
 type Sampler = {
     buffers: Map<string, AudioBuffer>;
     load: (samples: Record<string, string>) => Promise<void>;
-    triggerAttack: (note: string, time: number, velocity?: number) => void;
+    triggerAttack: (note: string, time: number, velocity?: number, pan?: number) => void;
 }
 
 function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
@@ -145,16 +145,26 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         await Promise.all(promises);
     };
 
-    const triggerAttack = (note: string, time: number, velocity = 1) => {
+    const triggerAttack = (note: string, time: number, velocity = 1, pan = 0) => {
         const buffer = buffers.get(note);
         if (!buffer || !isFinite(time)) return;
         const source = audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = audioContext.createGain();
         gainNode.gain.value = velocity;
-        source.connect(gainNode).connect(output);
+        
+        // #ЗАЧЕМ: ПЛАН №905. Панорамирование каждого удара барабана.
+        const panner = audioContext.createStereoPanner();
+        panner.pan.value = pan;
+
+        source.connect(gainNode).connect(panner).connect(output);
         source.start(time);
-        source.onended = () => gainNode.disconnect();
+        source.onended = () => {
+            try {
+                gainNode.disconnect();
+                panner.disconnect();
+            } catch(e) {}
+        };
     };
 
     return { buffers, load, triggerAttack };
@@ -206,7 +216,10 @@ export class DrumMachine {
             let velocity = event.weight;
             if (eventType.startsWith('perc-')) velocity *= 0.6;
             else if (eventType.includes('ride')) velocity *= 0.7;
-            this.sampler.triggerAttack(sampleName, absoluteTime, velocity);
+            
+            // #ЗАЧЕМ: Трансляция панорамы из события.
+            const pan = event.pan || 0;
+            this.sampler.triggerAttack(sampleName, absoluteTime, velocity, pan);
         }
     }
 

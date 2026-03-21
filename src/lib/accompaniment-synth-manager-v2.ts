@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №839 — Динамическое управление громкостью (summonProgress) полностью отключено.
+ * #ЧТО: ПЛАН №905 — Поддержка динамического панорамирования.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -77,6 +77,7 @@ export class AccompanimentSynthManagerV2 {
             duration: e.duration * beatDuration,
             velocity: e.weight,
             technique: e.technique,
+            pan: e.pan, // #ЗАЧЕМ: ПЛАН №905.
             params: e.params
         }));
 
@@ -105,6 +106,9 @@ export class AccompanimentSynthManagerV2 {
 
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
+            if (this.instrument.setPan && note.pan !== undefined) {
+                this.instrument.setPan(note.pan);
+            }
             if (note.params?.filterCutoff && this.instrument.setParam) {
                 this.instrument.setParam('filterCutoff', note.params.filterCutoff);
                 this.instrument.setParam('lpf', note.params.filterCutoff);

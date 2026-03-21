@@ -48,6 +48,7 @@ export interface FractalEvent {
   technique: Technique;
   dynamics: Dynamics;
   phrasing: Phrasing;
+  pan?: number; // Stereo position: -1 (left) to 1 (right)
   params?: any;
   chordName?: string;
 }
@@ -94,6 +95,7 @@ export type SuiteDNA = {
   ambientLegacyGroup?: string;
   cloudAxioms?: any[]; 
   activeAnchorId?: string | null;
+  activeAnchorRoot?: number | null;
 };
 
 export type BluesSoloPhrase = {

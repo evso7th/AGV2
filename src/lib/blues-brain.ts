@@ -1,3 +1,4 @@
+
 import {
   FractalEvent,
   GhostChord,
@@ -31,8 +32,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V235.0 — "Semantic Resolving Implementation".
- * #ЗАЧЕМ: ПЛАН №890. Перенос разрешения тембров в мозг для прозрачности логов.
+ * @fileOverview Blues Brain V236.0 — "Spatial Awareness Protocol".
+ * #ЗАЧЕМ: ПЛАН №905. Внедрение динамической панорамы: томовые пробежки и разделение ансамбля.
  */
 
 const TICKS_PER_BAR = 12;
@@ -85,8 +86,6 @@ export class BluesBrain {
   private currentAxiomMaxTick: number = 0;
   private currentTimeScale: number = 1;
   private currentNativeRoot: number | null = null;
-
-  /** #ЗАЧЕМ: ПЛАН №881. Хранение предпочтительного инструмента донора. */
   private currentPreferredInstrument: string | null = null;
 
   private currentBassAxiom: any[] = [];
@@ -286,11 +285,15 @@ export class BluesBrain {
     else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
     else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
 
+    // #ЗАЧЕМ: ПЛАН №905. Разделение сцены: Соло левее, Гармония правее.
     let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar)
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension)
         : [];
+    melodyEvents.forEach(e => e.pan = -0.15); 
+
     if (hints.melody && !isSoloistResting && melodyEvents.length === 0 && navInfo.currentPart.id === 'MAIN') {
         melodyEvents = this.renderAdaptiveMelody(epoch, resChord, tension);
+        melodyEvents.forEach(e => e.pan = -0.15);
     }
 
     if (hints.drums) {
@@ -313,7 +316,6 @@ export class BluesBrain {
     let accStatus = 'none';
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
-    // #ЗАЧЕМ: ПЛАН №881 & №890. Применение и РАЗРЕШЕНИЕ инструмента Аксиомы.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
@@ -328,7 +330,6 @@ export class BluesBrain {
                 const role = ax.role.toLowerCase();
                 const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
-                    // #ЗАЧЕМ: ПЛАН №890. Разрешаем тембр аккомпанемента сразу.
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType);
                     }
@@ -344,11 +345,16 @@ export class BluesBrain {
             accStatus = 'Adaptive Pad';
         }
     }
+    
+    // #ЗАЧЕМ: ПЛАН №905. Аккомпанемент (пэды) чуть правее центра.
+    accompanimentEvents.forEach(e => e.pan = 0.1);
     events.push(...accompanimentEvents);
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
         const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+        // #ЗАЧЕМ: Родес правее соло.
+        p.events.forEach(e => e.pan = 0.2);
         events.push(...p.events);
         pianoInfo = { style: p.style, count: p.events.length };
     }
@@ -358,7 +364,10 @@ export class BluesBrain {
             ax.role.includes('strings') || ax.role.includes('violin')
         );
         this.selectHarmonyInstrument(epoch, tension, hasHeritageStrings);
-        events.push(...this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument));
+        const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
+        // #ЗАЧЕМ: Гармония в крайнем правом секторе.
+        harmonyEvents.forEach(e => e.pan = 0.35);
+        events.push(...harmonyEvents);
     }
 
     events.push(...melodyEvents);
@@ -400,7 +409,12 @@ export class BluesBrain {
           else if (sub === 'perc') type = 'drum_perc-001';
 
           barNotes.forEach(n => {
-              events.push({ type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+              // #ЗАЧЕМ: ПЛАН №905. Панорамирование томов и перкуссии в ДНК.
+              let pan = 0;
+              if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
+              if (type.includes('perc')) pan = (Math.random() * 1.6) - 0.8;
+
+              events.push({ type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
           });
       });
       return events;
@@ -455,8 +469,6 @@ export class BluesBrain {
                       this.currentLickId = selected.id; this.currentTrackName = selected.compositionId;
                       this.state.recentLicks.push(selected.id); if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
                       this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-
-                      // #ЗАЧЕМ: ПЛАН №881. Извлечение предпочтительного инструмента из Аксиомы.
                       this.currentPreferredInstrument = selected.preferredInstrument || null;
 
                       let rawPhrase = decompressCompactPhrase(selected.phrase); const phrasesToNormalize = [rawPhrase];
@@ -556,9 +568,16 @@ export class BluesBrain {
       [0, 6].forEach(t => events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
       [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+      
       if (isFourthBar || isEighthBar || isSoloistResting) {
-          const intensity = isEighthBar ? 1.0 : 0.7; const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          [9, 10, 11].forEach((t, i) => { events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + (i * 0.05)) * intensity, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }); });
+          const intensity = isEighthBar ? 1.0 : 0.7; 
+          const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+          
+          // #ЗАЧЕМ: ПЛАН №905. Томовая пробежка по панораме (Слева -> Центр -> Справа).
+          const pans = [-0.6, 0.0, 0.6];
+          [9, 10, 11].forEach((t, i) => { 
+              events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + (i * 0.05)) * intensity, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: pans[i] }); 
+          });
       }
       return events;
   }
@@ -618,7 +637,7 @@ export class BluesBrain {
       [0, 3, 6, 9].forEach((t, i) => { events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.6, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }); });
       events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.0, mood: this.mood } });
       if (hints.melody) { events.push({ type: 'melody', note: root + 24, time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0, mood: this.mood } }); }
-      events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
+      events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 0.6) - 0.3 });
       return events;
   }
 

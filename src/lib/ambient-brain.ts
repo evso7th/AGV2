@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain V58.0 — "Semantic Resolving Implementation".
- * #ЗАЧЕМ: ПЛАН №890. Перенос разрешения тембров в мозг для прозрачности логов.
+ * @fileOverview Ambient Brain V59.0 — "Spatial Atlas Implementation".
+ * #ЗАЧЕМ: ПЛАН №905. Внедрение динамической панорамы: "блуждающие" пэды и случайные эффекты.
  */
 
 import type {
@@ -60,8 +61,6 @@ export class AmbientBrain {
     private currentTransposition: number = 0;
     private microTransposition: number = 0;
     private currentNativeRoot: number | null = null;
-
-    /** #ЗАЧЕМ: ПЛАН №881. Хранение предпочтительного инструмента донора. */
     private currentPreferredInstrument: string | null = null;
 
     private soloistBusyUntilBar: number = -1;
@@ -153,8 +152,16 @@ export class AmbientBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const events: FractalEvent[] = [];
 
+        // #ЗАЧЕМ: ПЛАН №905. Плавное «блуждание» пэда между каналами.
+        const swirlPan = Math.sin(epoch * 0.2) * 0.4;
+
         if (isBridge) {
-            events.push(...this.renderLiquidBridge(epoch, resChord, localTension, hints));
+            const bridgeEvents = this.renderLiquidBridge(epoch, resChord, localTension, hints);
+            bridgeEvents.forEach(e => {
+                if(e.type === 'accompaniment') e.pan = swirlPan;
+                if(e.type === 'melody') e.pan = -0.1;
+            });
+            events.push(...bridgeEvents);
             return {
                 events, tension: localTension, beautyScore: 0.5,
                 activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
@@ -186,7 +193,6 @@ export class AmbientBrain {
 
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: ПЛАН №881 & №890. Применение и РАЗРЕШЕНИЕ инструмента Аксиомы.
         if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody');
         }
@@ -198,21 +204,26 @@ export class AmbientBrain {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType]) {
-                    // #ЗАЧЕМ: ПЛАН №890. Разрешаем тембр аккомпанемента сразу.
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
                     }
 
-                    events.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension));
+                    const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
+                    accEvents.forEach(e => e.pan = swirlPan);
+                    events.push(...accEvents);
                     if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
             if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
-                events.push(...this.renderPad(resChord, epoch, hints.accompaniment as string, localTension));
+                const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
+                padEvents.forEach(e => e.pan = swirlPan);
+                events.push(...padEvents);
                 accStatus = 'Adaptive Pad';
             }
             if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
-                events.push(...this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony));
+                const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
+                harEvents.forEach(e => e.pan = 0.25); // Harmony slightly right
+                events.push(...harEvents);
             }
         }
 
@@ -230,11 +241,13 @@ export class AmbientBrain {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
             }
         }
+        melodyEvents.forEach(e => e.pan = -0.15); // Melody slightly left
         events.push(...melodyEvents);
 
         let pianoInfo = { style: 'none', count: 0 };
         if (hints.pianoAccompaniment) {
             const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
+            p.events.forEach(e => e.pan = 0.2); // Rhodes slightly right
             events.push(...p.events);
             pianoInfo = { style: p.style, count: p.events.length };
         }
@@ -412,8 +425,12 @@ export class AmbientBrain {
             else if (sub === 'perc') type = 'drum_perc-001';
 
             barNotes.forEach(n => {
+                // #ЗАЧЕМ: ПЛАН №905. Пространственная пробежка для томов.
+                let pan = 0;
+                if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.5 : 0.5;
+
                 events.push({
-                    type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan
                 });
             });
         });
@@ -436,7 +453,9 @@ export class AmbientBrain {
         if (this.random.next() < 0.2 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         if (this.random.next() < 0.7) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
-            events.push({ type: perc as any, note: 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 1.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            // #ЗАЧЕМ: Случайная панорама для перкуссии.
+            const pan = (Math.random() * 1.4) - 0.7;
+            events.push({ type: perc as any, note: 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 1.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
         }
         return events;
     }
@@ -471,9 +490,9 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const totalBarsInPhrase = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         return barNotes.map(n => ({
@@ -539,11 +558,15 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
+        // #ЗАЧЕМ: ПЛАН №905. Случайная панорама для «искр».
+        const pan = (Math.random() * 1.8) - 0.9;
+        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood, genre: this.genre } }];
+        // #ЗАЧЕМ: ПЛАН №905. Случайная панорама для SFX.
+        const pan = (Math.random() * 1.6) - 0.8;
+        return [{ type: 'sfx', note: 60, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {

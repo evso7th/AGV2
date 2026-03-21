@@ -1,8 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.8 — "Protective Master Shield".
- * #ЧТО: ПЛАН №842 — Лимитер настроен на -12dB для предотвращения взрывных скачков.
- * #FIX: Исправлена инициализация частоты второго фильтра в режиме 24dB.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V4.9 — "Spatial Immersion".
+ * #ЧТО: ПЛАН №905 — Внедрена поддержка панорамирования для всех типов синтезаторов.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -480,6 +479,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const instrumentGain = ctx.createGain(); 
     instrumentGain.gain.value = isFinite(preset.volume) ? preset.volume : 0.7;
     const expressionGain = ctx.createGain(); expressionGain.gain.value = 1.0;
+    
+    // #ЗАЧЕМ: ПЛАН №905. Внедрение узла панорамирования в цепочку.
+    const panner = ctx.createStereoPanner();
+    panner.pan.value = isFinite(preset.pan) ? preset.pan : 0;
+
     const reverb = ctx.createConvolver();
     if (plateIRUrl) loadIR(ctx, plateIRUrl).then(buf => { if (buf) reverb.buffer = buf; });
     reverb.connect(master);
@@ -489,7 +493,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else if (type === 'guitar') engine = buildGuitarEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     
-    // #ЗАЧЕМ: ПЛАН №842. Порог лимитера снижен до -12dB для защиты от скачков.
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -12.0; 
     limiter.knee.value = 0; 
@@ -497,10 +500,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     limiter.attack.value = 0.003; 
     limiter.release.value = 0.1;
     
-    master.connect(limiter); limiter.connect(output || ctx.destination);
+    // Chain: Engine -> Expression -> Gain -> Panner -> Master -> Limiter
+    master.connect(panner);
+    panner.connect(limiter);
+    limiter.connect(output || ctx.destination);
+
     return {
         connect: (dest) => limiter.connect(dest || output),
-        disconnect: () => { if (engine.allNotesOff) engine.allNotesOff(); if (engine.disconnect) engine.disconnect(); master.disconnect(); limiter.disconnect(); },
+        disconnect: () => { if (engine.allNotesOff) engine.allNotesOff(); if (engine.disconnect) engine.disconnect(); master.disconnect(); limiter.disconnect(); panner.disconnect(); },
         noteOn: engine.noteOn,
         noteOff: (m, w) => { if (engine.noteOff) engine.noteOff(m, w); },
         allNotesOff: () => engine.allNotesOff(),
@@ -510,6 +517,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         setVolumeDb: (db) => { if(isFinite(db)) instrumentGain.gain.setTargetAtTime(dB(db), ctx.currentTime, 0.02); },
         getVolume: () => instrumentGain.gain.value,
         setExpression: (v) => { if(isFinite(v)) expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
+        setPan: (v) => { if(isFinite(v)) panner.pan.setTargetAtTime(clamp(v, -1, 1), ctx.currentTime, 0.05); },
         preset, type
     };
 }
@@ -526,6 +534,7 @@ export interface InstrumentAPI {
     setVolumeDb: (db: number) => void;
     getVolume: () => number;
     setExpression: (level: number) => void;
+    setPan: (level: number) => void;
     preset: any;
     type: string;
 }

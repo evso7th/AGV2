@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №893 — Исправлена критическая ошибка именования (instrument -> synth). Тело звука восстановлено.
+ * #ЧТО: ПЛАН №905 — Поддержка панорамирования каждого события.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -78,7 +79,6 @@ export class MelodySynthManagerV2 {
         if (!preset) return;
         
         try {
-            // #ЧТО: Исправлена привязка к переменной this.synth.
             this.synth = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -112,6 +112,7 @@ export class MelodySynthManagerV2 {
                 duration: (e.duration * beatDuration) + extraDuration, 
                 velocity: e.weight, 
                 technique: e.technique, 
+                pan: e.pan, // #ЗАЧЕМ: ПЛАН №905.
                 params: e.params 
             };
         });
@@ -160,6 +161,9 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
+            if (this.synth.setPan && note.pan !== undefined) {
+                this.synth.setPan(note.pan);
+            }
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);
                 this.synth.setParam('lpf', note.params.filterCutoff);
