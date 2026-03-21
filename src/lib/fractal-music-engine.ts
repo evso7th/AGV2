@@ -1,8 +1,10 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
 import { BluesBrain } from './blues-brain';
 import { AmbientBrain } from './ambient-brain';
+import { TranceBrain } from './trance-brain';
 import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic, resolveSemanticTimbre } from './music-theory';
 import { MelancholicMinorK } from './resonance-matrices';
 
@@ -51,9 +53,8 @@ interface EngineConfig {
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V38.0 — "Axiom Sovereignty Implementation".
- * #ЧТО: ПЛАН №896 — Удалены жестко захардкоженные оверрайды тембра для Dark Blues. 
- *       Это возвращает контроль пользователю через DNA Auditor.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V39.0 — "TranceBrain Integration".
+ * #ЧТО: ПЛАН №906 — Подключен специализированный мозг для транса.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -66,6 +67,7 @@ export class FractalMusicEngine {
 
   private bluesBrain: BluesBrain | null = null;
   private ambientBrain: AmbientBrain | null = null;
+  private tranceBrain: TranceBrain | null = null;
   private previousChord: GhostChord | null = null;
   private lastEvents: FractalEvent[] = [];
 
@@ -160,12 +162,16 @@ export class FractalMusicEngine {
             this.config.genre,
             this.config.useHeritage
         );
-        this.bluesBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.selectedCompositionIds, this.config.activeAnchorId, null, this.config.useHeritage, isImprovising);
+        this.ambientBrain = null;
+        this.tranceBrain = null;
+    } else if (this.config.genre === 'trance') {
+        this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
+        this.bluesBrain = null;
         this.ambientBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
-        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, isImprovising);
         this.bluesBrain = null;
+        this.tranceBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
@@ -257,8 +263,8 @@ export class FractalMusicEngine {
                 const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
 
                 let defaultInst = 'synth';
-                if (part === 'bass') defaultInst = 'bass_jazz_warm';
-                else if (part === 'melody') defaultInst = 'organ_soft_jazz';
+                if (part === 'bass') defaultInst = (this.config.genre === 'trance' ? 'bass_house' : 'bass_jazz_warm');
+                else if (part === 'melody') defaultInst = (this.config.genre === 'trance' ? 'synth' : 'organ_soft_jazz');
                 else if (part === 'accompaniment') defaultInst = 'synth_ambient_pad_lush';
                 else if (part === 'harmony') defaultInst = (this.config.genre === 'blues' ? 'guitarChords' : 'violin');
 
@@ -297,7 +303,9 @@ export class FractalMusicEngine {
     this.previousChord = currentChord;
 
     let result: any;
-    if (this.config.genre !== 'blues' && this.ambientBrain) {
+    if (this.config.genre === 'trance' && this.tranceBrain) {
+        result = this.tranceBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
+    } else if (this.config.genre !== 'blues' && this.ambientBrain) {
         result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.bluesBrain) {
         result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
