@@ -1,6 +1,8 @@
+
 /**
- * @fileOverview Universal Music Theory Utilities V3.4 — "Case Insensitive Sovereignty".
- * #ОБНОВЛЕНО (ПЛАН №898): Реализовано разрешение имен инструментов без учета регистра.
+ * @fileOverview Universal Music Theory Utilities V3.5 — "Canonical Rebalancing".
+ * #ОБНОВЛЕНО (ПЛАН №901): 1. Резолвер имен теперь удаляет пробелы и подчеркивания.
+ *                          2. Добавлены явные маппинги для "shine on" и "muff lead".
  */
 
 import type { 
@@ -40,13 +42,13 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-const GENRE_STATES: Record<string, number[]> = {
+export const GENRE_STATES: Record<string, number[]> = {
     ambient: [0, 5, 7, 9, 3, 10], 
     blues: [0, 5, 7],             
     trance: [0, 3, 5, 8, 10]      
 };
 
-const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
+export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
     ambient: [
         [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
         [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
@@ -70,24 +72,30 @@ const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №898. Case-insensitive matching.
- * #ЧТО: Если в базе "GUITAR_SHINEON", а в коде "guitar_shineOn", функция найдет правильный ключ.
+ * #ЗАЧЕМ: ПЛАН №901. Ультра-гибкое разрешение имен (удаление пробелов и спецсимволов).
  */
 export function resolveSemanticTimbre(hint: string | undefined | null, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
-    const clean = hint.toLowerCase().trim();
+    
+    // Удаляем все пробелы и подчеркивания для сравнения
+    const clean = hint.toLowerCase().replace(/[\s_]/g, '');
 
-    // 1. Поиск точного ключа (без учета регистра) в V2 и Bass пресетах
+    // Явные синонимы для Аксиом
+    if (clean === 'shineon') return 'guitar_shineOn';
+    if (clean === 'mufflead') return 'guitar_muffLead';
+    if (clean === 'blackacoustic' || clean === 'black') return 'blackAcoustic';
+
+    // 1. Поиск в V2 и Bass пресетах с игнорированием регистра и пробелов
     const v2Keys = Object.keys(V2_PRESETS);
-    const bassKeys = Object.keys(BASS_PRESETS);
-    const matchedV2 = v2Keys.find(k => k.toLowerCase() === clean);
+    const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedV2) return matchedV2;
     
-    const matchedBass = bassKeys.find(k => k.toLowerCase() === clean);
+    const bassKeys = Object.keys(BASS_PRESETS);
+    const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
     // 2. Разрешение гитар (только для абстрактных имен)
-    if (clean === 'guitar' || clean === 'electric guitar' || clean === 'melody') {
+    if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';

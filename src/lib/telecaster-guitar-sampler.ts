@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
@@ -35,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.4 — "Transient Sharpening".
- * #ЧТО: ПЛАН №895 — Длина транзиента сокращена до 12мс.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.5 — "Transient Adjustment".
+ * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -148,10 +149,10 @@ export class TelecasterGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: Сокращение длины транзиента до 12мс (ПЛАН №895).
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.012, 0.005);
+            // #ЗАЧЕМ: ПЛАН №901. Длина транзиента 18мс.
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.03);
+            source.stop(startTime + 0.04);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);

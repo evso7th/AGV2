@@ -1,3 +1,4 @@
+
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
@@ -214,10 +215,10 @@ export class BlackGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: Сокращение длины транзиента до 12мс (ПЛАН №895).
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.012, 0.005);
+            // #ЗАЧЕМ: ПЛАН №901. Увеличение длины транзиента до 18мс для более четкой атаки.
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.03);
+            source.stop(startTime + 0.04);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);

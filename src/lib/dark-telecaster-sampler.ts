@@ -1,10 +1,11 @@
+
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.3 — "Transient Sharpening".
- * #ЧТО: ПЛАН №895 — Длина транзиента сокращена до 12мс.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.4 — "Transient Adjustment".
+ * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -216,10 +217,10 @@ export class DarkTelecasterSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        // #ЗАЧЕМ: Сокращение длины транзиента до 12мс (ПЛАН №895).
-        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.012, 0.005);
+        // #ЗАЧЕМ: ПЛАН №901. Длина транзиента 18мс.
+        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
         source.start(startTime);
-        source.stop(startTime + 0.03);
+        source.stop(startTime + 0.04);
         
         this.activeSources.add(source);
         source.onended = () => {

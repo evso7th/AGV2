@@ -118,14 +118,12 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     /**
-     * #ЗАЧЕМ: ПЛАН №893 — "Body Restoration". 
-     * #ЧТО: 1. Громкость увеличена для баланса с транзиентом.
-     *       2. Атака замедлена до 25мс для мягкого входа после щелчка.
-     *       3. Тон стал ярче (LPF 3200).
+     * #ЗАЧЕМ: ПЛАН №901 — "Final Rebalancing". 
+     * #ЧТО: Громкость снижена в 2 раза (0.42 -> 0.21) для прозрачности микса.
      */
     type: 'synth',
     name: 'Crystal Lead', 
-    volume: 0.42, 
+    volume: 0.21, 
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
@@ -142,12 +140,12 @@ export const V2_PRESETS = {
 
   guitar_muffLead: {
     /**
-     * #ЗАЧЕМ: ПЛАН №893 — Снижение громкости.
-     * #ЧТО: Громкость тела значительно поднята (0.08 -> 0.38).
+     * #ЗАЧЕМ: ПЛАН №901 — "Final Rebalancing".
+     * #ЧТО: Громкость снижена в 2 раза (0.38 -> 0.19).
      */
     type: 'synth',
     name: 'Muff Reform Guitar',
-    volume: 0.38, 
+    volume: 0.19, 
     osc: [
       { type: 'triangle', detune: 0, octave: 0, gain: 0.65 },
       { type: 'sine', detune: 0, octave: 0, gain: 0.35 },
