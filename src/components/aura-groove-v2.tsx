@@ -2,6 +2,7 @@
 /**
  * #ЗАЧЕМ: UI AuraGroove V3.4 — "Lab Navigation".
  * #ЧТО: ПЛАН №904 — Добавлена кнопка прямого перехода в Timbre Lab.
+ * #ОБНОВЛЕНО (ПЛАН №909): Добавлен выбор жанра Reggae для Fractal Engine.
  */
 'use client';
 
@@ -104,7 +105,7 @@ export function AuraGrooveV2({
   const composerControl = isFractalStyle && composerControlsInstruments;
 
   const genreList: Genre[] = isFractalStyle
-    ? ['ambient', 'trance', 'blues']
+    ? ['ambient', 'trance', 'blues', 'reggae']
     : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
@@ -122,7 +123,8 @@ export function AuraGrooveV2({
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
-    'blackAcoustic': 'Black Acoustic'
+    'blackAcoustic': 'Black Acoustic',
+    'reggae': 'Roots Reggae'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {
