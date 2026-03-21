@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -31,7 +32,9 @@ import {
   Save,
   Zap,
   Guitar,
-  Settings2
+  Settings2,
+  ZapOff,
+  Layers
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -47,6 +50,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -103,9 +107,19 @@ const INSTRUMENT_OPTIONS = [
     'organ_prog', 
     'synth', 
     'synth_ambient_pad_lush',
+    'synth_cave_pad',
     'theremin', 
     'mellotron', 
     'violin', 
+    'flute',
+    'ep_rhodes_warm',
+    'piano',
+    'bass_jazz_warm',
+    'bass_808',
+    'bass_ambient',
+    'bass_ambient_dark',
+    'bass_blues',
+    'bass_cs80',
     'none'
 ];
 
@@ -123,9 +137,16 @@ const DISPLAY_NAMES: Record<string, string> = {
     'organ_prog': 'Prog Rock Organ',
     'synth': 'Emerald Pad',
     'synth_ambient_pad_lush': 'Lush Pad',
+    'synth_cave_pad': 'Cave Pad (Dark)',
     'theremin': 'Vocal Theremin',
     'mellotron': 'Mellotron Strings',
     'violin': 'Solo Violin',
+    'flute': 'Silver Flute',
+    'ep_rhodes_warm': 'Rhodes Suitcase',
+    'piano': 'Acoustic Piano',
+    'bass_jazz_warm': 'Warm Jazz Bass',
+    'bass_808': '808 Sub Bass',
+    'bass_ambient': 'Ambient Sub',
     'none': 'No Override'
 };
 
@@ -591,7 +612,10 @@ export default function HypercubeDashboard() {
       };
     });
     const hints: InstrumentHints = {};
-    if (channelType === 'melody') hints.melody = axiom.preferredInstrument || 'organ_soft_jazz';
+    const tension = 0.5; // Audition tension
+    const resolvedInst = axiom.preferredInstrument ? (typeof axiom.preferredInstrument === 'string' ? axiom.preferredInstrument : axiom.preferredInstrument.mid) : 'organ_soft_jazz';
+
+    if (channelType === 'melody') hints.melody = resolvedInst;
     else if (channelType === 'bass') hints.bass = 'bass_jazz_warm';
     else if (channelType === 'drums') hints.drums = 'melancholic';
     else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
@@ -692,6 +716,19 @@ export default function HypercubeDashboard() {
         const ref = doc(db, 'heritage_axioms', editAxiomData.id);
         const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
         const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
+        
+        let finalPreferred = editAxiomData.preferredInstrument;
+        if (typeof finalPreferred === 'object' && finalPreferred !== null) {
+            // Clean object
+            finalPreferred = { 
+                low: finalPreferred.low === 'none' ? null : finalPreferred.low,
+                mid: finalPreferred.mid === 'none' ? null : finalPreferred.mid,
+                high: finalPreferred.high === 'none' ? null : finalPreferred.high
+            };
+        } else if (finalPreferred === 'none') {
+            finalPreferred = null;
+        }
+
         await updateDoc(ref, {
             role: editAxiomData.role,
             narrative: editAxiomData.narrative,
@@ -704,7 +741,7 @@ export default function HypercubeDashboard() {
             barOffset: editAxiomData.barOffset ?? 0,
             bars: editAxiomData.bars,
             noteCount: editAxiomData.noteCount,
-            preferredInstrument: editAxiomData.preferredInstrument || null
+            preferredInstrument: finalPreferred
         });
         toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
     } catch (e) { toast({ variant: "destructive", title: "Update Failed", description: String(e) }); }
@@ -913,7 +950,7 @@ export default function HypercubeDashboard() {
                                     <thead className="bg-muted/80 backdrop-blur-sm sticky top-[64px] z-20 border-b border-border/50">
                                       <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
                                         <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
-                                        <th className="p-3 font-black w-32">Timbre</th>
+                                        <th className="p-3 font-black w-64">Timbre Configuration</th>
                                         <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
                                         <th className="p-3 font-black w-40"><div className="space-y-1"><span>Struct (O/B/N)</span><Input placeholder="Offset..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterOffset} onChange={(e) => setAxiomFilterOffset(e.target.value)} /></div></th>
                                         <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
@@ -922,49 +959,120 @@ export default function HypercubeDashboard() {
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border/20">
-                                      {filteredLicks.map((ax: any) => (
-                                        <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                          <td className="p-3 pl-12">
-                                            {editingAxiomId === ax.id ? (
-                                              <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
-                                            ) : (
-                                              <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
-                                            )}
-                                          </td>
-                                          <td className="p-3">
-                                            {editingAxiomId === ax.id ? (
-                                              <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{i}</SelectItem>)}</SelectContent></Select>
-                                            ) : (
-                                              ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
-                                            )}
-                                          </td>
-                                          <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
-                                          <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
-                                          <td className="p-3">
-                                            {editingAxiomId === ax.id ? (
-                                              <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
-                                            ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
-                                          </td>
-                                          <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
-                                          <td className="p-3 text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                      {filteredLicks.map((ax: any) => {
+                                        const isMulti = ax.preferredInstrument && typeof ax.preferredInstrument === 'object';
+                                        return (
+                                          <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
+                                            <td className="p-3 pl-12">
                                               {editingAxiomId === ax.id ? (
-                                                <>
-                                                  <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                                  <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
-                                                </>
+                                                <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
                                               ) : (
-                                                <>
-                                                  <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
-                                                  <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
-                                                  <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
-                                                  <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                                </>
+                                                <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
                                               )}
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      ))}
+                                            </td>
+                                            <td className="p-3">
+                                              {editingAxiomId === ax.id ? (
+                                                <div className="space-y-2">
+                                                  <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-[9px] font-black uppercase opacity-50">Multi-Mode</span>
+                                                    <Switch 
+                                                      checked={typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null}
+                                                      onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                          const current = typeof editAxiomData.preferredInstrument === 'string' ? editAxiomData.preferredInstrument : 'none';
+                                                          setEditAxiomData({
+                                                            ...editAxiomData,
+                                                            preferredInstrument: { low: current, mid: current, high: current }
+                                                          });
+                                                        } else {
+                                                          const current = typeof editAxiomData.preferredInstrument === 'object' ? (editAxiomData.preferredInstrument.mid || 'none') : 'none';
+                                                          setEditAxiomData({
+                                                            ...editAxiomData,
+                                                            preferredInstrument: current
+                                                          });
+                                                        }
+                                                      }}
+                                                    />
+                                                  </div>
+                                                  {typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null ? (
+                                                    <div className="grid grid-cols-1 gap-1.5 p-2 bg-primary/5 rounded border border-primary/10">
+                                                      <div className="space-y-0.5">
+                                                        <span className="text-[8px] font-black uppercase text-blue-400">Low Energy (T &lt; 0.4)</span>
+                                                        <Select value={editAxiomData.preferredInstrument.low || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, low: v}})}>
+                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
+                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                      <div className="space-y-0.5">
+                                                        <span className="text-[8px] font-black uppercase text-purple-400">Steady Groove (0.4-0.75)</span>
+                                                        <Select value={editAxiomData.preferredInstrument.mid || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, mid: v}})}>
+                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
+                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                      <div className="space-y-0.5">
+                                                        <span className="text-[8px] font-black uppercase text-red-400">High Tension (T &gt; 0.75)</span>
+                                                        <Select value={editAxiomData.preferredInstrument.high || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, high: v}})}>
+                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
+                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                      </div>
+                                                    </div>
+                                                  ) : (
+                                                    <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
+                                                      <SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger>
+                                                      <SelectContent>
+                                                        <SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>
+                                                        {INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}
+                                                      </SelectContent>
+                                                    </Select>
+                                                  )}
+                                                </div>
+                                              ) : (
+                                                ax.preferredInstrument ? (
+                                                  typeof ax.preferredInstrument === 'string' ? (
+                                                    <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge>
+                                                  ) : (
+                                                    <div className="flex flex-col gap-1">
+                                                      <Badge variant="outline" className="bg-primary/5 text-[8px] uppercase font-black h-4 px-1 border-primary/20 flex gap-1 items-center"><Zap className="h-2 w-2" /> Dynamic Tri-Map</Badge>
+                                                      <div className="text-[8px] font-bold uppercase opacity-60 pl-1 border-l border-primary/20">
+                                                        L: {DISPLAY_NAMES[ax.preferredInstrument.low] || 'none'} | M: {DISPLAY_NAMES[ax.preferredInstrument.mid] || 'none'} | H: {DISPLAY_NAMES[ax.preferredInstrument.high] || 'none'}
+                                                      </div>
+                                                    </div>
+                                                  )
+                                                ) : (
+                                                  <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
+                                                )
+                                              )}
+                                            </td>
+                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
+                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
+                                            <td className="p-3">
+                                              {editingAxiomId === ax.id ? (
+                                                <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
+                                              ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
+                                            </td>
+                                            <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
+                                            <td className="p-3 text-right">
+                                              <div className="flex items-center justify-end gap-1">
+                                                {editingAxiomId === ax.id ? (
+                                                  <>
+                                                    <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
+                                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
                                     </tbody>
                                   </table>
                                 </div>

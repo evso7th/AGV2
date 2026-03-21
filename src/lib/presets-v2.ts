@@ -43,6 +43,25 @@ export const V2_PRESETS = {
     reverbMix: 0.3
   },
 
+  synth_cave_pad: {
+    /**
+     * #ЗАЧЕМ: ПЛАН №902. Новый темный пэд для глубоких пещер.
+     */
+    type: 'synth',
+    name: 'Abyssal Cave Pad',
+    osc: [
+      { type: 'sine', detune: -10, octave: -1, gain: 0.6 },
+      { type: 'sine', detune: 10, octave: 0, gain: 0.4 },
+      { type: 'triangle', detune: 0, octave: -2, gain: 0.3 }
+    ],
+    noise: { on: true, gain: 0.05 },
+    adsr: { a: 2.5, d: 3.0, s: 0.9, r: 5.0 },
+    lpf: { cutoff: 800, q: 0.7, mode: '24dB' },
+    chorus: { on: true, rate: 0.1, depth: 0.01, mix: 0.6 },
+    delay: { on: true, time: 0.8, fb: 0.45, hc: 1500, mix: 0.35 },
+    reverbMix: 0.5
+  },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ELECTRIC PIANO (Rhodes-style via Synth Engine)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -71,8 +90,8 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    /** #ЗАЧЕМ: ПЛАН №878. Снижение громкости на 20% (0.17 -> 0.136). */
-    volume: 0.136, 
+    /** #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.136 -> 0.068). */
+    volume: 0.068, 
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -83,11 +102,11 @@ export const V2_PRESETS = {
   
   organ_soft_jazz: {
     /**
-     * #ЗАЧЕМ: ПЛАН №892. Снижение громкости в 2 раза (0.08 -> 0.04).
+     * #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.04 -> 0.02).
      */
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.04, 
+    volume: 0.02, 
     drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
     lpf: 3200, 
     hpf: 80,
@@ -100,9 +119,9 @@ export const V2_PRESETS = {
 
   organ_jimmy_smith: {
     type: 'organ',
-    /** #ЗАЧЕМ: ПЛАН №878. Снижение громкости на 20% (0.16 -> 0.128). */
+    /** #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.128 -> 0.064). */
     name: 'Jimmy Smith Trio',
-    volume: 0.128, 
+    volume: 0.064, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 8000,
     hpf: 100,
@@ -112,15 +131,26 @@ export const V2_PRESETS = {
     reverbMix: 0.1
   },
 
+  organ_prog: {
+    /**
+     * #ЗАЧЕМ: ПЛАН №902. Новый агрессивный орган для роковых пиков.
+     */
+    type: 'organ',
+    name: 'Prog Rock B3',
+    volume: 0.07,
+    drawbars: [8, 8, 8, 8, 4, 2, 0, 0, 0],
+    lpf: 9000,
+    adsr: { a: 0.004, d: 0.05, s: 0.98, r: 0.8 },
+    keyClick: 0.008,
+    leslie: { mode: 'fast', slow: 0.8, fast: 7.2, accel: 0.4 },
+    reverbMix: 0.12
+  },
+
   // ═══════════════════════════════════════════════════════════════════════════
   // GUITAR (Full Pipeline Compatible)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №901 — "Final Rebalancing". 
-     * #ЧТО: Громкость снижена в 2 раза (0.42 -> 0.21) для прозрачности микса.
-     */
     type: 'synth',
     name: 'Crystal Lead', 
     volume: 0.21, 
@@ -139,10 +169,6 @@ export const V2_PRESETS = {
   },
 
   guitar_muffLead: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №901 — "Final Rebalancing".
-     * #ЧТО: Громкость снижена в 2 раза (0.38 -> 0.19).
-     */
     type: 'synth',
     name: 'Muff Reform Guitar',
     volume: 0.19, 
