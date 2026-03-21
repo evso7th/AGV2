@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.3 — "Sonic Minimalism".
- * #ЧТО: ПЛАН №872 — Исключение Rhodes из списков выбора и удаление Piano из гармонии.
+ * #ЗАЧЕМ: UI AuraGroove V3.4 — "Lab Navigation".
+ * #ЧТО: ПЛАН №904 — Добавлена кнопка прямого перехода в Timbre Lab.
  */
 'use client';
 
@@ -88,7 +88,6 @@ export function AuraGrooveV2({
 
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   
-  // #ЗАЧЕМ: Исключение Rhodes из списков выбора (ПЛАН №872).
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => 
     V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && 
     k !== 'ep_rhodes_warm'
@@ -97,7 +96,6 @@ export function AuraGrooveV2({
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
 
-  // #ЗАЧЕМ: Удаление Piano из гармонии (ПЛАН №872).
   const harmonyInstrumentList: ('guitarChords' | 'flute' | 'violin' | 'none')[] = ['guitarChords', 'violin', 'none'];
   
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
@@ -167,6 +165,7 @@ export function AuraGrooveV2({
             <h1 className="text-lg font-bold text-primary">AuraGroove</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/timbre-lab')} aria-label="Open Timbre Lab"><Settings2 className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} aria-label="Open Dashboard"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
             
@@ -175,14 +174,14 @@ export function AuraGrooveV2({
                 <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
                     <DialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="Open Studio Console">
-                            <Settings2 className="h-5 w-5" />
+                            <SlidersHorizontal className="h-5 w-5" />
                         </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-none w-screen h-screen m-0 p-0 border-0 rounded-none bg-background/95 backdrop-blur-3xl flex flex-col z-[100]">
                         <DialogHeader className="flex-shrink-0 p-6 border-b border-primary/10 flex flex-row items-center justify-between space-y-0 bg-card/50">
                             <div>
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tighter text-primary flex items-center gap-3">
-                                    <Settings2 className="h-8 w-8" /> Grand Studio Console
+                                    <SlidersHorizontal className="h-8 w-8" /> Grand Studio Console
                                 </DialogTitle>
                                 <DialogDescription className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-70">Ensemble Calibration & Channel Strip v3.3</DialogDescription>
                             </div>

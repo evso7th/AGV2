@@ -34,7 +34,8 @@ import {
   Guitar,
   Settings2,
   ZapOff,
-  Layers
+  Layers,
+  FlaskConical
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -400,7 +401,7 @@ export default function HypercubeDashboard() {
                     role: role,
                     id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
                     compositionId: compId,
-                    genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
+                    genre: Array.isArray(ax.genre) ? ax.genre : (data.genre ? [data.genre] : []),
                     mood: moods,
                     commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
                     vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
@@ -719,7 +720,6 @@ export default function HypercubeDashboard() {
         
         let finalPreferred = editAxiomData.preferredInstrument;
         if (typeof finalPreferred === 'object' && finalPreferred !== null) {
-            // Clean object
             finalPreferred = { 
                 low: finalPreferred.low === 'none' ? null : finalPreferred.low,
                 mid: finalPreferred.mid === 'none' ? null : finalPreferred.mid,
@@ -818,6 +818,7 @@ export default function HypercubeDashboard() {
             <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push('/timbre-lab')} className="gap-2 text-accent border-accent/20 hover:bg-accent/5"><FlaskConical className="h-4 w-4" /> Timbre Lab</Button>
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"><Square className="h-4 w-4" /> Stop Audition</Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
