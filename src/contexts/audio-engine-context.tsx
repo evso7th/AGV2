@@ -220,7 +220,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
   }, [isInitialized, getEffectivePreset]);
 
-  // ПЛАН №914: Подписка на коллекцию наследия
   useEffect(() => {
       if (!db) return;
       const unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
