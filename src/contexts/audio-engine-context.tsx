@@ -1,7 +1,6 @@
 /**
- * #ЗАЧЕМ: Audio Engine Context V30.0 — "Final Lazy Load Precision".
- * #ЧТО: ПЛАН №888 — Истинное разделение на уровни загрузки.
- *       Level 1 теперь грузит только ~70 файлов (вместо 727).
+ * #ЗАЧЕМ: Audio Engine Context V31.1 — "Bug Fix: Recording Restoration".
+ * #ЧТО: Исправлена ошибка ReferenceError путем восстановления функций startRecording и stopRecording.
  */
 'use client';
 
@@ -21,6 +20,7 @@ import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
+import { buildMultiInstrument, type InstrumentAPI } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
@@ -76,6 +76,7 @@ interface AudioEngineContextType {
   getWorker: () => Worker | null;
   playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => void;
   stopAllSounds: () => void;
+  previewPreset: (preset: any, type: string) => Promise<void>;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -271,17 +272,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
-        // #ЗАЧЕМ: Level 1 — Истинное Критическое Ядро (ПЛАН №888).
-        // #ЧТО: Play разблокируется только после загрузки самого необходимого.
         await Promise.all([
             drumMachineRef.current.init(true), 
-            blackGuitarSamplerRef.current.init(true), // Только MF слой и RR1
+            blackGuitarSamplerRef.current.init(true),
             telecasterSamplerRef.current.init(), 
             accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
             pianoAccompanimentManagerRef.current.init(),
-            harmonyManagerRef.current.init(true) // Только базовые аккорды (RR1)
+            harmonyManagerRef.current.init(true)
         ]);
         
         if (!workerRef.current) {
@@ -310,14 +309,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         initializationInFlightRef.current = false;
 
-        // #ЗАЧЕМ: Level 2 — Расширение палитры (5 сек).
         setTimeout(() => {
-            drumMachineRef.current?.init(false); // Подгружаем полный кит
-            blackGuitarSamplerRef.current?.init(false); // Подгружаем P/F слои и RR2-4
-            harmonyManagerRef.current?.init(false); // Подгружаем все аккорды и скрипки
+            drumMachineRef.current?.init(false);
+            blackGuitarSamplerRef.current?.init(false);
+            harmonyManagerRef.current?.init(false);
         }, 5000);
 
-        // #ЗАЧЕМ: Level 3 — Тяжелые сэмплеры и текстуры (10 сек).
         setTimeout(() => {
             sparklePlayerRef.current?.init();
             sfxSynthManagerRef.current?.init();
@@ -332,30 +329,53 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
 
+  const previewPreset = useCallback(async (preset: any, type: string) => {
+      if (!isInitialized) await initialize();
+      const ctx = audioContextRef.current!;
+      const previewInst = await buildMultiInstrument(ctx, { type, preset, output: masterGainNodeRef.current! });
+      
+      const now = ctx.currentTime + 0.1;
+      const sequence = [
+          { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 2.0 },
+          { m: 65, t: 3.0, d: 0.3 }, { m: 64, t: 3.3, d: 0.3 }, { m: 62, t: 3.6, d: 0.4 },
+          { m: 60, t: 4.0, d: 4.0 } 
+      ];
+
+      sequence.forEach(n => {
+          previewInst.noteOn(n.m, now + n.t, 0.8, n.d);
+      });
+
+      setTimeout(() => previewInst.disconnect(), 10000);
+  }, [isInitialized, initialize]);
+
   const startRecording = useCallback(() => {
-    if (!isInitialized || !recDestRef.current) return;
-    try {
-        recordedChunksRef.current = [];
-        const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType: 'audio/webm' });
-        recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-        recorder.onstop = () => {
-            const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.style.display = 'none'; a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString().replace(/[:.]/g, '-')}.webm`;
-            document.body.appendChild(a); a.click();
-            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-            toast({ title: "Recording Saved" });
-        };
-        recorder.start(); mediaRecorderRef.current = recorder; setIsRecording(true);
-    } catch (e) { toast({ variant: "destructive", title: "Recording Error" }); }
-  }, [isInitialized, toast]);
+    if (!recDestRef.current || isRecording) return;
+    recordedChunksRef.current = [];
+    const mediaRecorder = new MediaRecorder(recDestRef.current.stream);
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`;
+      a.click();
+    };
+    mediaRecorder.start();
+    mediaRecorderRef.current = mediaRecorder;
+    setIsRecording(true);
+    toast({ title: "Recording Started", description: "Capturing high-fidelity stream..." });
+  }, [isRecording, toast]);
 
   const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-        mediaRecorderRef.current.stop();
-        setIsRecording(false);
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      toast({ title: "Recording Stopped", description: "Saving session to downloads." });
     }
-  }, []);
+  }, [isRecording, toast]);
 
   return (
     <AudioEngineContext.Provider value={{
@@ -432,7 +452,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         },
         stopAllSounds,
         startRecording,
-        stopRecording
+        stopRecording,
+        previewPreset
     }}>
       {children}
     </AudioEngineContext.Provider>
