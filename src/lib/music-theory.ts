@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V3.8 — "Absolute Axiom Sovereignty".
- * #ОБНОВЛЕНО (ПЛАН №918): Установлен абсолютный приоритет для явно указанных инструментов Аксиом.
+ * @fileOverview Universal Music Theory Utilities V3.9 — "The Clean Fidelity Standard".
+ * #ОБНОВЛЕНО (ПЛАН №919): Абсолютная власть Аксиом. Если роль мелодия — канал мелодия.
  */
 
 import type { 
@@ -43,14 +43,14 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ЧТО: ПЛАН №918. Если инструмент определен явно (ID), он возвращается сразу.
+ * #ЧТО: ПЛАН №919. Полное подчинение явному выбору пользователя.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
     
     let targetHint = hint;
 
-    // 1. Логика Multi-Timbre (Аксиома как Хамелеон)
+    // 1. Логика Multi-Timbre
     if (typeof hint === 'object' && !Array.isArray(hint)) {
         if (tension < 0.4) targetHint = hint.low || hint.mid || hint.high;
         else if (tension < 0.75) targetHint = hint.mid || hint.low || hint.high;
@@ -61,7 +61,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     
     const clean = String(targetHint).toLowerCase().replace(/[\s_]/g, '');
 
-    // 2. АБСОЛЮТНЫЙ ПРИОРИТЕТ: Прямые ID пресетов (V2 и Bass)
+    // 2. ПРИОРИТЕТ АВТОРИТЕТА: ID пресетов
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedV2) return matchedV2;
@@ -70,21 +70,22 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
-    // 3. Явные маппинги для Аксиом (чтобы не перехватила автоматика)
-    if (clean === 'shineon') return 'guitar_shineOn';
-    if (clean === 'mufflead') return 'guitar_muffLead';
-    if (clean === 'blackacoustic' || clean === 'black') return 'blackAcoustic';
-    if (clean === 'cavepad' || clean === 'cave') return 'synth_cave_pad';
-    if (clean === 'cs80') return 'cs80';
+    // 3. СТРОГИЙ МАППИНГ РОЛЕЙ
+    if (part === 'melody') {
+        if (clean.includes('acoustic')) return 'blackAcoustic';
+        if (clean.includes('tele')) return 'telecaster';
+        if (clean.includes('shine')) return 'guitar_shineOn';
+        if (clean.includes('muff')) return 'guitar_muffLead';
+        if (clean.includes('cs80')) return 'cs80';
+    }
 
-    // 4. ТЕРРИТОРИЯ АВТОМАТИКИ (срабатывает только если не найден ID выше)
+    // 4. ТЕРРИТОРИЯ АВТОМАТИКИ (только если нет совпадения выше)
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
 
-    // 5. Fallback маппинг
     if (part === 'bass') {
         return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     }

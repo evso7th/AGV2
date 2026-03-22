@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Центральная фабрика инструментов V4.9 — "Spatial Immersion".
- * #ЧТО: ПЛАН №905 — Внедрена поддержка панорамирования для всех типов синтезаторов.
+ * #ЗАЧЕМ: Центральная фабрика инструментов V5.0 — "Absolute Linear Purity".
+ * #ЧТО: ПЛАН №919 — Внедрен безусловный байпас дисторшна при низком гейне.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -76,6 +76,14 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
 };
 
 // ───── DISTORTION CURVES ─────
+
+const makeLinearCurve = (n = 8192) => {
+    const c = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        c[i] = (i / (n - 1)) * 2 - 1;
+    }
+    return c;
+};
 
 const makeSoftClip = (amount = 0.5, n = 8192) => {
     const c = new Float32Array(n);
@@ -420,7 +428,17 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const guitarIn = ctx.createGain();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
-    shaper.curve = makeVintageDistortion(50);
+    
+    // #ЗАЧЕМ: ПЛАН №919. Динамический выбор кривой.
+    const updateShaperCurve = (amount: number, type?: string) => {
+        if (amount < 0.05) {
+            shaper.curve = makeLinearCurve();
+        } else {
+            shaper.curve = type === 'muff' ? makeMuff(amount) : makeVintageDistortion(amount * 100);
+        }
+    };
+    updateShaperCurve(currentPreset.drive?.amount || 0, currentPreset.drive?.type);
+
     const phaser = makePhaser(ctx, currentPreset.phaser || {});
     const delay = makeDelay(ctx, currentPreset.delayA || {});
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.2;
@@ -465,7 +483,12 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         },
         allNotesOff: () => { activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); },
         disconnect: () => { phaser.stop(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, phaser.input, delay.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
-        setPreset: (p: any) => { currentPreset = p; shaper.curve = p.drive?.type === 'muff' ? makeMuff(p.drive.amount) : makeVintageDistortion((p.drive?.amount || 0.5) * 100); phaser.setMix(p.phaser?.on ? 0.2 : 0); cachedWave = null; }
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            updateShaperCurve(p.drive?.amount || 0, p.drive?.type);
+            phaser.setMix(p.phaser?.on ? 0.2 : 0); 
+            cachedWave = null; 
+        }
     };
 };
 

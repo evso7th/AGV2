@@ -166,33 +166,40 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    type: 'guitar', // #ЗАЧЕМ: ПЛАН №907. Доступ к узлу Distortion.
-    name: 'Crystal Lead', 
-    volume: 0.21, 
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600 },
-    drive: { type: 'soft', amount: 0.02 }, // #ЗАЧЕМ: ПЛАН №910. Убираем дисторшн почти до 0.
-    comp: { threshold: -18, ratio: 3, makeup: 3 },
-    post: { lpf: 5200 },
-    adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
-    chorus: { on: true, mix: 0.12 },
-    delayA: { time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
-    reverbMix: 0.22
+    /**
+     * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
+     * #ЧТО: Drive установлен в 0.0, убраны все искажающие настройки.
+     */
+    type: 'guitar',
+    name: 'Crystal Clean Lead', 
+    volume: 0.25, 
+    osc: { width: 0.46, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.15 },
+    pickup: { cutoff: 4500 },
+    drive: { type: 'soft', amount: 0.0 }, 
+    comp: { threshold: -18, ratio: 2.5, attack: 0.005, release: 0.2, makeup: 1.5 },
+    post: { lpf: 6500 },
+    adsr: { a: 0.035, d: 0.5, s: 0.8, r: 1.5 }, 
+    chorus: { on: true, mix: 0.1 },
+    delayA: { time: 0.45, fb: 0.2, hc: 4000, mix: 0.12 },
+    reverbMix: 0.15
   },
 
   guitar_muffLead: {
-    type: 'guitar', // #ЗАЧЕМ: ПЛАН №907. Доступ к узлу Distortion.
-    name: 'Muff Reform Guitar',
-    volume: 0.19, 
-    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
-    pickup: { cutoff: 2800 },
-    drive: { type: 'muff', amount: 0.02 }, // #ЗАЧЕМ: ПЛАН №910. Убираем дисторшн почти до 0.
-    comp: { threshold: -20, ratio: 4, attack: 0.008, release: 0.15, makeup: 4 },
-    post: { lpf: 4500 },
-    adsr: { a: 0.025, d: 0.45, s: 0.75, r: 1.4 }, 
-    chorus: { on: true, mix: 0.12 },
-    delayA: { time: 0.45, fb: 0.22, hc: 3000, mix: 0.15 },
-    reverbMix: 0.25
+    /**
+     * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
+     */
+    type: 'guitar',
+    name: 'Pure Reform Guitar',
+    volume: 0.22, 
+    osc: { width: 0.5, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
+    pickup: { cutoff: 3200 },
+    drive: { type: 'muff', amount: 0.0 }, 
+    comp: { threshold: -20, ratio: 3, attack: 0.008, release: 0.15, makeup: 1.5 },
+    post: { lpf: 5500 },
+    adsr: { a: 0.035, d: 0.5, s: 0.8, r: 1.5 }, 
+    chorus: { on: true, mix: 0.1 },
+    delayA: { time: 0.45, fb: 0.2, hc: 4000, mix: 0.12 },
+    reverbMix: 0.18
   },
 
   reggae_guitar: {
