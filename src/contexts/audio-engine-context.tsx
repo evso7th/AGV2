@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.2 — "Thread Safety Fix".
- * #ЧТО: ПЛАН №918 — Деферированное обновление состояния для устранения ошибок React при рендеринге.
+ * #ЗАЧЕМ: Audio Engine Context V32.3 — "Atmospheric Routing Fix".
+ * #ЧТО: ПЛАН №920 — Реализована передача событий 'sparkle' из общего массива в SparklePlayer.
  */
 'use client';
 
@@ -35,8 +35,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.45,           
   accompaniment: 0.30,    
   drums: 0.75,            
-  sparkles: 0.45, 
-  sfx: 0.55, 
+  sparkles: 0.70, // #ЗАЧЕМ: ПЛАН №920. Поднято с 0.45 для отчетливости.
+  sfx: 0.80,      // #ЗАЧЕМ: ПЛАН №920. Поднято с 0.55 для атмосферности.
   harmony: 0.1425,        
   pianoAccompaniment: 0.15, 
 };
@@ -200,7 +200,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
           const parsed = saved ? JSON.parse(saved) : {};
           
-          // #ЗАЧЕМ: ПЛАН №918. Деферированное обновление для устранения ошибки React
           setTimeout(() => {
               setTimbreOverrides(parsed);
               timbreOverridesRef.current = parsed;
@@ -285,12 +284,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
+    const beatDuration = 60 / tempo;
+
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
     if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo);
+    
+    // #ЗАЧЕМ: ПЛАН №920. Роутинг спарклов из основного потока событий.
+    if (sparklePlayerRef.current) {
+        const sparkles = events.filter(e => e.type === 'sparkle');
+        sparkles.forEach(s => {
+            const playTime = barStartTime + (s.time * beatDuration);
+            sparklePlayerRef.current!.playRandomSparkle(playTime, s.params?.genre, s.params?.mood, s.params?.category);
+        });
+    }
+
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
@@ -347,7 +358,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             melodyManagerV2Ref.current.init(), 
             bassManagerV2Ref.current.init(), 
             pianoAccompanimentManagerRef.current.init(),
-            harmonyManagerRef.current.init(true)
+            harmonyManagerRef.current.init(true),
+            sparklePlayerRef.current.init(5), // #ЗАЧЕМ: Загружаем часть спарклов сразу
+            sfxSynthManagerRef.current.init(5)  // #ЗАЧЕМ: Загружаем часть SFX сразу
         ]);
         
         if (!workerRef.current) {

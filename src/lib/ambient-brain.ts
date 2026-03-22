@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V59.0 — "Spatial Atlas Implementation".
- * #ЗАЧЕМ: ПЛАН №905. Внедрение динамической панорамы: "блуждающие" пэды и случайные эффекты.
+ * @fileOverview Ambient Brain V60.0 — "Atmospheric Activation".
+ * #ЗАЧЕМ: ПЛАН №920. Повышение активности спарклов, SFX и текстурной перкуссии для всех настроений.
  */
 
 import type {
@@ -152,7 +152,6 @@ export class AmbientBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: ПЛАН №905. Плавное «блуждание» пэда между каналами.
         const swirlPan = Math.sin(epoch * 0.2) * 0.4;
 
         if (isBridge) {
@@ -222,7 +221,7 @@ export class AmbientBrain {
             }
             if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
-                harEvents.forEach(e => e.pan = 0.25); // Harmony slightly right
+                harEvents.forEach(e => e.pan = 0.25);
                 events.push(...harEvents);
             }
         }
@@ -241,13 +240,13 @@ export class AmbientBrain {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
             }
         }
-        melodyEvents.forEach(e => e.pan = -0.15); // Melody slightly left
+        melodyEvents.forEach(e => e.pan = -0.15); 
         events.push(...melodyEvents);
 
         let pianoInfo = { style: 'none', count: 0 };
         if (hints.pianoAccompaniment) {
             const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
-            p.events.forEach(e => e.pan = 0.2); // Rhodes slightly right
+            p.events.forEach(e => e.pan = 0.2); 
             events.push(...p.events);
             pianoInfo = { style: p.style, count: p.events.length };
         }
@@ -261,8 +260,9 @@ export class AmbientBrain {
             }
         }
 
-        if (hints.sparkles && this.random.nextInt(100) < 60) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
-        if (hints.sfx && this.random.nextInt(100) < 20) events.push(...this.renderSfx(localTension));
+        // #ЗАЧЕМ: ПЛАН №920. Повышенная плотность антуража.
+        if (hints.sparkles && this.random.nextInt(100) < 90) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
+        if (hints.sfx && this.random.nextInt(100) < 45) events.push(...this.renderSfx(localTension));
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
@@ -409,7 +409,7 @@ export class AmbientBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -425,9 +425,8 @@ export class AmbientBrain {
             else if (sub === 'perc') type = 'drum_perc-001';
 
             barNotes.forEach(n => {
-                // #ЗАЧЕМ: ПЛАН №905. Пространственная пробежка для томов.
                 let pan = 0;
-                if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.5 : 0.5;
+                if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
 
                 events.push({
                     type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan
@@ -450,13 +449,19 @@ export class AmbientBrain {
     private renderTexturalPercussion(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
-        if (this.random.next() < 0.2 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-        if (this.random.next() < 0.7) {
+        
+        // #ЗАЧЕМ: ПЛАН №920. Повышенная активность перкуссии (2-3 события на такт).
+        if (this.random.next() < 0.4 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        
+        // Основная перкуссия
+        const hits = 2 + this.random.nextInt(2);
+        for(let i=0; i<hits; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
-            // #ЗАЧЕМ: Случайная панорама для перкуссии.
             const pan = (Math.random() * 1.4) - 0.7;
-            events.push({ type: perc as any, note: 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 1.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
+            const time = (this.random.nextInt(12) * TICK_TO_BEAT);
+            events.push({ type: perc as any, note: 48, time, duration: 1.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
         }
+        
         return events;
     }
 
@@ -558,15 +563,13 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        // #ЗАЧЕМ: ПЛАН №905. Случайная панорама для «искр».
         const pan = (Math.random() * 1.8) - 0.9;
-        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
+        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №905. Случайная панорама для SFX.
         const pan = (Math.random() * 1.6) - 0.8;
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan, params: { mood: this.mood, genre: this.genre } }];
+        return [{ type: 'sfx', note: 60, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {

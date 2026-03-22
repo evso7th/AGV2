@@ -116,10 +116,12 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
 };
 
+// #ЗАЧЕМ: ПЛАН №920. Добавлены обязательные образцы перкуссии в ядро загрузки.
 const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
-    'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2'
+    'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2',
+    'perc-001', 'perc-005', 'bongo_pvc-tube-01', 'Bell_-_Ambient'
 ];
 
 type Sampler = {
@@ -153,7 +155,6 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         const gainNode = audioContext.createGain();
         gainNode.gain.value = velocity;
         
-        // #ЗАЧЕМ: ПЛАН №905. Панорамирование каждого удара барабана.
         const panner = audioContext.createStereoPanner();
         panner.pan.value = pan;
 
@@ -213,11 +214,12 @@ export class DrumMachine {
             if (!this.sampler.buffers.has(sampleName)) continue;
             const absoluteTime = barStartTime + (event.time * beatDuration);
             if (!isFinite(absoluteTime)) continue;
+            
+            // #ЗАЧЕМ: ПЛАН №920. Повышенная громкость перкуссии.
             let velocity = event.weight;
-            if (eventType.startsWith('perc-')) velocity *= 0.6;
+            if (eventType.startsWith('perc-')) velocity *= 0.8;
             else if (eventType.includes('ride')) velocity *= 0.7;
             
-            // #ЗАЧЕМ: Трансляция панорамы из события.
             const pan = event.pan || 0;
             this.sampler.triggerAttack(sampleName, absoluteTime, velocity, pan);
         }
