@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.3 — "Atmospheric Routing Fix".
- * #ЧТО: ПЛАН №920 — Реализована передача событий 'sparkle' из общего массива в SparklePlayer.
+ * #ЗАЧЕМ: Audio Engine Context V32.4 — "Atmospheric Balance".
+ * #ЧТО: ПЛАН №922 — Громкость спарклов и SFX снижена в 3 раза для деликатности фона.
  */
 'use client';
 
@@ -35,8 +35,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.45,           
   accompaniment: 0.30,    
   drums: 0.75,            
-  sparkles: 0.70, // #ЗАЧЕМ: ПЛАН №920. Поднято с 0.45 для отчетливости.
-  sfx: 0.80,      // #ЗАЧЕМ: ПЛАН №920. Поднято с 0.55 для атмосферности.
+  sparkles: 0.23, // #ЗАЧЕМ: ПЛАН №922. Снижено в 3 раза для деликатности фона.
+  sfx: 0.27,      // #ЗАЧЕМ: ПЛАН №922. Снижено в 3 раза для деликатности фона.
   harmony: 0.1425,        
   pianoAccompaniment: 0.15, 
 };
@@ -293,7 +293,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
     if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo);
     
-    // #ЗАЧЕМ: ПЛАН №920. Роутинг спарклов из основного потока событий.
     if (sparklePlayerRef.current) {
         const sparkles = events.filter(e => e.type === 'sparkle');
         sparkles.forEach(s => {
@@ -359,8 +358,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             bassManagerV2Ref.current.init(), 
             pianoAccompanimentManagerRef.current.init(),
             harmonyManagerRef.current.init(true),
-            sparklePlayerRef.current.init(5), // #ЗАЧЕМ: Загружаем часть спарклов сразу
-            sfxSynthManagerRef.current.init(5)  // #ЗАЧЕМ: Загружаем часть SFX сразу
+            sparklePlayerRef.current.init(5),
+            sfxSynthManagerRef.current.init(5)
         ]);
         
         if (!workerRef.current) {
