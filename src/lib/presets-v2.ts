@@ -168,11 +168,11 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     /**
      * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
-     * #ЧТО: Drive установлен в 0.0, убраны все искажающие настройки.
+     * #ЧТО: ПЛАН №921. Снижение громкости в 2 раза (0.25 -> 0.125).
      */
     type: 'guitar',
     name: 'Crystal Clean Lead', 
-    volume: 0.25, 
+    volume: 0.125, 
     osc: { width: 0.46, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.15 },
     pickup: { cutoff: 4500 },
     drive: { type: 'soft', amount: 0.0 }, 
@@ -187,10 +187,11 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     /**
      * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
+     * #ЧТО: ПЛАН №921. Снижение громкости в 2 раза (0.22 -> 0.11).
      */
     type: 'guitar',
     name: 'Pure Reform Guitar',
-    volume: 0.22, 
+    volume: 0.11, 
     osc: { width: 0.5, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.0 }, 
