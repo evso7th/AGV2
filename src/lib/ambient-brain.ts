@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Ambient Brain V60.0 — "Atmospheric Activation".
- * #ЗАЧЕМ: ПЛАН №920. Повышение активности спарклов, SFX и текстурной перкуссии для всех настроений.
+ * @fileOverview Ambient Brain V61.0 — "Atmospheric Calming & Drum Unification".
+ * #ЗАЧЕМ: ПЛАН №923. Снижение плотности атмосферы и унификация ролей ударных.
  */
 
 import type {
@@ -260,9 +259,9 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: ПЛАН №920. Повышенная плотность антуража.
-        if (hints.sparkles && this.random.nextInt(100) < 90) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
-        if (hints.sfx && this.random.nextInt(100) < 45) events.push(...this.renderSfx(localTension));
+        // #ЗАЧЕМ: ПЛАН №923. Снижение плотности антуража.
+        if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
+        if (hints.sfx && this.random.nextInt(100) < 15) events.push(...this.renderSfx(localTension));
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
@@ -409,27 +408,32 @@ export class AmbientBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
 
         this.currentDrumAxioms.forEach(ax => {
             const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-            const sub = ax.role.split(' ')[1] || 'kick';
-            let type: any = 'drum_kick_reso';
-            if (sub === 'snare') type = 'drum_snare';
-            else if (sub === 'hat') type = 'drum_25693__walter_odington__hackney-hat-1';
-            else if (sub === 'tom') type = 'drum_Sonor_Classix_Low_Tom';
-            else if (sub === 'ride') type = 'drum_ride_wetter';
-            else if (sub === 'perc') type = 'drum_perc-001';
-
+            
+            // #ЗАЧЕМ: ПЛАН №923. Тональное воспроизведение барабанов.
             barNotes.forEach(n => {
                 let pan = 0;
-                if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
+                const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
+                
+                // Динамическая панорама для томов
+                if ([41, 43, 45].includes(midiNote)) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
 
                 events.push({
-                    type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan
+                    type: 'drums', 
+                    note: midiNote, 
+                    time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    duration: 0.1, 
+                    weight: 0.8, 
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato', 
+                    pan
                 });
             });
         });
@@ -450,10 +454,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
         
-        // #ЗАЧЕМ: ПЛАН №920. Повышенная активность перкуссии (2-3 события на такт).
         if (this.random.next() < 0.4 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         
-        // Основная перкуссия
         const hits = 2 + this.random.nextInt(2);
         for(let i=0; i<hits; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];

@@ -169,8 +169,7 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 };
 
 const ROLE_OPTIONS = [
-    'melody', 'accomp', 'bass',
-    'drums', 'drums kick', 'drums snare', 'drums hat', 'drums tom', 'drums ride', 'drums crash', 'drums perc'
+    'melody', 'accomp', 'bass', 'drums'
 ];
 
 function MultiSelector<T extends string>({
@@ -442,18 +441,16 @@ export default function HypercubeDashboard() {
                     const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
                     const density = noteCount / calculatedBars;
                     let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
-                    const drumComponents = [
-                        { kw: 'kick', role: 'drums kick' }, { kw: 'snare', role: 'drums snare' }, { kw: 'hat', role: 'drums hat' },
-                        { kw: 'tom', role: 'drums tom' }, { kw: 'ride', role: 'drums ride' }, { kw: 'crash', role: 'drums crash' },
-                        { kw: 'rim', role: 'drums perc' }, { kw: 'clap', role: 'drums perc' }, { kw: 'cymbal', role: 'drums ride' },
-                        { kw: 'perc', role: 'drums perc' }, { kw: 'shaker', role: 'drums perc' }, { kw: 'tamb', role: 'drums perc' }
-                    ];
-                    const matchedDrum = drumComponents.find(c => lowerName.includes(c.kw));
-                    if (matchedDrum) role = matchedDrum.role;
-                    else if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) role = 'drums';
-                    else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) role = 'bass';
-                    else if (density > 10 || noteCount > 500) role = 'accomp piano';
-                    else role = 'melody';
+                    
+                    if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) {
+                        role = 'drums';
+                    } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
+                        role = 'bass';
+                    } else if (density > 10 || noteCount > 500) {
+                        role = 'accomp piano';
+                    } else {
+                        role = 'melody';
+                    }
                     
                     const instName = track.instrument?.name || track.name || 'Unnamed Instrument';
                     flattened.push(processAxiom({ 
@@ -578,15 +575,7 @@ export default function HypercubeDashboard() {
   const mapAxiomToChannel = (rawRole: string): string => {
       const role = rawRole.toLowerCase();
       if (role === 'bass') return 'bass';
-      if (role.startsWith('drums')) {
-          const sub = role.split(' ')[1] || 'kick';
-          if (sub === 'kick') return 'drum_kick_reso';
-          if (sub === 'snare') return 'drum_snare';
-          if (sub === 'hat') return 'drum_25693__walter_odington__hackney-hat-1';
-          if (sub === 'tom') return 'drum_Sonor_Classix_Low_Tom';
-          if (sub === 'ride' || sub === 'crash') return 'drum_ride_wetter';
-          return 'drum_perc-001';
-      }
+      if (role.startsWith('drums') || role.startsWith('drum')) return 'drums';
       if (role.includes('piano')) return 'pianoAccompaniment';
       if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) return 'harmony';
       return 'melody';

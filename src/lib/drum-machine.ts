@@ -116,7 +116,6 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
 };
 
-// #ЗАЧЕМ: ПЛАН №920. Добавлены обязательные образцы перкуссии в ядро загрузки.
 const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
@@ -203,22 +202,42 @@ export class DrumMachine {
         }
     }
 
+    /**
+     * #ЗАЧЕМ: Унифицированный маппинг MIDI-нот для канала 'drums'.
+     */
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
         if (!this.sampler || !this.isInitialized) return;
         const beatDuration = 60 / tempo;
         for (const event of score) {
             const eventType = Array.isArray(event.type) ? event.type[0] : event.type;
             if (typeof eventType !== 'string') continue;
+            
             let sampleName = eventType;
-            if (!this.sampler.buffers.has(sampleName)) sampleName = eventType.replace('drum_', '');
+            
+            // #ЗАЧЕМ: ПЛАН №923. Маппинг MIDI-нот в сэмплы для общего канала 'drums'.
+            if (eventType === 'drums' || eventType === 'drum') {
+                const n = event.note;
+                if (n === 36) sampleName = 'drum_kick_reso';
+                else if (n === 38) sampleName = 'drum_snare';
+                else if (n === 42) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
+                else if (n === 46) sampleName = 'drum_open_hh_top2';
+                else if (n === 41) sampleName = 'drum_Sonor_Classix_Low_Tom';
+                else if (n === 43) sampleName = 'drum_Sonor_Classix_Mid_Tom';
+                else if (n === 45) sampleName = 'drum_Sonor_Classix_High_Tom';
+                else if (n === 49) sampleName = 'drum_crash2';
+                else if (n === 51) sampleName = 'drum_ride_wetter';
+                else sampleName = 'drum_perc-001';
+            }
+
+            if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) continue;
+            
             const absoluteTime = barStartTime + (event.time * beatDuration);
             if (!isFinite(absoluteTime)) continue;
             
-            // #ЗАЧЕМ: ПЛАН №920. Повышенная громкость перкуссии.
             let velocity = event.weight;
-            if (eventType.startsWith('perc-')) velocity *= 0.8;
-            else if (eventType.includes('ride')) velocity *= 0.7;
+            if (sampleName.startsWith('perc-')) velocity *= 0.8;
+            else if (sampleName.includes('ride')) velocity *= 0.7;
             
             const pan = event.pan || 0;
             this.sampler.triggerAttack(sampleName, absoluteTime, velocity, pan);
