@@ -35,7 +35,8 @@ import {
   Settings2,
   ZapOff,
   Layers,
-  FlaskConical
+  FlaskConical,
+  ShieldCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -75,7 +76,7 @@ import {
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
-import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
+import { saveHeritageAxiom, saveProjectDocument, saveMasterpiece } from '@/lib/firebase-service';
 import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE, keyToMidiRoot, resolveSemanticTimbre } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -261,6 +262,9 @@ export default function HypercubeDashboard() {
   const [activeManifest, setActiveManifest] = useState<any>(null);
   const [manifestContent, setManifestContent] = useState("");
 
+  const [isMasterBackupLoaded, setIsMasterBackupLoaded] = useState(false);
+  const [masterBackupData, setMasterBackupData] = useState<any>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -360,6 +364,8 @@ export default function HypercubeDashboard() {
     setSelectedIds(new Set());
     setCurrentFileName('');
     setPlayingAxiomId(null);
+    setIsMasterBackupLoaded(false);
+    setMasterBackupData(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -380,6 +386,16 @@ export default function HypercubeDashboard() {
         reader.onload = (event) => {
           try {
             const json = JSON.parse(event.target?.result as string);
+            
+            // Check if it's a master backup
+            if (json.metadata?.type === 'AuraGroove_Master_Backup') {
+                setIsMasterBackupLoaded(true);
+                setMasterBackupData(json);
+                setCurrentFileName(file.name);
+                toast({ title: "Master Backup Detected", description: "Ready for full system restoration." });
+                return;
+            }
+
             let flattened: any[] = [];
             const processAxiom = (ax: any, idx: number, compId: string) => {
                 const role = (ax.role || 'melody').toLowerCase();
@@ -512,6 +528,76 @@ export default function HypercubeDashboard() {
         };
         reader.readAsText(file);
     }
+  };
+
+  const handleMasterSystemBackup = () => {
+      const backup = {
+          metadata: {
+              type: 'AuraGroove_Master_Backup',
+              version: '1.0',
+              timestamp: new Date().toISOString(),
+              total_axioms: globalAxioms?.length || 0,
+              total_masterpieces: globalMasterpieces?.length || 0,
+              total_documents: cloudManifests?.length || 0
+          },
+          collections: {
+              heritage_axioms: globalAxioms || [],
+              masterpieces: globalMasterpieces || [],
+              project_documents: cloudManifests || []
+          }
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AuraGroove_Master_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Master Backup Complete", description: "Entire cloud state saved locally." });
+  };
+
+  const handleCommitMasterRestore = async () => {
+      if (!masterBackupData) return;
+      setIsProcessing(true);
+      try {
+          const { heritage_axioms, masterpieces, project_documents } = masterBackupData.collections;
+          
+          let count = 0;
+          
+          // 1. Restore Axioms
+          if (Array.isArray(heritage_axioms)) {
+              for (let i = 0; i < heritage_axioms.length; i++) {
+                  await saveHeritageAxiom(db, heritage_axioms[i], i);
+                  count++;
+              }
+          }
+
+          // 2. Restore Masterpieces
+          if (Array.isArray(masterpieces)) {
+              for (const m of masterpieces) {
+                  await saveMasterpiece(db, m);
+                  count++;
+              }
+          }
+
+          // 3. Restore Documents
+          if (Array.isArray(project_documents)) {
+              for (const doc of project_documents) {
+                  await saveProjectDocument(db, doc);
+                  count++;
+              }
+          }
+
+          toast({ title: "System Restored", description: `Injected ${count} total units into Cloud.` });
+          resetStaging();
+      } catch (e) {
+          toast({ variant: "destructive", title: "Restoration Failed", description: String(e) });
+      } finally {
+          setIsProcessing(false);
+      }
   };
 
   const handleBootstrapKnowledgeBase = async () => {
@@ -811,6 +897,7 @@ export default function HypercubeDashboard() {
             <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleMasterSystemBackup} disabled={isDbLoading} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><ShieldCheck className="h-4 w-4" /> Master Backup</Button>
             <Button variant="outline" size="sm" onClick={() => router.push('/timbre-lab')} className="gap-2 text-accent border-accent/20 hover:bg-accent/5"><FlaskConical className="h-4 w-4" /> Timbre Lab</Button>
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"><Square className="h-4 w-4" /> Stop Audition</Button>
@@ -954,7 +1041,6 @@ export default function HypercubeDashboard() {
                                     </thead>
                                     <tbody className="divide-y divide-border/20">
                                       {filteredLicks.map((ax: any) => {
-                                        const isMulti = ax.preferredInstrument && typeof ax.preferredInstrument === 'object';
                                         return (
                                           <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
                                             <td className="p-3 pl-12">
@@ -1197,6 +1283,26 @@ export default function HypercubeDashboard() {
                 <MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={vals => setSelectedGenre(vals)} placeholder="Select genres..." className="w-[240px] h-10 font-bold" />
               </div>
             </div>
+            
+            {isMasterBackupLoaded && masterBackupData && (
+                <Card className="border-accent/30 shadow-2xl overflow-hidden bg-accent/5 animate-in zoom-in-95 duration-500 w-full">
+                    <CardHeader className="bg-accent/10 border-b flex flex-row items-center justify-between py-4">
+                        <div>
+                            <CardTitle className="text-xl font-bold flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-accent"/> Master Backup Ready: {currentFileName}</CardTitle>
+                            <CardDescription className="text-[10px] uppercase font-bold text-accent/70">
+                                Restore {masterBackupData.metadata.total_axioms} Axioms, {masterBackupData.metadata.total_masterpieces} Masterpieces, {masterBackupData.metadata.total_documents} Docs
+                            </CardDescription>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Cancel</Button>
+                            <Button onClick={handleCommitMasterRestore} disabled={isProcessing} className="gap-3 font-black uppercase tracking-widest px-8 h-11 bg-accent hover:bg-accent/90 text-accent-foreground shadow-xl">
+                                <Zap className={cn("h-5 w-5", isProcessing && "animate-spin")} /> Restore System State
+                            </Button>
+                        </div>
+                    </CardHeader>
+                </Card>
+            )}
+
             {stagedAxioms.length > 0 && (
               <Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 w-full">
                 <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
@@ -1330,7 +1436,9 @@ export default function HypercubeDashboard() {
         <AlertDialogContent className="border-primary/20 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
+            <AlertDialogHeader>
+                <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
+            </AlertDialogHeader>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
