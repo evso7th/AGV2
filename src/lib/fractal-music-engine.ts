@@ -47,15 +47,16 @@ interface EngineConfig {
   introBars: number;
   ancestor?: any;
   sessionLickHistory?: string[];
-  cloudAxioms?: any[];
+  cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null;
+  activeAnchorRoot?: number | null;
   masterpieces?: any[];
+  isImprovising?: boolean;
 }
 
 /**
- * #ЗАЧЕМ: Фрактальный Музыкальный Движок V40.0 — "Reggae Brain Integration".
- * #ЧТО: ПЛАН №908 — Подключен специализированный мозг для регги и даба.
+ * #ЗАЧЕМ: Фрактальный Музыкальный Движок V40.1 — "Brain Sync".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -93,23 +94,24 @@ export class FractalMusicEngine {
 
       if (seedChanged) this.random = seededRandom(this.config.seed);
 
-      const isImprovising = (this.config.selectedCompositionIds || []).length === 0;
-
       if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged) {
+          const impro = (this.config.selectedCompositionIds || []).length === 0;
+          this.config.isImprovising = impro;
+
           if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
               this.config.cloudAxioms,
               this.config.selectedCompositionIds,
               this.config.activeAnchorId,
               null,
               this.config.useHeritage,
-              isImprovising
+              impro
           );
 
           if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
               this.config.cloudAxioms,
               this.config.activeAnchorId,
               this.config.useHeritage,
-              isImprovising
+              impro
           );
       }
 
@@ -151,6 +153,9 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
 
+    const impro = (this.config.selectedCompositionIds || []).length === 0;
+    this.config.isImprovising = impro;
+
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(
             this.config.seed,
@@ -162,6 +167,7 @@ export class FractalMusicEngine {
             this.config.genre,
             this.config.useHeritage
         );
+        this.bluesBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.selectedCompositionIds, this.config.activeAnchorId, null, this.config.useHeritage, impro);
         this.ambientBrain = null;
         this.tranceBrain = null;
         this.reggaeBrain = null;
@@ -177,6 +183,7 @@ export class FractalMusicEngine {
         this.tranceBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
+        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, impro);
         this.bluesBrain = null;
         this.tranceBrain = null;
         this.reggaeBrain = null;

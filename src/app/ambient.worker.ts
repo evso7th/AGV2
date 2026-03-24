@@ -1,7 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker (Architecture: "The Kinetic Pulse")
- * #ОБНОВЛЕНО (ПЛАН №846): Внедрена детерминированная ротация доноров для Свободной игры.
+ * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
+ * #ОБНОВЛЕНО (ПЛАН №927): Исправлен импорт getBlueprint и восстановлена ротация доноров.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -62,10 +62,6 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Выбор активного якоря (ПЛАН №846).
-     * #ЧТО: Внедрена ротация для автоматического пула. Теперь треки не повторяются, пока не пройдет весь круг.
-     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
@@ -73,13 +69,11 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
-            // Ротация по ручному списку
             pickedId = manualFilter[this.filterRotationIndex % manualFilter.length];
         } else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
 
-            // Фильтруем по жанру и настроению
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -88,7 +82,6 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                // ПЛАН №846: Используем циклическую ротацию вместо чистого рандома
                 pickedId = uniqueIds[this.filterRotationIndex % uniqueIds.length];
             }
         }
@@ -115,6 +108,7 @@ const Scheduler = {
         const seed = settings.seed || generateTrueSeed();
         
         const anchorInfo = this.pickActiveAnchor();
+        const isImprovising = (settings.selectedCompositionIds || []).length === 0;
 
         const finalSettings = {
             ...settings,
@@ -122,11 +116,11 @@ const Scheduler = {
             activeAnchorId: anchorInfo.id, 
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
-            cloudAxioms: this.cloudAxiomPool 
+            cloudAxioms: this.cloudAxiomPool,
+            isImprovising: isImprovising
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
-        // #ЗАЧЕМ: Исправление синтаксической ошибки (ПЛАН №847.1).
         fractalMusicEngine.initialize(true);
         
         const inheritedBpm = fractalMusicEngine.config.tempo;
@@ -176,8 +170,8 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
+           if (seedChanged) this.filterRotationIndex++; // Инкремент при регенерации
            this.sessionLickHistory = []; 
-           this.filterRotationIndex = 0; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
@@ -200,7 +194,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // ПЛАН №846: Смена донора при достижении лимита тактов
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 

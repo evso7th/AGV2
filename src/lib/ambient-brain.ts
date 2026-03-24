@@ -1,6 +1,6 @@
+
 /**
- * @fileOverview Ambient Brain V61.0 — "Atmospheric Calming & Drum Unification".
- * #ЗАЧЕМ: ПЛАН №923. Снижение плотности атмосферы и унификация ролей ударных.
+ * @fileOverview Ambient Brain V61.1 — "Improvisation Fix".
  */
 
 import type {
@@ -259,7 +259,6 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: ПЛАН №923. Снижение плотности антуража.
         if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
         if (hints.sfx && this.random.nextInt(100) < 15) events.push(...this.renderSfx(localTension));
 
@@ -416,12 +415,10 @@ export class AmbientBrain {
         this.currentDrumAxioms.forEach(ax => {
             const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
             
-            // #ЗАЧЕМ: ПЛАН №923. Тональное воспроизведение барабанов.
             barNotes.forEach(n => {
                 let pan = 0;
                 const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
                 
-                // Динамическая панорама для томов
                 if ([41, 43, 45].includes(midiNote)) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
 
                 events.push({

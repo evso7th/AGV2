@@ -32,8 +32,7 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V236.0 — "Spatial Awareness Protocol".
- * #ЗАЧЕМ: ПЛАН №905. Внедрение динамической панорамы: томовые пробежки и разделение ансамбля.
+ * @fileOverview Blues Brain V236.1 — "Improvisation Fix".
  */
 
 const TICKS_PER_BAR = 12;
@@ -285,7 +284,6 @@ export class BluesBrain {
     else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
     else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
 
-    // #ЗАЧЕМ: ПЛАН №905. Разделение сцены: Соло левее, Гармония правее.
     let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar)
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension)
         : [];
@@ -346,14 +344,12 @@ export class BluesBrain {
         }
     }
     
-    // #ЗАЧЕМ: ПЛАН №905. Аккомпанемент (пэды) чуть правее центра.
     accompanimentEvents.forEach(e => e.pan = 0.1);
     events.push(...accompanimentEvents);
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
         const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-        // #ЗАЧЕМ: Родес правее соло.
         p.events.forEach(e => e.pan = 0.2);
         events.push(...p.events);
         pianoInfo = { style: p.style, count: p.events.length };
@@ -365,7 +361,6 @@ export class BluesBrain {
         );
         this.selectHarmonyInstrument(epoch, tension, hasHeritageStrings);
         const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
-        // #ЗАЧЕМ: Гармония в крайнем правом секторе.
         harmonyEvents.forEach(e => e.pan = 0.35);
         events.push(...harmonyEvents);
     }
@@ -409,7 +404,6 @@ export class BluesBrain {
           else if (sub === 'perc') type = 'drum_perc-001';
 
           barNotes.forEach(n => {
-              // #ЗАЧЕМ: ПЛАН №905. Панорамирование томов и перкуссии в ДНК.
               let pan = 0;
               if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
               if (type.includes('perc')) pan = (Math.random() * 1.6) - 0.8;
@@ -572,8 +566,6 @@ export class BluesBrain {
       if (isFourthBar || isEighthBar || isSoloistResting) {
           const intensity = isEighthBar ? 1.0 : 0.7; 
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          
-          // #ЗАЧЕМ: ПЛАН №905. Томовая пробежка по панораме (Слева -> Центр -> Справа).
           const pans = [-0.6, 0.0, 0.6];
           [9, 10, 11].forEach((t, i) => { 
               events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + (i * 0.05)) * intensity, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: pans[i] }); 
