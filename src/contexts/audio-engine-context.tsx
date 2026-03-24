@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.4 — "Atmospheric Balance".
- * #ЧТО: ПЛАН №922 — Громкость спарклов и SFX снижена в 3 раза для деликатности фона.
+ * #ЗАЧЕМ: Audio Engine Context V32.5 — "Auth Sync & Permission Guard".
+ * #ЧТО: ПЛАН №928 — Слушатель аксиом теперь ждет авторизации и корректно обрабатывает ошибки доступа.
  */
 'use client';
 
@@ -29,14 +29,16 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.175,            
   melody: 0.45,           
   accompaniment: 0.30,    
   drums: 0.75,            
-  sparkles: 0.23, // #ЗАЧЕМ: ПЛАН №922. Снижено в 3 раза для деликатности фона.
-  sfx: 0.27,      // #ЗАЧЕМ: ПЛАН №922. Снижено в 3 раза для деликатности фона.
+  sparkles: 0.23, 
+  sfx: 0.27,      
   harmony: 0.1425,        
   pianoAccompaniment: 0.15, 
 };
@@ -220,23 +222,58 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
   }, [isInitialized, getEffectivePreset]);
 
+  /**
+   * #ЗАЧЕМ: Безопасный системный слушатель аксиом.
+   * #ЧТО: ПЛАН №928 — Ждет авторизации перед запуском и содержит обработчик ошибок.
+   */
   useEffect(() => {
-      if (!db) return;
-      const unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
-          const counts: Record<string, number> = {};
-          const axioms: any[] = [];
-          snapshot.docs.forEach(d => {
-              const data = { id: d.id, ...d.data() };
-              axioms.push(data);
-              const compId = data.compositionId;
-              if (compId) counts[compId] = (counts[compId] || 0) + 1;
+      if (!db || !auth) return;
+
+      let unsubscribe: (() => void) | null = null;
+
+      const setupListener = () => {
+          if (unsubscribe) return;
+          
+          console.log('%c[AudioEngine] User authorized. Starting Axiom listener...', 'color: #4ade80;');
+          
+          unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
+              const counts: Record<string, number> = {};
+              const axioms: any[] = [];
+              snapshot.docs.forEach(d => {
+                  const data = { id: d.id, ...d.data() };
+                  axioms.push(data);
+                  const compId = data.compositionId;
+                  if (compId) counts[compId] = (counts[compId] || 0) + 1;
+              });
+              const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
+              setAvailableCompositions(meta);
+              if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+          }, async (serverError) => {
+              // Создаем и эмитируем контекстную ошибку для отладки
+              const permissionError = new FirestorePermissionError({
+                  path: 'heritage_axioms',
+                  operation: 'list'
+              });
+              errorEmitter.emit('permission-error', permissionError);
           });
-          const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
-          setAvailableCompositions(meta);
-          if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+      };
+
+      const authUnsubscribe = auth.onAuthStateChanged((user) => {
+          if (user) {
+              setupListener();
+          } else {
+              if (unsubscribe) {
+                  unsubscribe();
+                  unsubscribe = null;
+              }
+          }
       });
-      return () => unsubscribe();
-  }, [db]);
+
+      return () => {
+          authUnsubscribe();
+          if (unsubscribe) unsubscribe();
+      };
+  }, [db, auth]);
 
   const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
     if (!db || !workerRef.current) return;
@@ -514,7 +551,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 }
             }
         }, 
-        getWorker: () => workerRef.current, 
         playRawEvents: (e, h, t) => {
             if(audioContextRef.current) {
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
