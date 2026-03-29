@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №961): Внедрена умная ротация треков-доноров с историей (7 треков) для исключения повторов.
+ * #ОБНОВЛЕНО (ПЛАН №962): Финализирована умная ротация треков-доноров с историей (7 треков).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -137,7 +137,7 @@ const Scheduler = {
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
-        fractalMusicEngine.initialize(forceReinit); // We'll keep forceReinit logic
+        fractalMusicEngine.initialize(true); 
         
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
@@ -281,8 +281,6 @@ const Scheduler = {
         this.barCount++;
     }
 };
-
-const forceReinit = true; // Added missing variable for initializeEngine
 
 self.onmessage = (event: MessageEvent) => {
     if (!event.data || !event.data.command) return;

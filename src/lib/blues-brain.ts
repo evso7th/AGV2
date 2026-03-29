@@ -32,8 +32,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V237.0 — "Full Ensemble Restoration".
- * #ЗАЧЕМ: Реализация требований пользователя по наполнению секций Transition и гарантированному аккомпанементу.
+ * @fileOverview Blues Brain V238.0 — "Runtime Integrity Fix".
+ * #ЗАЧЕМ: Исправление ошибки 'p is not defined' и финализация оркестровых переходов.
  */
 
 const TICKS_PER_BAR = 12;
@@ -325,7 +325,7 @@ export class BluesBrain {
             usedTargetLayers.add('accompaniment');
             accStatus = 'Unison Texture';
         } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
-            this.currentAccompAxioms.forEach((ax, idx) => {
+            this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
                 const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
                 if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
@@ -340,7 +340,6 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: Гарантированный генеративный аккомпанемент, если DNA не предоставила данных для 'accompaniment'.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
             usedTargetLayers.add('accompaniment');
@@ -382,7 +381,8 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
-            piano: pianoInfo.count > 0 ? `${p.style} (${p.events.length} events)` : 'none',
+            // #ЗАЧЕМ: ПЛАН №962. Использование корректного объекта pianoInfo.
+            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Harmony: ${this.activeHarmonyInstrument}] [Chronos Mode]`
