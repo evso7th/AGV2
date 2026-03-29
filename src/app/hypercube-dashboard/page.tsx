@@ -170,7 +170,7 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 };
 
 const ROLE_OPTIONS = [
-    'melody', 'accomp', 'bass', 'drums'
+    'melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'
 ];
 
 function MultiSelector<T extends string>({
@@ -387,7 +387,6 @@ export default function HypercubeDashboard() {
           try {
             const json = JSON.parse(event.target?.result as string);
             
-            // Check if it's a master backup
             if (json.metadata?.type === 'AuraGroove_Master_Backup') {
                 setIsMasterBackupLoaded(true);
                 setMasterBackupData(json);
@@ -567,7 +566,6 @@ export default function HypercubeDashboard() {
           
           let count = 0;
           
-          // 1. Restore Axioms
           if (Array.isArray(heritage_axioms)) {
               for (let i = 0; i < heritage_axioms.length; i++) {
                   await saveHeritageAxiom(db, heritage_axioms[i], i);
@@ -575,7 +573,6 @@ export default function HypercubeDashboard() {
               }
           }
 
-          // 2. Restore Masterpieces
           if (Array.isArray(masterpieces)) {
               for (const m of masterpieces) {
                   await saveMasterpiece(db, m);
@@ -583,7 +580,6 @@ export default function HypercubeDashboard() {
               }
           }
 
-          // 3. Restore Documents
           if (Array.isArray(project_documents)) {
               for (const doc of project_documents) {
                   await saveProjectDocument(db, doc);
@@ -606,6 +602,7 @@ export default function HypercubeDashboard() {
           const manifests = [
               { filename: 'SYSTEM_PROTOCOL.md', category: 'protocol', content: '### Системный Протокол Управления v4.5 "Pure V2 Domain"' },
               { filename: 'SOCIAL_CONTRACT.md', category: 'contract', content: '# Социальный Контракт v1.7 "Absolute Fidelity"' },
+              { filename: 'DNA_RULES.md', category: 'protocol', content: '# DNA Rules: The Heritage Codex (v1.0)' },
               { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' },
               { filename: 'FORGE_MASTER_SPEC.md', category: 'spec', content: '# Спецификация Завода AuraGroove: Heritage Axiom Protocol (v2.2)' },
               { filename: 'SOR_SPECIFICATION.md', category: 'spec', content: '# Техническая Спецификация: СОР (Система Обеспечения Разнообразия) v2.20' },
