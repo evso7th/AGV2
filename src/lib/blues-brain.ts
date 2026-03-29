@@ -32,7 +32,8 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
 
 /**
- * @fileOverview Blues Brain V236.1 — "Improvisation Fix".
+ * @fileOverview Blues Brain V237.0 — "Full Ensemble Restoration".
+ * #ЗАЧЕМ: Реализация требований пользователя по наполнению секций Transition и гарантированному аккомпанементу.
  */
 
 const TICKS_PER_BAR = 12;
@@ -274,8 +275,8 @@ export class BluesBrain {
         events.push(...this.renderLiquidBridge(epoch, resChord, tension, hints));
         return {
             events, lickId: 'Liquid Bridge', mutationType: 'none',
-            activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
-            narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
+            activeAxioms: { melody: 'Bridge Flow', ensemble: 'ORCHESTRA', bass: 'Scale Walk', drums: 'Soft Groove' },
+            narrative: `Liquid Bridge: Full ensemble transition through ${navInfo.currentPart.name}`
         };
     }
 
@@ -337,10 +338,13 @@ export class BluesBrain {
                     if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
-        } else if (hints.accompaniment) {
+        }
+        
+        // #ЗАЧЕМ: Гарантированный генеративный аккомпанемент, если DNA не предоставила данных для 'accompaniment'.
+        if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
             usedTargetLayers.add('accompaniment');
-            accStatus = 'Adaptive Pad';
+            accStatus = 'Adaptive Pad (No DNA)';
         }
     }
     
@@ -378,7 +382,7 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
-            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
+            piano: pianoInfo.count > 0 ? `${p.style} (${p.events.length} events)` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Harmony: ${this.activeHarmonyInstrument}] [Chronos Mode]`
@@ -624,12 +628,119 @@ export class BluesBrain {
       return { events, style: "Shadow (Thirds)" };
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация полномасштабного перехода для всех инструментов.
+   */
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
-      const events: FractalEvent[] = []; const root = chord.rootNote + this.currentTransposition + this.microTransposition; const scale = [0, 2, 4, 5, 7, 9, 11];
-      [0, 3, 6, 9].forEach((t, i) => { events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.6, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }); });
-      events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.0, mood: this.mood } });
-      if (hints.melody) { events.push({ type: 'melody', note: root + 24, time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0, mood: this.mood } }); }
-      events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 0.6) - 0.3 });
+      const events: FractalEvent[] = []; 
+      const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
+      const scale = [0, 2, 4, 5, 7, 9, 11];
+      
+      // 1. Bass: Walking Scale
+      [0, 3, 6, 9].forEach((t, i) => { 
+          events.push({ 
+              type: 'bass', 
+              note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), 
+              time: t * TICK_TO_BEAT, 
+              duration: 3.0 * TICK_TO_BEAT, 
+              weight: 0.6, 
+              technique: 'pluck', 
+              dynamics: 'p', 
+              phrasing: 'legato' 
+          }); 
+      });
+
+      // 2. Accompaniment: Organ Swell
+      events.push({ 
+          type: 'accompaniment', 
+          note: this.constrainAccompanimentOctave(root + 12), 
+          time: 0, 
+          duration: 4.0, 
+          weight: 0.3, 
+          technique: 'swell', 
+          dynamics: 'p', 
+          phrasing: 'legato', 
+          params: { attack: 1.5, release: 2.0, mood: this.mood } 
+      });
+
+      // 3. Melody: Ghostly Call
+      if (hints.melody) { 
+          events.push({ 
+              type: 'melody', 
+              note: root + 24, 
+              time: 1.5, 
+              duration: 2.5, 
+              weight: 0.5, 
+              technique: 'swell', 
+              dynamics: 'p', 
+              phrasing: 'legato', 
+              params: { attack: 2.0, release: 3.0, mood: this.mood } 
+          }); 
+      }
+
+      // 4. Drums: Soft Swells & Ghost Snares
+      events.push({ 
+          type: 'drum_ride_wetter', 
+          note: 51, 
+          time: 0, 
+          duration: 4.0, 
+          weight: 0.4, 
+          technique: 'swell', 
+          dynamics: 'p', 
+          phrasing: 'legato', 
+          pan: (Math.random() * 0.6) - 0.3 
+      });
+      events.push({ 
+          type: 'drum_kick_reso', 
+          note: 36, 
+          time: 0, 
+          duration: 0.1, 
+          weight: 0.7, 
+          technique: 'hit', 
+          dynamics: 'p', 
+          phrasing: 'staccato' 
+      });
+      events.push({ 
+          type: 'drum_snare_ghost_note', 
+          note: 38, 
+          time: 9 * TICK_TO_BEAT, 
+          duration: 0.1, 
+          weight: 0.3, 
+          technique: 'hit', 
+          dynamics: 'p', 
+          phrasing: 'staccato' 
+      });
+
+      // 5. Harmony: Orchestral Bed
+      if (hints.harmony) {
+          events.push({
+              type: 'harmony',
+              note: this.constrainAccompanimentOctave(root + 19), // Fifth high
+              time: 0,
+              duration: 4.0,
+              weight: 0.2,
+              technique: 'swell',
+              dynamics: 'p',
+              phrasing: 'legato'
+          });
+      }
+
+      // 6. Piano: Soft Rhodes Echo
+      if (hints.pianoAccompaniment) {
+          [4, 10].forEach(t => {
+              events.push({
+                  type: 'pianoAccompaniment',
+                  note: this.constrainAccompanimentOctave(root + 7),
+                  time: t * TICK_TO_BEAT,
+                  duration: 1.5,
+                  weight: 0.2,
+                  technique: 'hit',
+                  dynamics: 'p',
+                  phrasing: 'staccato'
+              });
+          });
+      }
+
       return events;
   }
 
