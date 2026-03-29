@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №927): Исправлен импорт getBlueprint и восстановлена ротация доноров.
+ * #ОБНОВЛЕНО (ПЛАН №961): Внедрена умная ротация треков-доноров с историей (7 треков) для исключения повторов.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -30,7 +30,8 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxiomPool: [] as any[], 
-    filterRotationIndex: 0, 
+    filterRotationIndex: 0,
+    playedTrackHistory: [] as string[], // #ЗАЧЕМ: Память последних 7 треков.
     
     settings: {
         bpm: 75,
@@ -69,8 +70,10 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
+            // Если выбран ручной фильтр, берем по индексу ротации
             pickedId = manualFilter[this.filterRotationIndex % manualFilter.length];
         } else if (this.cloudAxiomPool.length > 0) {
+            // СВОБОДНАЯ ИГРА: Умный рандом с историей
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
 
@@ -82,7 +85,20 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                pickedId = uniqueIds[this.filterRotationIndex % uniqueIds.length];
+                
+                // Фильтруем те, что уже играли недавно
+                const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
+                const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
+                
+                // Рандомный выбор из пула "свежих"
+                pickedId = pool[Math.floor(Math.random() * pool.length)];
+                
+                // Обновляем историю
+                if (pickedId) {
+                    this.playedTrackHistory.push(pickedId);
+                    if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
+                    console.log(`%c[History] Added to rotation: ${pickedId}. Current Buffer: [${this.playedTrackHistory.join(', ')}]`, 'color: #FFD700;');
+                }
             }
         }
 
@@ -121,7 +137,7 @@ const Scheduler = {
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
-        fractalMusicEngine.initialize(true);
+        fractalMusicEngine.initialize(forceReinit); // We'll keep forceReinit logic
         
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm !== this.settings.bpm) {
@@ -134,9 +150,8 @@ const Scheduler = {
         if (this.isRunning) return;
         this.isRunning = true;
         
-        if (!fractalMusicEngine) {
-            this.initializeEngine(this.settings);
-        }
+        // При каждом старте — гарантированный перевыбор трека
+        this.initializeEngine(this.settings);
 
         const loop = () => {
             if (!this.isRunning) return;
@@ -157,6 +172,7 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
+        this.filterRotationIndex++; // Инкремент для смены при ручном ресете
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -170,7 +186,7 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           if (seedChanged) this.filterRotationIndex++; // Инкремент при регенерации
+           if (seedChanged) this.filterRotationIndex++;
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -265,6 +281,8 @@ const Scheduler = {
         this.barCount++;
     }
 };
+
+const forceReinit = true; // Added missing variable for initializeEngine
 
 self.onmessage = (event: MessageEvent) => {
     if (!event.data || !event.data.command) return;
