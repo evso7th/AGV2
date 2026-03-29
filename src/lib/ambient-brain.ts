@@ -1,6 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V61.1 — "Improvisation Fix".
+ * @fileOverview Ambient Brain V61.2 — "Accompaniment Resurrection".
+ * #ЗАЧЕМ: Гарантированное звучание аккомпанемента при отсутствии ДНК.
  */
 
 import type {
@@ -212,6 +213,7 @@ export class AmbientBrain {
                     if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
+            // #ЗАЧЕМ: ПЛАН №965. Принудительная генерация, если ДНК-слой аккомпанемента пуст.
             if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
@@ -511,7 +513,7 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         return [{
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         }];
     }

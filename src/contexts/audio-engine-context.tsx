@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.5 — "Auth Sync & Permission Guard".
- * #ЧТО: ПЛАН №928 — Слушатель аксиом теперь ждет авторизации и корректно обрабатывает ошибки доступа.
+ * #ЗАЧЕМ: Audio Engine Context V32.6 — "The Audible Empire".
+ * #ЧТО: ПЛАН №965 — Радикальный подброс громкости в канале аккомпанемента.
  */
 'use client';
 
@@ -33,14 +33,14 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.175,            
-  melody: 0.45,           
-  accompaniment: 0.30,    
-  drums: 0.75,            
+  bass: 0.25,            
+  melody: 0.65,           
+  accompaniment: 0.95,    // #ЗАЧЕМ: ПЛАН №965. Приоритетный выход из тени.
+  drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
-  harmony: 0.1425,        
-  pianoAccompaniment: 0.15, 
+  harmony: 0.80,        
+  pianoAccompaniment: 0.65, 
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
@@ -222,10 +222,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
   }, [isInitialized, getEffectivePreset]);
 
-  /**
-   * #ЗАЧЕМ: Безопасный системный слушатель аксиом.
-   * #ЧТО: ПЛАН №928 — Ждет авторизации перед запуском и содержит обработчик ошибок.
-   */
   useEffect(() => {
       if (!db || !auth) return;
 
@@ -233,9 +229,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
       const setupListener = () => {
           if (unsubscribe) return;
-          
-          console.log('%c[AudioEngine] User authorized. Starting Axiom listener...', 'color: #4ade80;');
-          
           unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
               const counts: Record<string, number> = {};
               const axioms: any[] = [];
@@ -249,7 +242,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               setAvailableCompositions(meta);
               if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
           }, async (serverError) => {
-              // Создаем и эмитируем контекстную ошибку для отладки
               const permissionError = new FirestorePermissionError({
                   path: 'heritage_axioms',
                   operation: 'list'

@@ -44,9 +44,6 @@ export const V2_PRESETS = {
   },
 
   synth_cave_pad: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №902. Новый темный пэд для глубоких пещер.
-     */
     type: 'synth',
     name: 'Abyssal Cave Pad',
     osc: [
@@ -90,8 +87,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    /** #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.136 -> 0.068). */
-    volume: 0.068, 
+    volume: 0.65, 
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -101,12 +97,9 @@ export const V2_PRESETS = {
   },
   
   organ_soft_jazz: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.04 -> 0.02).
-     */
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.02, 
+    volume: 0.55, 
     drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
     lpf: 3200, 
     hpf: 80,
@@ -119,9 +112,8 @@ export const V2_PRESETS = {
 
   organ_jimmy_smith: {
     type: 'organ',
-    /** #ЗАЧЕМ: ПЛАН №902. Снижение громкости в 2 раза (0.128 -> 0.064). */
     name: 'Jimmy Smith Trio',
-    volume: 0.064, 
+    volume: 0.6, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 8000,
     hpf: 100,
@@ -132,12 +124,9 @@ export const V2_PRESETS = {
   },
 
   organ_prog: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №902. Новый агрессивный орган для роковых пиков.
-     */
     type: 'organ',
     name: 'Prog Rock B3',
-    volume: 0.07,
+    volume: 0.65,
     drawbars: [8, 8, 8, 8, 4, 2, 0, 0, 0],
     lpf: 9000,
     adsr: { a: 0.004, d: 0.05, s: 0.98, r: 0.8 },
@@ -147,12 +136,9 @@ export const V2_PRESETS = {
   },
 
   reggae_organ: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №908. Перкуссионный орган для Bubbling.
-     */
     type: 'organ',
     name: 'Roots Bubbler',
-    volume: 0.04,
+    volume: 0.5,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
     lpf: 2500,
     adsr: { a: 0.005, d: 0.08, s: 0.0, r: 0.1 }, // Очень короткий звук
@@ -166,13 +152,9 @@ export const V2_PRESETS = {
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_shineOn: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
-     * #ЧТО: ПЛАН №921. Снижение громкости в 2 раза (0.25 -> 0.125).
-     */
     type: 'guitar',
     name: 'Crystal Clean Lead', 
-    volume: 0.125, 
+    volume: 0.65, 
     osc: { width: 0.46, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.15 },
     pickup: { cutoff: 4500 },
     drive: { type: 'soft', amount: 0.0 }, 
@@ -185,13 +167,9 @@ export const V2_PRESETS = {
   },
 
   guitar_muffLead: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №919. Тотальная очистка звука (Hifi Clean Era).
-     * #ЧТО: ПЛАН №921. Снижение громкости в 2 раза (0.22 -> 0.11).
-     */
     type: 'guitar',
     name: 'Pure Reform Guitar',
-    volume: 0.11, 
+    volume: 0.6, 
     osc: { width: 0.5, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.0 }, 
@@ -204,12 +182,9 @@ export const V2_PRESETS = {
   },
 
   reggae_guitar: {
-    /**
-     * #ЗАЧЕМ: ПЛАН №908. "Сухая" гитара для Сканка.
-     */
     type: 'guitar',
     name: 'Tuff Gong Skank',
-    volume: 0.18,
+    volume: 0.55,
     osc: { width: 0.42, detune: 3, mainGain: 0.9, detGain: 0.1, subGain: 0.1 },
     pickup: { cutoff: 4500 },
     drive: { type: 'soft', amount: 0.05 },
@@ -225,7 +200,7 @@ export const V2_PRESETS = {
   cs80: {
     type: 'guitar', 
     name: 'Vangelis CS80',
-    volume: 0.19, 
+    volume: 0.6, 
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 }
   }
 

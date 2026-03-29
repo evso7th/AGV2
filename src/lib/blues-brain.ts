@@ -29,11 +29,11 @@ import {
     resolveSemanticTimbre
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
-import { BLUES_GUITAR_RIFFS } from './assets/blues-guitar-riffs';
+import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 /**
- * @fileOverview Blues Brain V238.0 — "Runtime Integrity Fix".
- * #ЗАЧЕМ: Исправление ошибки 'p is not defined' и финализация оркестровых переходов.
+ * @fileOverview Blues Brain V238.1 — "Accompaniment Resurrection".
+ * #ЗАЧЕМ: Исправление 'p is not defined' и гарантированная слышимость аккомпанемента.
  */
 
 const TICKS_PER_BAR = 12;
@@ -352,10 +352,10 @@ export class BluesBrain {
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
-        const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-        p.events.forEach(e => e.pan = 0.2);
-        events.push(...p.events);
-        pianoInfo = { style: p.style, count: p.events.length };
+        const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+        pResult.events.forEach(e => e.pan = 0.2);
+        events.push(...pResult.events);
+        pianoInfo = { style: pResult.style, count: pResult.events.length };
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
@@ -381,7 +381,6 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
-            // #ЗАЧЕМ: ПЛАН №962. Использование корректного объекта pianoInfo.
             piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
@@ -599,7 +598,8 @@ export class BluesBrain {
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition + this.microTransposition);
-    return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood } }];
+    // #ЗАЧЕМ: ПЛАН №965. Исправление длительности аккорда до целого такта (4.0 beats).
+    return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood } }];
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
@@ -628,9 +628,6 @@ export class BluesBrain {
       return { events, style: "Shadow (Thirds)" };
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация полномасштабного перехода для всех инструментов.
-   */
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
       const events: FractalEvent[] = []; 
       const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
