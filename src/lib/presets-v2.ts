@@ -87,7 +87,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Organ',
-    volume: 0.65, 
+    volume: 0.80, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.65.
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
@@ -99,7 +99,7 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Soft Jazz Organ',
-    volume: 0.55, 
+    volume: 0.75, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.55.
     drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
     lpf: 3200, 
     hpf: 80,
@@ -113,7 +113,7 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Jimmy Smith Trio',
-    volume: 0.6, 
+    volume: 0.75, // #ЗАЧЕМ: ПЛАН №974.
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 8000,
     hpf: 100,
@@ -126,7 +126,7 @@ export const V2_PRESETS = {
   organ_prog: {
     type: 'organ',
     name: 'Prog Rock B3',
-    volume: 0.65,
+    volume: 0.80, // #ЗАЧЕМ: ПЛАН №974.
     drawbars: [8, 8, 8, 8, 4, 2, 0, 0, 0],
     lpf: 9000,
     adsr: { a: 0.004, d: 0.05, s: 0.98, r: 0.8 },

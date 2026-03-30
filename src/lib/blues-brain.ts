@@ -32,8 +32,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 /**
- * @fileOverview Blues Brain V238.1 — "Accompaniment Resurrection".
- * #ЗАЧЕМ: Исправление 'p is not defined' и гарантированная слышимость аккомпанемента.
+ * @fileOverview Blues Brain V238.2 — "Accompaniment Power Fix".
+ * #ЗАЧЕМ: Гарантированная слышимость аккомпанемента (План №974).
+ * #ЧТО: Подняты веса (velocity) и исправлены длительности Heritage-аккомпанемента.
  */
 
 const TICKS_PER_BAR = 12;
@@ -587,8 +588,8 @@ export class BluesBrain {
           type: type,
           note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
           time: (n.t - barOffset) * TICK_TO_BEAT,
-          duration: Math.min(n.d, 6) * TICK_TO_BEAT,
-          weight: 0.35,
+          duration: n.d * TICK_TO_BEAT,
+          weight: 0.75, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.35 для слышимости.
           technique: tension > 0.7 ? 'hit' : 'swell',
           dynamics: 'p',
           phrasing: 'staccato',
@@ -598,8 +599,17 @@ export class BluesBrain {
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition + this.microTransposition);
-    // #ЗАЧЕМ: ПЛАН №965. Исправление длительности аккорда до целого такта (4.0 beats).
-    return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { mood: this.mood } }];
+    return [{ 
+        type: 'accompaniment', 
+        note: root, 
+        time: 0, 
+        duration: 4.0, 
+        weight: 0.85, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.6.
+        technique: 'hit', 
+        dynamics: 'p', 
+        phrasing: 'staccato', 
+        params: { mood: this.mood } 
+    }];
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
