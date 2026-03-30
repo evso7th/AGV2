@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №962): Финализирована умная ротация треков-доноров с историей (7 треков).
+ * #ОБНОВЛЕНО (ПЛАН №975): Реализована долговременная память треков с синхронизацией HISTORY_UPDATE.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -97,6 +97,10 @@ const Scheduler = {
                 if (pickedId) {
                     this.playedTrackHistory.push(pickedId);
                     if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
+                    
+                    // #ЗАЧЕМ: Синхронизация истории с основным потоком для сохранения в localStorage.
+                    self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
+                    
                     console.log(`%c[History] Added to rotation: ${pickedId}. Current Buffer: [${this.playedTrackHistory.join(', ')}]`, 'color: #FFD700;');
                 }
             }
@@ -290,6 +294,7 @@ self.onmessage = (event: MessageEvent) => {
             case 'init': 
                 Scheduler.settings = { ...Scheduler.settings, ...data }; 
                 if (data.sessionLickHistory) Scheduler.sessionLickHistory = data.sessionLickHistory;
+                if (data.playedTrackHistory) Scheduler.playedTrackHistory = data.playedTrackHistory;
                 break;
             case 'start': Scheduler.start(); break;
             case 'stop': Scheduler.stop(); break;

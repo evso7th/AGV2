@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.6 — "The Audible Empire".
- * #ЧТО: ПЛАН №965 — Радикальный подброс громкости в канале аккомпанемента.
+ * #ЗАЧЕМ: Audio Engine Context V32.7 — "The Audible Empire".
+ * #ЧТО: ПЛАН №975 — Реализовано сохранение истории треков (Blacklist) в localStorage.
  */
 'use client';
 
@@ -35,7 +35,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 0.95,    // #ЗАЧЕМ: ПЛАН №965. Приоритетный выход из тени.
+  accompaniment: 0.95,    
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -402,6 +402,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
+                } else if (type === 'HISTORY_UPDATE' && payload) {
+                    // #ЗАЧЕМ: ПЛАН №975. Сохранение истории в localStorage для предотвращения повторов после рефреша.
+                    localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
                 } else if (type === 'sparkle' && payload) {

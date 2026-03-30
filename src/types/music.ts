@@ -178,6 +178,7 @@ export type WorkerSettings = {
   seed?: number;
   introBars: number;
   sessionLickHistory?: string[];
+  playedTrackHistory?: string[]; // #ЗАЧЕМ: ПЛАН №975. Долговременная память треков.
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 

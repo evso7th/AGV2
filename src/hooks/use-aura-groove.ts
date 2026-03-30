@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.7 — "Calibration Unlock".
- * #ЧТО: ПЛАН №854 — Проброс настроек калибровки преампов в UI.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.8 — "Memory Calibration".
+ * #ЧТО: ПЛАН №975 — Загрузка истории треков (Blacklist) при инициализации.
  */
 'use client';
 
@@ -12,6 +13,7 @@ import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
 
 const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
+const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
 
 export type AuraGrooveProps = {
   isPlaying: boolean;
@@ -138,6 +140,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (isInitialized) {
+        // #ЗАЧЕМ: ПЛАН №975. Загрузка долговременной истории треков.
+        const savedHistory = typeof window !== 'undefined' ? localStorage.getItem(TRACK_HISTORY_KEY) : null;
+        const playedTrackHistory = savedHistory ? JSON.parse(savedHistory) : [];
+
         updateSettings({
           bpm, score, genre, instrumentSettings,
           drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
@@ -145,7 +151,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
               sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
           },
-          density, composerControlsInstruments, useHeritage, mood, introBars, sessionLickHistory, selectedCompositionIds,
+          density, composerControlsInstruments, useHeritage, mood, introBars, 
+          sessionLickHistory, 
+          playedTrackHistory, // Передаем в воркер
+          selectedCompositionIds,
           seed: currentSeed
         });
         updateAllVolumes();

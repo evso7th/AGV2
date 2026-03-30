@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v31.0 - Lottery Ready).
- * #ЧТО: ПЛАН №844 — INTRO очищено от жестких сценариев для работы Ensemble Lottery.
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в аккомпанементе.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v32.0 — Ensemble Focus).
+ * #ЧТО: ПЛАН №975 — Активированы все оркестровые слои в секциях BRIDGE/TRANSITION.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -27,7 +27,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 160 },
         parts: [
-            // --- 1. INTRO (9 bars for 3 lottery phases) ---
+            // --- 1. INTRO ---
             {
                 id: 'INTRO', name: 'BirthLottery', duration: { percent: 6 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -69,7 +69,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 3. BRIDGE 1 (Morph) ---
             {
                 id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 3 }, 
-                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true },
+                // #ЗАЧЕМ: ПЛАН №975. Активация ВСЕГО ансамбля для мощного перехода.
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentRules: { accompaniment: { density: { min: 0.2, max: 0.4 } } },
                 bundles: [{ id: 'B1_B', name: 'Crossing', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -96,7 +97,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 5. BRIDGE 2 ---
             {
                 id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true },
+                // #ЗАЧЕМ: ПЛАН №975.
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B2_B', name: 'Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
@@ -122,7 +124,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 7. BRIDGE 3 ---
             {
                 id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true },
+                // #ЗАЧЕМ: ПЛАН №975.
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B3_B', name: 'Rise', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
@@ -148,7 +151,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 9. BRIDGE 4 ---
             {
                 id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, pianoAccompaniment: true, sfx: true },
+                // #ЗАЧЕМ: ПЛАН №975.
+                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B4_B', name: 'Dissolve', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
