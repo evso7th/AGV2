@@ -1,7 +1,8 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V33.0 — "Instant Auditor Response".
- * #ЧТО: ПЛАН №983 — Сокращена задержка playRawEvents для Dashboard.
+ * @fileOverview Audio Engine Context V34.0 — "Volume Balance Calibration".
+ * #ЗАЧЕМ: Уменьшение громкости аккомпанемента в 2 раза согласно запросу пользователя.
+ * #ЧТО: ПЛАН №984 — VOICE_BALANCE.accompaniment изменен с 1.15 на 0.58.
  */
 'use client';
 
@@ -35,7 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 1.15, 
+  accompaniment: 0.58, // #ЗАЧЕМ: ПЛАН №984. Уменьшено в 2 раза с 1.15.
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -547,7 +548,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }, 
         playRawEvents: (e, h, t) => {
             if(audioContextRef.current) {
-                // #ЗАЧЕМ: ПЛАН №983. Мгновенная реакция Auditor.
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
                 scheduleEvents(e, audioContextRef.current.currentTime + 0.1, t || 72, 0, h);
             }
