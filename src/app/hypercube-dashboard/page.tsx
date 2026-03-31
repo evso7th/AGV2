@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -77,7 +78,9 @@ import {
     DEGREE_TO_SEMITONE, 
     keyToMidiRoot, 
     resolveSemanticTimbre,
-    TICK_TO_BEAT
+    TICKS_PER_BAR,
+    TICK_TO_BEAT,
+    mergeIdenticalNotes
 } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -377,6 +380,27 @@ export default function HypercubeDashboard() {
     reader.readAsText(file);
   };
 
+  const handleSaveAxiomEdits = async () => {
+    if (!editAxiomData) return;
+    setIsProcessing(true);
+    try {
+        const ref = doc(db, 'heritage_axioms', editAxiomData.id);
+        const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
+        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
+        await updateDoc(ref, { 
+            role: editAxiomData.role, 
+            narrative: editAxiomData.narrative, 
+            vector: editAxiomData.vector, 
+            mood: newMoods, 
+            commonMood: newCommons, 
+            nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
+            preferredInstrument: editAxiomData.preferredInstrument || null
+        });
+        toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
+    } catch (e) { toast({ variant: "destructive", title: "Update Failed" }); }
+    finally { setIsProcessing(false); }
+  };
+
   const handleCommitInjection = async () => {
     setIsProcessing(true);
     try {
@@ -487,7 +511,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent></Select>
-                                          ) : (ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>)}
+                                          ) : (ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{typeof ax.preferredInstrument === 'string' ? (DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()) : 'MULTI-MAP'}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>)}
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
