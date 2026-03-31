@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V61.3 — "The Chronos Standard".
- * #ЗАЧЕМ: Абсолютная синхронность временной сетки с Dashboard.
- * #ЧТО: ПЛАН №978. Использование глобальных констант TICKS_PER_BAR и TICK_TO_BEAT.
+ * @fileOverview Ambient Brain V62.0 — "Sticky Ensemble & Sibling Sync".
+ * #ЗАЧЕМ: Реализация принудительной игры сиблингов из ДНК.
  */
 
 import type {
@@ -197,11 +196,13 @@ export class AmbientBrain {
 
         let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
+        
+        // #ЗАЧЕМ: ПЛАН №985. Сиблинги из ДНК играют только если канал активен в hints.
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
-                if ((navInfo.currentPart.layers as any)[targetType]) {
+                if (hints[targetType]) {
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
                     }
@@ -226,7 +227,7 @@ export class AmbientBrain {
             }
         }
 
-        if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
+        if (hints.bass && this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             events.push(...this.constrainBass(this.renderThemeBass(resChord, epoch, localTension, dna)));
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
@@ -490,7 +491,7 @@ export class AmbientBrain {
         if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato'
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato'
         }));
     }
 

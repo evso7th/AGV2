@@ -24,28 +24,14 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
-    keyToMidiRoot,
     mergeIdenticalNotes,
+    keyToMidiRoot,
     resolveSemanticTimbre,
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
-
-/**
- * @fileOverview Blues Brain V238.4 — "The Chronos Standard".
- * #ЗАЧЕМ: Гарантированная синхронность времени с Dashboard.
- * #ЧТО: ПЛАН №978. Удалены локальные константы времени, внедрен импорт из music-theory.
- */
-
-const BEATS_PER_BAR = 4;
-
-const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
-  epic: 'light', joyful: 'light', enthusiastic: 'light',
-  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
-  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
-};
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -286,6 +272,7 @@ export class BluesBrain {
     else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
     else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
 
+    // #ЗАЧЕМ: ПЛАН №985. Мелодия из ДНК играет только если активирована.
     let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar)
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension)
         : [];
@@ -296,6 +283,7 @@ export class BluesBrain {
         melodyEvents.forEach(e => e.pan = -0.15);
     }
 
+    // #ЗАЧЕМ: ПЛАН №985. Ударные из ДНК (сиблинги) играют если канал активен.
     if (hints.drums) {
         const heritageDrums = this.renderHeritageDrums(epoch, tension);
         if (heritageDrums.length > 0) {
@@ -305,6 +293,7 @@ export class BluesBrain {
         }
     }
 
+    // #ЗАЧЕМ: ПЛАН №985. Бас из ДНК (сиблинг) имеет абсолютный приоритет.
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
@@ -320,6 +309,7 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
 
+    // #ЗАЧЕМ: ПЛАН №985. Аккомпанемент из ДНК (сиблинги) распределяется по слоям.
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
@@ -329,7 +319,7 @@ export class BluesBrain {
             this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
                 const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
-                if ((navInfo.currentPart.layers as any)[targetType] && !usedTargetLayers.has(targetType)) {
+                if (hints[targetType] && !usedTargetLayers.has(targetType)) {
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType);
                     }
