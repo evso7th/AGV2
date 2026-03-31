@@ -241,7 +241,7 @@ export type InstrumentBehaviorRules = {
     soloToPatternRatio?: number;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
-    pianoProbability?: number; // #ЗАЧЕМ: ПЛАН №967.
+    pianoProbability?: number; // #ЗАЧЕМ: ПЛАН №989. Декларативный дуализм.
 };
 
 export type InstrumentOption<T> = {

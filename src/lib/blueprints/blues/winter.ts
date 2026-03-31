@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v32.0 — Ensemble Focus).
- * #ЧТО: ПЛАН №975 — Активированы все оркестровые слои в секциях BRIDGE/TRANSITION.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v33.0 — Controlled Dualism).
+ * #ЧТО: ПЛАН №989 — Регулировка вероятности Рояля (pianoProbability) в каждой части.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -42,7 +42,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
                     melody: { source: 'blues_solo', register: { preferred: 'low' }, timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1 }
+                    // #ЗАЧЕМ: Минимум рояля в интро.
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.1 }
                 },
                 bundles: [{ id: 'INTRO_B', name: 'Birth', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -60,7 +61,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.6, max: 0.8 } },
                     melody: { source: 'blues_solo', density: { min: 0.6, max: 0.8 }, timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1 }
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.3 }
                 },
                 bundles: [{ id: 'M1_B', name: 'Establishment', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -69,9 +70,11 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 3. BRIDGE 1 (Morph) ---
             {
                 id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 3 }, 
-                // #ЗАЧЕМ: ПЛАН №975. Активация ВСЕГО ансамбля для мощного перехода.
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
-                instrumentRules: { accompaniment: { density: { min: 0.2, max: 0.4 } } },
+                instrumentRules: { 
+                    accompaniment: { density: { min: 0.2, max: 0.4 } },
+                    pianoAccompaniment: { pianoProbability: 0.5 } // Повышенный рояль на мосту
+                },
                 bundles: [{ id: 'B1_B', name: 'Crossing', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
@@ -88,7 +91,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
                     melody: { source: 'blues_solo', timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1 }
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.3 }
                 },
                 bundles: [{ id: 'M2_B', name: 'Exchange', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -97,7 +100,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 5. BRIDGE 2 ---
             {
                 id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 3 },
-                // #ЗАЧЕМ: ПЛАН №975.
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B2_B', name: 'Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -115,7 +117,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', kitName: 'blues_melancholic' },
                     melody: { source: 'blues_solo', density: { min: 0.4, max: 0.6 }, timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1 }
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.2 }
                 },
                 bundles: [{ id: 'M3_B', name: 'Deep Sea', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -124,7 +126,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 7. BRIDGE 3 ---
             {
                 id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 3 },
-                // #ЗАЧЕМ: ПЛАН №975.
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B3_B', name: 'Rise', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -142,7 +143,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },
                     melody: { source: 'blues_solo', density: { min: 0.8, max: 1.0 }, timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1 }
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.6 } // Пик рояля
                 },
                 bundles: [{ id: 'M4_B', name: 'The Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -151,7 +152,6 @@ export const WinterBluesBlueprint: MusicBlueprint = {
             // --- 9. BRIDGE 4 ---
             {
                 id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 3 },
-                // #ЗАЧЕМ: ПЛАН №975.
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 bundles: [{ id: 'B4_B', name: 'Dissolve', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -167,7 +167,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
                     harmony: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
-                    pianoAccompaniment: { timeScale: 1 }
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.1 }
                 },
                 bundles: [{ id: 'OUT_B', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

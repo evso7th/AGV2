@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V63.0 — "Strict Heritage Routing".
- * #ЗАЧЕМ: Реализация жесткой маршрутизации Родоса и Аккомпанемента.
+ * @fileOverview Ambient Brain V64.0 — "Blueprint Controlled Dualism".
+ * #ЗАЧЕМ: Управление дуализмом пианиста перенесено в Блюпринт.
+ * #ОБНОВЛЕНО (ПЛАН №989): Удален жесткий 70/30 рандом.
  */
 
 import type {
@@ -262,7 +263,13 @@ export class AmbientBrain {
             } else {
                 pianoInfo = { style: 'Heritage DNA', count: 1 };
             }
-            // #ЗАЧЕМ: Rule 18 — Dualism.
+            
+            // #ЗАЧЕМ: ПЛАН №989. Дуализм регулируется через БП.
+            const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
+            const pianoProb = pianoRules?.pianoProbability ?? 0.3; // Default 30% acoustic
+            const pianoRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
+            this.pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
+            
             instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
         }
 
@@ -326,7 +333,7 @@ export class AmbientBrain {
         this.currentNativeRoot = null;
         this.currentTimeScale = 1;
         this.currentPreferredInstrument = null;
-        this.pianistMode = this.random.next() < 0.3 ? 'acoustic' : 'rhodes'; // Rule 18
+        
         let cloudAxiom: any = null;
 
         if (this.isImprovising && this.random.next() < 0.3 && epoch > 8) {
@@ -394,12 +401,12 @@ export class AmbientBrain {
                 const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb);
                 this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
             }
-            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
             accompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
             drumSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
@@ -568,7 +575,7 @@ export class AmbientBrain {
         return { events, style: "Shadow (Thirds)" };
     }
 
-    private renderGenerativeHarmony(chord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
+    private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         const note = this.constrainAccompanimentOctave(root + colorDegree);

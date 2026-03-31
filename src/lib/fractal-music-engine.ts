@@ -56,8 +56,9 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V42.0 — "Strict Lottery & Routing Fix".
- * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
+ * @fileOverview Fractal Music Engine V43.0 — "Blueprint Controlled Dualism".
+ * #ЗАЧЕМ: Управление тембром пианиста теперь делегировано Блюпринту и Мозгам.
+ * #ОБНОВЛЕНО (ПЛАН №989): Дефолтный тембр пианиста — Родос.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -298,9 +299,9 @@ export class FractalMusicEngine {
                     if (this.config.genre === 'blues') defaultInst = 'guitarChords';
                     else defaultInst = 'violin';
                 }
-                // #ЗАЧЕМ: ПЛАН №986. Дефолт для пианиста.
+                // #ЗАЧЕМ: ПЛАН №989. Дефолт для пианиста — Родос.
                 else if (part === 'pianoAccompaniment') {
-                    defaultInst = 'piano';
+                    defaultInst = 'ep_rhodes_warm';
                 }
 
                 const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;

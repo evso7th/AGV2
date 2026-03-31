@@ -357,7 +357,13 @@ export class BluesBrain {
         } else {
             pianoInfo = { style: 'Heritage DNA', count: 1 };
         }
-        // Force the chosen dualism instrument
+        
+        // #ЗАЧЕМ: ПЛАН №989. Дуализм регулируется через БП.
+        const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
+        const pianoProb = pianoRules?.pianoProbability ?? 0.3; // Default 30% acoustic
+        const pianoRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
+        this.pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
+        
         instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
     }
 
@@ -462,9 +468,6 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; this.currentAccompAxioms = []; this.currentDrumAxioms = []; this.currentNativeRoot = null; this.ensembleStatus = 'ADAPTIVE'; this.currentTimeScale = 1;
       this.currentPreferredInstrument = null;
-
-      // #ЗАЧЕМ: Rule 18 — Дуализм пианиста. 30% Акустика / 70% Родос.
-      this.pianistMode = this.random.next() < 0.3 ? 'acoustic' : 'rhodes';
 
       if (this.config.isImprovising && this.random.next() < 0.25 && epoch > 12) {
           this.soloistRestingUntilBar = epoch + 2;
