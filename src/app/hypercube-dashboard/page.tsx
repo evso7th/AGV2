@@ -175,7 +175,7 @@ function MultiSelector<T extends string>({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
-        <ScrollArea className="h-48 p-2">
+        <div className="max-h-48 overflow-y-auto p-2">
           {options.map(opt => (
             <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group"
                  onClick={() => {
@@ -186,7 +186,7 @@ function MultiSelector<T extends string>({
               <Label className="text-[11px] font-bold uppercase cursor-pointer flex-grow leading-none">{opt}</Label>
             </div>
           ))}
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
@@ -309,6 +309,8 @@ export default function HypercubeDashboard() {
     stopAllSounds();
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
+    
+    // #ЗАЧЕМ: ПЛАН №983. Гарантированный старт с 0.
     const minTick = Math.min(...phrase.map(n => n.t));
     const role = (axiom.role || 'melody').toLowerCase();
     let channel: any = 'melody';
@@ -325,9 +327,14 @@ export default function HypercubeDashboard() {
         duration: n.d * TICK_TO_BEAT,
         weight: 0.8, technique: n.tech as any, dynamics: 'p', phrasing: 'legato'
     }));
+    
     playRawEvents(events, { [channel]: instrument }, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
-    setTimeout(() => setPlayingAxiomId(null), 5000);
+    
+    const maxDuration = Math.max(...events.map(e => e.time + e.duration));
+    setTimeout(() => {
+        setPlayingAxiomId(prev => prev === axiom.id ? null : prev);
+    }, (maxDuration + 1) * 1000);
   };
 
   const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
@@ -396,7 +403,8 @@ export default function HypercubeDashboard() {
                 ...ax, phrase: repaired, role: (ax.role || 'melody').toLowerCase(), id: `${compId}_${idx}_${Math.random()}`,
                 compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
-                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, narrative: ax.narrative || "Imported."
+                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, 
+                narrative: ax.narrative || "Imported Component."
             };
         };
         if (Array.isArray(json)) json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, file.name)));
@@ -529,7 +537,14 @@ export default function HypercubeDashboard() {
                               <div className="min-w-[1000px]">
                                 <table className="w-full text-left text-sm border-collapse">
                                   <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60">
-                                    <tr><th className="p-3 pl-12">Role</th><th className="p-3">Timbre Configuration</th><th className="p-3">Struct (O/B/N)</th><th className="p-3">Vector</th><th className="p-3 text-right">Actions</th></tr>
+                                    <tr>
+                                        <th className="p-3 pl-12">Role</th>
+                                        <th className="p-3">Timbre Configuration</th>
+                                        <th className="p-3">Struct (O/B/N)</th>
+                                        <th className="p-3">Vector</th>
+                                        <th className="p-3">Narrative</th>
+                                        <th className="p-3 text-right">Actions</th>
+                                    </tr>
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
@@ -593,12 +608,17 @@ export default function HypercubeDashboard() {
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
+                                        <td className="p-3 text-xs italic text-muted-foreground">
+                                            {editingAxiomId === ax.id ? (
+                                                <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />
+                                            ) : (<div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>)}
+                                        </td>
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
                                             {editingAxiomId === ax.id ? (
                                               <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>
                                             ) : (
-                                              <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
                                             )}
                                           </div>
                                         </td>
@@ -666,20 +686,38 @@ export default function HypercubeDashboard() {
                   <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
                   <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={() => setStagedAxioms([])} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
                 </CardHeader>
-                <CardContent className="p-0"><ScrollArea className="h-[500px]"><table className="w-full text-left text-sm border-collapse">
-                  <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
-                    <tr><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4">Source</th><th className="p-4">Role</th><th className="p-4">Meta</th><th className="p-4 text-right">Preview</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/20">
-                    {stagedAxioms.map(ax => (
-                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
-                        <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
-                        <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
-                        <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
-                        <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars}</td>
-                        <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
-                      </tr>
-                    ))}</tbody></table></ScrollArea></CardContent>
+                <CardContent className="p-0">
+                    <ScrollArea className="h-[500px]">
+                        <table className="w-full text-left text-sm border-collapse">
+                            <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
+                                <tr>
+                                    <th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th>
+                                    <th className="p-4">Source</th>
+                                    <th className="p-4">Role</th>
+                                    <th className="p-4">Meta</th>
+                                    <th className="p-4">Narrative</th>
+                                    <th className="p-4 text-right">Preview</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/20">
+                                {stagedAxioms.map(ax => (
+                                    <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
+                                        <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
+                                        <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
+                                        <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
+                                        <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars}</td>
+                                        <td className="p-4 text-[10px] italic text-muted-foreground opacity-70 truncate max-w-[150px]">{ax.narrative}</td>
+                                        <td className="p-4 text-right">
+                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>
+                                                {playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}
+                                            </Button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </ScrollArea>
+                </CardContent>
               </Card>
             )}
           </TabsContent>

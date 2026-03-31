@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.8 — "Master Balance Fix".
- * #ЧТО: ПЛАН №976 — Повышен баланс аккомпанемента.
+ * #ЗАЧЕМ: Audio Engine Context V33.0 — "Instant Auditor Response".
+ * #ЧТО: ПЛАН №983 — Сокращена задержка playRawEvents для Dashboard.
  */
 'use client';
 
@@ -35,7 +35,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 1.15, // #ЗАЧЕМ: ПЛАН №976. Поднято с 0.95.
+  accompaniment: 1.15, 
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -403,7 +403,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
                 } else if (type === 'HISTORY_UPDATE' && payload) {
-                    // #ЗАЧЕМ: ПЛАН №975. Сохранение истории в localStorage для предотвращения повторов после рефреша.
                     localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
@@ -548,8 +547,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }, 
         playRawEvents: (e, h, t) => {
             if(audioContextRef.current) {
+                // #ЗАЧЕМ: ПЛАН №983. Мгновенная реакция Auditor.
                 masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
-                scheduleEvents(e, audioContextRef.current.currentTime + 1.5, t || 72, 0, h);
+                scheduleEvents(e, audioContextRef.current.currentTime + 0.1, t || 72, 0, h);
             }
         },
         stopAllSounds,
