@@ -307,7 +307,7 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
 
-    // --- HERITAGE PROCESSING & STRICT ROUTING (ПЛАН №988) ---
+    // --- HERITAGE PROCESSING & STRICT ROUTING ---
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
@@ -318,7 +318,6 @@ export class BluesBrain {
                 const role = ax.role.toLowerCase();
                 let targetType: InstrumentPart = 'accompaniment';
                 
-                // #ЗАЧЕМ: Жесткая маршрутизация.
                 if (role.includes('piano') || role === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
                 else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
                 
@@ -328,14 +327,17 @@ export class BluesBrain {
                     }
 
                     const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
-                    events.push(...rendered);
-                    usedTargetLayers.add(targetType);
-                    if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
+                    // #ЗАЧЕМ: ПЛАН №990. Флаг "занято" выставляется только если в такте есть ноты.
+                    if (rendered.length > 0) {
+                        events.push(...rendered);
+                        usedTargetLayers.add(targetType);
+                        if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
+                    }
                 }
             });
         }
         
-        // #ЗАЧЕМ: Rule 15 — Генераторы только при отсутствии ДНК.
+        // #ЗАЧЕМ: Rule 15 & ПЛАН №990 — Генераторы включаются, если ДНК в текущем тактовом окне молчит.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
             usedTargetLayers.add('accompaniment');
@@ -348,19 +350,21 @@ export class BluesBrain {
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
-        // #ЗАЧЕМ: ПЛАН №988 — Пианист теперь либо играет ДНК, либо "Shadow" логику.
         if (!usedTargetLayers.has('pianoAccompaniment')) {
             const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            pResult.events.forEach(e => e.pan = 0.2);
-            events.push(...pResult.events);
-            pianoInfo = { style: pResult.style, count: pResult.events.length };
+            // #ЗАЧЕМ: ПЛАН №990. Если генератор пианино создал ноты — помечаем как исполненное.
+            if (pResult.events.length > 0) {
+                pResult.events.forEach(e => e.pan = 0.2);
+                events.push(...pResult.events);
+                pianoInfo = { style: pResult.style, count: pResult.events.length };
+                usedTargetLayers.add('pianoAccompaniment');
+            }
         } else {
             pianoInfo = { style: 'Heritage DNA', count: 1 };
         }
         
-        // #ЗАЧЕМ: ПЛАН №989. Дуализм регулируется через БП.
         const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
-        const pianoProb = pianoRules?.pianoProbability ?? 0.3; // Default 30% acoustic
+        const pianoProb = pianoRules?.pianoProbability ?? 0.3; 
         const pianoRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
         this.pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
         

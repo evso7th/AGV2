@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.3 — "Declaration Logic Fix".
- * #ЗАЧЕМ: Убрана жесткая привязка Родоса, мешавшая дуализму.
- * #ОБНОВЛЕНО (ПЛАН №989): Резолвер теперь доверяет Brain-у в выборе пианино.
+ * @fileOverview Universal Music Theory Utilities V4.4 — "Strict Semantic Separation".
+ * #ЗАЧЕМ: Убрана возможность "протекания" тембра Родоса в канал Аккомпанемента.
+ * #ОБНОВЛЕНО (ПЛАН №990): Роль 'accompaniment' теперь жестко игнорирует намек 'piano' в пользу пэдов/органов.
  */
 
 import type { 
@@ -94,6 +94,12 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
         if (clean.includes('shine')) return 'guitar_shineOn';
         if (clean.includes('muff')) return 'guitar_muffLead';
         if (clean.includes('cs80')) return 'cs80';
+    }
+
+    // #ЗАЧЕМ: ПЛАН №990. Охранный фильтр для Аккомпанемента.
+    // Если канал — Аккомпанемент, но пришел намек на Родос — подменяем на пэд/орган.
+    if (part === 'accompaniment' && (clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm')) {
+        return 'synth_ambient_pad_lush';
     }
 
     // 5. ТЕРРИТОРИЯ АВТОМАТИКИ

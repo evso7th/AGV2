@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V64.0 — "Blueprint Controlled Dualism".
- * #ЗАЧЕМ: Управление дуализмом пианиста перенесено в Блюпринт.
- * #ОБНОВЛЕНО (ПЛАН №989): Удален жесткий 70/30 рандом.
+ * @fileOverview Ambient Brain V65.0 — "The Adaptive Fallback Fix".
+ * #ЗАЧЕМ: 100% наполненность ансамбля. Генератор включается, если ДНК в текущем такте молчит.
  */
 
 import type {
@@ -210,24 +209,27 @@ export class AmbientBrain {
                 else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
                 
                 if (hints[targetType] && !heritagePlayedLayers.has(targetType)) {
-                    if (ax.preferredInstrument) {
-                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
-                    }
-
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
-                    accEvents.forEach(e => e.pan = swirlPan);
-                    events.push(...accEvents);
-                    heritagePlayedLayers.add(targetType);
-                    if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
+                    
+                    // #ЗАЧЕМ: ПЛАН №990. Флаг "занято" выставляется только если в такте есть ноты.
+                    if (accEvents.length > 0) {
+                        if (ax.preferredInstrument) {
+                            instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
+                        }
+                        accEvents.forEach(e => e.pan = swirlPan);
+                        events.push(...accEvents);
+                        heritagePlayedLayers.add(targetType);
+                        if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
+                    }
                 }
             });
             
-            // #ЗАЧЕМ: ПЛАН №988 — Генератор молчит при наличии ДНК.
+            // #ЗАЧЕМ: Rule 15 & ПЛАН №990 — Генератор включается, если ДНК в текущем такте молчит.
             if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents);
-                accStatus = 'Adaptive Pad';
+                accStatus = 'Adaptive Pad (No DNA)';
             }
             if (hints.harmony && !heritagePlayedLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
@@ -257,16 +259,19 @@ export class AmbientBrain {
         if (hints.pianoAccompaniment) {
             if (!heritagePlayedLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
-                p.events.forEach(e => e.pan = 0.2); 
-                events.push(...p.events);
-                pianoInfo = { style: p.style, count: p.events.length };
+                // #ЗАЧЕМ: ПЛАН №990. Если генератор пианино создал ноты — помечаем как исполненное.
+                if (p.events.length > 0) {
+                    p.events.forEach(e => e.pan = 0.2); 
+                    events.push(...p.events);
+                    pianoInfo = { style: p.style, count: p.events.length };
+                    heritagePlayedLayers.add('pianoAccompaniment');
+                }
             } else {
                 pianoInfo = { style: 'Heritage DNA', count: 1 };
             }
             
-            // #ЗАЧЕМ: ПЛАН №989. Дуализм регулируется через БП.
             const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
-            const pianoProb = pianoRules?.pianoProbability ?? 0.3; // Default 30% acoustic
+            const pianoProb = pianoRules?.pianoProbability ?? 0.3; 
             const pianoRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
             this.pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
             
@@ -401,12 +406,12 @@ export class AmbientBrain {
                 const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb);
                 this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
             }
-            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             accompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             drumSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
