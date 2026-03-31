@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.0 — "The Chronos Standard".
- * #ЗАЧЕМ: Централизация временных сеток для абсолютной синхронности Auditor и Engine.
- * #ОБНОВЛЕНО (ПЛАН №978): Экспорт глобальных констант TICKS_PER_BAR и TICK_TO_BEAT.
+ * @fileOverview Universal Music Theory Utilities V4.1 — "Strict Routing".
+ * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
+ * #ОБНОВЛЕНО (ПЛАН №986): Жесткое разделение part-логики в резолвере тембров.
  */
 
 import type { 
@@ -66,6 +66,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
+    // #ЗАЧЕМ: ПЛАН №986. Жесткая привязка Родоса.
+    if (part === 'pianoAccompaniment') return 'piano';
+
     // 2. ДИНАМИЧЕСКИЕ ГРУППЫ (Пункт №17 Кодекса)
     if (clean === 'dynamicorgan') {
         if (tension < 0.4) return 'organ_prog';
@@ -105,6 +108,11 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
 
     if (part === 'bass') {
         return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+    }
+
+    // #ЗАЧЕМ: ПЛАН №986. Предотвращение ошибочного маппинга Пианино в Аккомпанемент.
+    if (part === 'accompaniment' && (clean === 'piano' || clean === 'rhodes')) {
+        return 'synth_ambient_pad_lush';
     }
 
     return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);

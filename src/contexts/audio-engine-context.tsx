@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V34.0 — "Volume Balance Calibration".
- * #ЗАЧЕМ: Уменьшение громкости аккомпанемента в 2 раза согласно запросу пользователя.
- * #ЧТО: ПЛАН №984 — VOICE_BALANCE.accompaniment изменен с 1.15 на 0.58.
+ * @fileOverview Audio Engine Context V35.0 — "Routing & Master Calibration".
+ * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
+ * #ЧТО: ПЛАН №986 — Унификация мастер-шины и корректное распределение Gain-узлов.
  */
 'use client';
 
@@ -36,7 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 0.58, // #ЗАЧЕМ: ПЛАН №984. Уменьшено в 2 раза с 1.15.
+  accompaniment: 0.58, 
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -115,7 +115,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
-  const [timbreOverrides, setTimbreOverrides] = useState<Record<string, any>>({});
   
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -181,7 +180,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!isInitialized) return;
       const m = gains.master;
-      samplersMasterGainRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
+      
+      // #ЗАЧЕМ: ПЛАН №986. Системная громкость теперь управляет абсолютным мастером.
+      masterGainNodeRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
+      
+      // Калибровка под-узлов
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
@@ -204,7 +207,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           const parsed = saved ? JSON.parse(saved) : {};
           
           setTimeout(() => {
-              setTimbreOverrides(parsed);
               timbreOverridesRef.current = parsed;
               if (isInitialized) {
                   const managers = [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef];
@@ -348,9 +350,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             masterGainNodeRef.current = context.createGain();
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
+            
+            // ПЛАН №986: Все синтетические инструменты идут в мастер напрямую
             samplersMasterGainRef.current.connect(masterGainNodeRef.current);
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
+            
             const recDest = context.createMediaStreamDestination();
             masterGainNodeRef.current.connect(recDest);
             recDestRef.current = recDest;
@@ -361,7 +366,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
                 gainNodesRef.current[p] = context.createGain();
-                const isSamplerPart = ['melody', 'harmony', 'pianoAccompaniment'].includes(p);
+                
+                // #ЗАЧЕМ: ПЛАН №986. Родос (pianoAccompaniment) — это синтезатор, он идет в Мастер.
+                const isSamplerPart = ['melody', 'harmony'].includes(p);
                 gainNodesRef.current[p].connect(isSamplerPart ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
             }
         });
@@ -489,7 +496,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (context.state === 'suspended') await context.resume();
                 if (settingsRef.current) await syncContextDNA(settingsRef.current.genre, settingsRef.current.mood, settingsRef.current.selectedCompositionIds);
                 setIsPlayingState(true);
-                masterGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
+                masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05);
                 stopAllSounds(); 
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
@@ -548,7 +555,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }, 
         playRawEvents: (e, h, t) => {
             if(audioContextRef.current) {
-                masterGainNodeRef.current?.gain.setTargetAtTime(1.0, audioContextRef.current.currentTime, 0.05);
+                masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current.currentTime, 0.05);
                 scheduleEvents(e, audioContextRef.current.currentTime + 0.1, t || 72, 0, h);
             }
         },

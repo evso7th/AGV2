@@ -56,9 +56,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V41.0 — "Sticky Ensemble".
- * #ЗАЧЕМ: Реализация накопительной лотереи вступления.
- * #ЧТО: Инструменты, вступившие в игру, больше не исчезают.
+ * @fileOverview Fractal Music Engine V42.0 — "Strict Lottery & Routing Fix".
+ * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -129,7 +128,7 @@ export class FractalMusicEngine {
     const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
     const shuffled = this.random.shuffle(pool);
 
-    // #ЗАЧЕМ: ПЛАН №985. Распределение вступления парами.
+    // #ЗАЧЕМ: Распределение вступления парами.
     this.lotterySchedule.set(shuffled[0], 0);
     this.lotterySchedule.set(shuffled[1], 0);
     this.lotterySchedule.set(shuffled[2], 3);
@@ -258,7 +257,7 @@ export class FractalMusicEngine {
     const activeLayers = navInfo.currentPart.layers || {};
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
 
-    // #ЗАЧЕМ: ПЛАН №985. Накопительная активация.
+    // #ЗАЧЕМ: Накопительная активация.
     Object.keys(activeLayers).forEach(layer => {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
@@ -270,7 +269,6 @@ export class FractalMusicEngine {
                 }
             } else if (!isIntro) {
                 const rule = currentInstructions ? currentInstructions[part] : null;
-                // Вне интро вероятность проверяется каждый такт для новых инструментов
                 if (this.random.next() < (rule ? (rule.activationChance ?? 1.0) : 1.0)) {
                     shouldActivate = true;
                 }
@@ -300,6 +298,10 @@ export class FractalMusicEngine {
                     if (this.config.genre === 'blues') defaultInst = 'guitarChords';
                     else defaultInst = 'violin';
                 }
+                // #ЗАЧЕМ: ПЛАН №986. Дефолт для пианиста.
+                else if (part === 'pianoAccompaniment') {
+                    defaultInst = 'piano';
+                }
 
                 const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
                 this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part);
@@ -307,9 +309,8 @@ export class FractalMusicEngine {
         }
     });
 
-    // #ЗАЧЕМ: ПЛАН №985. Инструмент, вступивший в игру, продолжает играть.
+    // #ЗАЧЕМ: Инструмент, вступивший в игру, продолжает играть.
     this.activatedParts.forEach(part => {
-        // Мы передаем хинт только если слой активен в текущей части БП ИЛИ это мост
         const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
             instrumentHints[part] = this.activeTimbres[part] || 'synth';
