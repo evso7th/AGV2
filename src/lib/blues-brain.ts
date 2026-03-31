@@ -272,7 +272,6 @@ export class BluesBrain {
     else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
     else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
 
-    // #ЗАЧЕМ: ПЛАН №985. Мелодия из ДНК играет только если активирована.
     let melodyEvents = (hints.melody && !isSoloistResting && epoch < this.soloistBusyUntilBar)
         ? this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension)
         : [];
@@ -283,7 +282,6 @@ export class BluesBrain {
         melodyEvents.forEach(e => e.pan = -0.15);
     }
 
-    // #ЗАЧЕМ: ПЛАН №985. Ударные из ДНК (сиблинги) играют если канал активен.
     if (hints.drums) {
         const heritageDrums = this.renderHeritageDrums(epoch, tension);
         if (heritageDrums.length > 0) {
@@ -293,7 +291,6 @@ export class BluesBrain {
         }
     }
 
-    // #ЗАЧЕМ: ПЛАН №985. Бас из ДНК (сиблинг) имеет абсолютный приоритет.
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
@@ -309,7 +306,6 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
 
-    // #ЗАЧЕМ: ПЛАН №985. Аккомпанемент из ДНК (сиблинги) распределяется по слоям.
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
@@ -371,7 +367,7 @@ export class BluesBrain {
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
-            drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Narrative Beat',
+            drums: this.currentDrumAxioms.length > 0 ? `Hybrid (DNA Basis + Ensemble Fills)` : 'Narrative Beat',
             piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
@@ -379,32 +375,81 @@ export class BluesBrain {
     };
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация гибридного драм-протокола (ПЛАН №987).
+   * #ЧТО: Использует ритм из ДНК как скелет, но наслаивает полный состав Блюз-кита и филлы.
+   */
   private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       if (this.currentDrumAxioms.length === 0) return [];
+      
       const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
       const startEpoch = this.soloistBusyUntilBar - totalBars;
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
       const barOffset = mosaicBar * TICKS_PER_BAR;
 
+      // 1. ПЕРЕНОС РИТМА ИЗ ДНК
+      const dnaKickSet = new Set<number>();
+      const dnaSnareSet = new Set<number>();
+
       this.currentDrumAxioms.forEach(ax => {
           const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-          const sub = ax.role.split(' ')[1] || 'kick';
-          let type: any = 'drum_kick_reso';
-          if (sub === 'snare') type = 'drum_snare';
-          else if (sub === 'hat') type = 'drum_25693__walter_odington__hackney-hat-1';
-          else if (sub === 'tom') type = 'drum_Sonor_Classix_Low_Tom';
-          else if (sub === 'ride') type = 'drum_ride_wetter';
-          else if (sub === 'perc') type = 'drum_perc-001';
-
+          const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
+          
           barNotes.forEach(n => {
-              let pan = 0;
-              if (type.includes('Tom')) pan = (n.t % TICKS_PER_BAR < (TICKS_PER_BAR/2)) ? -0.4 : 0.4;
-              if (type.includes('perc')) pan = (Math.random() * 1.6) - 0.8;
+              const tickInBar = n.t - barOffset;
+              const time = tickInBar * TICK_TO_BEAT;
+              
+              // Маппим ноты ДНК в типы нашего кита
+              let type: any = 'drums';
+              let note = 36;
 
-              events.push({ type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
+              if (sub === 'kick' || n.deg === 'R') {
+                  type = 'drum_kick_reso'; note = 36; dnaKickSet.add(tickInBar);
+              } else if (sub === 'snare' || n.deg === '2') {
+                  type = 'drum_snare'; note = 38; dnaSnareSet.add(tickInBar);
+              } else if (sub === 'hat' || n.deg === '6') {
+                  type = 'drum_25693__walter_odington__hackney-hat-1'; note = 42;
+              } else if (sub === 'ride') {
+                  type = 'drum_ride_wetter'; note = 51;
+              } else {
+                  type = 'drum_perc-001'; note = 48;
+              }
+
+              events.push({ type, note, time, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
           });
       });
+
+      // 2. ГИБРИДНОЕ ЗАПОЛНЕНИЕ (ВЗДОХИ)
+      // Добавляем хэты, если ДНК их не содержит
+      if (events.filter(e => String(e.type).includes('hat')).length < 2) {
+          [0, 3, 6, 9].forEach(t => {
+              if (!dnaKickSet.has(t) && !dnaSnareSet.has(t)) {
+                  events.push({
+                      type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
+                      time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, 
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                  });
+              }
+          });
+      }
+
+      // 3. ОБЯЗАТЕЛЬНЫЕ ФИЛЛЫ (Пункт №15 - пользовательское уточнение)
+      const isFourthBar = epoch % 4 === 3;
+      const isEighthBar = epoch % 8 === 7;
+      if (isFourthBar || isEighthBar) {
+          const intensity = isEighthBar ? 1.0 : 0.7;
+          const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+          const pans = [-0.6, 0.0, 0.6];
+          [9, 10, 11].forEach((t, i) => { 
+              events.push({ 
+                  type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
+                  duration: 0.5, weight: (0.6 + (i * 0.05)) * intensity, 
+                  technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: pans[i] 
+              }); 
+          });
+      }
+
       return events;
   }
 

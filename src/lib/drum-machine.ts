@@ -202,9 +202,6 @@ export class DrumMachine {
         }
     }
 
-    /**
-     * #ЗАЧЕМ: Унифицированный маппинг MIDI-нот для канала 'drums'.
-     */
     schedule(score: FractalEvent[], barStartTime: number, tempo: number) {
         if (!this.sampler || !this.isInitialized) return;
         const beatDuration = 60 / tempo;
@@ -214,23 +211,29 @@ export class DrumMachine {
             
             let sampleName = eventType;
             
-            // #ЗАЧЕМ: ПЛАН №923. Маппинг MIDI-нот в сэмплы для общего канала 'drums'.
+            // #ЗАЧЕМ: Улучшенный маппинг для канала 'drums' (ПЛАН №987).
             if (eventType === 'drums' || eventType === 'drum') {
                 const n = event.note;
+                // Стандартный MIDI маппинг
                 if (n === 36) sampleName = 'drum_kick_reso';
                 else if (n === 38) sampleName = 'drum_snare';
-                else if (n === 42) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
+                else if (n === 42 || n === 44) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
                 else if (n === 46) sampleName = 'drum_open_hh_top2';
-                else if (n === 41) sampleName = 'drum_Sonor_Classix_Low_Tom';
-                else if (n === 43) sampleName = 'drum_Sonor_Classix_Mid_Tom';
-                else if (n === 45) sampleName = 'drum_Sonor_Classix_High_Tom';
+                else if (n === 41 || n === 43) sampleName = 'drum_Sonor_Classix_Low_Tom';
+                else if (n === 45 || n === 47) sampleName = 'drum_Sonor_Classix_High_Tom';
                 else if (n === 49) sampleName = 'drum_crash2';
                 else if (n === 51) sampleName = 'drum_ride_wetter';
                 else sampleName = 'drum_perc-001';
             }
 
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
-            if (!this.sampler.buffers.has(sampleName)) continue;
+            if (!this.sampler.buffers.has(sampleName)) {
+                // Пытаемся найти по префиксу роли
+                if (sampleName.includes('kick')) sampleName = 'drum_kick_reso';
+                else if (sampleName.includes('snare')) sampleName = 'drum_snare';
+                else if (sampleName.includes('hat')) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
+                else continue;
+            }
             
             const absoluteTime = barStartTime + (event.time * beatDuration);
             if (!isFinite(absoluteTime)) continue;
