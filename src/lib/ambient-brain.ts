@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V61.2 — "Accompaniment Resurrection".
- * #ЗАЧЕМ: Гарантированное звучание аккомпанемента при отсутствии ДНК.
+ * @fileOverview Ambient Brain V61.3 — "The Chronos Standard".
+ * #ЗАЧЕМ: Абсолютная синхронность временной сетки с Dashboard.
+ * #ЧТО: ПЛАН №978. Использование глобальных констант TICKS_PER_BAR и TICK_TO_BEAT.
  */
 
 import type {
@@ -29,13 +30,11 @@ import {
     applyRhythmicJitter,
     mergeIdenticalNotes,
     keyToMidiRoot,
-    resolveSemanticTimbre
+    resolveSemanticTimbre,
+    TICKS_PER_BAR,
+    TICK_TO_BEAT
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
-
-const TICKS_PER_BAR = 12;
-const BEATS_PER_BAR = 4;
-const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR;
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -213,7 +212,7 @@ export class AmbientBrain {
                     if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
                 }
             });
-            // #ЗАЧЕМ: ПЛАН №965. Принудительная генерация, если ДНК-слой аккомпанемента пуст.
+            
             if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
@@ -421,7 +420,7 @@ export class AmbientBrain {
                 let pan = 0;
                 const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
                 
-                if ([41, 43, 45].includes(midiNote)) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
+                if ([41, 43, 45].includes(midiNote)) pan = (n.t % TICKS_PER_BAR < (TICKS_PER_BAR / 2)) ? -0.4 : 0.4;
 
                 events.push({
                     type: 'drums', 
@@ -459,7 +458,7 @@ export class AmbientBrain {
         for(let i=0; i<hits; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
             const pan = (Math.random() * 1.4) - 0.7;
-            const time = (this.random.nextInt(12) * TICK_TO_BEAT);
+            const time = (this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT);
             events.push({ type: perc as any, note: 48, time, duration: 1.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
         }
         
@@ -564,13 +563,11 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        const pan = (Math.random() * 1.8) - 0.9;
-        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
+        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        const pan = (Math.random() * 1.6) - 0.8;
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan, params: { mood: this.mood, genre: this.genre } }];
+        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (Math.random() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {

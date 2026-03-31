@@ -77,7 +77,18 @@ import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom, saveProjectDocument, saveMasterpiece } from '@/lib/firebase-service';
-import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, DEGREE_TO_SEMITONE, keyToMidiRoot, resolveSemanticTimbre } from '@/lib/music-theory';
+import { 
+    decompressCompactPhrase, 
+    repairLegacyPhrase, 
+    SEMITONE_TO_DEGREE, 
+    DEGREE_KEYS, 
+    TECHNIQUE_KEYS, 
+    DEGREE_TO_SEMITONE, 
+    keyToMidiRoot, 
+    resolveSemanticTimbre,
+    TICKS_PER_BAR,
+    TICK_TO_BEAT
+} from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -95,10 +106,6 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
-/**
- * #ЗАЧЕМ: Расширенный список инструментов для Dashboard.
- * #ЧТО: ПЛАН №977. Добавлены dynamicOrgan и dynamicPad.
- */
 const INSTRUMENT_OPTIONS = [
     'guitar', 
     'telecaster', 
@@ -412,7 +419,7 @@ export default function HypercubeDashboard() {
                     const end = (phrase[i] || 0) + (phrase[i+1] || 0);
                     if(end > maxTick) maxTick = end;
                 }
-                const calculatedBars = Math.max(1, Math.ceil(maxTick / 12));
+                const calculatedBars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
                 const calculatedNoteCount = Math.floor(phrase.length / 4);
                 const repairedPhrase = repairLegacyPhrase(phrase);
                 const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
@@ -461,7 +468,7 @@ export default function HypercubeDashboard() {
                     });
                     const noteCount = track.notes.length; const avgPitch = totalPitch / noteCount;
                     const maxTime = Math.max(...track.notes.map((n: any) => n.time + n.duration));
-                    const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / 12));
+                    const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / TICKS_PER_BAR));
                     const density = noteCount / calculatedBars;
                     let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
                     
@@ -507,12 +514,12 @@ export default function HypercubeDashboard() {
                 let globalMinT = Infinity;
                 licks.forEach(lick => { const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) { if (phrase[i] < globalMinT) globalMinT = phrase[i]; } });
                 if (globalMinT !== Infinity && globalMinT > 0) {
-                    const barShift = Math.floor(globalMinT / 12);
+                    const barShift = Math.floor(globalMinT / TICKS_PER_BAR);
                     licks.forEach(lick => {
                         const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) phrase[i] -= globalMinT;
                         lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
                         let maxTick = 0; for (let i = 0; i < phrase.length; i += 4) { const end = phrase[i] + phrase[i+1]; if (end > maxTick) maxTick = end; }
-                        lick.bars = Math.max(1, Math.ceil(maxTick / 12));
+                        lick.bars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
                     });
                 }
             });
@@ -673,8 +680,8 @@ export default function HypercubeDashboard() {
   };
 
   /**
-   * #ЗАЧЕМ: Обновление handlePlayAxiom для поддержки групп и объектов.
-   * #ЧТО: ПЛАН №977. Использует resolveSemanticTimbre для определения тембра превью.
+   * #ЗАЧЕМ: Прослушивание аксиомы с абсолютной синхронизацией Chronos.
+   * #ОБНОВЛЕНО (ПЛАН №978): Использование TICK_TO_BEAT для побитовой идентичности с движком.
    */
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) { stopAllSounds(); setPlayingAxiomId(null); return; }
@@ -685,7 +692,6 @@ export default function HypercubeDashboard() {
     const minTick = Math.min(...phrase.map(n => n.t));
     const channelType = mapAxiomToChannel(axiom.role || 'melody');
     
-    // #ЗАЧЕМ: Разрешение тембра для превью.
     const tension = 0.5; // Нейтральное напряжение для аудита
     const resolvedInst = axiom.preferredInstrument 
         ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) 
@@ -695,8 +701,8 @@ export default function HypercubeDashboard() {
       return {
           type: channelType,
           note: (axiom.role === 'bass' ? 31 : (axiom.role.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
-          time: (n.t - minTick) / 3,
-          duration: n.d / 3,
+          time: (n.t - minTick) * TICK_TO_BEAT,
+          duration: n.d * TICK_TO_BEAT,
           weight: 0.8,
           technique: n.tech as any,
           dynamics: 'p',
@@ -1447,9 +1453,7 @@ export default function HypercubeDashboard() {
         <AlertDialogContent className="border-primary/20 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogHeader>
-                <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
-            </AlertDialogHeader>
+            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>

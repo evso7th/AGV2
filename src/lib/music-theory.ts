@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V3.9 — "The Clean Fidelity Standard".
- * #ОБНОВЛЕНО (ПЛАН №919): Абсолютная власть Аксиом. Если роль мелодия — канал мелодия.
- * #ОБНОВЛЕНО (ПЛАН №976): Удалена техника pluck (заменена на pick).
- * #ОБНОВЛЕНО (ПЛАН №977): Добавлена поддержка Dynamic Organ и Dynamic Pad в резолвер.
+ * @fileOverview Universal Music Theory Utilities V4.0 — "The Chronos Standard".
+ * #ЗАЧЕМ: Централизация временных сеток для абсолютной синхронности Auditor и Engine.
+ * #ОБНОВЛЕНО (ПЛАН №978): Экспорт глобальных констант TICKS_PER_BAR и TICK_TO_BEAT.
  */
 
 import type { 
@@ -19,6 +18,11 @@ import type {
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
+
+// ───── GLOBAL CHRONOS CONSTANTS ─────
+export const TICKS_PER_BAR = 12;
+export const BEATS_PER_BAR = 4;
+export const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR; // 0.3333...
 
 export const MODE_SEMITONES: Record<string, number[]> = {
     ionian: [0, 2, 4, 5, 7, 9, 11],
@@ -45,7 +49,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ЧТО: ПЛАН №977. Добавлена логика Dynamic групп и Tri-Map объектов.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';

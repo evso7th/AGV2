@@ -1,11 +1,8 @@
 
 /**
- * @fileOverview Trance Brain V1.0 — "The Kinetic Spiral".
- * #ЗАЧЕМ: Специализированный мозг для Progressive и Neuro Trance.
- * #ЧТО: 1. Спиральный арпеджиатор с транспозицией.
- *       2. Neuro-бас с индивидуальной модуляцией фильтра.
- *       3. Прогрессив-Родес с эффектом эха.
- *       4. Имитация сайдчейна через микро-тайминг.
+ * @fileOverview Trance Brain V1.1 — "The Chronos Standard".
+ * #ЗАЧЕМ: Абсолютная синхронность временной сетки с Dashboard.
+ * #ЧТО: ПЛАН №978. Использование глобальных констант TICKS_PER_BAR и TICK_TO_BEAT.
  */
 
 import type {
@@ -26,12 +23,10 @@ import {
     SEMITONE_TO_DEGREE,
     normalizePhraseGroup,
     decompressCompactPhrase,
-    resolveSemanticTimbre
+    resolveSemanticTimbre,
+    TICKS_PER_BAR,
+    TICK_TO_BEAT
 } from './music-theory';
-
-const TICKS_PER_BAR = 12;
-const BEATS_PER_BAR = 4;
-const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR;
 
 export class TranceBrain {
     private seed: number;
@@ -68,9 +63,9 @@ export class TranceBrain {
         const scale = [0, 3, 7, 10, 12, 14, 15]; // Minor/Dorian blend
         const hook = [];
         const r = this.createSeededRandom(seed + 777);
-        // Generate 4-6 notes on 1/16th or 1/8th slots
+        // Generate 6 notes on 1/16th slots (total 12 ticks)
         for (let i = 0; i < 6; i++) {
-            const tick = i * 2; // Simple grid
+            const tick = i * 2; 
             hook.push({
                 t: tick,
                 d: 1.5,
@@ -157,7 +152,7 @@ export class TranceBrain {
 
         // Closed Hat 16th triplets (rolling)
         if (tension > 0.6 && !isIntro) {
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].forEach(t => {
+            for (let t = 0; t < TICKS_PER_BAR; t++) {
                 if (t % 3 !== 0) { // Not on the kick
                     events.push({
                         type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
@@ -165,7 +160,7 @@ export class TranceBrain {
                         technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: -0.1
                     });
                 }
-            });
+            }
         }
 
         return events;
@@ -175,7 +170,6 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
         
-        // Pattern logic
         if (isIntro || tension < 0.5) {
             // Simple Offbeat
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
@@ -204,14 +198,13 @@ export class TranceBrain {
             this.hookPhrase = this.generateHook(this.seed);
         }
 
-        // Periodic Shift every 2 bars
         if (epoch % 2 === 0 && epoch !== this.lastSpiralUpdateBar) {
             this.lastSpiralUpdateBar = epoch;
             const shifts = [0, 2, 4, 7, 5, 3, 0];
             this.currentSpiralShift = shifts[(epoch / 2) % shifts.length];
         }
 
-        const swirlPan = Math.sin(epoch * 0.5) * 0.6; // Rotating in space
+        const swirlPan = Math.sin(epoch * 0.5) * 0.6; 
         const events: FractalEvent[] = [];
 
         this.hookPhrase.forEach(n => {
@@ -234,7 +227,6 @@ export class TranceBrain {
     private renderProgressiveRhodes(epoch: number, chord: GhostChord, tension: number, leadEvents: FractalEvent[]): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. Solid chords on 1 and 3
         [0, 6].forEach(t => {
             events.push({
                 type: 'pianoAccompaniment', note: chord.rootNote + 12,
@@ -244,18 +236,17 @@ export class TranceBrain {
             });
         });
 
-        // 2. Echoes of the lead (shifted and delayed)
         if (leadEvents.length > 0 && tension > 0.4) {
             leadEvents.forEach((m, i) => {
                 if (i % 2 === 0) {
                     events.push({
                         ...m,
                         type: 'pianoAccompaniment',
-                        note: m.note - 12, // Octave below
-                        time: m.time + (1.5 * TICK_TO_BEAT), // 8th note delay
+                        note: m.note - 12, 
+                        time: m.time + (1.5 * TICK_TO_BEAT), 
                         weight: 0.2,
                         duration: 1.0 * TICK_TO_BEAT,
-                        pan: -m.pan!, // Opposite side
+                        pan: -m.pan!, 
                         params: { release: 2.0 }
                     });
                 }
@@ -266,10 +257,9 @@ export class TranceBrain {
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        // Long pad with "breath" (swell at start of bar)
         return [{
             type: 'accompaniment', note: chord.rootNote + 12,
-            time: 0.1, // Slight offset for sidechain feel
+            time: 0.1, 
             duration: 3.8, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             pan: -0.3,
             params: { attack: 0.5, release: 1.0, filterCutoff: 1000 + tension * 1000 }

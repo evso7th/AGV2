@@ -26,20 +26,20 @@ import {
     applyRhythmicJitter,
     keyToMidiRoot,
     mergeIdenticalNotes,
-    resolveSemanticTimbre
+    resolveSemanticTimbre,
+    TICKS_PER_BAR,
+    TICK_TO_BEAT
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 /**
- * @fileOverview Blues Brain V238.3 — "Strict Purity & Pluck Extinction".
- * #ЗАЧЕМ: Гарантированная слышимость аккомпанемента и удаление техники pluck.
- * #ЧТО: ПЛАН №976. Удалена техника pluck (заменена на pick). Веса аккомпанемента подняты.
+ * @fileOverview Blues Brain V238.4 — "The Chronos Standard".
+ * #ЗАЧЕМ: Гарантированная синхронность времени с Dashboard.
+ * #ЧТО: ПЛАН №978. Удалены локальные константы времени, внедрен импорт из music-theory.
  */
 
-const TICKS_PER_BAR = 12;
 const BEATS_PER_BAR = 4;
-const TICK_TO_BEAT = BEATS_PER_BAR / TICKS_PER_BAR;
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -409,7 +409,7 @@ export class BluesBrain {
 
           barNotes.forEach(n => {
               let pan = 0;
-              if (type.includes('Tom')) pan = (n.t % 12 < 6) ? -0.4 : 0.4;
+              if (type.includes('Tom')) pan = (n.t % TICKS_PER_BAR < (TICKS_PER_BAR/2)) ? -0.4 : 0.4;
               if (type.includes('perc')) pan = (Math.random() * 1.6) - 0.8;
 
               events.push({ type, note: 36, time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
@@ -589,11 +589,11 @@ export class BluesBrain {
           note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
           time: (n.t - barOffset) * TICK_TO_BEAT,
           duration: n.d * TICK_TO_BEAT,
-          weight: 0.75, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.35 для слышимости.
+          weight: 0.75, 
           technique: tension > 0.7 ? 'hit' : 'swell',
           dynamics: 'p',
           phrasing: 'staccato',
-          params: { mood: this.mood }
+          params: { ...n.params, mood: this.mood }
       }));
   }
 
@@ -604,7 +604,7 @@ export class BluesBrain {
         note: root, 
         time: 0, 
         duration: 4.0, 
-        weight: 0.95, // #ЗАЧЕМ: ПЛАН №976. Максимальная читаемость.
+        weight: 0.95, 
         technique: 'hit', 
         dynamics: 'p', 
         phrasing: 'staccato', 
@@ -722,7 +722,7 @@ export class BluesBrain {
       if (hints.harmony) {
           events.push({
               type: 'harmony',
-              note: this.constrainAccompanimentOctave(root + 19), // Fifth high
+              note: this.constrainAccompanimentOctave(root + 19), 
               time: 0,
               duration: 4.0,
               weight: 0.2,
