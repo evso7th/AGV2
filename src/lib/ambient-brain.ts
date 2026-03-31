@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V62.0 — "Sticky Ensemble & Sibling Sync".
- * #ЗАЧЕМ: Реализация принудительной игры сиблингов из ДНК.
+ * @fileOverview Ambient Brain V63.0 — "Strict Heritage Routing".
+ * #ЗАЧЕМ: Реализация жесткой маршрутизации Родоса и Аккомпанемента.
  */
 
 import type {
@@ -50,6 +50,7 @@ export class AmbientBrain {
     private random: any;
     private useHeritage: boolean;
     private isImprovising: boolean = false;
+    private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
 
     private fog: number = 0.3;
     private pulse: number = 0.15;
@@ -134,8 +135,8 @@ export class AmbientBrain {
         hints: InstrumentHints
     ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
 
-        const waves = this.computeTensionWaves(epoch * (60 / dna.baseTempo) * 4);
-        const localTension = this.computeGlobalTension(waves);
+        const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        const localTension = tension;
         const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
 
         if (navInfo.isPartTransition) {
@@ -196,13 +197,18 @@ export class AmbientBrain {
 
         let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
+        const heritagePlayedLayers = new Set<string>();
         
-        // #ЗАЧЕМ: ПЛАН №985. Сиблинги из ДНК играют только если канал активен в hints.
+        // --- HERITAGE & STRICT ROUTING ---
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
-                let targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
-                if (hints[targetType]) {
+                let targetType: InstrumentPart = 'accompaniment';
+                
+                if (role.includes('piano') || role === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
+                
+                if (hints[targetType] && !heritagePlayedLayers.has(targetType)) {
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
                     }
@@ -210,17 +216,19 @@ export class AmbientBrain {
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
                     accEvents.forEach(e => e.pan = swirlPan);
                     events.push(...accEvents);
-                    if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
+                    heritagePlayedLayers.add(targetType);
+                    if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
                 }
             });
             
-            if (hints.accompaniment && !this.currentAccompAxioms.some(a => !a.role.includes('piano') && !a.role.includes('strings'))) {
+            // #ЗАЧЕМ: ПЛАН №988 — Генератор молчит при наличии ДНК.
+            if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents);
                 accStatus = 'Adaptive Pad';
             }
-            if (hints.harmony && !this.currentAccompAxioms.some(a => a.role.includes('strings') || a.role.includes('violin') || a.role.includes('guitar'))) {
+            if (hints.harmony && !heritagePlayedLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                 harEvents.forEach(e => e.pan = 0.25);
                 events.push(...harEvents);
@@ -246,10 +254,16 @@ export class AmbientBrain {
 
         let pianoInfo = { style: 'none', count: 0 };
         if (hints.pianoAccompaniment) {
-            const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
-            p.events.forEach(e => e.pan = 0.2); 
-            events.push(...p.events);
-            pianoInfo = { style: p.style, count: p.events.length };
+            if (!heritagePlayedLayers.has('pianoAccompaniment')) {
+                const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
+                p.events.forEach(e => e.pan = 0.2); 
+                events.push(...p.events);
+                pianoInfo = { style: p.style, count: p.events.length };
+            } else {
+                pianoInfo = { style: 'Heritage DNA', count: 1 };
+            }
+            // #ЗАЧЕМ: Rule 18 — Dualism.
+            instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
         }
 
         if (hints.drums) {
@@ -276,9 +290,9 @@ export class AmbientBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
-                piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none'
+                piano: pianoInfo.count > 0 ? `${pianoInfo.style} [${this.pianistMode.toUpperCase()}]` : 'none'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Chronos Mode]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Pianist: ${this.pianistMode}] [Chronos Mode]`
         };
     }
 
@@ -312,6 +326,7 @@ export class AmbientBrain {
         this.currentNativeRoot = null;
         this.currentTimeScale = 1;
         this.currentPreferredInstrument = null;
+        this.pianistMode = this.random.next() < 0.3 ? 'acoustic' : 'rhodes'; // Rule 18
         let cloudAxiom: any = null;
 
         if (this.isImprovising && this.random.next() < 0.3 && epoch > 8) {
@@ -502,7 +517,7 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         return barNotes.map(n => ({
-            type: type, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition, this.PAD_CEILING + 12),
+            type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato',
             params: { mood: this.mood }

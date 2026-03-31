@@ -82,6 +82,7 @@ export class BluesBrain {
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
+  private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
 
   private readonly MELODY_CEILING = 72;
   private readonly BASS_FLOOR = 31;
@@ -306,27 +307,35 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
     }
 
+    // --- HERITAGE PROCESSING & STRICT ROUTING (ПЛАН №988) ---
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
             usedTargetLayers.add('accompaniment');
             accStatus = 'Unison Texture';
-        } else if (hints.accompaniment && this.currentAccompAxioms.length > 0) {
+        } else if (this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax) => {
                 const role = ax.role.toLowerCase();
-                const targetType: InstrumentPart = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('strings') ? 'harmony' : 'accompaniment');
+                let targetType: InstrumentPart = 'accompaniment';
+                
+                // #ЗАЧЕМ: Жесткая маршрутизация.
+                if (role.includes('piano') || role === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
+                
                 if (hints[targetType] && !usedTargetLayers.has(targetType)) {
                     if (ax.preferredInstrument) {
                         instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType);
                     }
 
-                    accompanimentEvents.push(...this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension));
+                    const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
+                    events.push(...rendered);
                     usedTargetLayers.add(targetType);
-                    if (targetType === 'accompaniment') accStatus = `Heritage (${ax.id || 'DNA'})`;
+                    if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
                 }
             });
         }
         
+        // #ЗАЧЕМ: Rule 15 — Генераторы только при отсутствии ДНК.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
             usedTargetLayers.add('accompaniment');
@@ -339,10 +348,17 @@ export class BluesBrain {
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
-        const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-        pResult.events.forEach(e => e.pan = 0.2);
-        events.push(...pResult.events);
-        pianoInfo = { style: pResult.style, count: pResult.events.length };
+        // #ЗАЧЕМ: ПЛАН №988 — Пианист теперь либо играет ДНК, либо "Shadow" логику.
+        if (!usedTargetLayers.has('pianoAccompaniment')) {
+            const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+            pResult.events.forEach(e => e.pan = 0.2);
+            events.push(...pResult.events);
+            pianoInfo = { style: pResult.style, count: pResult.events.length };
+        } else {
+            pianoInfo = { style: 'Heritage DNA', count: 1 };
+        }
+        // Force the chosen dualism instrument
+        instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
@@ -368,17 +384,13 @@ export class BluesBrain {
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
             drums: this.currentDrumAxioms.length > 0 ? `Hybrid (DNA Basis + Ensemble Fills)` : 'Narrative Beat',
-            piano: pianoInfo.count > 0 ? `${pianoInfo.style} (${pianoInfo.count} events)` : 'none',
+            piano: pianoInfo.count > 0 ? `${pianoInfo.style} [${this.pianistMode.toUpperCase()}]` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
-        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Harmony: ${this.activeHarmonyInstrument}] [Chronos Mode]`
+        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Pianist: ${this.pianistMode}] [Chronos Mode]`
     };
   }
 
-  /**
-   * #ЗАЧЕМ: Реализация гибридного драм-протокола (ПЛАН №987).
-   * #ЧТО: Использует ритм из ДНК как скелет, но наслаивает полный состав Блюз-кита и филлы.
-   */
   private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       if (this.currentDrumAxioms.length === 0) return [];
@@ -388,7 +400,6 @@ export class BluesBrain {
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
       const barOffset = mosaicBar * TICKS_PER_BAR;
 
-      // 1. ПЕРЕНОС РИТМА ИЗ ДНК
       const dnaKickSet = new Set<number>();
       const dnaSnareSet = new Set<number>();
 
@@ -399,8 +410,6 @@ export class BluesBrain {
           barNotes.forEach(n => {
               const tickInBar = n.t - barOffset;
               const time = tickInBar * TICK_TO_BEAT;
-              
-              // Маппим ноты ДНК в типы нашего кита
               let type: any = 'drums';
               let note = 36;
 
@@ -420,8 +429,6 @@ export class BluesBrain {
           });
       });
 
-      // 2. ГИБРИДНОЕ ЗАПОЛНЕНИЕ (ВЗДОХИ)
-      // Добавляем хэты, если ДНК их не содержит
       if (events.filter(e => String(e.type).includes('hat')).length < 2) {
           [0, 3, 6, 9].forEach(t => {
               if (!dnaKickSet.has(t) && !dnaSnareSet.has(t)) {
@@ -434,7 +441,6 @@ export class BluesBrain {
           });
       }
 
-      // 3. ОБЯЗАТЕЛЬНЫЕ ФИЛЛЫ (Пункт №15 - пользовательское уточнение)
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       if (isFourthBar || isEighthBar) {
@@ -456,6 +462,9 @@ export class BluesBrain {
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentBassAxiom = []; this.currentAccompAxioms = []; this.currentDrumAxioms = []; this.currentNativeRoot = null; this.ensembleStatus = 'ADAPTIVE'; this.currentTimeScale = 1;
       this.currentPreferredInstrument = null;
+
+      // #ЗАЧЕМ: Rule 18 — Дуализм пианиста. 30% Акустика / 70% Родос.
+      this.pianistMode = this.random.next() < 0.3 ? 'acoustic' : 'rhodes';
 
       if (this.config.isImprovising && this.random.next() < 0.25 && epoch > 12) {
           this.soloistRestingUntilBar = epoch + 2;
@@ -678,7 +687,6 @@ export class BluesBrain {
       const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
       const scale = [0, 2, 4, 5, 7, 9, 11];
       
-      // 1. Bass: Walking Scale
       [0, 3, 6, 9].forEach((t, i) => { 
           events.push({ 
               type: 'bass', 
@@ -692,7 +700,6 @@ export class BluesBrain {
           }); 
       });
 
-      // 2. Accompaniment: Organ Swell
       events.push({ 
           type: 'accompaniment', 
           note: this.constrainAccompanimentOctave(root + 12), 
@@ -705,7 +712,6 @@ export class BluesBrain {
           params: { attack: 1.5, release: 2.0, mood: this.mood } 
       });
 
-      // 3. Melody: Ghostly Call
       if (hints.melody) { 
           events.push({ 
               type: 'melody', 
@@ -720,7 +726,6 @@ export class BluesBrain {
           }); 
       }
 
-      // 4. Drums: Soft Swells & Ghost Snares
       events.push({ 
           type: 'drum_ride_wetter', 
           note: 51, 
@@ -753,7 +758,6 @@ export class BluesBrain {
           phrasing: 'staccato' 
       });
 
-      // 5. Harmony: Orchestral Bed
       if (hints.harmony) {
           events.push({
               type: 'harmony',
@@ -767,7 +771,6 @@ export class BluesBrain {
           });
       }
 
-      // 6. Piano: Soft Rhodes Echo
       if (hints.pianoAccompaniment) {
           [4, 10].forEach(t => {
               events.push({

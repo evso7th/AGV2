@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V35.0 — "Routing & Master Calibration".
+ * @fileOverview Audio Engine Context V36.0 — "Strict Routing & Dualism".
  * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
- * #ЧТО: ПЛАН №986 — Унификация мастер-шины и корректное распределение Gain-узлов.
  */
 'use client';
 
@@ -181,10 +180,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (!isInitialized) return;
       const m = gains.master;
       
-      // #ЗАЧЕМ: ПЛАН №986. Системная громкость теперь управляет абсолютным мастером.
       masterGainNodeRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
       
-      // Калибровка под-узлов
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
@@ -323,7 +320,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
-    if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo);
+    
+    if (pianoAccompanimentManagerRef.current) {
+        // #ЗАЧЕМ: ПЛАН №988 — Синхронизация типа пианино.
+        const pianoHint = instrumentHints?.pianoAccompaniment;
+        const isAcoustic = pianoHint === 'piano';
+        pianoAccompanimentManagerRef.current.setInstrumentType(isAcoustic ? 'acoustic' : 'rhodes');
+        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo);
+    }
     
     if (sparklePlayerRef.current) {
         const sparkles = events.filter(e => e.type === 'sparkle');
@@ -351,7 +355,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
             
-            // ПЛАН №986: Все синтетические инструменты идут в мастер напрямую
             samplersMasterGainRef.current.connect(masterGainNodeRef.current);
             masterGainNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
@@ -366,8 +369,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         parts.forEach(p => {
             if (!gainNodesRef.current[p]) {
                 gainNodesRef.current[p] = context.createGain();
-                
-                // #ЗАЧЕМ: ПЛАН №986. Родос (pianoAccompaniment) — это синтезатор, он идет в Мастер.
                 const isSamplerPart = ['melody', 'harmony'].includes(p);
                 gainNodesRef.current[p].connect(isSamplerPart ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
             }
@@ -414,8 +415,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
                 } else if (type === 'BPM_SYNC' && payload) {
                     window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
-                } else if (type === 'sparkle' && payload) {
-                    sparklePlayerRef.current?.playRandomSparkle(nextBarTimeRef.current + payload.time, payload.params?.genre, payload.params?.mood, payload.params?.category);
                 } else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
         }

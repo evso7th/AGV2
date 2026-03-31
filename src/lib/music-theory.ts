@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.1 — "Strict Routing".
+ * @fileOverview Universal Music Theory Utilities V4.2 — "Strict Routing & Dualism".
  * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
- * #ОБНОВЛЕНО (ПЛАН №986): Жесткое разделение part-логики в резолвере тембров.
+ * #ОБНОВЛЕНО (ПЛАН №988): Поддержка системного переключения типа пианино.
  */
 
 import type { 
@@ -66,7 +66,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // #ЗАЧЕМ: ПЛАН №986. Жесткая привязка Родоса.
+    // #ЗАЧЕМ: ПЛАН №988. Жесткая привязка Родоса/Пианино.
     if (part === 'pianoAccompaniment') return 'piano';
 
     // 2. ДИНАМИЧЕСКИЕ ГРУППЫ (Пункт №17 Кодекса)
@@ -110,8 +110,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
         return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     }
 
-    // #ЗАЧЕМ: ПЛАН №986. Предотвращение ошибочного маппинга Пианино в Аккомпанемент.
-    if (part === 'accompaniment' && (clean === 'piano' || clean === 'rhodes')) {
+    // #ЗАЧЕМ: ПЛАН №988. Разрешаем Пиано в Аккомпанементе ТОЛЬКО если это прямо указано.
+    // Если же это автоматический маппинг, предпочитаем пэды.
+    if (part === 'accompaniment' && (clean === 'piano' || clean === 'rhodes') && !hint.isHeritage) {
         return 'synth_ambient_pad_lush';
     }
 
