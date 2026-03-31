@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -28,15 +27,10 @@ import {
   Star,
   Eye,
   EyeOff,
-  FileText,
-  Save,
-  Zap,
-  Guitar,
   Settings2,
-  ZapOff,
-  Layers,
-  FlaskConical,
-  ShieldCheck
+  Lock,
+  Zap,
+  Mic2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -51,8 +45,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,17 +68,15 @@ import {
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
-import { saveHeritageAxiom, saveProjectDocument, saveMasterpiece } from '@/lib/firebase-service';
+import { saveHeritageAxiom } from '@/lib/firebase-service';
 import { 
     decompressCompactPhrase, 
     repairLegacyPhrase, 
-    SEMITONE_TO_DEGREE, 
     DEGREE_KEYS, 
     TECHNIQUE_KEYS, 
     DEGREE_TO_SEMITONE, 
     keyToMidiRoot, 
     resolveSemanticTimbre,
-    TICKS_PER_BAR,
     TICK_TO_BEAT
 } from '@/lib/music-theory';
 import { useToast } from '@/hooks/use-toast';
@@ -106,46 +96,22 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
+const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
+
 const INSTRUMENT_OPTIONS = [
-    'guitar', 
-    'telecaster', 
-    'blackAcoustic', 
-    'darkTelecaster', 
-    'cs80', 
-    'guitar_shineOn', 
-    'guitar_muffLead',
-    'organ', 
-    'organ_soft_jazz', 
-    'organ_jimmy_smith', 
-    'organ_prog', 
-    'dynamicOrgan',
-    'synth', 
-    'synth_ambient_pad_lush',
-    'synth_cave_pad',
-    'dynamicPad',
-    'theremin', 
-    'mellotron', 
-    'violin', 
-    'flute',
-    'ep_rhodes_warm',
-    'piano',
-    'bass_jazz_warm',
-    'bass_808',
-    'bass_ambient',
-    'bass_ambient_dark',
-    'bass_blues',
-    'bass_cs80',
-    'none'
+    'guitar', 'telecaster', 'blackAcoustic', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
+    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'dynamicOrgan',
+    'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'dynamicPad',
+    'theremin', 'mellotron', 'violin', 'flute', 'piano', 'bass_jazz_warm', 'bass_808', 'none'
 ];
 
 const DISPLAY_NAMES: Record<string, string> = {
     'guitar': 'Dynamic Guitar',
     'telecaster': 'Telecaster Clean',
     'blackAcoustic': 'Black Acoustic',
-    'darkTelecaster': 'Fuzzed Telecaster',
     'cs80': 'CS-80 Brass',
     'guitar_shineOn': 'Shine On Lead',
-    'guitar_muffLead': 'Muff Reform Lead',
+    'guitar_muffLead': 'Muff Lead',
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'organ_jimmy_smith': 'Jimmy Smith B3',
@@ -159,11 +125,9 @@ const DISPLAY_NAMES: Record<string, string> = {
     'mellotron': 'Mellotron Strings',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
-    'ep_rhodes_warm': 'Rhodes Suitcase',
     'piano': 'Acoustic Piano',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'bass_808': '808 Sub Bass',
-    'bass_ambient': 'Ambient Sub',
     'none': 'No Override'
 };
 
@@ -183,10 +147,6 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
-
-const ROLE_OPTIONS = [
-    'melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'
-];
 
 function MultiSelector<T extends string>({
   options,
@@ -241,9 +201,6 @@ export default function HypercubeDashboard() {
   const masterpiecesQuery = useMemoFirebase(() => query(collection(db, 'masterpieces')), [db]);
   const { data: globalMasterpieces, isLoading: isMpiecesLoading } = useCollection(masterpiecesQuery);
 
-  const manifestsQuery = useMemoFirebase(() => query(collection(db, 'project_documents')), [db]);
-  const { data: cloudManifests, isLoading: isManifestsLoading } = useCollection(manifestsQuery);
-
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -274,22 +231,12 @@ export default function HypercubeDashboard() {
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editAxiomData, setEditAxiomData] = useState<any>(null);
 
-  const [activeManifest, setActiveManifest] = useState<any>(null);
-  const [manifestContent, setManifestContent] = useState("");
-
-  const [isMasterBackupLoaded, setIsMasterBackupLoaded] = useState(false);
-  const [masterBackupData, setMasterBackupData] = useState<any>(null);
-
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(PROCESSED_FILES_KEY);
     if (saved) {
-      try {
-        setProcessedFiles(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to parse import history");
-      }
+      try { setProcessedFiles(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
   }, []);
 
@@ -300,17 +247,11 @@ export default function HypercubeDashboard() {
       const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
       const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
       const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-
       genres.forEach(g => { acc.genres[g] = (acc.genres[g] || 0) + 1; });
       moods.forEach(m => { acc.moods[m] = (acc.moods[m] || 0) + 1; });
       commons.forEach(cm => { acc.commonMoods[cm] = (acc.commonMoods[cm] || 0) + 1; });
       return acc;
-    }, {
-        total: 0,
-        genres: {} as Record<string, number>,
-        moods: {} as Record<string, number>,
-        commonMoods: {} as Record<string, number>
-    });
+    }, { total: 0, genres: {} as Record<string, number>, moods: {} as Record<string, number>, commonMoods: {} as Record<string, number> });
   }, [globalAxioms]);
 
   const masterpieceStats = useMemo(() => {
@@ -345,344 +286,20 @@ export default function HypercubeDashboard() {
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
 
-  const dynastyStats = useMemo(() => {
+  const radarData = useMemo(() => {
     if (!globalAxioms) return [];
     return Object.keys(DYNASTY_CONFIG).map(dynasty => {
         const relatedAxioms = globalAxioms.filter(ax => ax.tags?.includes(dynasty));
-        const axiomCount = relatedAxioms.length;
-        const compositions = Array.from(new Set(relatedAxioms.map(ax => ax.compositionId)));
-        const avgVector = relatedAxioms.reduce((acc, ax) => {
-            acc.t += ax.vector?.t || 0;
-            acc.b += ax.vector?.b || 0;
-            acc.e += ax.vector?.e || 0;
-            acc.h += ax.vector?.h || 0;
+        const count = relatedAxioms.length;
+        const vector = relatedAxioms.reduce((acc, ax) => {
+            acc.t += ax.vector?.t || 0; acc.b += ax.vector?.b || 0; acc.e += ax.vector?.e || 0; acc.h += ax.vector?.h || 0;
             return acc;
         }, { t: 0, b: 0, e: 0, h: 0 });
-        if (axiomCount > 0) {
-            avgVector.t /= axiomCount; avgVector.b /= axiomCount; avgVector.e /= axiomCount; avgVector.h /= axiomCount;
-        }
-        return { id: dynasty, label: DYNASTY_CONFIG[dynasty].label, color: DYNASTY_CONFIG[dynasty].color, count: axiomCount, compositions, vector: avgVector };
+        if (count > 0) { vector.t /= count; vector.b /= count; vector.e /= count; vector.h /= count; }
+        return { id: dynasty, label: DYNASTY_CONFIG[dynasty].label, color: DYNASTY_CONFIG[dynasty].color, count, vector };
     }).sort((a, b) => b.count - a.count);
   }, [globalAxioms]);
 
-  const radarData = useMemo(() => {
-    return [
-      { subject: 'Tension', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.t * 100])) },
-      { subject: 'Brightness', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.b * 100])) },
-      { subject: 'Entropy', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.e * 100])) },
-      { subject: 'Stability', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.h * 100])) },
-    ];
-  }, [dynastyStats]);
-
-  const resetStaging = () => {
-    setStagedAxioms([]);
-    setSelectedIds(new Set());
-    setCurrentFileName('');
-    setPlayingAxiomId(null);
-    setIsMasterBackupLoaded(false);
-    setMasterBackupData(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const clearAllFilters = () => {
-      setFilterSearchText("");
-      setSelectedFilterGenres([]);
-      setSelectedFilterMoods([]);
-  };
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.name.endsWith('.json')) {
-        resetStaging();
-        const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          try {
-            const json = JSON.parse(event.target?.result as string);
-            
-            if (json.metadata?.type === 'AuraGroove_Master_Backup') {
-                setIsMasterBackupLoaded(true);
-                setMasterBackupData(json);
-                setCurrentFileName(file.name);
-                toast({ title: "Master Backup Detected", description: "Ready for full system restoration." });
-                return;
-            }
-
-            let flattened: any[] = [];
-            const processAxiom = (ax: any, idx: number, compId: string) => {
-                const role = (ax.role || 'melody').toLowerCase();
-                const phrase = ax.phrase || [];
-                let maxTick = 0;
-                for(let i=0; i<phrase.length; i+=4) {
-                    const end = (phrase[i] || 0) + (phrase[i+1] || 0);
-                    if(end > maxTick) maxTick = end;
-                }
-                const calculatedBars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
-                const calculatedNoteCount = Math.floor(phrase.length / 4);
-                const repairedPhrase = repairLegacyPhrase(phrase);
-                const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
-                const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
-                return {
-                    ...ax,
-                    phrase: repairedPhrase,
-                    role: role,
-                    id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
-                    compositionId: compId,
-                    genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
-                    mood: moods,
-                    commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
-                    vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
-                    tags: ax.tags || [],
-                    narrative: ax.narrative || "Heritage component.",
-                    nativeBpm: ax.nativeBpm || ax.bpm || null,
-                    nativeKey: ax.nativeKey || ax.key || null,
-                    timeSignature: ax.timeSignature || ax.ts || null,
-                    barOffset: ax.barOffset ?? 0,
-                    bars: ax.bars || calculatedBars,
-                    noteCount: ax.noteCount || calculatedNoteCount,
-                    ignored: ax.ignored ?? false,
-                    preferredInstrument: ax.preferredInstrument || null
-                };
-            };
-
-            const ppq = json.header?.ppq || 480;
-
-            if (json.header && json.tracks && Array.isArray(json.tracks)) {
-                const targetId = json.header.name || cleanFileName || "MIDI_Export";
-                const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
-                const timeSig = json.header.timeSignatures?.[0] ? `${json.header.timeSignatures[0].numerator}/${json.header.timeSignatures[0].denominator}` : '4/4';
-                json.tracks.forEach((track: any, tIdx: number) => {
-                    if (!track.notes || track.notes.length === 0) return;
-                    let totalPitch = 0; const phrase: number[] = [];
-                    track.notes.forEach((note: any) => {
-                        totalPitch += note.midi;
-                        const tick = Math.round((note.ticks / ppq) * 3);
-                        const duration = Math.max(1, Math.round((note.durationTicks / ppq) * 3));
-                        const semitone = note.midi % 12;
-                        const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
-                        const degIdx = DEGREE_KEYS.indexOf(degName);
-                        const techIdx = TECHNIQUE_KEYS.indexOf('pick');
-                        phrase.push(tick, duration, degIdx, techIdx);
-                    });
-                    const noteCount = track.notes.length; const avgPitch = totalPitch / noteCount;
-                    const maxTime = Math.max(...track.notes.map((n: any) => n.time + n.duration));
-                    const calculatedBars = Math.max(1, Math.ceil(maxTime * 3 / TICKS_PER_BAR));
-                    const density = noteCount / calculatedBars;
-                    let role = 'melody'; const lowerName = (track.name || "").toLowerCase();
-                    
-                    if (lowerName.includes('drum') || (track.instrument && track.instrument.percussion) || tIdx === 9) {
-                        role = 'drums';
-                    } else if (lowerName.includes('bass') || avgPitch < 48 || (noteCount >= 8 && noteCount <= 48 && avgPitch < 55)) {
-                        role = 'bass';
-                    } else if (density > 10 || noteCount > 500) {
-                        role = 'accomp piano';
-                    } else {
-                        role = 'melody';
-                    }
-                    
-                    const instName = track.instrument?.name || track.name || 'Unnamed Instrument';
-                    flattened.push(processAxiom({ 
-                        phrase, 
-                        role, 
-                        nativeBpm: bpm, 
-                        nativeKey: 'C', 
-                        timeSignature: timeSig, 
-                        narrative: `Ch${tIdx}: ${instName} (${track.instrument?.number || '0'})` 
-                    }, tIdx, targetId));
-                });
-            } else if (Array.isArray(json)) {
-                const targetId = cleanFileName || "Unknown_Heritage";
-                json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, targetId)));
-            } else {
-                Object.entries(json).forEach(([trackName, licks]) => {
-                    if (trackName === 'header' || trackName === 'tracks') {
-                        if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, cleanFileName)));
-                        return;
-                    }
-                    if (Array.isArray(licks)) (licks as any[]).forEach((lick, idx) => flattened.push(processAxiom(lick, idx, trackName)));
-                    else flattened.push(processAxiom(licks, 0, trackName));
-                });
-            }
-            if (flattened.length === 0) {
-                toast({ variant: "destructive", title: "Empty Payload", description: "No valid music data found in JSON." }); return;
-            }
-            const compGroups = new Map<string, any[]>();
-            flattened.forEach(ax => { if (!compGroups.has(ax.compositionId)) compGroups.set(ax.compositionId, []); compGroups.get(ax.compositionId)!.push(ax); });
-            compGroups.forEach((licks, compId) => {
-                let globalMinT = Infinity;
-                licks.forEach(lick => { const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) { if (phrase[i] < globalMinT) globalMinT = phrase[i]; } });
-                if (globalMinT !== Infinity && globalMinT > 0) {
-                    const barShift = Math.floor(globalMinT / TICKS_PER_BAR);
-                    licks.forEach(lick => {
-                        const phrase = lick.phrase || []; for (let i = 0; i < phrase.length; i += 4) phrase[i] -= globalMinT;
-                        lick.barOffset = Math.max(0, (lick.barOffset || 0) - barShift);
-                        let maxTick = 0; for (let i = 0; i < phrase.length; i += 4) { const end = phrase[i] + phrase[i+1]; if (end > maxTick) maxTick = end; }
-                        lick.bars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
-                    });
-                }
-            });
-            setStagedAxioms(flattened);
-            setSelectedIds(new Set(flattened.map(a => a.id)));
-            setCurrentFileName(file.name);
-          } catch (err) {
-            console.error("[Parser] Error:", err);
-            toast({ variant: "destructive", title: "Parse Error", description: "Invalid AuraGroove DNA format." });
-          }
-        };
-        reader.readAsText(file);
-    } else {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const content = event.target?.result as string;
-            setManifestContent(content);
-            setActiveManifest({ filename: file.name, isNew: true });
-            toast({ title: "Manifest Staged", description: `Loaded ${file.name} for synchronization.` });
-        };
-        reader.readAsText(file);
-    }
-  };
-
-  const handleMasterSystemBackup = () => {
-      const backup = {
-          metadata: {
-              type: 'AuraGroove_Master_Backup',
-              version: '1.0',
-              timestamp: new Date().toISOString(),
-              total_axioms: globalAxioms?.length || 0,
-              total_masterpieces: globalMasterpieces?.length || 0,
-              total_documents: cloudManifests?.length || 0
-          },
-          collections: {
-              heritage_axioms: globalAxioms || [],
-              masterpieces: globalMasterpieces || [],
-              project_documents: cloudManifests || []
-          }
-      };
-
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `AuraGroove_Master_Backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: "Master Backup Complete", description: "Entire cloud state saved locally." });
-  };
-
-  const handleCommitMasterRestore = async () => {
-      if (!masterBackupData) return;
-      setIsProcessing(true);
-      try {
-          const { heritage_axioms, masterpieces, project_documents } = masterBackupData.collections;
-          
-          let count = 0;
-          
-          if (Array.isArray(heritage_axioms)) {
-              for (let i = 0; i < heritage_axioms.length; i++) {
-                  await saveHeritageAxiom(db, heritage_axioms[i], i);
-                  count++;
-              }
-          }
-
-          if (Array.isArray(masterpieces)) {
-              for (const m of masterpieces) {
-                  await saveMasterpiece(db, m);
-                  count++;
-              }
-          }
-
-          if (Array.isArray(project_documents)) {
-              for (const doc of project_documents) {
-                  await saveProjectDocument(db, doc);
-                  count++;
-              }
-          }
-
-          toast({ title: "System Restored", description: `Injected ${count} total units into Cloud.` });
-          resetStaging();
-      } catch (e) {
-          toast({ variant: "destructive", title: "Restoration Failed", description: String(e) });
-      } finally {
-          setIsProcessing(false);
-      }
-  };
-
-  const handleBootstrapKnowledgeBase = async () => {
-      setIsProcessing(true);
-      try {
-          const manifests = [
-              { filename: 'SYSTEM_PROTOCOL.md', category: 'protocol', content: '### Системный Протокол Управления v4.5 "Pure V2 Domain"' },
-              { filename: 'SOCIAL_CONTRACT.md', category: 'contract', content: '# Социальный Контракт v1.7 "Absolute Fidelity"' },
-              { filename: 'DNA_RULES.md', category: 'protocol', content: '# DNA Rules: The Heritage Codex (v1.0)' },
-              { filename: 'CODEBASE_SPECIFICATION.md', category: 'spec', content: '# Спецификация кодовой базы: AuraGroove' },
-              { filename: 'FORGE_MASTER_SPEC.md', category: 'spec', content: '# Спецификация Завода AuraGroove: Heritage Axiom Protocol (v2.2)' },
-              { filename: 'SOR_SPECIFICATION.md', category: 'spec', content: '# Техническая Спецификация: СОР (Система Обеспечения Разнообразия) v2.20' },
-              { filename: 'AXIOM_PROTOCOL.md', category: 'protocol', content: '# Протокол Аксиом AuraGroove (v1.0)' },
-              { filename: 'TECHNIQUE_GUIDE.md', category: 'spec', content: '# Справочник Техник Исполнения (AuraGroove)' },
-              { filename: 'FRACTAL_ENGINE_IMPLEMENTATION_PLAN.md', category: 'spec', content: '# План Реализации Фрактального Движка' },
-              { filename: 'GENERATIVE_MUSIC_CONCEPT.md', category: 'spec', content: '# Концепция: "Музыкальный Геном" и "Эволюционный Движок"' },
-              { filename: 'TECHNICAL_OVERVIEW.md', category: 'spec', content: '# EtherMusic: Технический обзор проекта' },
-              { filename: 'STRATEGIC_CHOICE.md', category: 'spec', content: '# Стратегический выбор: Два пути к чистому звуку' },
-              { filename: 'PROJECT_ANALYSIS_RU.md', category: 'spec', content: '### Сводный Анализ Проекта "AuraGroove"' },
-              { filename: 'README.md', category: 'spec', content: '# AuraGroove V2' },
-              { filename: 'Omega3.txt', category: 'protocol', content: 'ПРОТОКОЛ-ОМЕГА (Версия 3.0 "Зеркало Истины")' },
-              { filename: 'project_history.md', category: 'spec', content: '# Журнал Проекта AuraGroove' }
-          ];
-
-          for (const m of manifests) {
-              await saveProjectDocument(db, {
-                  filename: m.filename,
-                  content: m.content,
-                  category: m.category as any,
-                  version: 'Bootstrap'
-              });
-          }
-          toast({ title: "Full Bootstrap Complete", description: "Global knowledge base synchronized." });
-      } catch (e) {
-          toast({ variant: "destructive", title: "Bootstrap Failed" });
-      } finally {
-          setIsProcessing(false);
-      }
-  };
-
-  const handleCommitManifest = async () => {
-      if (!activeManifest) return;
-      setIsProcessing(true);
-      try {
-          const categoryMatch = activeManifest.filename.toLowerCase().match(/backlog|protocol|spec|contract/);
-          const category = categoryMatch ? categoryMatch[0] : 'spec';
-          await saveProjectDocument(db, {
-              filename: activeManifest.filename,
-              content: manifestContent,
-              category: category as any,
-              version: 'CloudSync'
-          });
-          setActiveManifest(null);
-          setManifestContent("");
-      } catch (e) {
-          toast({ variant: "destructive", title: "Sync Failed" });
-      } finally {
-          setIsProcessing(false);
-      }
-  };
-
-  const mapAxiomToChannel = (rawRole: string): string => {
-      const role = rawRole.toLowerCase();
-      if (role === 'bass') return 'bass';
-      if (role.startsWith('drums') || role.startsWith('drum')) return 'drums';
-      if (role.includes('piano')) return 'pianoAccompaniment';
-      if (role.includes('strings') || role.includes('violin') || role.includes('guitar')) return 'harmony';
-      return 'melody';
-  };
-
-  /**
-   * #ЗАЧЕМ: Прослушивание аксиомы с абсолютной синхронизацией Chronos.
-   * #ОБНОВЛЕНО (ПЛАН №978): Использование TICK_TO_BEAT для побитовой идентичности с движком.
-   */
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) { stopAllSounds(); setPlayingAxiomId(null); return; }
     if (!isInitialized) await initialize();
@@ -690,495 +307,209 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
     const minTick = Math.min(...phrase.map(n => n.t));
-    const channelType = mapAxiomToChannel(axiom.role || 'melody');
-    
-    const tension = 0.5; // Нейтральное напряжение для аудита
-    const resolvedInst = axiom.preferredInstrument 
-        ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) 
-        : (channelType === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz');
+    const role = (axiom.role || 'melody').toLowerCase();
+    let channel: any = 'melody';
+    if (role === 'bass') channel = 'bass';
+    else if (role.startsWith('drums')) channel = 'drums';
+    else if (role.includes('piano')) channel = 'pianoAccompaniment';
+    else if (role.includes('accomp')) channel = 'accompaniment';
 
-    const events: FractalEvent[] = phrase.map((n: any) => {
-      return {
-          type: channelType,
-          note: (axiom.role === 'bass' ? 31 : (axiom.role.startsWith('drums') ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
-          time: (n.t - minTick) * TICK_TO_BEAT,
-          duration: n.d * TICK_TO_BEAT,
-          weight: 0.8,
-          technique: n.tech as any,
-          dynamics: 'p',
-          phrasing: 'legato',
-          params: { ...n.params, attack: 0.05, release: 0.5, barCount: 0 },
-          chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined
-      };
-    });
-
-    const hints: InstrumentHints = {};
-    if (channelType === 'melody') hints.melody = resolvedInst;
-    else if (channelType === 'bass') hints.bass = resolvedInst;
-    else if (channelType === 'drums') hints.drums = 'melancholic';
-    else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
-    else if (channelType === 'harmony') hints.harmony = 'violin';
-    else hints.accompaniment = resolvedInst;
-    
-    playRawEvents(events, hints, axiom.nativeBpm || 72);
+    const instrument = resolveSemanticTimbre(axiom.preferredInstrument || (channel === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz'), 0.5, channel);
+    const events: FractalEvent[] = phrase.map(n => ({
+        type: channel,
+        note: (channel === 'bass' ? 31 : (channel === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
+        time: (n.t - minTick) * TICK_TO_BEAT,
+        duration: n.d * TICK_TO_BEAT,
+        weight: 0.8, technique: n.tech as any, dynamics: 'p', phrasing: 'legato'
+    }));
+    playRawEvents(events, { [channel]: instrument }, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
-    const maxDuration = Math.max(...events.map(e => e.time + e.duration));
-    setTimeout(() => { setPlayingAxiomId(prev => prev === axiom.id ? null : prev); }, (maxDuration + 1) * 1000);
+    setTimeout(() => setPlayingAxiomId(null), 5000);
   };
 
-  const handleToggleIgnore = async (axiom: any) => {
-      setIsProcessing(true);
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
+    setIsProcessing(true);
+    try {
+        const batch = writeBatch(db);
+        licks.forEach(ax => { batch.update(doc(db, 'heritage_axioms', ax.id), { compositionId: newId, genre: newG, mood: newM, nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs }); });
+        await batch.commit();
+        toast({ title: "Track Updated" });
+    } finally { setIsProcessing(false); setEditingGroupId(null); }
+  };
+
+  const handleWipeSelected = async () => {
+    setIsProcessing(true);
+    try {
+        const batch = writeBatch(db);
+        const selected = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).flatMap(([, l]) => l);
+        selected.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
+        await batch.commit();
+        setSelectedTrackGroups(new Set());
+        toast({ title: "Batch Purged" });
+    } finally { setIsProcessing(false); }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
       try {
-          const ref = doc(db, 'heritage_axioms', axiom.id);
-          await updateDoc(ref, { ignored: !axiom.ignored });
-          toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored" });
-      } catch (e) { toast({ variant: "destructive", title: "Action Failed" }); }
-      finally { setIsProcessing(false); }
+        const json = JSON.parse(event.target?.result as string);
+        let flattened: any[] = [];
+        const processAxiom = (ax: any, idx: number, compId: string) => {
+            const phrase = ax.phrase || [];
+            const repaired = repairLegacyPhrase(phrase);
+            return {
+                ...ax, phrase: repaired, role: (ax.role || 'melody').toLowerCase(), id: `${compId}_${idx}_${Math.random()}`,
+                compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
+                mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
+                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, narrative: ax.narrative || "Imported."
+            };
+        };
+        if (Array.isArray(json)) json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, file.name)));
+        else Object.entries(json).forEach(([compId, licks]: any) => { if(Array.isArray(licks)) licks.forEach((l, i) => flattened.push(processAxiom(l, i, compId))); });
+        setStagedAxioms(flattened);
+        setSelectedIds(new Set(flattened.map(a => a.id)));
+        setCurrentFileName(file.name);
+      } catch (err) { toast({ variant: "destructive", title: "Parse Error" }); }
+    };
+    reader.readAsText(file);
   };
 
   const handleCommitInjection = async () => {
-    setIsProcessing(true); let addedCount = 0;
+    setIsProcessing(true);
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (let i = 0; i < toInject.length; i++) {
-        const ax = toInject[i];
-        const newMoods = ax.mood && ax.mood.length > 0 ? ax.mood : ['melancholic'];
-        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        await saveHeritageAxiom(db, { ...ax, genre: selectedGenre, mood: newMoods, commonMood: newCommons, barOffset: ax.barOffset ?? 0, origin: `Manual_Forge_Injection_${currentFileName}`, timestamp: new Date().toISOString() as any, narrative: ax.narrative || "Heritage component.", ignored: false }, i);
-        addedCount++;
+        await saveHeritageAxiom(db, { ...toInject[i], genre: selectedGenre }, i);
       }
-      setProcessedFiles(prev => [...new Set([...prev, currentFileName])]);
-      localStorage.setItem(PROCESSED_FILES_KEY, JSON.stringify([...new Set([...processedFiles, currentFileName])]));
-      toast({ title: "DNA Injected", description: `Committed ${addedCount} axioms.` }); resetStaging();
-    } catch (e) { toast({ variant: "destructive", title: "Injection Failed", description: String(e) }); }
-    finally { setIsProcessing(false); }
-  };
-
-  const handleDeleteAxiom = (id: string) => {
-    setConfirmAction({ title: "Delete Axiom", desc: "CRITICAL: Delete this specific axiom from Cloud? This action cannot be undone.", action: () => { const docRef = doc(db, 'heritage_axioms', id); deleteDocumentNonBlocking(docRef); toast({ title: "Purge Initiated", description: "Deleting axiom..." }); } });
-    setConfirmOpen(true);
-  };
-
-  const handleDeleteTrack = (compId: string, licks: any[]) => {
-    setConfirmAction({ title: `Purge Track: ${compId.replace(/_/g, ' ')}`, desc: `CRITICAL: Delete entire track and all its ${licks.length} axioms from Cloud?`, action: async () => {
-            setIsProcessing(true);
-            try {
-                const CHUNK_SIZE = 450;
-                for (let i = 0; i < licks.length; i += CHUNK_SIZE) {
-                    const chunk = licks.slice(i, i + CHUNK_SIZE); const batch = writeBatch(db);
-                    chunk.forEach(ax => { batch.delete(doc(db, 'heritage_axioms', ax.id)); });
-                    await batch.commit();
-                }
-                toast({ title: "Track Purged", description: `Successfully deleted ${compId}` });
-            } catch (e) { toast({ variant: "destructive", title: "Purge Failed" }); }
-            finally { setIsProcessing(false); }
-        }
-    });
-    setConfirmOpen(true);
-  };
-
-  const handleWipeSelected = () => {
-    if (selectedTrackGroups.size === 0) return;
-    setConfirmAction({ title: `WIPE SELECTED (${selectedTrackGroups.size} tracks)`, desc: `CRITICAL: Permanently delete all axioms associated with the ${selectedTrackGroups.size} selected tracks?`, action: async () => {
-            setIsProcessing(true);
-            try {
-                const selectedAxioms = groupedAxioms.filter(([compId]) => selectedTrackGroups.has(compId)).flatMap(([, licks]) => licks);
-                const CHUNK_SIZE = 450;
-                for (let i = 0; i < selectedAxioms.length; i += CHUNK_SIZE) {
-                    const chunk = selectedAxioms.slice(i, i + CHUNK_SIZE); const batch = writeBatch(db);
-                    chunk.forEach(ax => { batch.delete(doc(db, 'heritage_axioms', ax.id)); });
-                    await batch.commit();
-                }
-                setSelectedTrackGroups(new Set());
-                toast({ title: "Selective Purge Complete", description: `Wiped ${selectedAxioms.length} axioms from ${selectedTrackGroups.size} tracks.` });
-            } catch (e) { toast({ variant: "destructive", title: "Batch Purge Failed" }); }
-            finally { setIsProcessing(false); }
-        }
-    });
-    setConfirmOpen(true);
-  };
-
-  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newGenres: Genre[], newMoods: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
-    setIsProcessing(true);
-    try {
-        const batch = writeBatch(db); const newCommonMoods = Array.from(new Set(newMoods.map(m => MOOD_TO_COMMON[m])));
-        licks.forEach(ax => { const ref = doc(db, 'heritage_axioms', ax.id); batch.update(ref, { compositionId: newId, genre: newGenres, mood: newMoods, commonMood: newCommonMoods, nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs }); });
-        await batch.commit();
-        toast({ title: "Track Updated", description: `Updated ${licks.length} axioms successfully.` });
-    } catch (e) { toast({ variant: "destructive", title: "Update Failed" }); }
-    finally { setIsProcessing(false); setEditingGroupId(null); }
-  };
-
-  const handleSaveAxiomEdits = async () => {
-    if (!editAxiomData) return;
-    setIsProcessing(true);
-    try {
-        const ref = doc(db, 'heritage_axioms', editAxiomData.id);
-        const newMoods = Array.isArray(editAxiomData.mood) ? editAxiomData.mood : [editAxiomData.mood];
-        const newCommons = Array.from(new Set(newMoods.map((m: Mood) => MOOD_TO_COMMON[m] || 'neutral')));
-        
-        let finalPreferred = editAxiomData.preferredInstrument;
-        if (typeof finalPreferred === 'object' && finalPreferred !== null) {
-            finalPreferred = { 
-                low: finalPreferred.low === 'none' ? null : finalPreferred.low,
-                mid: finalPreferred.mid === 'none' ? null : finalPreferred.mid,
-                high: finalPreferred.high === 'none' ? null : finalPreferred.high
-            };
-        } else if (finalPreferred === 'none') {
-            finalPreferred = null;
-        }
-
-        await updateDoc(ref, {
-            role: editAxiomData.role,
-            narrative: editAxiomData.narrative,
-            vector: editAxiomData.vector,
-            mood: newMoods,
-            commonMood: newCommons,
-            nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
-            nativeKey: editAxiomData.nativeKey,
-            timeSignature: editAxiomData.timeSignature,
-            barOffset: editAxiomData.barOffset ?? 0,
-            bars: editAxiomData.bars,
-            noteCount: editAxiomData.noteCount,
-            preferredInstrument: finalPreferred
-        });
-        toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
-    } catch (e) { toast({ variant: "destructive", title: "Update Failed", description: String(e) }); }
-    finally { setIsProcessing(false); }
-  };
-
-  const handleExportTrack = (compId: string, licks: any[]) => {
-      const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
-      const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      toast({ title: "DNA Exported", description: `File saved as ${a.download}` });
-  };
-
-  const handleExportFullRegistry = () => {
-      if (!globalAxioms) return;
-      const cleanRegistry = globalAxioms.map(({ id, timestamp, ...rest }) => ({ ...rest }));
-      const blob = new Blob([JSON.stringify(cleanRegistry, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Full_DNA_Registry_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      toast({ title: "Registry Downloaded", description: "Full heritage backup saved." });
-  };
-
-  const handlePurgeAll = () => {
-    setConfirmAction({ title: "MASTER PURGE", desc: "Wipe entire database? This will delete ALL heritage axioms. This cannot be undone.", action: async () => {
-            setIsProcessing(true);
-            try {
-                if (!globalAxioms || globalAxioms.length === 0) return;
-                const CHUNK_SIZE = 450;
-                for (let i = 0; i < globalAxioms.length; i += CHUNK_SIZE) {
-                    const chunk = globalAxioms.slice(i, i + CHUNK_SIZE); const batch = writeBatch(db);
-                    chunk.forEach(axiom => { batch.delete(doc(db, 'heritage_axioms', axiom.id)); });
-                    await batch.commit();
-                }
-                setProcessedFiles([]); localStorage.removeItem(PROCESSED_FILES_KEY);
-                toast({ title: "Hypercube Cleared", description: "All heritage DNA has been successfully purged." });
-            } catch (e) { toast({ variant: "destructive", title: "Purge Failed", description: "Batch limit or quota exceeded." }); }
-            finally { setIsProcessing(false); }
-        }
-    });
-    setConfirmOpen(true);
-  };
-
-  const toggleTrackSelection = (compId: string) => {
-    const next = new Set(selectedTrackGroups); if (next.has(compId)) next.delete(compId); else next.add(compId); setSelectedTrackGroups(next);
-  };
-
-  const selectAllFiltered = () => {
-    if (selectedTrackGroups.size === groupedAxioms.length) setSelectedTrackGroups(new Set());
-    else setSelectedTrackGroups(new Set(groupedAxioms.map(([compId]) => compId)));
-  };
-
-  const invertSelection = () => {
-    const shownIds = groupedAxioms.map(([id]) => id); const next = new Set<string>();
-    shownIds.forEach(id => { if (!selectedTrackGroups.has(id)) next.add(id); });
-    setSelectedTrackGroups(next);
-  };
-
-  const getSortedLicks = (licks: any[]) => {
-      return [...licks].sort((a, b) => {
-          if ((a.barOffset ?? 0) !== (b.barOffset ?? 0)) return (a.barOffset ?? 0) - (b.barOffset ?? 0);
-          const roleOrder = ['melody', 'bass', 'drums', 'accomp'];
-          const getRoleWeight = (r: string) => { const base = String(r || 'melody').split(' ')[0].toLowerCase(); const idx = roleOrder.indexOf(base); return idx === -1 ? 99 : idx; };
-          return getRoleWeight(a.role) - getRoleWeight(b.role);
-      });
+      toast({ title: "DNA Injected" }); setStagedAxioms([]);
+    } finally { setIsProcessing(false); }
   };
 
   const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
 
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8 font-body overflow-x-hidden">
-      <div className="w-full mx-auto space-y-8">
-        <div className="flex items-center justify-between">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <header className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Selective Injection Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair Station</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleMasterSystemBackup} disabled={isDbLoading} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><ShieldCheck className="h-4 w-4" /> Master Backup</Button>
-            <Button variant="outline" size="sm" onClick={() => router.push('/timbre-lab')} className="gap-2 text-accent border-accent/20 hover:bg-accent/5"><FlaskConical className="h-4 w-4" /> Timbre Lab</Button>
-            <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"><Square className="h-4 w-4" /> Stop Audition</Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
           </div>
-        </div>
+        </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-primary/5 border-primary/20 shadow-lg">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Global Capacity</CardTitle></CardHeader>
-              <CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent>
-            </Card>
-            <Card className="bg-primary/5 border-primary/20 shadow-lg">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Masterpieces (Likes)</CardTitle></CardHeader>
-              <CardContent><div className="text-3xl font-black text-primary font-mono">{isMpiecesLoading ? '---' : masterpieceStats.total}</div></CardContent>
-            </Card>
-            <Card className="bg-primary/5 border-primary/20 shadow-lg">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Genre Map</CardTitle></CardHeader>
-              <CardContent><div className="flex flex-wrap gap-1.5">{Object.entries(globalStats.genres).map(([g, count]) => (<Badge key={g} variant="secondary" className="text-[10px] uppercase font-bold py-0.5">{g}: {count}</Badge>))}</div></CardContent>
-            </Card>
-            <Card className="bg-primary/5 border-primary/20 shadow-lg">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader>
-              <CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total Capacity</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Genres</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.keys(globalStats.genres).slice(0, 5).map(g => <Badge key={g} variant="outline" className="text-[9px] uppercase">{g}</Badge>)}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Status</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">100%</div></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="explore" className="space-y-6 w-full">
-          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50 w-full">
-            <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Globe className="h-4 w-4 mr-2" /> Explore</TabsTrigger>
-            <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Dna className="h-4 w-4 mr-2" /> Genetic Map</TabsTrigger>
-            <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Star className="h-4 w-4 mr-2" /> Masterpieces</TabsTrigger>
-            <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><Upload className="h-4 w-4 mr-2" /> Inject DNA</TabsTrigger>
-            <TabsTrigger value="manifests" className="text-xs font-bold uppercase tracking-wider data-[state=active]:bg-card"><FileText className="h-4 w-4 mr-2" /> Manifests</TabsTrigger>
+        <Tabs defaultValue="explore" className="space-y-6">
+          <TabsList className="grid grid-cols-4 h-12 bg-muted/30 p-1 border border-border/50">
+            <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider">Explore</TabsTrigger>
+            <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider">Genetic Map</TabsTrigger>
+            <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider">Masterpieces</TabsTrigger>
+            <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider">Inject DNA</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="explore" className="space-y-4 w-full">
-            <Card className="border-border/50 shadow-xl bg-card/50 w-full">
+          <TabsContent value="explore" className="space-y-4">
+            <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader className="pb-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-bold">Inspect and Curate Heritage Axioms</CardDescription>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Inspect and Curate Heritage Axioms</CardDescription>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
-                    {filtersActive && (<Button variant="ghost" size="sm" onClick={clearAllFilters} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>)}
-                    <div className="relative group"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" /><Input placeholder="Search composition..." className="pl-9 h-9 w-[220px] text-xs bg-background/50" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} /></div>
-                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={vals => setSelectedFilterGenres(vals)} placeholder="Filter Genre" className="w-[150px] h-9" />
-                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={vals => setSelectedFilterMoods(vals)} placeholder="Filter Mood" className="w-[150px] h-9" />
-                    <Button variant="outline" size="sm" onClick={handlePurgeAll} disabled={isProcessing} className="text-destructive border-destructive/20 hover:bg-destructive/10 h-9"><ShieldAlert className="h-4 w-4 mr-2" /> Wipe Base</Button>
+                    {filtersActive && <Button variant="ghost" size="sm" onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); }} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>}
+                    <Input placeholder="Search..." className="h-9 w-[180px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
+                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
+                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
+                    {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-2" /> Wipe ({selectedTrackGroups.size})</Button>}
                   </div>
                 </div>
-                {groupedAxioms.length > 0 && (
-                  <div className="flex items-center justify-between pt-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={selectAllFiltered} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
-                        <Check className="h-3.5 w-3.5" />
-                        {selectedTrackGroups.size === groupedAxioms.length && groupedAxioms.length > 0 ? "Deselect All" : "Select All Filtered"}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={invertSelection} className="h-7 text-[10px] uppercase font-black tracking-tighter gap-1.5">
-                        <RotateCcw className="h-3 w-3" />
-                        Invert Selection
-                      </Button>
-                    </div>
-                    {selectedTrackGroups.size > 0 && (
-                      <Button variant="destructive" size="sm" onClick={handleWipeSelected} disabled={isProcessing} className="h-7 text-[10px] font-black uppercase shadow-lg animate-in fade-in zoom-in duration-200">
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Wipe Selected ({selectedTrackGroups.size})
-                      </Button>
-                    )}
-                  </div>
-                )}
               </CardHeader>
-              <CardContent className="p-0 border-t w-full">
-                <ScrollArea className="h-[700px] px-4 py-2 relative">
-                  {isDbLoading ? (
-                    <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse"><Database className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Reading Cloud...</p></div>
-                  ) : groupedAxioms.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 opacity-40"><Database className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">{filtersActive ? "No matching DNA" : "No DNA Found"}</p></div>
-                  ) : (
-                    <Accordion type="multiple" className="space-y-2 w-full">
-                      {groupedAxioms.map(([compId, licks]) => {
-                        const filteredLicks = getSortedLicks(licks).filter(ax => {
-                          const roleMatch = !axiomFilterRole || (ax.role || 'melody').toLowerCase().includes(axiomFilterRole.toLowerCase());
-                          const offsetMatch = !axiomFilterOffset || String(ax.barOffset ?? 0) === axiomFilterOffset;
-                          return roleMatch && offsetMatch;
-                        });
-                        return (
-                          <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30 w-full">
-                            <div className="sticky top-0 z-30 bg-card/95 backdrop-blur-sm border-b border-border/50 hover:bg-primary/5 transition-colors group">
-                              <div className="flex items-center justify-between py-4 px-4">
-                                  <div className="flex items-center gap-4 flex-grow">
-                                    <Checkbox checked={selectedTrackGroups.has(compId)} onCheckedChange={() => toggleTrackSelection(compId)} onClick={(e) => e.stopPropagation()} className="border-primary/30" />
-                                    <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent [&>svg]:ml-2">
-                                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black cursor-pointer hover:bg-primary/20 transition-colors shrink-0">
-                                        {licks.length}
-                                      </Badge>
-                                    </AccordionTrigger>
-                                      {editingGroupId === compId ? (
-                                          <div className="flex flex-col gap-3 w-full max-w-4xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
-                                            <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} className="h-8 text-sm" autoFocus /></div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={vals => setEditGenreValue(vals)} placeholder="Select genres..." className="w-full" /></div>
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={vals => setEditMoodValue(vals)} placeholder="Select moods..." className="w-full" /></div>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-4">
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">BPM</Label><Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" /></div>
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Key</Label><Select value={editKeyValue} onValueChange={setEditKeyValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent></Select></div>
-                                              <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Signature</Label><Select value={editTsValue} onValueChange={setEditTsValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="4/4" className="text-xs">4/4</SelectItem><SelectItem value="3/4" className="text-xs">3/4</SelectItem><SelectItem value="5/4" className="text-xs">5/4</SelectItem><SelectItem value="7/8" className="text-xs">7/8</SelectItem><SelectItem value="12/8" className="text-xs">12/8</SelectItem></SelectContent></Select></div>
-                                            </div>
-                                            <div className="flex items-center gap-2 pt-2">
-                                              <Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-3.5 w-3.5" /> Save Changes</Button>
-                                              <Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}><X className="h-3.5 w-3.5" /> Cancel</Button>
-                                            </div>
-                                          </div>
-                                      ) : (
-                                          <div className="space-y-0.5 flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]); setEditMoodValue(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || "E"); setEditTsValue(licks[0].timeSignature || "4/4"); }}>
-                                            <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-2">{compId.replace(/_/g, ' ')}<Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" /></div>
-                                            <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter flex gap-2"><span>Genre: <span className="text-foreground">{(Array.isArray(licks[0].genre) ? licks[0].genre : [licks[0].genre]).join(', ')}</span></span><span className="opacity-30">|</span><span>Mood: <span className="text-foreground">{(Array.isArray(licks[0].mood) ? licks[0].mood : [licks[0].mood]).join(', ')}</span></span><span className="opacity-30">|</span><span>Meta: <span className="text-foreground">{licks[0].nativeBpm || '??'} BPM / {licks[0].nativeKey || '??'} / {licks[0].timeSignature || '??'}</span></span></div>
-                                          </div>
-                                      )}
+              <CardContent className="p-0 border-t">
+                <ScrollArea className="h-[650px] px-4 py-2">
+                  {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40">SYNCING CLOUD...</div> : (
+                    <Accordion type="multiple" className="space-y-2">
+                      {groupedAxioms.map(([compId, licks]) => (
+                        <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
+                          <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
+                            <div className="flex items-center gap-4 flex-grow">
+                              <Checkbox checked={selectedTrackGroups.has(compId)} onCheckedChange={() => { const n = new Set(selectedTrackGroups); n.has(compId) ? n.delete(compId) : n.add(compId); setSelectedTrackGroups(n); }} />
+                              <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent">
+                                <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
+                              </AccordionTrigger>
+                              {editingGroupId === compId ? (
+                                <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+                                  <Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" />
+                                  <div className="flex gap-2">
+                                    <MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="flex-grow" />
+                                    <Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-8 w-16" placeholder="BPM" />
+                                    <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-4 w-4" /></Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setEditingGroupId(null)}><X className="h-4 w-4" /></Button>
                                   </div>
-                                  <div className="flex items-center gap-1.5 pr-2">
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="text-muted-foreground hover:text-primary h-8 w-8" title="Export Track DNA"><Download className="h-4 w-4" /></Button>
-                                    <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="text-muted-foreground hover:text-destructive h-8 w-8" title="Purge Track"><Trash2 className="h-4 w-4" /></Button>
-                                  </div>
-                              </div>
-                            </div>
-                            <AccordionContent className="p-0 bg-muted/10 border-t overflow-visible w-full">
-                              <ScrollArea className="w-full">
-                                <div className="min-w-[1200px]">
-                                  <table className="w-full text-sm border-collapse">
-                                    <thead className="bg-muted/80 backdrop-blur-sm sticky top-0 z-20 border-b border-border/50">
-                                      <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                                        <th className="p-3 font-black w-32"><div className="space-y-1"><span>Role</span><Input placeholder="Filter..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterRole} onChange={(e) => setAxiomFilterRole(e.target.value)} /></div></th>
-                                        <th className="p-3 font-black w-64">Timbre Configuration</th>
-                                        <th className="p-3 font-black w-40">Meta (B/K/TS)</th>
-                                        <th className="p-3 font-black w-40"><div className="space-y-1"><span>Struct (O/B/N)</span><Input placeholder="Offset..." className="h-6 text-[9px] font-mono bg-background/50 border-primary/10" value={axiomFilterOffset} onChange={(e) => setAxiomFilterOffset(e.target.value)} /></div></th>
-                                        <th className="p-3 font-black w-40">Vector (T,B,E,H)</th>
-                                        <th className="p-3 font-black">Narrative</th>
-                                        <th className="p-3 font-black text-right w-32">Actions</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/20">
-                                      {filteredLicks.map((ax: any) => {
-                                        return (
-                                          <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                            <td className="p-3 pl-12">
-                                              {editingAxiomId === ax.id ? (
-                                                <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
-                                              ) : (
-                                                <Badge variant="outline" className="capitalize text-[10px] font-black px-2 bg-background/50 whitespace-nowrap">{ax.role}</Badge>
-                                              )}
-                                            </td>
-                                            <td className="p-3">
-                                              {editingAxiomId === ax.id ? (
-                                                <div className="space-y-2">
-                                                  <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-[9px] font-black uppercase opacity-50">Multi-Mode</span>
-                                                    <Switch 
-                                                      checked={typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null}
-                                                      onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                          const current = typeof editAxiomData.preferredInstrument === 'string' ? editAxiomData.preferredInstrument : 'none';
-                                                          setEditAxiomData({
-                                                            ...editAxiomData,
-                                                            preferredInstrument: { low: current, mid: current, high: current }
-                                                          });
-                                                        } else {
-                                                          const current = typeof editAxiomData.preferredInstrument === 'object' ? (editAxiomData.preferredInstrument.mid || 'none') : 'none';
-                                                          setEditAxiomData({
-                                                            ...editAxiomData,
-                                                            preferredInstrument: current
-                                                          });
-                                                        }
-                                                      }}
-                                                    />
-                                                  </div>
-                                                  {typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null ? (
-                                                    <div className="grid grid-cols-1 gap-1.5 p-2 bg-primary/5 rounded border border-primary/10">
-                                                      <div className="space-y-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-blue-400">Low Energy (T < 0.4)</span>
-                                                        <Select value={editAxiomData.preferredInstrument.low || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, low: v}})}>
-                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
-                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-purple-400">Steady Groove (0.4-0.75)</span>
-                                                        <Select value={editAxiomData.preferredInstrument.mid || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, mid: v}})}>
-                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
-                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                      <div className="space-y-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-red-400">High Tension (T > 0.75)</span>
-                                                        <Select value={editAxiomData.preferredInstrument.high || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, high: v}})}>
-                                                          <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
-                                                          <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
-                                                        </Select>
-                                                      </div>
-                                                    </div>
-                                                  ) : (
-                                                    <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
-                                                      <SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger>
-                                                      <SelectContent>
-                                                        <SelectItem value="none" className="text-[10px] font-black uppercase">No Override</SelectItem>
-                                                        {INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}
-                                                      </SelectContent>
-                                                    </Select>
-                                                  )}
-                                                </div>
-                                              ) : (
-                                                ax.preferredInstrument ? (
-                                                  typeof ax.preferredInstrument === 'string' ? (
-                                                    <Badge variant="secondary" className="bg-accent/10 text-accent border-accent/20 text-[9px] uppercase font-black px-1.5 py-0.5 flex items-center gap-1.5"><Guitar className="h-2.5 w-2.5" /> {DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge>
-                                                  ) : (
-                                                    <div className="flex flex-col gap-1">
-                                                      <Badge variant="outline" className="bg-primary/5 text-[8px] uppercase font-black h-4 px-1 border-primary/20 flex gap-1 items-center"><Zap className="h-2 w-2" /> Dynamic Tri-Map</Badge>
-                                                      <div className="text-[8px] font-bold uppercase opacity-60 pl-1 border-l border-primary/20">
-                                                        L: {DISPLAY_NAMES[ax.preferredInstrument.low] || 'none'} | M: {DISPLAY_NAMES[ax.preferredInstrument.mid] || 'none'} | H: {DISPLAY_NAMES[ax.preferredInstrument.high] || 'none'}
-                                                      </div>
-                                                    </div>
-                                                  )
-                                                ) : (
-                                                  <span className="text-[9px] text-muted-foreground opacity-40 uppercase font-black">BP Default</span>
-                                                )
-                                              )}
-                                            </td>
-                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</td>
-                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</td>
-                                            <td className="p-3">
-                                              <span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>
-                                            </td>
-                                            <td className="p-3 text-xs italic text-muted-foreground"><div className="line-clamp-1">{ax.narrative}</div></td>
-                                            <td className="p-3 text-right">
-                                              <div className="flex items-center justify-end gap-1">
-                                                {editingAxiomId === ax.id ? (
-                                                  <>
-                                                    <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
-                                                  </>
-                                                ) : (
-                                                  <>
-                                                    <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData(JSON.parse(JSON.stringify(ax))); }} className="h-7 w-7 opacity-0 group-hover/row:opacity-100 transition-opacity"><Edit2 className="h-3 w-3" /></Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-7 w-7">{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
-                                                    <Button size="icon" variant="ghost" onClick={() => handleDeleteAxiom(ax.id)} className="h-7 w-7 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></Button>
-                                                  </>
-                                                )}
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
                                 </div>
-                                <ScrollBar orientation="horizontal" />
-                              </ScrollArea>
-                            </AccordionContent>
-                          </AccordionItem>
-                        );
-                      })}
+                              ) : (
+                                <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); }}>
+                                  <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
+                                  <div className="text-[9px] uppercase font-bold opacity-50">Genre: {(licks[0].genre || []).join(', ')} | BPM: {licks[0].nativeBpm || '??'}</div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 pr-4">
+                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); deleteDocumentNonBlocking(doc(db, 'heritage_axioms', licks[0].id)); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </div>
+                          <AccordionContent className="p-0 border-t overflow-visible">
+                            <ScrollArea className="w-full">
+                              <div className="min-w-[1000px]">
+                                <table className="w-full text-left text-sm">
+                                  <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60">
+                                    <tr><th className="p-3 pl-12">Role</th><th className="p-3">Timbre Override</th><th className="p-3">Struct (O/B/N)</th><th className="p-3">Vector</th><th className="p-3 text-right">Actions</th></tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-border/20">
+                                    {licks.map((ax: any) => (
+                                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                        <td className="p-3 pl-12">
+                                          {editingAxiomId === ax.id ? (
+                                            <Select value={editAxiomData.role} onValueChange={v => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
+                                          ) : <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge>}
+                                        </td>
+                                        <td className="p-3">
+                                          {editingAxiomId === ax.id ? (
+                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent></Select>
+                                          ) : (ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>)}
+                                        </td>
+                                        <td className="p-3 font-mono text-[10px] opacity-60">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
+                                        <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
+                                        <td className="p-3 text-right">
+                                          <div className="flex justify-end gap-1">
+                                            {editingAxiomId === ax.id ? (
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>
+                                            ) : (
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
+                                            )}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <ScrollBar orientation="horizontal" />
+                            </ScrollArea>
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
                     </Accordion>
                   )}
                 </ScrollArea>
@@ -1186,281 +517,72 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="genetic" className="space-y-6 w-full">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 overflow-hidden">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle>
-                  <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Multi-dimensional Dynasty Profiling</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[450px] p-4 pt-0"><ResponsiveContainer width="100%" height="100%"><RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}><PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} /><PolarAngleAxis dataKey="subject" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} /><PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />{dynastyStats.map(dyn => (dyn.count > 0 && (<Radar key={dyn.id} name={dyn.label} dataKey={dyn.id} stroke={dyn.color} fill={dyn.color} fillOpacity={0.15} strokeWidth={2} />)))}<RechartsTooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "8px", fontSize: "10px" }} itemStyle={{ fontWeight: "bold" }} /><RechartsLegend iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 900, textTransform: 'uppercase' }} /></RadarChart></ResponsiveContainer></CardContent>
-              </Card>
-              <Card className="border-border/50 shadow-xl bg-card/50">
-                <CardHeader className="pb-2"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[400px] px-4">
-                    <div className="space-y-3 pb-4">
-                      {dynastyStats.map(dyn => (
-                        <div key={dyn.id} className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} />
-                              <span className="text-[10px] font-black uppercase">{dyn.label}</span>
-                            </div>
-                            <span className="text-[10px] font-mono opacity-60">{dyn.count} phrases</span>
-                          </div>
-                          <Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} />
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="genetic" className="space-y-6">
             <Card className="border-border/50 shadow-xl bg-card/50">
-              <CardHeader className="pb-4 border-b">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Dna className="h-5 w-5" /> Detailed Ancestry</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Global DNA Pool Segmentation & Analytical Mapping</CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[500px] p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {dynastyStats.map((dynasty) => (
-                      <Card key={dynasty.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all group overflow-hidden">
-                        <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0"><div className="space-y-0.5"><CardTitle className="text-sm font-black uppercase tracking-tight group-hover:text-primary transition-colors" style={{ color: dynasty.color }}>{dynasty.label}</CardTitle><CardDescription className="text-[10px] font-bold opacity-70">{dynasty.compositions.length} Bloodlines Injected</CardDescription></div><Badge className="font-mono text-xs" style={{ backgroundColor: `${dynasty.color}20`, color: dynasty.color, borderColor: `${dynasty.color}40` }}>{dynasty.count}</Badge></CardHeader>
-                        <CardContent className="p-4 pt-2 space-y-4"><div className="grid grid-cols-2 gap-x-4 gap-y-3"><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Tension</span><span>{Math.round(dynasty.vector.t * 100)}%</span></div><Progress value={dynasty.vector.t * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Brightness</span><span>{Math.round(dynasty.vector.b * 100)}%</span></div><Progress value={dynasty.vector.b * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Entropy</span><span>{Math.round(dynasty.vector.e * 100)}%</span></div><Progress value={dynasty.vector.e * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div><div className="space-y-1"><div className="flex justify-between text-[9px] uppercase font-black opacity-60"><span>Stability</span><span>{Math.round(dynasty.vector.h * 100)}%</span></div><Progress value={dynasty.vector.h * 100} className="h-1.5 bg-muted" style={{ "--progress-color": dynasty.color } as any} /></div></div><div className="space-y-1.5"><Label className="text-[9px] uppercase font-black opacity-40 flex items-center gap-1.5"><History className="h-3 w-3" /> Member Records</Label><div className="flex flex-wrap gap-1">{dynasty.compositions.slice(0, 5).map(c => (<Badge key={c} variant="outline" className="text-[9px] font-bold border-primary/10 bg-background/50 px-1.5">{c.replace(/_/g, ' ')}</Badge>))}{dynasty.compositions.length > 5 && (<Badge variant="secondary" className="text-[9px] font-black opacity-50">+{dynasty.compositions.length - 5} more</Badge>)}</div></div></CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
+              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
+              <CardContent className="h-[500px] p-4 pt-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                    <PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} />
+                    <PolarAngleAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                    {radarData.map(dyn => dyn.count > 0 && <Radar key={dyn.id} name={dyn.label} dataKey="vector.t" stroke={dyn.color} fill={dyn.color} fillOpacity={0.1} />)}
+                    <RechartsTooltip />
+                  </RadarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="masterpieces" className="space-y-4 w-full">
-            <Card className="border-border/50 shadow-xl bg-card/50 w-full">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Registry</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Saved Musical States: AI Finds & User Likes</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-border/30">
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-black uppercase opacity-70"><span>User Likes</span><span>{masterpieceStats.userLikes}</span></div>
-                        <Progress value={(masterpieceStats.userLikes / (masterpieceStats.total || 1)) * 100} className="h-2 bg-muted" />
-                    </div>
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-black uppercase opacity-70"><span>AI Arbiter Finds</span><span>{masterpieceStats.arbiterFinds}</span></div>
-                        <Progress value={(masterpieceStats.arbiterFinds / (masterpieceStats.total || 1)) * 100} className="h-2 bg-muted" />
-                    </div>
-                </div>
-                <ScrollArea className="h-[500px] mt-4">
-                    {isMpiecesLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-40 animate-pulse"><Star className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">Querying Registry...</p></div>
-                    ) : globalMasterpieces?.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-40"><Heart className="h-12 w-12 mb-4" /><p className="text-xs font-bold uppercase tracking-widest">No Masterpieces yet</p></div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-1">
-                            {globalMasterpieces?.map((m: any) => (
-                                <Card key={m.id} className="bg-background/40 border-border/50 hover:border-primary/30 transition-all p-4 space-y-3 group relative overflow-hidden">
-                                    <div className="flex items-center justify-between">
-                                        <Badge variant="outline" className={cn("text-[10px] font-black uppercase", m.origin === 'AI_Arbiter' ? "text-primary border-primary/30" : "text-accent border-accent/30")}>
-                                            {m.origin === 'AI_Arbiter' ? 'AI Found' : 'User Like'}
-                                        </Badge>
-                                        <span className="text-[9px] font-mono opacity-50">{new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="text-xs font-black uppercase truncate">{m.genre} / {m.mood}</div>
-                                        <div className="text-[10px] font-mono opacity-70 flex gap-2"><span>BPM: {m.bpm}</span><span>Seed: {m.seed}</span></div>
-                                    </div>
-                                    <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => {
-                                            const ref = doc(db, 'masterpieces', m.id);
-                                            deleteDocumentNonBlocking(ref);
-                                            toast({ title: "Masterpiece Purged" });
-                                        }}><Trash2 className="h-3 w-3" /></Button>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
-                </ScrollArea>
-              </CardContent>
+          <TabsContent value="masterpieces" className="w-full">
+            <Card className="border-border/50 shadow-xl bg-card/50">
+              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
+              <CardContent><ScrollArea className="h-[500px]"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {globalMasterpieces?.map((m: any) => (
+                  <Card key={m.id} className="bg-background/40 border-border/50 p-4 space-y-2 group relative">
+                    <div className="flex justify-between items-start"><Badge variant="outline" className="text-[10px] font-black uppercase text-primary">{m.genre}</Badge><span className="text-[9px] font-mono opacity-50">{new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}</span></div>
+                    <div className="text-xs font-black uppercase truncate">{m.mood}</div>
+                    <div className="text-[10px] font-mono opacity-70">Seed: {m.seed} | BPM: {m.bpm}</div>
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'masterpieces', m.id))}><Trash2 className="h-3.5 w-3.5" /></Button></div>
+                  </Card>
+                ))}</div></ScrollArea></CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="inject" className="space-y-6 animate-in slide-in-from-right-4 duration-500 w-full">
-            <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shadow-inner">
+          <TabsContent value="inject" className="space-y-6">
+            <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50">
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-              <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 h-12 px-8 shadow-lg active:scale-95 transition-transform font-bold uppercase tracking-wider">
-                <Upload className="mr-3 h-5 w-5" /> Load Local Assets
-              </Button>
+              <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-12 px-8 shadow-lg uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button>
               <div className="flex items-center gap-3 pl-6 border-l border-border/50">
-                <Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label>
-                <MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={vals => setSelectedGenre(vals)} placeholder="Select genres..." className="w-[240px] h-10 font-bold" />
+                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label>
+                <MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" />
               </div>
             </div>
-            
-            {isMasterBackupLoaded && masterBackupData && (
-                <Card className="border-accent/30 shadow-2xl overflow-hidden bg-accent/5 animate-in zoom-in-95 duration-500 w-full">
-                    <CardHeader className="bg-accent/10 border-b flex flex-row items-center justify-between py-4">
-                        <div>
-                            <CardTitle className="text-xl font-bold flex items-center gap-2"><ShieldCheck className="h-6 w-6 text-accent"/> Master Backup Ready: {currentFileName}</CardTitle>
-                            <CardDescription className="text-[10px] uppercase font-bold text-accent/70">
-                                Restore {masterBackupData.metadata.total_axioms} Axioms, {masterBackupData.metadata.total_masterpieces} Masterpieces, {masterBackupData.metadata.total_documents} Docs
-                            </CardDescription>
-                        </div>
-                        <div className="flex gap-3">
-                            <Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Cancel</Button>
-                            <Button onClick={handleCommitMasterRestore} disabled={isProcessing} className="gap-3 font-black uppercase tracking-widest px-8 h-11 bg-accent hover:bg-accent/90 text-accent-foreground shadow-xl">
-                                <Zap className={cn("h-5 w-5", isProcessing && "animate-spin")} /> Restore System State
-                            </Button>
-                        </div>
-                    </CardHeader>
-                </Card>
-            )}
-
             {stagedAxioms.length > 0 && (
-              <Card className="border-primary/30 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 w-full">
+              <Card className="border-primary/30 shadow-2xl overflow-hidden">
                 <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
-                  <div>
-                    <CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-bold text-primary/70">Local Heritage Ready for Synchronization</CardDescription>
-                  </div>
-                  <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={resetStaging} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11 shadow-xl"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
+                  <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
+                  <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={() => setStagedAxioms([])} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
                 </CardHeader>
-                <CardContent className="p-0">
-                  <ScrollArea className="w-full">
-                    <div className="min-w-[1000px]">
-                      <table className="w-full text-sm border-collapse">
-                        <thead className="bg-muted sticky top-0 z-10 border-b">
-                          <tr className="text-left text-muted-foreground text-[10px] uppercase tracking-widest">
-                            <th className="p-4 w-12 text-center">
-                              <Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={(checked) => { if (checked) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} />
-                            </th>
-                            <th className="p-4 font-black">Source</th>
-                            <th className="p-4 font-black">Role</th>
-                            <th className="p-4 font-black">Struct (O/B/N)</th>
-                            <th className="p-4 font-black">Native Meta</th>
-                            <th className="p-4 font-black text-right">Preview</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/30">
-                          {getSortedLicks(stagedAxioms).map((ax) => (
-                            <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
-                              <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const next = new Set(selectedIds); if (next.has(ax.id)) next.delete(ax.id); else next.add(ax.id); setSelectedIds(next); }} /></td>
-                              <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{String(ax.compositionId).replace(/_/g, ' ')}</td>
-                              <td className="p-4"><Badge variant="outline" className="capitalize text-[10px] font-black px-2">{ax.role}</Badge></td>
-                              <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">{ax.barOffset} / {ax.bars} / {ax.noteCount}</td>
-                              <td className="p-4 text-[10px] font-mono text-muted-foreground opacity-70">{ax.nativeBpm || 'Elastic'} / {ax.nativeKey || 'Universal'} / {ax.timeSignature || '4/4'}</td>
-                              <td className="p-4 text-right"><Button size="icon" variant="ghost" onClick={() => handlePlayAxiom(ax)} className="h-10 w-10 hover:bg-primary/20">{playingAxiomId === ax.id ? <Square className="h-5 w-5 fill-current text-destructive animate-pulse" /> : <Play className="h-5 w-5 fill-current" />}</Button></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <ScrollBar orientation="horizontal" />
-                  </ScrollArea>
-                </CardContent>
+                <CardContent className="p-0"><ScrollArea className="h-[500px]"><table className="w-full text-left text-sm">
+                  <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
+                    <tr><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4">Source</th><th className="p-4">Role</th><th className="p-4">Meta</th><th className="p-4 text-right">Preview</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {stagedAxioms.map(ax => (
+                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
+                        <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
+                        <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
+                        <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
+                        <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars}</td>
+                        <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
+                      </tr>
+                    ))}</tbody></table></ScrollArea></CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          <TabsContent value="manifests" className="space-y-4 w-full">
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 w-full">
-                <Card className="xl:col-span-1 border-border/50 shadow-xl bg-card/50 h-[700px] flex flex-col">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><History className="h-5 w-5" /> Cloud Manifests</CardTitle>
-                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">System Knowledge Base (Protocols & Specs)</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow overflow-hidden p-0">
-                        <ScrollArea className="h-full p-4">
-                            {isManifestsLoading ? (
-                                <div className="py-20 text-center opacity-40 animate-pulse font-bold uppercase text-[10px]">Querying Wisdom...</div>
-                            ) : cloudManifests?.length === 0 ? (
-                                <div className="py-20 text-center opacity-40 font-bold uppercase text-[10px]">Cloud is empty. Bootstrap knowledge!</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {cloudManifests?.map((m: any) => (
-                                        <div
-                                            key={m.id}
-                                            className={cn(
-                                                "p-3 border rounded-lg cursor-pointer transition-all hover:bg-primary/5 group",
-                                                activeManifest?.id === m.id ? "border-primary bg-primary/10" : "border-border/50"
-                                            )}
-                                            onClick={() => { setActiveManifest(m); setManifestContent(m.content); }}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="text-xs font-black uppercase truncate">{m.filename}</div>
-                                                <Badge variant="outline" className="text-[8px] font-black">{m.category}</Badge>
-                                            </div>
-                                            <div className="text-[9px] font-mono opacity-50 mt-1">
-                                                Sync: {new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </CardContent>
-                    <div className="p-4 border-t bg-muted/20 flex flex-col gap-2">
-                        <Button variant="outline" className="w-full h-10 gap-2 font-bold uppercase text-xs" onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="h-4 w-4" /> Load Local File
-                        </Button>
-                        <Button variant="secondary" className="w-full h-10 gap-2 font-black uppercase text-xs" onClick={handleBootstrapKnowledgeBase} disabled={isProcessing}>
-                            <Zap className="h-4 w-4" /> Bootstrap Knowledge
-                        </Button>
-                    </div>
-                </Card>
-
-                <Card className="xl:col-span-3 border-border/50 shadow-xl bg-card/50 flex flex-col h-[700px]">
-                    <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
-                        <div>
-                            <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary">
-                                <FileText className="h-5 w-5" /> {activeManifest ? activeManifest.filename : 'Select a document'}
-                            </CardTitle>
-                            <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Knowledge Integrity & Sync Control</CardDescription>
-                        </div>
-                        {activeManifest && (
-                            <Button size="sm" onClick={handleCommitManifest} disabled={isProcessing} className="gap-2 font-black uppercase text-[10px] h-8 shadow-lg">
-                                <Save className="h-3.5 w-3.5" /> Push to Cloud
-                            </Button>
-                        )}
-                    </CardHeader>
-                    <CardContent className="flex-grow p-0">
-                        {activeManifest ? (
-                            <div className="flex flex-col h-full">
-                                <Textarea
-                                    className="flex-grow rounded-none border-0 border-t bg-background/30 font-mono text-xs p-6 resize-none focus-visible:ring-0"
-                                    value={manifestContent}
-                                    onChange={(e) => setManifestContent(e.target.value)}
-                                    placeholder="Manifest content..."
-                                />
-                            </div>
-                        ) : (
-                            <div className="h-full flex flex-col items-center justify-center opacity-30 p-10 text-center">
-                                <Settings2 className="h-16 w-16 mb-4 stroke-1" />
-                                <p className="font-bold uppercase text-xs tracking-widest">Select a manifest from the left to inspect or update system knowledge.</p>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
           </TabsContent>
         </Tabs>
       </div>
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="border-primary/20 bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
