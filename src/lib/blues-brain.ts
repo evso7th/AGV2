@@ -32,9 +32,9 @@ import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
 
 /**
- * @fileOverview Blues Brain V238.2 — "Accompaniment Power Fix".
- * #ЗАЧЕМ: Гарантированная слышимость аккомпанемента (План №974).
- * #ЧТО: Подняты веса (velocity) и исправлены длительности Heritage-аккомпанемента.
+ * @fileOverview Blues Brain V238.3 — "Strict Purity & Pluck Extinction".
+ * #ЗАЧЕМ: Гарантированная слышимость аккомпанемента и удаление техники pluck.
+ * #ЧТО: ПЛАН №976. Удалена техника pluck (заменена на pick). Веса аккомпанемента подняты.
  */
 
 const TICKS_PER_BAR = 12;
@@ -536,7 +536,7 @@ export class BluesBrain {
           const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
           const barOffset = mosaicBar * TICKS_PER_BAR;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-          if (barNotes.length > 0) return barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }));
+          if (barNotes.length > 0) return barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
       }
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
@@ -553,12 +553,12 @@ export class BluesBrain {
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12 + this.currentTransposition + this.microTransposition; const barInRiff = epoch % 4;
     const riff = [ [{ t: 0, n: root }, { t: 4, n: root }, { t: 8, n: root + 7 }], [{ t: 0, n: root }, { t: 6, n: root + 7 }, { t: 9, n: root + 10 }], [{ t: 0, n: root + 7 }, { t: 4, n: root + 5 }, { t: 8, n: root }], [{ t: 0, n: root }, { t: 4, n: root + 3 }, { t: 8, n: root + 4 }] ];
-    return riff[barInRiff].map(p => ({ type: 'bass', note: this.constrainBassOctave(p.n), time: p.t * TICK_TO_BEAT, duration: 4 * TICK_TO_BEAT, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }));
+    return riff[barInRiff].map(p => ({ type: 'bass', note: this.constrainBassOctave(p.n), time: p.t * TICK_TO_BEAT, duration: 4 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12 + this.currentTransposition + this.microTransposition;
-    return [root, root + 4, root + 7, root + 11].map((p, i) => ({ type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, weight: 0.7, technique: 'pluck', dynamics: 'p', phrasing: 'legato' }));
+    return [root, root + 4, root + 7, root + 11].map((p, i) => ({ type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
   }
 
   private renderNarrativeDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
@@ -604,7 +604,7 @@ export class BluesBrain {
         note: root, 
         time: 0, 
         duration: 4.0, 
-        weight: 0.85, // #ЗАЧЕМ: ПЛАН №974. Поднято с 0.6.
+        weight: 0.95, // #ЗАЧЕМ: ПЛАН №976. Максимальная читаемость.
         technique: 'hit', 
         dynamics: 'p', 
         phrasing: 'staccato', 
@@ -651,7 +651,7 @@ export class BluesBrain {
               time: t * TICK_TO_BEAT, 
               duration: 3.0 * TICK_TO_BEAT, 
               weight: 0.6, 
-              technique: 'pluck', 
+              technique: 'pick', 
               dynamics: 'p', 
               phrasing: 'legato' 
           }); 

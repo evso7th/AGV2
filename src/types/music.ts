@@ -117,7 +117,7 @@ export type InstrumentType = BassInstrument | MelodyInstrument | AccompanimentIn
 
 export type BassTechnique = 'arpeggio' | 'portamento' | 'glissando' | 'glide' | 'pulse' | 'riff' | 'long_notes' | 'walking' | 'boogie' | 'syncopated';    
 
-export type Technique = FractalTechnique | BassTechnique | 'pluck' | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato' | 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds';
+export type Technique = FractalTechnique | BassTechnique | 'pick' | 'harm' | 'slide' | 'hit' | 'ghost' | 'swell' | 'fill' | 'bend' | 'vibrato' | 'sl' | 'h/p' | 'bn' | 'vb' | 'gr' | 'ds';
 export type AccompanimentTechnique = 'choral' | 'alternating-bass-chord' | 'chord-pulsation' | 'arpeggio-fast' | 'arpeggio-slow' | 'alberti-bass' | 'paired-notes' | 'long-chords' | 'power-chords' | 'rhythmic-comp';
 
 export type InstrumentSettings = {
@@ -241,6 +241,7 @@ export type InstrumentBehaviorRules = {
     soloToPatternRatio?: number;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
+    pianoProbability?: number; // #ЗАЧЕМ: ПЛАН №967.
 };
 
 export type InstrumentOption<T> = {

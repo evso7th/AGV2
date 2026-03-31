@@ -21,8 +21,8 @@ export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'r
  * Техника игры
  */
 export type Technique = 
-  | 'pluck' | 'ghost' | 'slap' | 'harmonic' | 'fill' | 'swell' | 'riff' 
-  | 'long_notes' | 'boogie' | 'walking' | 'drone' | 'hit' | 'pick' 
+  | 'pick' | 'ghost' | 'slap' | 'harmonic' | 'fill' | 'swell' | 'riff' 
+  | 'long_notes' | 'boogie' | 'walking' | 'drone' | 'hit' 
   | 'harm' | 'slide' | 'arpeggio' | 'portamento' | 'glissando' | 'glide' 
   | 'pulse' | 'syncopated' | 'bend' | 'vibrato';
 

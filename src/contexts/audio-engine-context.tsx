@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Audio Engine Context V32.7 — "The Audible Empire".
- * #ЧТО: ПЛАН №975 — Реализовано сохранение истории треков (Blacklist) в localStorage.
+ * #ЗАЧЕМ: Audio Engine Context V32.8 — "Master Balance Fix".
+ * #ЧТО: ПЛАН №976 — Повышен баланс аккомпанемента.
  */
 'use client';
 
@@ -35,7 +35,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 0.95,    
+  accompaniment: 1.15, // #ЗАЧЕМ: ПЛАН №976. Поднято с 0.95.
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      

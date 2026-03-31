@@ -1,11 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V1.0 — "The Roots & Dub Engine".
+ * @fileOverview Reggae Brain V1.1 — "The Roots & Dub Engine".
  * #ЗАЧЕМ: Специализированный мозг для Reggae, Dub и Roots.
- * #ЧТО: 1. One-Drop ритм (Kick/Snare на 3).
- *       2. The Skank (Акценты на 2 и 4).
- *       3. Deep Syncopated Bass (The Empty One).
- *       4. Dub Echoes (Случайные задержки и реверберация).
+ * #ОБНОВЛЕНО (ПЛАН №976): Удалена техника pluck (заменена на pick).
  */
 
 import type {
@@ -164,7 +161,7 @@ export class ReggaeBrain {
             const note = isRoot ? root : root + 7; // Root and Fifth
             events.push({
                 type: 'bass', note, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT, weight: 0.85,
-                technique: 'pluck', dynamics: 'mf', phrasing: 'detached',
+                technique: 'pick', dynamics: 'mf', phrasing: 'detached',
                 params: { filterCutoff: 200 + tension * 300 }
             });
         });

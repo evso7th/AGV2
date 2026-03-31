@@ -2,6 +2,7 @@
 /**
  * @fileOverview Universal Music Theory Utilities V3.9 — "The Clean Fidelity Standard".
  * #ОБНОВЛЕНО (ПЛАН №919): Абсолютная власть Аксиом. Если роль мелодия — канал мелодия.
+ * #ОБНОВЛЕНО (ПЛАН №976): Удалена техника pluck (заменена на pick).
  */
 
 import type { 
@@ -34,7 +35,7 @@ export const DEGREE_TO_SEMITONE: Record<string, number> = {
 };
 
 export const DEGREE_KEYS = Object.keys(DEGREE_TO_SEMITONE);
-export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pluck', 'hit', 'swell'];
+export const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pick', 'hit', 'swell'];
 
 export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',

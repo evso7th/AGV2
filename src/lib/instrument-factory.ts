@@ -2,6 +2,7 @@
 /**
  * #ЗАЧЕМ: Центральная фабрика инструментов V5.0 — "Absolute Linear Purity".
  * #ЧТО: ПЛАН №919 — Внедрен безусловный байпас дисторшна при низком гейне.
+ * #ОБНОВЛЕНО (ПЛАН №976): Удалена техника pluck (заменена на pick).
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -561,3 +562,5 @@ export interface InstrumentAPI {
     preset: any;
     type: string;
 }
+
+const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pick', 'hit', 'swell'];

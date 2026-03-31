@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №905 — Поддержка динамического панорамирования.
+ * #ЧТО: ПЛАН №976 — Strict filtering. Обрабатывает ТОЛЬКО тип 'accompaniment'.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -65,11 +65,8 @@ export class AccompanimentSynthManagerV2 {
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         const beatDuration = 60 / tempo;
         
-        const filtered = events.filter(e => 
-            e.type === 'accompaniment' || 
-            e.type === 'pianoAccompaniment' || 
-            e.type === 'harmony'
-        );
+        // #ЗАЧЕМ: ПЛАН №976. Удаление наслоений. Только чистый аккомпанемент.
+        const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => ({
             midi: e.note,
@@ -77,7 +74,7 @@ export class AccompanimentSynthManagerV2 {
             duration: e.duration * beatDuration,
             velocity: e.weight,
             technique: e.technique,
-            pan: e.pan, // #ЗАЧЕМ: ПЛАН №905.
+            pan: e.pan,
             params: e.params
         }));
 
