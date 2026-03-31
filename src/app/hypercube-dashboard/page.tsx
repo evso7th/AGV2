@@ -352,6 +352,35 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); }
   };
 
+  const handleExportTrack = (compId: string, licks: any[]) => {
+      const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
+      const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "DNA Exported", description: `File saved as ${a.download}` });
+  };
+
+  const handleExportFullRegistry = () => {
+      if (!globalAxioms) return;
+      const cleanRegistry = globalAxioms.map(({ id, timestamp, ...rest }) => ({ ...rest }));
+      const blob = new Blob([JSON.stringify(cleanRegistry, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `AuraGroove_Full_DNA_Registry_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Registry Downloaded", description: "Full heritage backup saved." });
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -423,6 +452,7 @@ export default function HypercubeDashboard() {
             <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair Station</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"><Square className="h-4 w-4" /> Stop Audition</Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
           </div>
@@ -490,15 +520,16 @@ export default function HypercubeDashboard() {
                               )}
                             </div>
                             <div className="flex items-center gap-2 pr-4">
+                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Export Track DNA"><Download className="h-4 w-4" /></Button>
                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); deleteDocumentNonBlocking(doc(db, 'heritage_axioms', licks[0].id)); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </div>
                           <AccordionContent className="p-0 border-t overflow-visible">
                             <ScrollArea className="w-full">
                               <div className="min-w-[1000px]">
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm border-collapse">
                                   <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60">
-                                    <tr><th className="p-3 pl-12">Role</th><th className="p-3">Timbre Override</th><th className="p-3">Struct (O/B/N)</th><th className="p-3">Vector</th><th className="p-3 text-right">Actions</th></tr>
+                                    <tr><th className="p-3 pl-12">Role</th><th className="p-3">Timbre Configuration</th><th className="p-3">Struct (O/B/N)</th><th className="p-3">Vector</th><th className="p-3 text-right">Actions</th></tr>
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
@@ -510,10 +541,57 @@ export default function HypercubeDashboard() {
                                         </td>
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (
-                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent></Select>
-                                          ) : (ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{typeof ax.preferredInstrument === 'string' ? (DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()) : 'MULTI-MAP'}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>)}
+                                            <div className="flex flex-col gap-1.5">
+                                              {typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null ? (
+                                                <div className="grid grid-cols-3 gap-1 w-[300px] bg-background/50 p-1.5 rounded border border-primary/10">
+                                                  <div className="space-y-0.5">
+                                                    <Label className="text-[8px] uppercase font-black opacity-50">Low T</Label>
+                                                    <Select value={editAxiomData.preferredInstrument.low || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, low: v === 'none' ? null : v}})}>
+                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
+                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                  </div>
+                                                  <div className="space-y-0.5">
+                                                    <Label className="text-[8px] uppercase font-black opacity-50">Mid T</Label>
+                                                    <Select value={editAxiomData.preferredInstrument.mid || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, mid: v === 'none' ? null : v}})}>
+                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
+                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                  </div>
+                                                  <div className="space-y-0.5">
+                                                    <Label className="text-[8px] uppercase font-black opacity-50">High T</Label>
+                                                    <Select value={editAxiomData.preferredInstrument.high || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, high: v === 'none' ? null : v}})}>
+                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
+                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                  </div>
+                                                  <Button variant="ghost" className="col-span-3 h-5 text-[8px] font-black opacity-50 hover:opacity-100" onClick={() => setEditAxiomData({...editAxiomData, preferredInstrument: null})}>RESET TO SINGLE</Button>
+                                                </div>
+                                              ) : (
+                                                <div className="flex items-center gap-1">
+                                                  <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
+                                                    <SelectTrigger className="h-7 text-[10px] uppercase font-black w-32"><SelectValue /></SelectTrigger>
+                                                    <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                                  </Select>
+                                                  <Button variant="outline" className="h-7 text-[9px] font-black uppercase px-1.5 gap-1" onClick={() => setEditAxiomData({...editAxiomData, preferredInstrument: {low: null, mid: null, high: null}})}><Zap className="h-3 w-3" /> Multi-Map</Button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            ax.preferredInstrument ? (
+                                              typeof ax.preferredInstrument === 'object' ? (
+                                                <div className="flex gap-1">
+                                                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 text-[8px] px-1 border-blue-500/20" title="Low Tension">L: {DISPLAY_NAMES[ax.preferredInstrument.low] || 'BP'}</Badge>
+                                                  <Badge variant="secondary" className="bg-green-500/10 text-green-400 text-[8px] px-1 border-green-500/20" title="Mid Tension">M: {DISPLAY_NAMES[ax.preferredInstrument.mid] || 'BP'}</Badge>
+                                                  <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-[8px] px-1 border-red-500/20" title="High Tension">H: {DISPLAY_NAMES[ax.preferredInstrument.high] || 'BP'}</Badge>
+                                                </div>
+                                              ) : (
+                                                <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge>
+                                              )
+                                            ) : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
+                                          )}
                                         </td>
-                                        <td className="p-3 font-mono text-[10px] opacity-60">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
+                                        <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
@@ -588,7 +666,7 @@ export default function HypercubeDashboard() {
                   <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
                   <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={() => setStagedAxioms([])} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
                 </CardHeader>
-                <CardContent className="p-0"><ScrollArea className="h-[500px]"><table className="w-full text-left text-sm">
+                <CardContent className="p-0"><ScrollArea className="h-[500px]"><table className="w-full text-left text-sm border-collapse">
                   <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
                     <tr><th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th><th className="p-4">Source</th><th className="p-4">Role</th><th className="p-4">Meta</th><th className="p-4 text-right">Preview</th></tr>
                   </thead>
@@ -607,6 +685,7 @@ export default function HypercubeDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }
