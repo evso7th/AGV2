@@ -3,6 +3,7 @@
  * @fileOverview Universal Music Theory Utilities V3.9 — "The Clean Fidelity Standard".
  * #ОБНОВЛЕНО (ПЛАН №919): Абсолютная власть Аксиом. Если роль мелодия — канал мелодия.
  * #ОБНОВЛЕНО (ПЛАН №976): Удалена техника pluck (заменена на pick).
+ * #ОБНОВЛЕНО (ПЛАН №977): Добавлена поддержка Dynamic Organ и Dynamic Pad в резолвер.
  */
 
 import type { 
@@ -44,14 +45,14 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ЧТО: ПЛАН №919. Полное подчинение явному выбору пользователя.
+ * #ЧТО: ПЛАН №977. Добавлена логика Dynamic групп и Tri-Map объектов.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
     if (!hint || hint === 'none') return 'none';
     
     let targetHint = hint;
 
-    // 1. Логика Multi-Timbre
+    // 1. Логика Multi-Timbre (Tri-Map Object)
     if (typeof hint === 'object' && !Array.isArray(hint)) {
         if (tension < 0.4) targetHint = hint.low || hint.mid || hint.high;
         else if (tension < 0.75) targetHint = hint.mid || hint.low || hint.high;
@@ -60,18 +61,30 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
 
     if (!targetHint || targetHint === 'none') return 'none';
     
-    const clean = String(targetHint).toLowerCase().replace(/[\s_]/g, '');
+    const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // 2. ПРИОРИТЕТ АВТОРИТЕТА: ID пресетов
+    // 2. ДИНАМИЧЕСКИЕ ГРУППЫ (Пункт №17 Кодекса)
+    if (clean === 'dynamicorgan') {
+        if (tension < 0.4) return 'organ_prog';
+        if (tension < 0.75) return 'organ_soft_jazz';
+        return 'organ'; // Cathedral
+    }
+    if (clean === 'dynamicpad') {
+        if (tension < 0.4) return 'synth'; // Emerald
+        if (tension < 0.75) return 'synth_ambient_pad_lush';
+        return 'synth_cave_pad';
+    }
+
+    // 3. ПРИОРИТЕТ АВТОРИТЕТА: Прямые ID пресетов
     const v2Keys = Object.keys(V2_PRESETS);
-    const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
+    const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedV2) return matchedV2;
     
     const bassKeys = Object.keys(BASS_PRESETS);
-    const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[\s_]/g, '') === clean);
+    const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
-    // 3. СТРОГИЙ МАППИНГ РОЛЕЙ
+    // 4. СТРОГИЙ МАППИНГ РОЛЕЙ
     if (part === 'melody') {
         if (clean.includes('acoustic')) return 'blackAcoustic';
         if (clean.includes('tele')) return 'telecaster';
@@ -80,7 +93,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
         if (clean.includes('cs80')) return 'cs80';
     }
 
-    // 4. ТЕРРИТОРИЯ АВТОМАТИКИ (только если нет совпадения выше)
+    // 5. ТЕРРИТОРИЯ АВТОМАТИКИ
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';

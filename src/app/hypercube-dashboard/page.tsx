@@ -95,6 +95,10 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
+/**
+ * #ЗАЧЕМ: Расширенный список инструментов для Dashboard.
+ * #ЧТО: ПЛАН №977. Добавлены dynamicOrgan и dynamicPad.
+ */
 const INSTRUMENT_OPTIONS = [
     'guitar', 
     'telecaster', 
@@ -107,9 +111,11 @@ const INSTRUMENT_OPTIONS = [
     'organ_soft_jazz', 
     'organ_jimmy_smith', 
     'organ_prog', 
+    'dynamicOrgan',
     'synth', 
     'synth_ambient_pad_lush',
     'synth_cave_pad',
+    'dynamicPad',
     'theremin', 
     'mellotron', 
     'violin', 
@@ -136,10 +142,12 @@ const DISPLAY_NAMES: Record<string, string> = {
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'organ_jimmy_smith': 'Jimmy Smith B3',
-    'organ_prog': 'Prog Rock Organ',
+    'organ_prog': 'Prog Rock B3',
+    'dynamicOrgan': '⚡ DYNAMIC ORGAN',
     'synth': 'Emerald Pad',
     'synth_ambient_pad_lush': 'Lush Pad',
     'synth_cave_pad': 'Cave Pad (Dark)',
+    'dynamicPad': '⚡ DYNAMIC PAD',
     'theremin': 'Vocal Theremin',
     'mellotron': 'Mellotron Strings',
     'violin': 'Solo Violin',
@@ -664,6 +672,10 @@ export default function HypercubeDashboard() {
       return 'melody';
   };
 
+  /**
+   * #ЗАЧЕМ: Обновление handlePlayAxiom для поддержки групп и объектов.
+   * #ЧТО: ПЛАН №977. Использует resolveSemanticTimbre для определения тембра превью.
+   */
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) { stopAllSounds(); setPlayingAxiomId(null); return; }
     if (!isInitialized) await initialize();
@@ -672,6 +684,13 @@ export default function HypercubeDashboard() {
     if (phrase.length === 0) return;
     const minTick = Math.min(...phrase.map(n => n.t));
     const channelType = mapAxiomToChannel(axiom.role || 'melody');
+    
+    // #ЗАЧЕМ: Разрешение тембра для превью.
+    const tension = 0.5; // Нейтральное напряжение для аудита
+    const resolvedInst = axiom.preferredInstrument 
+        ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) 
+        : (channelType === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz');
+
     const events: FractalEvent[] = phrase.map((n: any) => {
       return {
           type: channelType,
@@ -686,16 +705,14 @@ export default function HypercubeDashboard() {
           chordName: channelType === 'harmony' || channelType === 'accompaniment' ? 'Am' : undefined
       };
     });
-    const hints: InstrumentHints = {};
-    const tension = 0.5;
-    const resolvedInst = axiom.preferredInstrument ? resolveSemanticTimbre(axiom.preferredInstrument, tension, channelType) : 'organ_soft_jazz';
 
+    const hints: InstrumentHints = {};
     if (channelType === 'melody') hints.melody = resolvedInst;
-    else if (channelType === 'bass') hints.bass = resolvedInst === 'none' ? 'bass_jazz_warm' : resolvedInst;
+    else if (channelType === 'bass') hints.bass = resolvedInst;
     else if (channelType === 'drums') hints.drums = 'melancholic';
     else if (channelType === 'pianoAccompaniment') hints.pianoAccompaniment = 'piano';
     else if (channelType === 'harmony') hints.harmony = 'violin';
-    else hints.accompaniment = 'organ_soft_jazz';
+    else hints.accompaniment = resolvedInst;
     
     playRawEvents(events, hints, axiom.nativeBpm || 72);
     setPlayingAxiomId(axiom.id);
@@ -918,7 +935,6 @@ export default function HypercubeDashboard() {
             <Card className="bg-primary/5 border-primary/20 shadow-lg">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Mood Balance</CardTitle></CardHeader>
               <CardContent><div className="flex flex-wrap gap-1">{Object.entries(globalStats.commonMoods).map(([cm, count]) => (<Badge key={cm} className="text-[10px] uppercase font-black">{cm}: {count}</Badge>))}</div></CardContent>
-            </Card>
         </div>
 
         <Tabs defaultValue="explore" className="space-y-6 w-full">
@@ -1074,7 +1090,7 @@ export default function HypercubeDashboard() {
                                                   {typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null ? (
                                                     <div className="grid grid-cols-1 gap-1.5 p-2 bg-primary/5 rounded border border-primary/10">
                                                       <div className="space-y-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-blue-400">Low Energy (T &lt; 0.4)</span>
+                                                        <span className="text-[8px] font-black uppercase text-blue-400">Low Energy (T < 0.4)</span>
                                                         <Select value={editAxiomData.preferredInstrument.low || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, low: v}})}>
                                                           <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
                                                           <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
@@ -1088,7 +1104,7 @@ export default function HypercubeDashboard() {
                                                         </Select>
                                                       </div>
                                                       <div className="space-y-0.5">
-                                                        <span className="text-[8px] font-black uppercase text-red-400">High Tension (T &gt; 0.75)</span>
+                                                        <span className="text-[8px] font-black uppercase text-red-400">High Tension (T > 0.75)</span>
                                                         <Select value={editAxiomData.preferredInstrument.high || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, high: v}})}>
                                                           <SelectTrigger className="h-6 text-[9px] bg-background font-bold"><SelectValue /></SelectTrigger>
                                                           <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] uppercase font-black">{DISPLAY_NAMES[i] || i.toUpperCase()}</SelectItem>)}</SelectContent>
@@ -1122,14 +1138,12 @@ export default function HypercubeDashboard() {
                                                 )
                                               )}
                                             </td>
-                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1"><Input value={editAxiomData.nativeBpm || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeBpm: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="BPM" /><Input value={editAxiomData.nativeKey || ""} onChange={(e) => setEditAxiomData({...editAxiomData, nativeKey: e.target.value})} className="h-7 w-10 text-[10px] p-1" placeholder="Key" /><Input value={editAxiomData.timeSignature || ""} onChange={(e) => setEditAxiomData({...editAxiomData, timeSignature: e.target.value})} className="h-7 w-12 text-[10px] p-1" placeholder="TS" /></div>) : (<span className="whitespace-nowrap">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</span>)}</td>
-                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{editingAxiomId === ax.id ? (<div className="flex gap-1 items-center"><Input type="number" value={editAxiomData.barOffset ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Offset" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.bars ?? 1} onChange={(e) => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value) || 1})} className="h-7 w-10 text-[10px] p-1" title="Bars" /><span className="opacity-30">/</span><Input type="number" value={editAxiomData.noteCount ?? 0} onChange={(e) => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value) || 0})} className="h-7 w-10 text-[10px] p-1" title="Notes" /></div>) : (<span className="whitespace-nowrap">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</span>)}</td>
+                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">{ax.nativeBpm || '??'} / {ax.nativeKey || '??'} / {ax.timeSignature || '??'}</td>
+                                            <td className="p-3 text-[10px] font-mono text-muted-foreground">O:{ax.barOffset ?? 0} / B:{ax.bars || '??'} / N:{ax.noteCount || '??'}</td>
                                             <td className="p-3">
-                                              {editingAxiomId === ax.id ? (
-                                                <div className="grid grid-cols-4 gap-1 w-32"><Input type="number" step="0.1" value={editAxiomData.vector?.t || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, t: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Tension" /><Input type="number" step="0.1" value={editAxiomData.vector?.b || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, b: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Brightness" /><Input type="number" step="0.1" value={editAxiomData.vector?.e || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, e: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Entropy" /><Input type="number" step="0.1" value={editAxiomData.vector?.h || 0} onChange={(e) => setEditAxiomData({...editAxiomData, vector: {...editAxiomData.vector, h: parseFloat(e.target.value)}})} className="h-7 text-[9px] p-1" title="Stability" /></div>
-                                              ) : (<span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>)}
+                                              <span className="text-[10px] font-mono text-muted-foreground opacity-70 whitespace-nowrap">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</span>
                                             </td>
-                                            <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? (<Input value={editAxiomData.narrative} onChange={(e) => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />) : (<div className="line-clamp-1">{ax.narrative}</div>)}</td>
+                                            <td className="p-3 text-xs italic text-muted-foreground"><div className="line-clamp-1">{ax.narrative}</div></td>
                                             <td className="p-3 text-right">
                                               <div className="flex items-center justify-end gap-1">
                                                 {editingAxiomId === ax.id ? (
