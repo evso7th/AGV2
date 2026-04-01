@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V66.0 — "The Pure Role Isolation".
- * #ЗАЧЕМ: Строгое разделение Родоса и Аккомпанемента.
- * #ЧТО: ПЛАН №991 — Принудительная изоляция ролей и адаптивный подхват генераторами.
+ * @fileOverview Ambient Brain V67.0 — "The Ensemble Sound Restoration".
+ * #ЗАЧЕМ: Исправление немоты Аккомпанемента.
+ * #ЧТО: ПЛАН №992 — Гибкий маппинг ролей и бар-адаптивный подхват генераторов.
  */
 
 import type {
@@ -203,18 +203,17 @@ export class AmbientBrain {
         // --- HERITAGE & STRICT ROUTING ---
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
-                const rawRole = ax.role; 
+                const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №991 — Признаем только системное имя.
-                if (rawRole === 'pianoAccompaniment') targetType = 'pianoAccompaniment';
-                else if (rawRole === 'accompaniment') targetType = 'accompaniment';
+                // #ЗАЧЕМ: ПЛАН №992 — Гибкий маппинг ролей (accomp_strings -> harmony).
+                if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
                 if (targetType && hints[targetType] && !heritagePlayedLayers.has(targetType)) {
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
                     
-                    // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Флаг "занято" только при наличии нот.
                     if (accEvents.length > 0) {
                         if (ax.preferredInstrument) {
                             instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType, 'ambient');
@@ -227,17 +226,19 @@ export class AmbientBrain {
                 }
             });
             
-            // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Адаптивный подхват генератором.
+            // #ЗАЧЕМ: Rule 15 & ПЛАН №992 — Адаптивный подхват генератором.
             if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents);
+                heritagePlayedLayers.add('accompaniment');
                 accStatus = 'Adaptive Pad (No DNA)';
             }
             if (hints.harmony && !heritagePlayedLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                 harEvents.forEach(e => e.pan = 0.25);
                 events.push(...harEvents);
+                heritagePlayedLayers.add('harmony');
             }
         }
 
@@ -373,7 +374,7 @@ export class AmbientBrain {
 
             if (filteredPool.length > 0) {
                 let basePool = filteredPool.filter(ax => ax.role === 'melody');
-                if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
+                if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
                 if (basePool.length > 0) {
                     const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
@@ -414,12 +415,12 @@ export class AmbientBrain {
                 const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb);
                 this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
             }
-            const accompSiblings = poolToUse.filter(ax => (ax.role === 'accompaniment' || ax.role === 'pianoAccompaniment') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             accompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             drumSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
@@ -548,7 +549,8 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         return [{
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, // #ЗАЧЕМ: ПЛАН №992.
+            weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         }];
     }
@@ -593,7 +595,7 @@ export class AmbientBrain {
         const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         if (timbre === 'guitarChords') {
-            return [{ type: 'harmony', note: note, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
+            return [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
         }
         return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
     }

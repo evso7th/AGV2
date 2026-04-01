@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V66.0 — "The Iron Rule Alignment".
- * #ЗАЧЕМ: Строгое разделение Родоса и Аккомпанемента.
- * #ЧТО: ПЛАН №991 — Принудительная изоляция ролей и бар-адаптивный фолбек.
+ * @fileOverview Blues Brain V67.0 — "The Ensemble Sound Restoration".
+ * #ЗАЧЕМ: Исправление немоты Аккомпанемента.
+ * #ЧТО: ПЛАН №992 — Гибкий маппинг ролей, исправление длительностей и гарантированный фолбек.
  */
 
 import {
@@ -312,7 +312,7 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
 
-    // --- HERITAGE PROCESSING & STRICT ROUTING ---
+    // --- HERITAGE PROCESSING & ADAPTIVE CONTINUITY ---
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             const renderedUnison = this.renderUnisonAccompaniment(bassEvents, resChord, unisonType);
@@ -323,22 +323,20 @@ export class BluesBrain {
             }
         } else if (this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax) => {
-                const rawRole = ax.role; 
+                const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №991 — Признаем только системное имя.
-                if (rawRole === 'pianoAccompaniment') targetType = 'pianoAccompaniment';
-                else if (rawRole === 'accompaniment') targetType = 'accompaniment';
+                // #ЗАЧЕМ: ПЛАН №992 — Гибкий маппинг ролей (accomp_piano -> accompaniment).
+                if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
                 if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
-                    if (ax.preferredInstrument) {
-                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
-                    }
-
                     const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
-                    // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Флаг "занято" только при наличии нот.
                     if (rendered.length > 0) {
+                        if (ax.preferredInstrument) {
+                            instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
+                        }
                         events.push(...rendered);
                         usedTargetLayers.add(targetType);
                         if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
@@ -347,7 +345,7 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Адаптивный подхват генератором.
+        // #ЗАЧЕМ: Rule 15 & ПЛАН №992 — Гарантированный подхват при тишине в ДНК.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
@@ -381,7 +379,7 @@ export class BluesBrain {
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
         const hasHeritageStrings = this.currentAccompAxioms.some(ax =>
-            ax.role.includes('strings') || ax.role.includes('violin')
+            ax.role.toLowerCase().includes('strings') || ax.role.toLowerCase().includes('violin')
         );
         this.selectHarmonyInstrument(epoch, tension, hasHeritageStrings);
         const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
@@ -502,7 +500,7 @@ export class BluesBrain {
           }
           if (filteredPool.length > 0) {
               let basePool = filteredPool.filter(ax => ax.role === 'melody');
-              if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role?.startsWith('accomp'));
+              if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
               if (basePool.length > 0) {
                   const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                   const suitePlayhead = epoch % (maxDonorBars || 144);
@@ -537,12 +535,12 @@ export class BluesBrain {
                       const cid = this.normalize(selected.compositionId);
                       const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
-                      const accompSiblings = poolToUse.filter(ax => (ax.role === 'accompaniment' || ax.role === 'pianoAccompaniment') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       accompSiblings.forEach(ax => {
                           const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                           this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                       });
-                      const drumSiblings = poolToUse.filter(ax => ax.role?.startsWith('drums') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       drumSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); this.currentDrumAxioms.push({ phrase: p, role: ax.role }); });
                       normalizePhraseGroup(phrasesToNormalize);
                       const baseBars = selected.bars || 4; this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -603,8 +601,8 @@ export class BluesBrain {
   private renderUnisonAccompaniment(bassEvents: FractalEvent[], chord: GhostChord, type: string): FractalEvent[] {
       const events: FractalEvent[] = []; const third = chord.chordType === 'minor' ? 3 : 4;
       bassEvents.slice(0, 2).forEach(bass => {
-          events.push({ ...bass, type: 'accompaniment', note: this.constrainAccompanimentOctave(type === 'strict' ? bass.note : bass.note + 12), weight: 0.4, technique: 'hit', phrasing: 'staccato', duration: 0.4 * TICK_TO_BEAT });
-          events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave((bass.note || 0) + 24 + third), time: bass.time + (1.5 * TICK_TO_BEAT), duration: 0.3 * TICK_TO_BEAT, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+          events.push({ ...bass, type: 'accompaniment', note: this.constrainAccompanimentOctave(type === 'strict' ? bass.note : bass.note + 12), weight: 0.4, technique: 'hit', phrasing: 'staccato', duration: 0.4 });
+          events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave((bass.note || 0) + 24 + third), time: bass.time + (1.5 * TICK_TO_BEAT), duration: 1.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       });
       return events;
   }
@@ -662,12 +660,12 @@ export class BluesBrain {
         type: 'accompaniment', 
         note: root, 
         time: 0, 
-        duration: 4.0, 
+        duration: 4.0, // #ЗАЧЕМ: ПЛАН №992. Фиксация 4.0 долей (1 бар).
         weight: 0.95, 
-        technique: 'hit', 
+        technique: 'swell', // #ЗАЧЕМ: ПЛАН №992. Swell для падов.
         dynamics: 'p', 
-        phrasing: 'staccato', 
-        params: { mood: this.mood } 
+        phrasing: 'legato', // #ЗАЧЕМ: ПЛАН №992. Legato для плавности.
+        params: { mood: this.mood, attack: 1.0, release: 2.0 } 
     }];
   }
 
@@ -815,12 +813,12 @@ export class BluesBrain {
               type: 'harmony',
               note: note,
               time: 0,
-              duration: 4.0 * TICK_TO_BEAT,
+              duration: 4.0, // #ЗАЧЕМ: ПЛАН №992.
               weight: 0.3,
               technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName,
               params: { mood: this.mood }
           }];
       }
-      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0 * TICK_TO_BEAT, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
+      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
   }
 }
