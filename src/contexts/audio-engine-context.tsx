@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V37.0 — "Accompaniment Calibration Fix".
- * #ЗАЧЕМ: Исправление немоты Аккомпанемента через системную калибровку.
+ * @fileOverview Audio Engine Context V38.0 — "Absolute Gain Integrity".
+ * #ЗАЧЕМ: Исправление тишины через безопасные дефолты калибровки.
+ * #ЧТО: ПЛАН №998 — Гарантированное наличие ключа 'master' и повышение баланса аккомпанемента.
  */
 'use client';
 
@@ -35,7 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 0.58, 
+  accompaniment: 0.80, // #ЗАЧЕМ: ПЛАН №998. Повышено для уверенной слышимости.
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -146,15 +147,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
 
+  // #ЗАЧЕМ: ПЛАН №998 — Безопасные дефолты для предотвращения тишины.
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
+      const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
-              const parsed = JSON.parse(saved);
-              return { bass: 1.0, ...parsed };
+              try {
+                  const parsed = JSON.parse(saved);
+                  return { ...defaults, ...parsed };
+              } catch (e) { return defaults; }
           }
       }
-      return { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
+      return defaults;
   });
 
   const { toast } = useToast();
@@ -178,7 +183,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!isInitialized) return;
-      const m = gains.master;
+      const m = gains.master ?? 1.0;
       
       masterGainNodeRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
       
@@ -191,7 +196,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
       
-      // #ЗАЧЕМ: ПЛАН №997 — Калибровка аккомпанемента.
       accompanimentManagerV2Ref.current?.setPreampGain(gains.master);
 
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;

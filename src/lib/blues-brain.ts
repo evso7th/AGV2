@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V70.0 — "Accompaniment Recovery".
- * #ЗАЧЕМ: Финальное восстановление звука аккомпанемента.
- * #ЧТО: ПЛАН №997 — Усиление детекции ролей и бар-адаптивного фолбека.
+ * @fileOverview Blues Brain V71.0 — "Absolute Accompaniment Continuity".
+ * #ЗАЧЕМ: Устранение немоты аккомпанемента через принудительный генеративный подхват.
+ * #ЧТО: ПЛАН №998 — usedTargetLayers очищается в начале такта, а генератор пэда запускается если Heritage молчит.
  */
 
 import {
@@ -339,7 +339,7 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: ПЛАН №997 — Гарантированный подхват адаптивным пэдом.
+        // #ЗАЧЕМ: ПЛАН №998 — Окончательная гарантия слышимости аккомпанемента.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
@@ -529,7 +529,7 @@ export class BluesBrain {
                           const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                           this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                       });
-                      const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalize(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
                       drumSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); this.currentDrumAxioms.push({ phrase: p, role: ax.role }); });
                       normalizePhraseGroup(phrasesToNormalize);
                       const baseBars = selected.bars || 4; this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;

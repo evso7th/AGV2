@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №997 — Добавлен Preamp и поддержка системной калибровки.
+ * #ЧТО: ПЛАН №998 — Прямое подключение синтезатора к шине для максимальной надежности.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -62,6 +62,7 @@ export class AccompanimentSynthManagerV2 {
         if (!preset) return;
         
         try {
+            // #ЗАЧЕМ: Прямое подключение к preamp для уверенности в сигнале.
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
@@ -90,6 +91,7 @@ export class AccompanimentSynthManagerV2 {
         if (instrumentHint && instrumentHint !== this.activePresetName) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
+                // #ЗАЧЕМ: Если есть звуки, но инструмент не тот — принудительная смена.
                 if (notesToPlay.length === 0 || this.activePresetName === 'none') {
                     await this.setInstrument(mappedHint);
                 }
