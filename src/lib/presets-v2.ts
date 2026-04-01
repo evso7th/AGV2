@@ -154,7 +154,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Crystal Clean Lead', 
-    volume: 0.65, 
+    volume: 0.32, // #ЗАЧЕМ: ПЛАН №996. Снижено в 2 раза.
     osc: { width: 0.46, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.15 },
     pickup: { cutoff: 4500 },
     drive: { type: 'soft', amount: 0.0 }, 
@@ -169,7 +169,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Pure Reform Guitar',
-    volume: 0.6, 
+    volume: 0.3, // #ЗАЧЕМ: ПЛАН №996. Снижено в 2 раза.
     osc: { width: 0.5, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.0 }, 
