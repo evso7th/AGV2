@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V65.0 — "The Adaptive Fallback Fix".
- * #ЗАЧЕМ: 100% наполненность ансамбля. Генератор включается, если ДНК в текущем такте молчит.
+ * @fileOverview Ambient Brain V66.0 — "The Pure Role Isolation".
+ * #ЗАЧЕМ: Строгое разделение Родоса и Аккомпанемента.
+ * #ЧТО: ПЛАН №991 — Принудительная изоляция ролей и адаптивный подхват генераторами.
  */
 
 import type {
@@ -192,7 +193,7 @@ export class AmbientBrain {
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
         if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-            instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody');
+            instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody', 'ambient');
         }
 
         let accStatus = 'none';
@@ -202,19 +203,21 @@ export class AmbientBrain {
         // --- HERITAGE & STRICT ROUTING ---
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
-                const role = ax.role.toLowerCase();
-                let targetType: InstrumentPart = 'accompaniment';
+                const rawRole = ax.role; 
+                let targetType: InstrumentPart | null = null;
                 
-                if (role.includes('piano') || role === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
-                else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
+                // #ЗАЧЕМ: ПЛАН №991 — Признаем только системное имя.
+                if (rawRole === 'pianoAccompaniment') targetType = 'pianoAccompaniment';
+                else if (rawRole === 'accompaniment') targetType = 'accompaniment';
+                else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
-                if (hints[targetType] && !heritagePlayedLayers.has(targetType)) {
+                if (targetType && hints[targetType] && !heritagePlayedLayers.has(targetType)) {
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
                     
-                    // #ЗАЧЕМ: ПЛАН №990. Флаг "занято" выставляется только если в такте есть ноты.
+                    // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Флаг "занято" только при наличии нот.
                     if (accEvents.length > 0) {
                         if (ax.preferredInstrument) {
-                            instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType);
+                            instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, localTension, targetType, 'ambient');
                         }
                         accEvents.forEach(e => e.pan = swirlPan);
                         events.push(...accEvents);
@@ -224,7 +227,7 @@ export class AmbientBrain {
                 }
             });
             
-            // #ЗАЧЕМ: Rule 15 & ПЛАН №990 — Генератор включается, если ДНК в текущем такте молчит.
+            // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Адаптивный подхват генератором.
             if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
@@ -239,7 +242,12 @@ export class AmbientBrain {
         }
 
         if (hints.bass && this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            events.push(...this.constrainBass(this.renderThemeBass(resChord, epoch, localTension, dna)));
+            const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna);
+            if (themeBass.length > 0) {
+                events.push(...this.constrainBass(themeBass));
+            } else {
+                events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
+            }
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
         }
@@ -248,7 +256,8 @@ export class AmbientBrain {
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
-            } else {
+            } 
+            if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
             }
         }
@@ -259,7 +268,6 @@ export class AmbientBrain {
         if (hints.pianoAccompaniment) {
             if (!heritagePlayedLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
-                // #ЗАЧЕМ: ПЛАН №990. Если генератор пианино создал ноты — помечаем как исполненное.
                 if (p.events.length > 0) {
                     p.events.forEach(e => e.pan = 0.2); 
                     events.push(...p.events);
@@ -297,7 +305,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType, newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Generative'),
+                melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
@@ -406,7 +414,7 @@ export class AmbientBrain {
                 const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb);
                 this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
             }
-            const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const accompSiblings = poolToUse.filter(ax => (ax.role === 'accompaniment' || ax.role === 'pianoAccompaniment') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             accompSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
@@ -515,7 +523,7 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-        if (barNotes.length === 0) return this.renderDroneBass(chord, epoch, tension);
+        if (barNotes.length === 0) return []; // Fallback handled by caller
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato'

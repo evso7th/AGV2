@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.4 — "Strict Semantic Separation".
- * #ЗАЧЕМ: Убрана возможность "протекания" тембра Родоса в канал Аккомпанемента.
- * #ОБНОВЛЕНО (ПЛАН №990): Роль 'accompaniment' теперь жестко игнорирует намек 'piano' в пользу пэдов/органов.
+ * @fileOverview Universal Music Theory Utilities V4.5 — "Iron Role Isolation".
+ * #ЗАЧЕМ: Установлен "Семантический щит" для Аккомпанемента.
+ * #ОБНОВЛЕНО (ПЛАН №991): Аккомпанемент больше никогда не играет тембром пианино.
  */
 
 import type { 
@@ -50,7 +50,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
  */
-export function resolveSemanticTimbre(hint: any, tension: number, part: string): string {
+export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
     
     let targetHint = hint;
@@ -96,10 +96,13 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string):
         if (clean.includes('cs80')) return 'cs80';
     }
 
-    // #ЗАЧЕМ: ПЛАН №990. Охранный фильтр для Аккомпанемента.
-    // Если канал — Аккомпанемент, но пришел намек на Родос — подменяем на пэд/орган.
-    if (part === 'accompaniment' && (clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm')) {
-        return 'synth_ambient_pad_lush';
+    // #ЗАЧЕМ: ПЛАН №991. Охранный фильтр для Аккомпанемента.
+    // Аккомпанемент НИКОГДА не играет на пианино. Если коллизия — подменяем на орган/пэд.
+    if (part === 'accompaniment') {
+        const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
+        if (isPianoTimbre) {
+            return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
+        }
     }
 
     // 5. ТЕРРИТОРИЯ АВТОМАТИКИ

@@ -1,4 +1,10 @@
 
+/**
+ * @fileOverview Blues Brain V66.0 — "The Iron Rule Alignment".
+ * #ЗАЧЕМ: Строгое разделение Родоса и Аккомпанемента.
+ * #ЧТО: ПЛАН №991 — Принудительная изоляция ролей и бар-адаптивный фолбек.
+ */
+
 import {
   FractalEvent,
   GhostChord,
@@ -295,7 +301,6 @@ export class BluesBrain {
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     events.push(...bassEvents);
 
-    const accompanimentEvents: FractalEvent[] = [];
     const usedTargetLayers = new Set<string>();
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
     const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
@@ -304,30 +309,35 @@ export class BluesBrain {
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody');
+        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
 
     // --- HERITAGE PROCESSING & STRICT ROUTING ---
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
-            accompanimentEvents.push(...this.renderUnisonAccompaniment(bassEvents, resChord, unisonType));
-            usedTargetLayers.add('accompaniment');
-            accStatus = 'Unison Texture';
+            const renderedUnison = this.renderUnisonAccompaniment(bassEvents, resChord, unisonType);
+            if (renderedUnison.length > 0) {
+                events.push(...renderedUnison);
+                usedTargetLayers.add('accompaniment');
+                accStatus = 'Unison Texture';
+            }
         } else if (this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax) => {
-                const role = ax.role.toLowerCase();
-                let targetType: InstrumentPart = 'accompaniment';
+                const rawRole = ax.role; 
+                let targetType: InstrumentPart | null = null;
                 
-                if (role.includes('piano') || role === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
-                else if (role.includes('strings') || role.includes('violin') || role.includes('harmony')) targetType = 'harmony';
+                // #ЗАЧЕМ: ПЛАН №991 — Признаем только системное имя.
+                if (rawRole === 'pianoAccompaniment') targetType = 'pianoAccompaniment';
+                else if (rawRole === 'accompaniment') targetType = 'accompaniment';
+                else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
-                if (hints[targetType] && !usedTargetLayers.has(targetType)) {
+                if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
                     if (ax.preferredInstrument) {
-                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType);
+                        instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
                     }
 
                     const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
-                    // #ЗАЧЕМ: ПЛАН №990. Флаг "занято" выставляется только если в такте есть ноты.
+                    // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Флаг "занято" только при наличии нот.
                     if (rendered.length > 0) {
                         events.push(...rendered);
                         usedTargetLayers.add(targetType);
@@ -337,22 +347,20 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: Rule 15 & ПЛАН №990 — Генераторы включаются, если ДНК в текущем тактовом окне молчит.
+        // #ЗАЧЕМ: Rule 15 & ПЛАН №991 — Адаптивный подхват генератором.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            accompanimentEvents.push(...this.renderAdaptiveAccompaniment(epoch, resChord, tension));
+            const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
+            adaptiveAcc.forEach(e => e.pan = 0.1);
+            events.push(...adaptiveAcc);
             usedTargetLayers.add('accompaniment');
             accStatus = 'Adaptive Pad (No DNA)';
         }
     }
-    
-    accompanimentEvents.forEach(e => e.pan = 0.1);
-    events.push(...accompanimentEvents);
 
     let pianoInfo = { style: 'none', count: 0 };
     if (hints.pianoAccompaniment) {
         if (!usedTargetLayers.has('pianoAccompaniment')) {
             const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            // #ЗАЧЕМ: ПЛАН №990. Если генератор пианино создал ноты — помечаем как исполненное.
             if (pResult.events.length > 0) {
                 pResult.events.forEach(e => e.pan = 0.2);
                 events.push(...pResult.events);
@@ -529,7 +537,7 @@ export class BluesBrain {
                       const cid = this.normalize(selected.compositionId);
                       const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
-                      const accompSiblings = poolToUse.filter(ax => ax.role?.startsWith('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const accompSiblings = poolToUse.filter(ax => (ax.role === 'accompaniment' || ax.role === 'pianoAccompaniment') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       accompSiblings.forEach(ax => {
                           const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                           this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
