@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V36.0 — "Strict Routing & Dualism".
- * #ЗАЧЕМ: Исправление перепутанных маршрутов Аккомпанемента и Родоса.
+ * @fileOverview Audio Engine Context V37.0 — "Accompaniment Calibration Fix".
+ * #ЗАЧЕМ: Исправление немоты Аккомпанемента через системную калибровку.
  */
 'use client';
 
@@ -190,6 +190,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
+      
+      // #ЗАЧЕМ: ПЛАН №997 — Калибровка аккомпанемента.
+      accompanimentManagerV2Ref.current?.setPreampGain(gains.master);
+
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
   }, [isInitialized]);
@@ -322,7 +326,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
     
     if (pianoAccompanimentManagerRef.current) {
-        // #ЗАЧЕМ: ПЛАН №988 — Синхронизация типа пианино.
         const pianoHint = instrumentHints?.pianoAccompaniment;
         const isAcoustic = pianoHint === 'piano';
         pianoAccompanimentManagerRef.current.setInstrumentType(isAcoustic ? 'acoustic' : 'rhodes');

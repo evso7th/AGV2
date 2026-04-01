@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №976 — Strict filtering. Обрабатывает ТОЛЬКО тип 'accompaniment'.
+ * #ЧТО: ПЛАН №997 — Добавлен Preamp и поддержка системной калибровки.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -16,6 +16,7 @@ export class AccompanimentSynthManagerV2 {
     public isInitialized = false;
     private instrument: any | null = null; 
     private activePresetName: string = 'none';
+    private preamp: GainNode;
 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
@@ -30,12 +31,22 @@ export class AccompanimentSynthManagerV2 {
         this.destination = destination;
         this.telecasterSampler = telecasterSampler;
         this.blackAcousticSampler = blackAcousticSampler;
+
+        this.preamp = this.audioContext.createGain();
+        this.preamp.gain.value = 1.0;
+        this.preamp.connect(this.destination);
     }
 
     async init() {
         if (this.isInitialized) return;
         await this.setInstrument('organ_soft_jazz');
         this.isInitialized = true;
+    }
+
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
+        }
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
@@ -54,7 +65,7 @@ export class AccompanimentSynthManagerV2 {
             this.instrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
-                output: this.destination
+                output: this.preamp
             });
             this.activePresetName = presetName;
         } catch (error) {
@@ -64,8 +75,6 @@ export class AccompanimentSynthManagerV2 {
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         const beatDuration = 60 / tempo;
-        
-        // #ЗАЧЕМ: ПЛАН №976. Удаление наслоений. Только чистый аккомпанемент.
         const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => ({
@@ -78,7 +87,7 @@ export class AccompanimentSynthManagerV2 {
             params: e.params
         }));
 
-        if (instrumentHint) {
+        if (instrumentHint && instrumentHint !== this.activePresetName) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
                 if (notesToPlay.length === 0 || this.activePresetName === 'none') {
@@ -139,5 +148,5 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); }
+    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); this.preamp.disconnect(); }
 }

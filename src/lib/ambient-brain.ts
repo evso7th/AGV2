@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V67.0 — "The Ensemble Sound Restoration".
+ * @fileOverview Ambient Brain V68.0 — "Accompaniment Recovery".
  * #ЗАЧЕМ: Исправление немоты Аккомпанемента.
- * #ЧТО: ПЛАН №992 — Гибкий маппинг ролей и бар-адаптивный подхват генераторов.
+ * #ЧТО: ПЛАН №997 — Усиление детекции ролей и бар-адаптивного фолбека.
  */
 
 import type {
@@ -200,13 +200,11 @@ export class AmbientBrain {
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         const heritagePlayedLayers = new Set<string>();
         
-        // --- HERITAGE & STRICT ROUTING ---
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №992 — Гибкий маппинг ролей (accomp_strings -> harmony).
                 if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
@@ -226,7 +224,7 @@ export class AmbientBrain {
                 }
             });
             
-            // #ЗАЧЕМ: Rule 15 & ПЛАН №992 — Адаптивный подхват генератором.
+            // #ЗАЧЕМ: ПЛАН №997 — Гарантированный подхват адаптивным пэдом.
             if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
@@ -273,7 +271,7 @@ export class AmbientBrain {
                     p.events.forEach(e => e.pan = 0.2); 
                     events.push(...p.events);
                     pianoInfo = { style: p.style, count: p.events.length };
-                    heritagePlayedLayers.add('pianoAccompaniment');
+                    usedTargetLayers.add('pianoAccompaniment');
                 }
             } else {
                 pianoInfo = { style: 'Heritage DNA', count: 1 };
@@ -420,7 +418,7 @@ export class AmbientBrain {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
             drumSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
@@ -549,7 +547,7 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         return [{
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 4.0, // #ЗАЧЕМ: ПЛАН №992.
+            time: 0, duration: 4.0, 
             weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         }];
