@@ -310,7 +310,6 @@ export default function HypercubeDashboard() {
     const phrase = decompressCompactPhrase(axiom.phrase);
     if (phrase.length === 0) return;
     
-    // #ЗАЧЕМ: ПЛАН №983. Гарантированный старт с 0.
     const minTick = Math.min(...phrase.map(n => n.t));
     const role = (axiom.role || 'melody').toLowerCase();
     let channel: any = 'melody';
@@ -335,6 +334,23 @@ export default function HypercubeDashboard() {
     setTimeout(() => {
         setPlayingAxiomId(prev => prev === axiom.id ? null : prev);
     }, (maxDuration + 1) * 1000);
+  };
+
+  /**
+   * #ЗАЧЕМ: Система кураторства ДНК (Restore Feature).
+   * #ЧТО: ПЛАН №993. Переключает флаг ignored в Firestore.
+   */
+  const handleToggleIgnore = async (axiom: any) => {
+      setIsProcessing(true);
+      try {
+          const ref = doc(db, 'heritage_axioms', axiom.id);
+          await updateDoc(ref, { ignored: !axiom.ignored });
+          toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored", description: "This DNA component has been updated in the cloud." });
+      } catch (e) { 
+          toast({ variant: "destructive", title: "Action Failed" }); 
+      } finally { 
+          setIsProcessing(false); 
+      }
   };
 
   const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
@@ -404,7 +420,8 @@ export default function HypercubeDashboard() {
                 compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
                 vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, 
-                narrative: ax.narrative || "Imported Component."
+                narrative: ax.narrative || "Imported Component.",
+                ignored: ax.ignored ?? false
             };
         };
         if (Array.isArray(json)) json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, file.name)));
@@ -548,7 +565,7 @@ export default function HypercubeDashboard() {
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
-                                      <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                      <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
                                         <td className="p-3 pl-12">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={v => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
@@ -618,7 +635,7 @@ export default function HypercubeDashboard() {
                                             {editingAxiomId === ax.id ? (
                                               <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>
                                             ) : (
-                                              <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
                                             )}
                                           </div>
                                         </td>
