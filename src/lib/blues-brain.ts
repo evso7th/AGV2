@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V68.0 — "The Narrative Drum Reconstruction".
- * #ЗАЧЕМ: Реализация гибридного протокола ударных.
- * #ЧТО: ПЛАН №994 — ДНК дает только скелет, ансамбль дает мясо (филлы, вздохи, томы).
+ * @fileOverview Blues Brain V69.0 — "The Pure Percussion Protocol".
+ * #ЗАЧЕМ: Удаление тарелок (райдов и крэшей) из блюзовой партии по просьбе пользователя.
+ * #ЧТО: ПЛАН №995 — Изъятие drum_ride_wetter и drum_crash2 из всех генераторов.
  */
 
 import {
@@ -289,7 +289,7 @@ export class BluesBrain {
         melodyEvents.forEach(e => e.pan = -0.15);
     }
 
-    // --- DRUMS: THE HYBRID RECONSTRUCTION ---
+    // --- DRUMS: THE HYBRID RECONSTRUCTION (CYMBAL-FREE) ---
     if (hints.drums) {
         const hybridDrums = this.renderHybridDrums(epoch, tension, isSoloistResting);
         events.push(...hybridDrums);
@@ -402,8 +402,8 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: ПЛАН №994 — Реконструкция барабанов.
-   * #ЧТО: Извлекает только ритм из ДНК, остальное дополняет ансамблем.
+   * #ЗАЧЕМ: ПЛАН №995 — Реконструкция барабанов БЕЗ тарелок.
+   * #ЧТО: Извлекает ритм из ДНК, дополняет ансамблем, игнорируя райды и крэши.
    */
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
@@ -430,37 +430,33 @@ export class BluesBrain {
       }
 
       // 2. APPLY IMPERIAL SAMPLES TO SKELETON
-      // KICK: DNA or Default 4/4 if empty
       if (dnaKickTicks.size === 0) [0, 6].forEach(t => dnaKickTicks.add(t));
       dnaKickTicks.forEach(t => {
           events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       });
 
-      // SNARE: DNA or Default backbeat if empty
       if (dnaSnareTicks.size === 0) [3, 9].forEach(t => dnaSnareTicks.add(t));
       dnaSnareTicks.forEach(t => {
           events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       });
 
       // 3. ENSEMBLE BREATHING (Ghost notes & Hats)
-      // Ghost Snare
       [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
           if (!dnaKickTicks.has(t) && !dnaSnareTicks.has(t) && this.random.next() < 0.3) {
               events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
           }
       });
 
-      // Shimmering Hats (Mandatory for Imperial sound)
       [0, 3, 6, 9].forEach(t => {
-          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
       });
       if (tension > 0.6) {
           [1.5, 4.5, 7.5, 10.5].forEach(t => {
-              events.push({ type: 'drum_open_hh_top2', note: 46, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+              events.push({ type: 'drum_open_hh_top2', note: 46, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
           });
       }
 
-      // 4. STRUCTURAL FILLS & TOMS
+      // 4. STRUCTURAL FILLS & TOMS (NO CRASHES)
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       
@@ -468,22 +464,12 @@ export class BluesBrain {
           const intensity = isEighthBar ? 1.0 : 0.75;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           const pans = [-0.5, 0.0, 0.5];
-          // Cascading fill at the end of the bar
           [9, 10, 11].forEach((t, i) => {
               events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + i * 0.1) * intensity, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] });
           });
-          
-          if (isEighthBar) {
-              events.push({ type: 'drum_crash2', note: 49, time: 0, duration: 2.0, weight: 0.6, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-          }
       }
 
-      // 5. RIDE COLOR (Tension based)
-      if (tension > 0.7) {
-          [0, 3, 6, 9].forEach(t => {
-              events.push({ type: 'drum_ride_wetter', note: 51, time: (t + 1.5) * TICK_TO_BEAT, duration: 0.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.3 });
-          });
-      }
+      // 5. RIDE COLOR REMOVED PER USER REQUEST
 
       return events;
   }
@@ -752,17 +738,6 @@ export class BluesBrain {
           }); 
       }
 
-      events.push({ 
-          type: 'drum_ride_wetter', 
-          note: 51, 
-          time: 0, 
-          duration: 4.0, 
-          weight: 0.4, 
-          technique: 'swell', 
-          dynamics: 'p', 
-          phrasing: 'legato', 
-          pan: (Math.random() * 0.6) - 0.3 
-      });
       events.push({ 
           type: 'drum_kick_reso', 
           note: 36, 
