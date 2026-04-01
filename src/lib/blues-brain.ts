@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V67.0 — "The Ensemble Sound Restoration".
- * #ЗАЧЕМ: Исправление немоты Аккомпанемента.
- * #ЧТО: ПЛАН №992 — Гибкий маппинг ролей, исправление длительностей и гарантированный фолбек.
+ * @fileOverview Blues Brain V68.0 — "The Narrative Drum Reconstruction".
+ * #ЗАЧЕМ: Реализация гибридного протокола ударных.
+ * #ЧТО: ПЛАН №994 — ДНК дает только скелет, ансамбль дает мясо (филлы, вздохи, томы).
  */
 
 import {
@@ -289,13 +289,10 @@ export class BluesBrain {
         melodyEvents.forEach(e => e.pan = -0.15);
     }
 
+    // --- DRUMS: THE HYBRID RECONSTRUCTION ---
     if (hints.drums) {
-        const heritageDrums = this.renderHeritageDrums(epoch, tension);
-        if (heritageDrums.length > 0) {
-            events.push(...heritageDrums);
-        } else {
-            events.push(...this.renderNarrativeDrums(epoch, tension, isSoloistResting));
-        }
+        const hybridDrums = this.renderHybridDrums(epoch, tension, isSoloistResting);
+        events.push(...hybridDrums);
     }
 
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
@@ -312,7 +309,6 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
 
-    // --- HERITAGE PROCESSING & ADAPTIVE CONTINUITY ---
     if (!isAccompResting) {
         if (hints.accompaniment && unisonType !== 'none') {
             const renderedUnison = this.renderUnisonAccompaniment(bassEvents, resChord, unisonType);
@@ -326,7 +322,6 @@ export class BluesBrain {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №992 — Гибкий маппинг ролей (accomp_piano -> accompaniment).
                 if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
@@ -345,7 +340,6 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: Rule 15 & ПЛАН №992 — Гарантированный подхват при тишине в ДНК.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
@@ -399,7 +393,7 @@ export class BluesBrain {
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
             bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
             accompaniment: isAccompResting ? 'Breath' : accStatus,
-            drums: this.currentDrumAxioms.length > 0 ? `Hybrid (DNA Basis + Ensemble Fills)` : 'Narrative Beat',
+            drums: this.currentDrumAxioms.length > 0 ? `Narrative Reconstruction` : 'Generative Beat',
             piano: pianoInfo.count > 0 ? `${pianoInfo.style} [${this.pianistMode.toUpperCase()}]` : 'none',
             harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
         },
@@ -407,68 +401,87 @@ export class BluesBrain {
     };
   }
 
-  private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
+  /**
+   * #ЗАЧЕМ: ПЛАН №994 — Реконструкция барабанов.
+   * #ЧТО: Извлекает только ритм из ДНК, остальное дополняет ансамблем.
+   */
+  private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
-      if (this.currentDrumAxioms.length === 0) return [];
-      
-      const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-      const startEpoch = this.soloistBusyUntilBar - totalBars;
-      const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-      const barOffset = mosaicBar * TICKS_PER_BAR;
+      const dnaKickTicks = new Set<number>();
+      const dnaSnareTicks = new Set<number>();
 
-      const dnaKickSet = new Set<number>();
-      const dnaSnareSet = new Set<number>();
+      // 1. EXTRACT RHYTHM SKELETON FROM DNA
+      if (this.currentDrumAxioms.length > 0) {
+          const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+          const startEpoch = this.soloistBusyUntilBar - totalBars;
+          const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+          const barOffset = mosaicBar * TICKS_PER_BAR;
 
-      this.currentDrumAxioms.forEach(ax => {
-          const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-          const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
-          
-          barNotes.forEach(n => {
-              const tickInBar = n.t - barOffset;
-              const time = tickInBar * TICK_TO_BEAT;
-              let type: any = 'drums';
-              let note = 36;
-
-              if (sub === 'kick' || n.deg === 'R') {
-                  type = 'drum_kick_reso'; note = 36; dnaKickSet.add(tickInBar);
-              } else if (sub === 'snare' || n.deg === '2') {
-                  type = 'drum_snare'; note = 38; dnaSnareSet.add(tickInBar);
-              } else if (sub === 'hat' || n.deg === '6') {
-                  type = 'drum_25693__walter_odington__hackney-hat-1'; note = 42;
-              } else if (sub === 'ride') {
-                  type = 'drum_ride_wetter'; note = 51;
-              } else {
-                  type = 'drum_perc-001'; note = 48;
-              }
-
-              events.push({ type, note, time, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-          });
-      });
-
-      if (events.filter(e => String(e.type).includes('hat')).length < 2) {
-          [0, 3, 6, 9].forEach(t => {
-              if (!dnaKickSet.has(t) && !dnaSnareSet.has(t)) {
-                  events.push({
-                      type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-                      time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, 
-                      technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-                  });
-              }
+          this.currentDrumAxioms.forEach(ax => {
+              const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+              const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
+              
+              barNotes.forEach(n => {
+                  const tickInBar = n.t - barOffset;
+                  if (sub === 'kick' || n.deg === 'R') dnaKickTicks.add(tickInBar);
+                  else if (sub === 'snare' || n.deg === '2') dnaSnareTicks.add(tickInBar);
+              });
           });
       }
 
+      // 2. APPLY IMPERIAL SAMPLES TO SKELETON
+      // KICK: DNA or Default 4/4 if empty
+      if (dnaKickTicks.size === 0) [0, 6].forEach(t => dnaKickTicks.add(t));
+      dnaKickTicks.forEach(t => {
+          events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      });
+
+      // SNARE: DNA or Default backbeat if empty
+      if (dnaSnareTicks.size === 0) [3, 9].forEach(t => dnaSnareTicks.add(t));
+      dnaSnareTicks.forEach(t => {
+          events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      });
+
+      // 3. ENSEMBLE BREATHING (Ghost notes & Hats)
+      // Ghost Snare
+      [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
+          if (!dnaKickTicks.has(t) && !dnaSnareTicks.has(t) && this.random.next() < 0.3) {
+              events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+          }
+      });
+
+      // Shimmering Hats (Mandatory for Imperial sound)
+      [0, 3, 6, 9].forEach(t => {
+          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+      });
+      if (tension > 0.6) {
+          [1.5, 4.5, 7.5, 10.5].forEach(t => {
+              events.push({ type: 'drum_open_hh_top2', note: 46, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+          });
+      }
+
+      // 4. STRUCTURAL FILLS & TOMS
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
-      if (isFourthBar || isEighthBar) {
-          const intensity = isEighthBar ? 1.0 : 0.7;
+      
+      if (isFourthBar || isEighthBar || isSoloistResting) {
+          const intensity = isEighthBar ? 1.0 : 0.75;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          const pans = [-0.6, 0.0, 0.6];
-          [9, 10, 11].forEach((t, i) => { 
-              events.push({ 
-                  type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
-                  duration: 0.5, weight: (0.6 + (i * 0.05)) * intensity, 
-                  technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: pans[i] 
-              }); 
+          const pans = [-0.5, 0.0, 0.5];
+          // Cascading fill at the end of the bar
+          [9, 10, 11].forEach((t, i) => {
+              events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + i * 0.1) * intensity, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] });
+          });
+          
+          if (isEighthBar) {
+              events.push({ type: 'drum_crash2', note: 49, time: 0, duration: 2.0, weight: 0.6, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+          }
+      }
+
+      // 5. RIDE COLOR (Tension based)
+      if (tension > 0.7) {
+          [0, 3, 6, 9].forEach(t => {
+              events.push({ type: 'drum_ride_wetter', note: 51, time: (t + 1.5) * TICK_TO_BEAT, duration: 0.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.3 });
           });
       }
 
@@ -660,11 +673,11 @@ export class BluesBrain {
         type: 'accompaniment', 
         note: root, 
         time: 0, 
-        duration: 4.0, // #ЗАЧЕМ: ПЛАН №992. Фиксация 4.0 долей (1 бар).
+        duration: 4.0, 
         weight: 0.95, 
-        technique: 'swell', // #ЗАЧЕМ: ПЛАН №992. Swell для падов.
+        technique: 'swell', 
         dynamics: 'p', 
-        phrasing: 'legato', // #ЗАЧЕМ: ПЛАН №992. Legato для плавности.
+        phrasing: 'legato', 
         params: { mood: this.mood, attack: 1.0, release: 2.0 } 
     }];
   }
@@ -813,7 +826,7 @@ export class BluesBrain {
               type: 'harmony',
               note: note,
               time: 0,
-              duration: 4.0, // #ЗАЧЕМ: ПЛАН №992.
+              duration: 4.0, 
               weight: 0.3,
               technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName,
               params: { mood: this.mood }
