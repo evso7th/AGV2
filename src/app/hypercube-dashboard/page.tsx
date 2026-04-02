@@ -495,6 +495,10 @@ export default function HypercubeDashboard() {
 
   // --- PROJECT DOCUMENTS LOGIC ---
 
+  /**
+   * #ЗАЧЕМ: Массовая синхронизация локальных манифестов с облаком.
+   * #ЧТО: Читает файлы, извлекает контент и выполняет Пакетный Upload/Update.
+   */
   const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -515,7 +519,7 @@ export default function HypercubeDashboard() {
                   version: '1.0'
               });
           }
-          toast({ title: "Manifest Sync Initiated", description: `Processing ${files.length} documents.` });
+          toast({ title: "Manifest Sync Initiated", description: `Processing ${files.length} documents. Synchronizing Cloud Context.` });
       } catch (err) {
           toast({ variant: "destructive", title: "Sync Failed" });
       } finally {
@@ -524,6 +528,9 @@ export default function HypercubeDashboard() {
       }
   };
 
+  /**
+   * #ЗАЧЕМ: Выгрузка системного документа из облака на локальный диск.
+   */
   const handleDownloadDoc = (doc: any) => {
       const blob = new Blob([doc.content], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
@@ -534,9 +541,12 @@ export default function HypercubeDashboard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Document Downloaded" });
+      toast({ title: "Document Downloaded", description: `Local copy of ${doc.filename} saved.` });
   };
 
+  /**
+   * #ЗАЧЕМ: Точечное обновление документа прямо в облаке через редактор.
+   */
   const handleUpdateDocContent = async () => {
       if (!viewingDocId || !editingDocContent) return;
       setIsProcessing(true);
@@ -546,7 +556,7 @@ export default function HypercubeDashboard() {
               content: editingDocContent,
               timestamp: new Date().toISOString() 
           });
-          toast({ title: "Manifest Updated" });
+          toast({ title: "Manifest Updated", description: "Changes pushed to the Cloud context." });
           setViewingDocId(null);
       } finally {
           setIsProcessing(false);
@@ -561,7 +571,7 @@ export default function HypercubeDashboard() {
         <header className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Project Documentation Station</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -801,7 +811,7 @@ export default function HypercubeDashboard() {
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> System Manifest</CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Sync Vital Knowledge with the Cloud</CardDescription>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Sync Vital Knowledge with the Cloud. Upload single or multiple files.</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <input type="file" ref={docFileInputRef} onChange={handleDocFileSelect} multiple className="hidden" />
@@ -825,7 +835,7 @@ export default function HypercubeDashboard() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/20">
-                        {projectDocs?.map((d: any) => (
+                        {[...(projectDocs || [])].sort((a,b) => a.filename.localeCompare(b.filename)).map((d: any) => (
                           <tr key={d.id} className="hover:bg-primary/5 transition-colors group">
                             <td className="p-4 pl-8">
                               <div className="flex items-center gap-3">
@@ -838,13 +848,13 @@ export default function HypercubeDashboard() {
                             <td className="p-4 font-mono text-[10px] opacity-60">{d.timestamp ? new Date(d.timestamp?.seconds ? d.timestamp.seconds * 1000 : d.timestamp).toLocaleDateString() : 'Original'}</td>
                             <td className="p-4 text-right pr-8">
                               <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="Cloud Edit" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" onClick={() => handleDownloadDoc(d)}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" title="Download Local Copy" onClick={() => handleDownloadDoc(d)}>
                                   <Download className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Purge from Cloud" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}>
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </div>
