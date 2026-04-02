@@ -52,6 +52,7 @@ export function saveMasterpiece(db: Firestore, data: {
 
 /**
  * #ЗАЧЕМ: Сохранение системного документа в облако.
+ * #ЧТО: Использует имя файла как ID для обеспечения возможности обновления (Overwrite).
  */
 export function saveProjectDocument(db: Firestore, data: {
     filename: string;
@@ -59,6 +60,7 @@ export function saveProjectDocument(db: Firestore, data: {
     category?: 'protocol' | 'spec' | 'backlog' | 'contract';
     version?: string;
 }) {
+    // ID формируется из имени файла для обеспечения функции обновления
     const docId = data.filename.replace(/[^a-zA-Z0-9]/g, '_');
     const docRef = doc(db, 'project_documents', docId);
     
@@ -67,9 +69,9 @@ export function saveProjectDocument(db: Firestore, data: {
         timestamp: serverTimestamp()
     };
 
-    setDoc(docRef, payload)
+    setDoc(docRef, payload, { merge: true })
         .then(() => {
-            toast({ title: "Manifest Synchronized", description: `${data.filename} is now in the Cloud.` });
+            toast({ title: "Manifest Synchronized", description: `${data.filename} updated in the Cloud.` });
         })
         .catch(async (serverError) => {
             const permissionError = new FirestorePermissionError({
@@ -83,7 +85,6 @@ export function saveProjectDocument(db: Firestore, data: {
 
 /**
  * #ЗАЧЕМ: Генерирую уникальный ID для аксиомы.
- * #ЧТО: ПЛАН №918. Используем глубокую сериализацию и индекс для исключения коллизий.
  */
 function generateAxiomId(compositionId: string, role: string, phrase: any[], index: number = 0): string {
     const phraseContent = typeof phrase[0] === 'object' ? JSON.stringify(phrase) : phrase.join(',');
@@ -99,7 +100,6 @@ function generateAxiomId(compositionId: string, role: string, phrase: any[], ind
 
 /**
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
- * #ЧТО: ПЛАН №918. Индекс обязателен для уникальности.
  */
 export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
     const compositionId = data.compositionId || 'Unknown_Heritage';

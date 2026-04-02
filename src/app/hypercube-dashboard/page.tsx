@@ -493,11 +493,11 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); }
   };
 
-  // --- PROJECT DOCUMENTS LOGIC ---
+  // --- PROJECT DOCUMENTS LOGIC (MANIFEST TAB) ---
 
   /**
-   * #ЗАЧЕМ: Массовая синхронизация локальных манифестов с облаком.
-   * #ЧТО: Читает файлы, извлекает контент и выполняет Пакетный Upload/Update.
+   * #ЗАЧЕМ: Массовая синхронизация локальных манифестов из КОРНЯ проекта.
+   * #ЧТО: Читает выбранные файлы, извлекает текст и выполняет Пакетный Upload (Overwrite по ID).
    */
   const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
@@ -519,7 +519,7 @@ export default function HypercubeDashboard() {
                   version: '1.0'
               });
           }
-          toast({ title: "Manifest Sync Initiated", description: `Processing ${files.length} documents. Synchronizing Cloud Context.` });
+          toast({ title: "Root Manifest Sync", description: `Processing ${files.length} documents from project root.` });
       } catch (err) {
           toast({ variant: "destructive", title: "Sync Failed" });
       } finally {
@@ -529,7 +529,7 @@ export default function HypercubeDashboard() {
   };
 
   /**
-   * #ЗАЧЕМ: Выгрузка системного документа из облака на локальный диск.
+   * #ЗАЧЕМ: Выгрузка системного документа на локальный диск.
    */
   const handleDownloadDoc = (doc: any) => {
       const blob = new Blob([doc.content], { type: 'text/markdown' });
@@ -541,11 +541,11 @@ export default function HypercubeDashboard() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast({ title: "Document Downloaded", description: `Local copy of ${doc.filename} saved.` });
+      toast({ title: "Document Downloaded", description: `Saved ${doc.filename} to local disk.` });
   };
 
   /**
-   * #ЗАЧЕМ: Точечное обновление документа прямо в облаке через редактор.
+   * #ЗАЧЕМ: Точечное обновление документа в облаке через редактор.
    */
   const handleUpdateDocContent = async () => {
       if (!viewingDocId || !editingDocContent) return;
@@ -556,7 +556,7 @@ export default function HypercubeDashboard() {
               content: editingDocContent,
               timestamp: new Date().toISOString() 
           });
-          toast({ title: "Manifest Updated", description: "Changes pushed to the Cloud context." });
+          toast({ title: "Manifest Updated", description: "Changes pushed to the Cloud Registry." });
           setViewingDocId(null);
       } finally {
           setIsProcessing(false);
@@ -571,7 +571,7 @@ export default function HypercubeDashboard() {
         <header className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Project Documentation Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Control Station</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -581,10 +581,10 @@ export default function HypercubeDashboard() {
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total Capacity</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Genres</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.keys(globalStats.genres).slice(0, 5).map(g => <Badge key={g} variant="outline" className="text-[9px] uppercase">{g}</Badge>)}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase">Active</span></div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="explore" className="space-y-6">
@@ -615,7 +615,7 @@ export default function HypercubeDashboard() {
               </CardHeader>
               <CardContent className="p-0 border-t">
                 <ScrollArea className="h-[650px] px-4 py-2">
-                  {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40">SYNCING CLOUD...</div> : (
+                  {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Cloud...</div> : (
                     <Accordion type="multiple" className="space-y-2">
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
@@ -673,7 +673,7 @@ export default function HypercubeDashboard() {
                                   <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60">
                                     <tr>
                                         <th className="p-3 pl-12">Role</th>
-                                        <th className="p-3">Timbre Configuration</th>
+                                        <th className="p-3">Instrument</th>
                                         <th className="p-3">Struct (O/B/N)</th>
                                         <th className="p-3">Vector</th>
                                         <th className="p-3">Narrative</th>
@@ -690,54 +690,12 @@ export default function HypercubeDashboard() {
                                         </td>
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (
-                                            <div className="flex flex-col gap-1.5">
-                                              {typeof editAxiomData.preferredInstrument === 'object' && editAxiomData.preferredInstrument !== null ? (
-                                                <div className="grid grid-cols-3 gap-1 w-[300px] bg-background/50 p-1.5 rounded border border-primary/10">
-                                                  <div className="space-y-0.5">
-                                                    <Label className="text-[8px] uppercase font-black opacity-50">Low T</Label>
-                                                    <Select value={editAxiomData.preferredInstrument.low || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, low: v === 'none' ? null : v}})}>
-                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
-                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                  </div>
-                                                  <div className="space-y-0.5">
-                                                    <Label className="text-[8px] uppercase font-black opacity-50">Mid T</Label>
-                                                    <Select value={editAxiomData.preferredInstrument.mid || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, mid: v === 'none' ? null : v}})}>
-                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
-                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                  </div>
-                                                  <div className="space-y-0.5">
-                                                    <Label className="text-[8px] uppercase font-black opacity-50">High T</Label>
-                                                    <Select value={editAxiomData.preferredInstrument.high || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: {...editAxiomData.preferredInstrument, high: v === 'none' ? null : v}})}>
-                                                      <SelectTrigger className="h-6 text-[9px]"><SelectValue /></SelectTrigger>
-                                                      <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[9px]">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                  </div>
-                                                  <Button variant="ghost" className="col-span-3 h-5 text-[8px] font-black opacity-50 hover:opacity-100" onClick={() => setEditAxiomData({...editAxiomData, preferredInstrument: null})}>RESET TO SINGLE</Button>
-                                                </div>
-                                              ) : (
-                                                <div className="flex items-center gap-1">
-                                                  <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
-                                                    <SelectTrigger className="h-7 text-[10px] uppercase font-black w-32"><SelectValue /></SelectTrigger>
-                                                    <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
-                                                  </Select>
-                                                  <Button variant="outline" className="h-7 text-[9px] font-black uppercase px-1.5 gap-1" onClick={() => setEditAxiomData({...editAxiomData, preferredInstrument: {low: null, mid: null, high: null}})}><Zap className="h-3 w-3" /> Multi-Map</Button>
-                                                </div>
-                                              )}
-                                            </div>
+                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
+                                              <SelectTrigger className="h-7 text-[10px] uppercase font-black w-32"><SelectValue /></SelectTrigger>
+                                              <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                            </Select>
                                           ) : (
-                                            ax.preferredInstrument ? (
-                                              typeof ax.preferredInstrument === 'object' ? (
-                                                <div className="flex gap-1">
-                                                  <Badge variant="secondary" className="bg-blue-500/10 text-blue-400 text-[8px] px-1 border-blue-500/20" title="Low Tension">L: {DISPLAY_NAMES[ax.preferredInstrument.low] || 'BP'}</Badge>
-                                                  <Badge variant="secondary" className="bg-green-500/10 text-green-400 text-[8px] px-1 border-green-500/20" title="Mid Tension">M: {DISPLAY_NAMES[ax.preferredInstrument.mid] || 'BP'}</Badge>
-                                                  <Badge variant="secondary" className="bg-red-500/10 text-red-400 text-[8px] px-1 border-red-500/20" title="High Tension">H: {DISPLAY_NAMES[ax.preferredInstrument.high] || 'BP'}</Badge>
-                                                </div>
-                                              ) : (
-                                                <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge>
-                                              )
-                                            ) : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
+                                            ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
                                           )}
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
@@ -750,7 +708,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
                                             {editingAxiomId === ax.id ? (
-                                              <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></></>
                                             ) : (
                                               <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
                                             )}
@@ -810,20 +768,20 @@ export default function HypercubeDashboard() {
               <CardHeader className="pb-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> System Manifest</CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Sync Vital Knowledge with the Cloud. Upload single or multiple files.</CardDescription>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> Root Manifest Station</CardTitle>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Synchronize key documents from your project root with the Cloud context.</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
                     <input type="file" ref={docFileInputRef} onChange={handleDocFileSelect} multiple className="hidden" />
                     <Button onClick={() => docFileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-10 px-6 shadow-lg uppercase tracking-wider gap-2">
-                      <UploadCloud className="h-4 w-4" /> Sync Local Manifests
+                      <UploadCloud className="h-4 w-4" /> Sync Root Manifests
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0 border-t">
                 <ScrollArea className="h-[500px]">
-                  {isDocsLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Archives...</div> : (
+                  {isDocsLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Scanning Archives...</div> : (
                     <table className="w-full text-left text-sm border-collapse">
                       <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
                         <tr>
@@ -924,27 +882,27 @@ export default function HypercubeDashboard() {
 
       {/* Manifest Viewer/Editor */}
       <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
-          <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card">
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card shadow-2xl">
               <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight">
-                      <FileText className="h-5 w-5" /> Manifest Editor: {projectDocs?.find(d => d.id === viewingDocId)?.filename}
+                  <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl">
+                      <FileText className="h-6 w-6" /> Manifest Editor: {projectDocs?.find(d => d.id === viewingDocId)?.filename}
                   </DialogTitle>
-                  <DialogDescription className="text-[10px] uppercase font-bold opacity-50">Cloud context direct modification unit</DialogDescription>
+                  <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Direct Cloud context modification unit</DialogDescription>
               </DialogHeader>
-              <div className="flex-grow overflow-hidden mt-4">
+              <div className="flex-grow overflow-hidden mt-4 bg-background/30 rounded-lg p-1">
                   <Textarea 
                       value={editingDocContent} 
                       onChange={(e) => setEditingDocContent(e.target.value)}
-                      className="h-full font-mono text-xs bg-background/50 resize-none border-primary/10"
+                      className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none border-primary/10 focus-visible:ring-primary/20 p-4 scrollbar-thin"
                   />
               </div>
-              <DialogFooter className="pt-4 border-t border-primary/10 flex justify-between items-center sm:justify-between">
+              <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full">
                   <div className="text-[10px] uppercase font-black opacity-40">
-                      Format: Markdown | Persistence: Firestore
+                      Sync: Firestore Overwrite | Encoding: UTF-8
                   </div>
                   <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black">Cancel</Button>
-                      <Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black px-6 shadow-lg">
+                      <Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button>
+                      <Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black h-10 px-8 shadow-xl bg-primary hover:bg-primary/90">
                           <ClipboardCheck className="h-4 w-4" /> Push Changes to Cloud
                       </Button>
                   </div>
