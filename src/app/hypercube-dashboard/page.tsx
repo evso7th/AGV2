@@ -493,12 +493,6 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); }
   };
 
-  // --- PROJECT DOCUMENTS LOGIC (MANIFEST TAB) ---
-
-  /**
-   * #ЗАЧЕМ: Массовая синхронизация локальных манифестов из КОРНЯ проекта.
-   * #ЧТО: Читает выбранные файлы, извлекает текст и выполняет Пакетный Upload (Overwrite по ID).
-   */
   const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = e.target.files;
       if (!files || files.length === 0) return;
@@ -528,9 +522,6 @@ export default function HypercubeDashboard() {
       }
   };
 
-  /**
-   * #ЗАЧЕМ: Выгрузка системного документа на локальный диск.
-   */
   const handleDownloadDoc = (doc: any) => {
       const blob = new Blob([doc.content], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
@@ -544,9 +535,6 @@ export default function HypercubeDashboard() {
       toast({ title: "Document Downloaded", description: `Saved ${doc.filename} to local disk.` });
   };
 
-  /**
-   * #ЗАЧЕМ: Точечное обновление документа в облаке через редактор.
-   */
   const handleUpdateDocContent = async () => {
       if (!viewingDocId || !editingDocContent) return;
       setIsProcessing(true);
@@ -708,7 +696,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
                                             {editingAxiomId === ax.id ? (
-                                              <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></></>
+                                              <><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>
                                             ) : (
                                               <><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>
                                             )}
@@ -880,12 +868,11 @@ export default function HypercubeDashboard() {
         </Tabs>
       </div>
 
-      {/* Manifest Viewer/Editor */}
       <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
           <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card shadow-2xl">
               <DialogHeader>
                   <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl">
-                      <FileText className="h-6 w-6" /> Manifest Editor: {projectDocs?.find(d => d.id === viewingDocId)?.filename}
+                      <FileText className="h-6 w-6" /> Manifest Editor
                   </DialogTitle>
                   <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Direct Cloud context modification unit</DialogDescription>
               </DialogHeader>
@@ -893,12 +880,12 @@ export default function HypercubeDashboard() {
                   <Textarea 
                       value={editingDocContent} 
                       onChange={(e) => setEditingDocContent(e.target.value)}
-                      className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none border-primary/10 focus-visible:ring-primary/20 p-4 scrollbar-thin"
+                      className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none border-primary/10 focus-visible:ring-primary/20 p-4"
                   />
               </div>
               <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full">
                   <div className="text-[10px] uppercase font-black opacity-40">
-                      Sync: Firestore Overwrite | Encoding: UTF-8
+                      Sync: Firestore Overwrite
                   </div>
                   <div className="flex gap-2">
                       <Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button>
@@ -910,7 +897,18 @@ export default function HypercubeDashboard() {
           </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="border-primary/20 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
