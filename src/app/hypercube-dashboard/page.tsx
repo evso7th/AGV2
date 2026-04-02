@@ -23,6 +23,7 @@ import {
   Download,
   FileJson,
   History,
+  Heart,
   Star,
   Eye,
   EyeOff,
@@ -56,6 +57,7 @@ import {
   AlertDialogContent,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogDescription,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
 import {
@@ -65,7 +67,6 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Radar,
@@ -381,15 +382,22 @@ export default function HypercubeDashboard() {
   };
 
   const handleWipeSelected = async () => {
-    setIsProcessing(true);
-    try {
-        const batch = writeBatch(db);
-        const selected = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).flatMap(([, l]) => l);
-        selected.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
-        await batch.commit();
-        setSelectedTrackGroups(new Set());
-        toast({ title: "Batch Purged" });
-    } finally { setIsProcessing(false); }
+    setConfirmAction({
+        title: `WIPE SELECTED (${selectedTrackGroups.size} tracks)`,
+        desc: `CRITICAL: Permanently delete all axioms associated with the ${selectedTrackGroups.size} selected tracks?`,
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const batch = writeBatch(db);
+                const selected = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).flatMap(([, l]) => l);
+                selected.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
+                await batch.commit();
+                setSelectedTrackGroups(new Set());
+                toast({ title: "Batch Purged" });
+            } finally { setIsProcessing(false); }
+        }
+    });
+    setConfirmOpen(true);
   };
 
   const handleExportTrack = (compId: string, licks: any[]) => {
@@ -787,7 +795,20 @@ export default function HypercubeDashboard() {
           </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent className="border-primary/20 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-bold">
+              {confirmConfig?.desc || "This action is critical and cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
