@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -34,7 +33,7 @@ import {
   FileText,
   UploadCloud,
   ClipboardCheck,
-  ExternalLink
+  CloudLightning
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -95,6 +94,7 @@ import {
     TICK_TO_BEAT,
     mergeIdenticalNotes
 } from '@/lib/music-theory';
+import { readProjectRootManifests } from '@/app/actions/manifest-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -254,7 +254,6 @@ export default function HypercubeDashboard() {
   const [editingDocContent, setEditingDocContent] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const docFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(PROCESSED_FILES_KEY);
@@ -361,12 +360,9 @@ export default function HypercubeDashboard() {
       try {
           const ref = doc(db, 'heritage_axioms', axiom.id);
           await updateDoc(ref, { ignored: !axiom.ignored });
-          toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored", description: "This DNA component has been updated in the cloud." });
-      } catch (e) { 
-          toast({ variant: "destructive", title: "Action Failed" }); 
-      } finally { 
-          setIsProcessing(false); 
-      }
+          toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored" });
+      } catch (e) { toast({ variant: "destructive", title: "Action Failed" }); }
+      finally { setIsProcessing(false); }
   };
 
   const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
@@ -376,13 +372,8 @@ export default function HypercubeDashboard() {
         const newCommonMoods = Array.from(new Set(newM.map(m => MOOD_TO_COMMON[m])));
         licks.forEach(ax => { 
             batch.update(doc(db, 'heritage_axioms', ax.id), { 
-                compositionId: newId, 
-                genre: newG, 
-                mood: newM, 
-                commonMood: newCommonMoods,
-                nativeBpm: newBpm, 
-                nativeKey: newKey, 
-                timeSignature: newTs 
+                compositionId: newId, genre: newG, mood: newM, commonMood: newCommonMoods,
+                nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs 
             }); 
         });
         await batch.commit();
@@ -406,14 +397,8 @@ export default function HypercubeDashboard() {
       const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
       const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: "DNA Exported", description: `File saved as ${a.download}` });
+      const a = document.createElement('a'); a.href = url; a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`; a.click(); URL.revokeObjectURL(url);
+      toast({ title: "DNA Exported" });
   };
 
   const handleExportFullRegistry = () => {
@@ -421,14 +406,8 @@ export default function HypercubeDashboard() {
       const cleanRegistry = globalAxioms.map(({ id, timestamp, ...rest }) => ({ ...rest }));
       const blob = new Blob([JSON.stringify(cleanRegistry, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `AuraGroove_Full_DNA_Registry_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: "Registry Downloaded", description: "Full heritage backup saved." });
+      const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Full_DNA_Registry_${new Date().toISOString().split('T')[0]}.json`; a.click(); URL.revokeObjectURL(url);
+      toast({ title: "Registry Downloaded" });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -493,46 +472,27 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); }
   };
 
-  const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (!files || files.length === 0) return;
-      
+  const handlePushRootToCloud = async () => {
       setIsProcessing(true);
       try {
-          for (let i = 0; i < files.length; i++) {
-              const file = files[i];
-              const content = await file.text();
-              const category: any = file.name.toLowerCase().includes('protocol') ? 'protocol' : 
-                                file.name.toLowerCase().includes('spec') ? 'spec' : 
-                                file.name.toLowerCase().includes('contract') ? 'contract' : 'backlog';
-              
-              saveProjectDocument(db, {
-                  filename: file.name,
-                  content: content,
+          const files = await readProjectRootManifests();
+          for (const file of files) {
+              const category: any = file.filename.toLowerCase().includes('protocol') ? 'protocol' : 
+                                file.filename.toLowerCase().includes('spec') ? 'spec' : 
+                                file.filename.toLowerCase().includes('contract') ? 'contract' : 'backlog';
+              await saveProjectDocument(db, {
+                  filename: file.filename,
+                  content: file.content,
                   category: category,
                   version: '1.0'
               });
           }
-          toast({ title: "Root Manifest Sync", description: `Processing ${files.length} documents from project root.` });
-      } catch (err) {
+          toast({ title: "Root Synchronized", description: `Uploaded ${files.length} manifests from project root.` });
+      } catch (e) {
           toast({ variant: "destructive", title: "Sync Failed" });
       } finally {
           setIsProcessing(false);
-          if (docFileInputRef.current) docFileInputRef.current.value = '';
       }
-  };
-
-  const handleDownloadDoc = (doc: any) => {
-      const blob = new Blob([doc.content], { type: 'text/markdown' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast({ title: "Document Downloaded", description: `Saved ${doc.filename} to local disk.` });
   };
 
   const handleUpdateDocContent = async () => {
@@ -540,15 +500,9 @@ export default function HypercubeDashboard() {
       setIsProcessing(true);
       try {
           const docRef = doc(db, 'project_documents', viewingDocId);
-          await updateDoc(docRef, { 
-              content: editingDocContent,
-              timestamp: new Date().toISOString() 
-          });
-          toast({ title: "Manifest Updated", description: "Changes pushed to the Cloud Registry." });
-          setViewingDocId(null);
-      } finally {
-          setIsProcessing(false);
-      }
+          await updateDoc(docRef, { content: editingDocContent, timestamp: new Date().toISOString() });
+          toast({ title: "Manifest Updated" }); setViewingDocId(null);
+      } finally { setIsProcessing(false); }
   };
 
   const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
@@ -559,11 +513,11 @@ export default function HypercubeDashboard() {
         <header className="flex items-center justify-between">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Control Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Station</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20 hover:bg-primary/5"><FileJson className="h-4 w-4" /> Export Registry</Button>
-            <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50 hover:bg-destructive/10"><Square className="h-4 w-4" /> Stop Audition</Button>
+            <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20"><FileJson className="h-4 w-4" /> Export Registry</Button>
+            <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50"><Square className="h-4 w-4" /> Stop Audition</Button>
             <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
           </div>
         </header>
@@ -616,24 +570,12 @@ export default function HypercubeDashboard() {
                               {editingGroupId === compId ? (
                                 <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-2xl" onClick={e => e.stopPropagation()}>
                                   <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                      <Label className="text-[10px] uppercase font-bold opacity-50">Track Name</Label>
-                                      <Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-[10px] uppercase font-bold opacity-50">BPM</Label>
-                                      <Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-7 text-xs" />
-                                    </div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Name</Label><Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">BPM</Label><Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-7 text-xs" /></div>
                                   </div>
                                   <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                      <Label className="text-[10px] uppercase font-bold opacity-50">Genre(s)</Label>
-                                      <MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-[10px] uppercase font-bold opacity-50">Mood(s)</Label>
-                                      <MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" />
-                                    </div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" /></div>
                                   </div>
                                   <div className="flex gap-2 pt-1">
                                     <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
@@ -643,14 +585,12 @@ export default function HypercubeDashboard() {
                               ) : (
                                 <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); }}>
                                   <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
-                                  <div className="text-[9px] uppercase font-bold opacity-50">
-                                    G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')} | BPM: {licks[0].nativeBpm || '??'}
-                                  </div>
+                                  <div className="text-[9px] uppercase font-bold opacity-50">G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')}</div>
                                 </div>
                               )}
                             </div>
                             <div className="flex items-center gap-2 pr-4">
-                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-primary" title="Export Track DNA"><Download className="h-4 w-4" /></Button>
+                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="h-4 w-4" /></Button>
                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); deleteDocumentNonBlocking(doc(db, 'heritage_axioms', licks[0].id)); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </div>
@@ -662,7 +602,7 @@ export default function HypercubeDashboard() {
                                     <tr>
                                         <th className="p-3 pl-12">Role</th>
                                         <th className="p-3">Instrument</th>
-                                        <th className="p-3">Struct (O/B/N)</th>
+                                        <th className="p-3">Struct</th>
                                         <th className="p-3">Vector</th>
                                         <th className="p-3">Narrative</th>
                                         <th className="p-3 text-right">Actions</th>
@@ -686,13 +626,9 @@ export default function HypercubeDashboard() {
                                             ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
                                           )}
                                         </td>
-                                        <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || '??'}</td>
+                                        <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">O:{ax.barOffset || 0} / B:{ax.bars || 1}</td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
-                                        <td className="p-3 text-xs italic text-muted-foreground">
-                                            {editingAxiomId === ax.id ? (
-                                                <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" />
-                                            ) : (<div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>)}
-                                        </td>
+                                        <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs" /> : <div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>}</td>
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
                                             {editingAxiomId === ax.id ? (
@@ -736,15 +672,15 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="masterpieces" className="w-full">
+          <TabsContent value="masterpieces">
             <Card className="border-border/50 shadow-xl bg-card/50">
               <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
               <CardContent><ScrollArea className="h-[500px]"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {globalMasterpieces?.map((m: any) => (
                   <Card key={m.id} className="bg-background/40 border-border/50 p-4 space-y-2 group relative">
-                    <div className="flex justify-between items-start"><Badge variant="outline" className="text-[10px] font-black uppercase text-primary">{m.genre}</Badge><span className="text-[9px] font-mono opacity-50">{new Date(m.timestamp?.seconds * 1000).toLocaleDateString()}</span></div>
+                    <div className="flex justify-between items-start"><Badge variant="outline" className="text-[10px] font-black uppercase text-primary">{m.genre}</Badge></div>
                     <div className="text-xs font-black uppercase truncate">{m.mood}</div>
-                    <div className="text-[10px] font-mono opacity-70">Seed: {m.seed} | BPM: {m.bpm}</div>
+                    <div className="text-[10px] font-mono opacity-70">Seed: {m.seed}</div>
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'masterpieces', m.id))}><Trash2 className="h-3.5 w-3.5" /></Button></div>
                   </Card>
                 ))}</div></ScrollArea></CardContent>
@@ -756,60 +692,45 @@ export default function HypercubeDashboard() {
               <CardHeader className="pb-4">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
-                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> Root Manifest Station</CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Synchronize key documents from your project root with the Cloud context.</CardDescription>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> Project Root Manifests</CardTitle>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Synchronize key documents from your project root directly with the Cloud context.</CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input type="file" ref={docFileInputRef} onChange={handleDocFileSelect} multiple className="hidden" />
-                    <Button onClick={() => docFileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-10 px-6 shadow-lg uppercase tracking-wider gap-2">
-                      <UploadCloud className="h-4 w-4" /> Sync Root Manifests
+                    <Button onClick={handlePushRootToCloud} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-10 px-6 shadow-lg uppercase tracking-wider gap-2">
+                      <CloudLightning className={cn("h-4 w-4", isProcessing && "animate-pulse")} /> 
+                      {isProcessing ? "Syncing..." : "Push Root to Cloud"}
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0 border-t">
                 <ScrollArea className="h-[500px]">
-                  {isDocsLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Scanning Archives...</div> : (
-                    <table className="w-full text-left text-sm border-collapse">
-                      <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
-                        <tr>
-                          <th className="p-4 pl-8">Manifest File</th>
-                          <th className="p-4">Category</th>
-                          <th className="p-4 text-center">Version</th>
-                          <th className="p-4">Last Modified</th>
-                          <th className="p-4 text-right pr-8">Actions</th>
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
+                      <tr>
+                        <th className="p-4 pl-8">Manifest File</th>
+                        <th className="p-4">Category</th>
+                        <th className="p-4 text-center">Version</th>
+                        <th className="p-4 text-right pr-8">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/20">
+                      {[...(projectDocs || [])].sort((a,b) => a.filename.localeCompare(b.filename)).map((d: any) => (
+                        <tr key={d.id} className="hover:bg-primary/5 transition-colors group">
+                          <td className="p-4 pl-8"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary opacity-70" /><span className="font-bold">{d.filename}</span></div></td>
+                          <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black">{d.category || 'general'}</Badge></td>
+                          <td className="p-4 text-center font-mono text-[10px] opacity-60">v{d.version || '1.0'}</td>
+                          <td className="p-4 text-right pr-8">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}><Edit2 className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" onClick={() => { const blob = new Blob([d.content], { type: 'text/markdown' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = d.filename; a.click(); }}><Download className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/20">
-                        {[...(projectDocs || [])].sort((a,b) => a.filename.localeCompare(b.filename)).map((d: any) => (
-                          <tr key={d.id} className="hover:bg-primary/5 transition-colors group">
-                            <td className="p-4 pl-8">
-                              <div className="flex items-center gap-3">
-                                <FileText className="h-4 w-4 text-primary opacity-70" />
-                                <span className="font-bold text-foreground group-hover:text-primary transition-colors">{d.filename}</span>
-                              </div>
-                            </td>
-                            <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black">{d.category || 'general'}</Badge></td>
-                            <td className="p-4 text-center font-mono text-[10px] opacity-60">v{d.version || '1.0'}</td>
-                            <td className="p-4 font-mono text-[10px] opacity-60">{d.timestamp ? new Date(d.timestamp?.seconds ? d.timestamp.seconds * 1000 : d.timestamp).toLocaleDateString() : 'Original'}</td>
-                            <td className="p-4 text-right pr-8">
-                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="Cloud Edit" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}>
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" title="Download Local Copy" onClick={() => handleDownloadDoc(d)}>
-                                  <Download className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Purge from Cloud" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                      ))}
+                    </tbody>
+                  </table>
                 </ScrollArea>
               </CardContent>
             </Card>
@@ -836,26 +757,17 @@ export default function HypercubeDashboard() {
                             <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
                                 <tr>
                                     <th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th>
-                                    <th className="p-4">Source</th>
-                                    <th className="p-4">Role</th>
-                                    <th className="p-4">Meta</th>
-                                    <th className="p-4">Narrative</th>
-                                    <th className="p-4 text-right">Preview</th>
+                                    <th className="p-4">Source</th><th className="p-4">Role</th><th className="p-4">Meta</th><th className="p-4 text-right">Preview</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/20">
                                 {stagedAxioms.map(ax => (
-                                    <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
+                                    <tr key={ax.id} className="hover:bg-primary/5 transition-colors">
                                         <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
                                         <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
                                         <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
                                         <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars}</td>
-                                        <td className="p-4 text-[10px] italic text-muted-foreground opacity-70 truncate max-w-[150px]">{ax.narrative}</td>
-                                        <td className="p-4 text-right">
-                                            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>
-                                                {playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}
-                                            </Button>
-                                        </td>
+                                        <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -870,45 +782,13 @@ export default function HypercubeDashboard() {
 
       <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
           <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card shadow-2xl">
-              <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl">
-                      <FileText className="h-6 w-6" /> Manifest Editor
-                  </DialogTitle>
-                  <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Direct Cloud context modification unit</DialogDescription>
-              </DialogHeader>
-              <div className="flex-grow overflow-hidden mt-4 bg-background/30 rounded-lg p-1">
-                  <Textarea 
-                      value={editingDocContent} 
-                      onChange={(e) => setEditingDocContent(e.target.value)}
-                      className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none border-primary/10 focus-visible:ring-primary/20 p-4"
-                  />
-              </div>
-              <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full">
-                  <div className="text-[10px] uppercase font-black opacity-40">
-                      Sync: Firestore Overwrite
-                  </div>
-                  <div className="flex gap-2">
-                      <Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button>
-                      <Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black h-10 px-8 shadow-xl bg-primary hover:bg-primary/90">
-                          <ClipboardCheck className="h-4 w-4" /> Push Changes to Cloud
-                      </Button>
-                  </div>
-              </DialogFooter>
+              <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl"><FileText className="h-6 w-6" /> Manifest Editor</DialogTitle></DialogHeader>
+              <div className="flex-grow overflow-hidden mt-4 bg-background/30 rounded-lg p-1"><Textarea value={editingDocContent} onChange={(e) => setEditingDocContent(e.target.value)} className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none p-4" /></div>
+              <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full"><div className="text-[10px] uppercase font-black opacity-40">Sync: Firestore Overwrite</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button><Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black h-10 px-8 shadow-xl bg-primary hover:bg-primary/90"><ClipboardCheck className="h-4 w-4" /> Push Changes to Cloud</Button></div></DialogFooter>
           </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="border-primary/20 bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }
