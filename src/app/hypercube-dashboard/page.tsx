@@ -336,10 +336,6 @@ export default function HypercubeDashboard() {
     }, (maxDuration + 1) * 1000);
   };
 
-  /**
-   * #ЗАЧЕМ: Система кураторства ДНК (Restore Feature).
-   * #ЧТО: ПЛАН №993. Переключает флаг ignored в Firestore.
-   */
   const handleToggleIgnore = async (axiom: any) => {
       setIsProcessing(true);
       try {
@@ -357,7 +353,18 @@ export default function HypercubeDashboard() {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
-        licks.forEach(ax => { batch.update(doc(db, 'heritage_axioms', ax.id), { compositionId: newId, genre: newG, mood: newM, nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs }); });
+        const newCommonMoods = Array.from(new Set(newM.map(m => MOOD_TO_COMMON[m])));
+        licks.forEach(ax => { 
+            batch.update(doc(db, 'heritage_axioms', ax.id), { 
+                compositionId: newId, 
+                genre: newG, 
+                mood: newM, 
+                commonMood: newCommonMoods,
+                nativeBpm: newBpm, 
+                nativeKey: newKey, 
+                timeSignature: newTs 
+            }); 
+        });
         await batch.commit();
         toast({ title: "Track Updated" });
     } finally { setIsProcessing(false); setEditingGroupId(null); }
@@ -529,18 +536,37 @@ export default function HypercubeDashboard() {
                               </AccordionTrigger>
                               {editingGroupId === compId ? (
                                 <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-                                  <Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" />
-                                  <div className="flex gap-2">
-                                    <MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="flex-grow" />
-                                    <Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-8 w-16" placeholder="BPM" />
-                                    <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-4 w-4" /></Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setEditingGroupId(null)}><X className="h-4 w-4" /></Button>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-bold opacity-50">Track Name</Label>
+                                      <Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-bold opacity-50">BPM</Label>
+                                      <Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-7 text-xs" />
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-bold opacity-50">Genre(s)</Label>
+                                      <MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-[10px] uppercase font-bold opacity-50">Mood(s)</Label>
+                                      <MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" />
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
+                                    <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setEditingGroupId(null)}><X className="h-4 w-4" /> Cancel</Button>
                                   </div>
                                 </div>
                               ) : (
                                 <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); }}>
                                   <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
-                                  <div className="text-[9px] uppercase font-bold opacity-50">Genre: {(licks[0].genre || []).join(', ')} | BPM: {licks[0].nativeBpm || '??'}</div>
+                                  <div className="text-[9px] uppercase font-bold opacity-50">
+                                    G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')} | BPM: {licks[0].nativeBpm || '??'}
+                                  </div>
                                 </div>
                               )}
                             </div>

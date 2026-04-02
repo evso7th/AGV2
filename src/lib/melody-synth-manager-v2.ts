@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №905 — Поддержка панорамирования каждого события.
+ * #ЧТО: ПЛАН №999 — Бесшовная смена инструментов без блокировки планировщика.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -27,6 +27,7 @@ export class MelodySynthManagerV2 {
     
     private activePresetName: string = 'none';
     private preamp: GainNode;
+    private isChangingInstrument = false;
 
     constructor(
         audioContext: AudioContext, 
@@ -64,44 +65,52 @@ export class MelodySynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
-        if (this.synth) {
-            const fadingSynth = this.synth;
-            setTimeout(() => {
-                try { fadingSynth.disconnect(); } catch (e) {}
-            }, 10000); 
-            this.synth = null;
-        }
-        
+        if (this.isChangingInstrument) return;
+        this.isChangingInstrument = true;
+
         const preset = instrumentType === 'bass'
             ? BASS_PRESETS[presetName as keyof typeof BASS_PRESETS]
             : V2_PRESETS[presetName as keyof typeof V2_PRESETS];
 
-        if (!preset) return;
+        if (!preset) {
+            this.isChangingInstrument = false;
+            return;
+        }
         
         try {
-            this.synth = await buildMultiInstrument(this.audioContext, {
+            const newInstrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
                 output: this.preamp
             });
             
-            if (this.partName === 'melody' && this.synth) {
+            if (this.partName === 'melody' && newInstrument) {
                 const isGuitar = presetName.toLowerCase().includes('guitar') || 
                                  presetName.toLowerCase().includes('acoustic') ||
                                  presetName.toLowerCase().includes('telecaster');
                 
                 const multiplier = isGuitar ? 1.0 : 0.5;
                 const baseVolume = preset.volume || 0.7;
-                this.synth.setVolume(baseVolume * multiplier);
+                newInstrument.setVolume(baseVolume * multiplier);
             }
 
+            const oldInst = this.synth;
+            this.synth = newInstrument;
             this.activePresetName = presetName;
+
+            if (oldInst) {
+                setTimeout(() => {
+                    try { oldInst.disconnect(); } catch (e) {}
+                }, 5000);
+            }
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
+        } finally {
+            this.isChangingInstrument = false;
         }
     }
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
@@ -112,16 +121,16 @@ export class MelodySynthManagerV2 {
                 duration: (e.duration * beatDuration) + extraDuration, 
                 velocity: e.weight, 
                 technique: e.technique, 
-                pan: e.pan, // #ЗАЧЕМ: ПЛАН №905.
+                pan: e.pan, 
                 params: e.params 
             };
         });
         
-        if (instrumentHint && instrumentHint !== this.activePresetName) {
+        if (instrumentHint && instrumentHint !== this.activePresetName && !this.isChangingInstrument) {
             const isPhraseBoundary = barCount % 4 === 0;
             const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none' || this.activePresetName === 'bass_jazz_warm';
             if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
-                await this.setInstrument(instrumentHint);
+                this.setInstrument(instrumentHint);
             }
         }
 
@@ -152,7 +161,6 @@ export class MelodySynthManagerV2 {
         
         if (!this.synth) return;
         
-        // Транзиентная подсветка для гитарных пресетов
         if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
@@ -187,7 +195,7 @@ export class MelodySynthManagerV2 {
        } else {
            if (this.synth) {
                const fadingSynth = this.synth;
-               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 10000);
+               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 5000);
                this.synth = null;
            }
            this.activePresetName = instrumentName;

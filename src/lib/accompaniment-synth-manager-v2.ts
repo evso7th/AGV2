@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №998 — Прямое подключение синтезатора к шине для максимальной надежности.
+ * #ЧТО: ПЛАН №999 — Фоновая загрузка инструментов без "пауз тишины".
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -17,6 +17,7 @@ export class AccompanimentSynthManagerV2 {
     private instrument: any | null = null; 
     private activePresetName: string = 'none';
     private preamp: GainNode;
+    private isChangingInstrument = false;
 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
@@ -50,31 +51,39 @@ export class AccompanimentSynthManagerV2 {
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
-        if (this.instrument) {
-            const oldInst = this.instrument;
-            setTimeout(() => {
-                try { oldInst.disconnect(); } catch (e) {}
-            }, 10000); 
-            this.instrument = null;
+        if (this.isChangingInstrument) return;
+        this.isChangingInstrument = true;
+
+        const preset = V2_PRESETS[presetName as keyof typeof V2_PRESETS];
+        if (!preset) {
+            this.isChangingInstrument = false;
+            return;
         }
         
-        const preset = V2_PRESETS[presetName as keyof typeof V2_PRESETS];
-        if (!preset) return;
-        
         try {
-            // #ЗАЧЕМ: Прямое подключение к preamp для уверенности в сигнале.
-            this.instrument = await buildMultiInstrument(this.audioContext, {
+            const newInstrument = await buildMultiInstrument(this.audioContext, {
                 type: instrumentType,
                 preset: preset,
                 output: this.preamp
             });
+
+            const oldInst = this.instrument;
+            this.instrument = newInstrument;
             this.activePresetName = presetName;
+
+            if (oldInst) {
+                setTimeout(() => {
+                    try { oldInst.disconnect(); } catch (e) {}
+                }, 5000); 
+            }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
+        } finally {
+            this.isChangingInstrument = false;
         }
     }
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         const beatDuration = 60 / tempo;
         const filtered = events.filter(e => e.type === 'accompaniment');
 
@@ -88,12 +97,11 @@ export class AccompanimentSynthManagerV2 {
             params: e.params
         }));
 
-        if (instrumentHint && instrumentHint !== this.activePresetName) {
+        if (instrumentHint && instrumentHint !== this.activePresetName && !this.isChangingInstrument) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
-                // #ЗАЧЕМ: Если есть звуки, но инструмент не тот — принудительная смена.
                 if (notesToPlay.length === 0 || this.activePresetName === 'none') {
-                    await this.setInstrument(mappedHint);
+                    this.setInstrument(mappedHint);
                 }
             }
         }
@@ -136,7 +144,7 @@ export class AccompanimentSynthManagerV2 {
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 10000);
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 5000);
                this.instrument = null;
            }
            this.activePresetName = instrumentName; 
