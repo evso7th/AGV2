@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №999 — Фоновая загрузка инструментов без "пауз тишины".
+ * #ЧТО: ПЛАН №1000 — Исправлена блокировка звука при смене пресета.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -97,10 +97,11 @@ export class AccompanimentSynthManagerV2 {
             params: e.params
         }));
 
+        // #ЗАЧЕМ: Фоновая смена инструмента без блокировки текущего такта.
         if (instrumentHint && instrumentHint !== this.activePresetName && !this.isChangingInstrument) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
-                if (notesToPlay.length === 0 || this.activePresetName === 'none') {
+                if (notesToPlay.length === 0 || this.activePresetName === 'none' || barCount % 4 === 0) {
                     this.setInstrument(mappedHint);
                 }
             }
@@ -118,6 +119,7 @@ export class AccompanimentSynthManagerV2 {
             return;
         }
 
+        // Если новый инструмент еще не загружен, пытаемся играть на старом.
         if (!this.instrument) return;
 
         notesToPlay.forEach(note => {

@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V68.0 — "Accompaniment Recovery".
- * #ЗАЧЕМ: Исправление немоты Аккомпанемента.
- * #ЧТО: ПЛАН №997 — Усиление детекции ролей и бар-адаптивного фолбека.
+ * @fileOverview Ambient Brain V69.0 — "Absolute Role Isolation".
+ * #ЗАЧЕМ: Синхронизация логики маршрутизации с BluesBrain.
+ * #ЧТО: ПЛАН №1000 — Принудительная изоляция пианино и аккомпанемента.
  */
 
 import type {
@@ -198,18 +198,19 @@ export class AmbientBrain {
 
         let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
-        const heritagePlayedLayers = new Set<string>();
+        const usedTargetLayers = new Set<string>();
         
         if (!isAccompResting) {
             this.currentAccompAxioms.forEach((ax) => {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                // #ЗАЧЕМ: ПЛАН №1000 — Принудительная изоляция.
+                if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
-                if (targetType && hints[targetType] && !heritagePlayedLayers.has(targetType)) {
+                if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
                     
                     if (accEvents.length > 0) {
@@ -218,25 +219,24 @@ export class AmbientBrain {
                         }
                         accEvents.forEach(e => e.pan = swirlPan);
                         events.push(...accEvents);
-                        heritagePlayedLayers.add(targetType);
+                        usedTargetLayers.add(targetType);
                         if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
                     }
                 }
             });
             
-            // #ЗАЧЕМ: ПЛАН №997 — Гарантированный подхват адаптивным пэдом.
-            if (hints.accompaniment && !heritagePlayedLayers.has('accompaniment')) {
+            if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
                 const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents);
-                heritagePlayedLayers.add('accompaniment');
+                usedTargetLayers.add('accompaniment');
                 accStatus = 'Adaptive Pad (No DNA)';
             }
-            if (hints.harmony && !heritagePlayedLayers.has('harmony')) {
+            if (hints.harmony && !usedTargetLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                 harEvents.forEach(e => e.pan = 0.25);
                 events.push(...harEvents);
-                heritagePlayedLayers.add('harmony');
+                usedTargetLayers.add('harmony');
             }
         }
 
@@ -265,7 +265,7 @@ export class AmbientBrain {
 
         let pianoInfo = { style: 'none', count: 0 };
         if (hints.pianoAccompaniment) {
-            if (!heritagePlayedLayers.has('pianoAccompaniment')) {
+            if (!usedTargetLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
                 if (p.events.length > 0) {
                     p.events.forEach(e => e.pan = 0.2); 
@@ -418,7 +418,7 @@ export class AmbientBrain {
                 const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                 this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
             drumSiblings.forEach(ax => {
                 const p = decompressCompactPhrase(ax.phrase);
                 this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
@@ -522,7 +522,7 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-        if (barNotes.length === 0) return []; // Fallback handled by caller
+        if (barNotes.length === 0) return []; 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato'
@@ -589,11 +589,11 @@ export class AmbientBrain {
     }
 
     private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
-        const colorDegree = epoch % 8 < 4 ? (chord.chordType === 'minor' ? 3 : 4) : 7;
+        const root = resChord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
+        const colorDegree = epoch % 8 < 4 ? (resChord.chordType === 'minor' ? 3 : 4) : 7;
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         if (timbre === 'guitarChords') {
-            return [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
+            return [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }];
         }
         return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
     }

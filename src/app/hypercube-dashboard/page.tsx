@@ -553,6 +553,7 @@ export default function HypercubeDashboard() {
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-[10px] uppercase font-bold opacity-50">Mood(s)</Label>
+                                      {/* #ЗАЧЕМ: ПЛАН №1000 — Мультиселект настроений для трека. */}
                                       <MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" />
                                     </div>
                                   </div>

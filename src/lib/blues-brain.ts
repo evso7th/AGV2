@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V71.0 — "Absolute Accompaniment Continuity".
- * #ЗАЧЕМ: Устранение немоты аккомпанемента через принудительный генеративный подхват.
- * #ЧТО: ПЛАН №998 — usedTargetLayers очищается в начале такта, а генератор пэда запускается если Heritage молчит.
+ * @fileOverview Blues Brain V72.0 — "The Absolute Continuity Reform".
+ * #ЗАЧЕМ: Окончательное исправление маршрутизации и фолбеков.
+ * #ЧТО: ПЛАН №1000 — Роль с 'piano' -> Rhodes. Роль с 'accomp' -> Accompaniment.
  */
 
 import {
@@ -299,8 +299,7 @@ export class BluesBrain {
 
     const usedTargetLayers = new Set<string>();
     const isAccompResting = epoch < this.accompanimentRestingUntilBar;
-    const unisonType = navInfo.currentPart.instrumentRules?.accompaniment?.unisonType || 'none';
-
+    
     let accStatus = 'none';
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
@@ -309,21 +308,14 @@ export class BluesBrain {
     }
 
     if (!isAccompResting) {
-        if (hints.accompaniment && unisonType !== 'none') {
-            const renderedUnison = this.renderUnisonAccompaniment(bassEvents, resChord, unisonType);
-            if (renderedUnison.length > 0) {
-                events.push(...renderedUnison);
-                usedTargetLayers.add('accompaniment');
-                accStatus = 'Unison Texture';
-            }
-        } else if (this.currentAccompAxioms.length > 0) {
+        if (this.currentAccompAxioms.length > 0) {
             this.currentAccompAxioms.forEach((ax) => {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                if (rawRole === 'pianoaccompaniment') targetType = 'pianoAccompaniment';
+                // #ЗАЧЕМ: ПЛАН №1000 — Простейшая и жесткая маршрутизация.
+                if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
-                else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
                 if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
                     const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
@@ -339,7 +331,7 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: ПЛАН №998 — Окончательная гарантия слышимости аккомпанемента.
+        // #ЗАЧЕМ: Гарантированный подхват адаптивным пэдом если ДНК в этом такте молчит.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
