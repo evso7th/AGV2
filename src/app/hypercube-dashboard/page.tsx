@@ -24,14 +24,17 @@ import {
   Download,
   FileJson,
   History,
-  Heart,
   Star,
   Eye,
   EyeOff,
   Settings2,
   Lock,
   Zap,
-  Mic2
+  Mic2,
+  FileText,
+  UploadCloud,
+  ClipboardCheck,
+  ExternalLink
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -46,6 +49,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,6 +60,15 @@ import {
   AlertDialogTitle,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Radar,
   RadarChart,
@@ -69,7 +82,7 @@ import {
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
-import { saveHeritageAxiom } from '@/lib/firebase-service';
+import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
 import { 
     decompressCompactPhrase, 
     repairLegacyPhrase, 
@@ -204,6 +217,9 @@ export default function HypercubeDashboard() {
   const masterpiecesQuery = useMemoFirebase(() => query(collection(db, 'masterpieces')), [db]);
   const { data: globalMasterpieces, isLoading: isMpiecesLoading } = useCollection(masterpiecesQuery);
 
+  const docsQuery = useMemoFirebase(() => query(collection(db, 'project_documents')), [db]);
+  const { data: projectDocs, isLoading: isDocsLoading } = useCollection(docsQuery);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -234,7 +250,11 @@ export default function HypercubeDashboard() {
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editAxiomData, setEditAxiomData] = useState<any>(null);
 
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [editingDocContent, setEditingDocContent] = useState<string>("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(PROCESSED_FILES_KEY);
@@ -473,6 +493,66 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); }
   };
 
+  // --- PROJECT DOCUMENTS LOGIC ---
+
+  const handleDocFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files || files.length === 0) return;
+      
+      setIsProcessing(true);
+      try {
+          for (let i = 0; i < files.length; i++) {
+              const file = files[i];
+              const content = await file.text();
+              const category: any = file.name.toLowerCase().includes('protocol') ? 'protocol' : 
+                                file.name.toLowerCase().includes('spec') ? 'spec' : 
+                                file.name.toLowerCase().includes('contract') ? 'contract' : 'backlog';
+              
+              saveProjectDocument(db, {
+                  filename: file.name,
+                  content: content,
+                  category: category,
+                  version: '1.0'
+              });
+          }
+          toast({ title: "Manifest Sync Initiated", description: `Processing ${files.length} documents.` });
+      } catch (err) {
+          toast({ variant: "destructive", title: "Sync Failed" });
+      } finally {
+          setIsProcessing(false);
+          if (docFileInputRef.current) docFileInputRef.current.value = '';
+      }
+  };
+
+  const handleDownloadDoc = (doc: any) => {
+      const blob = new Blob([doc.content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast({ title: "Document Downloaded" });
+  };
+
+  const handleUpdateDocContent = async () => {
+      if (!viewingDocId || !editingDocContent) return;
+      setIsProcessing(true);
+      try {
+          const docRef = doc(db, 'project_documents', viewingDocId);
+          await updateDoc(docRef, { 
+              content: editingDocContent,
+              timestamp: new Date().toISOString() 
+          });
+          toast({ title: "Manifest Updated" });
+          setViewingDocId(null);
+      } finally {
+          setIsProcessing(false);
+      }
+  };
+
   const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
 
   return (
@@ -494,14 +574,15 @@ export default function HypercubeDashboard() {
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total Capacity</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Genres</CardTitle></CardHeader><CardContent><div className="flex flex-wrap gap-1">{Object.keys(globalStats.genres).slice(0, 5).map(g => <Badge key={g} variant="outline" className="text-[9px] uppercase">{g}</Badge>)}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Status</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">100%</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid grid-cols-4 h-12 bg-muted/30 p-1 border border-border/50">
+          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider">Explore</TabsTrigger>
             <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider">Genetic Map</TabsTrigger>
             <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider">Masterpieces</TabsTrigger>
+            <TabsTrigger value="documents" className="text-xs font-bold uppercase tracking-wider">Manifest</TabsTrigger>
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider">Inject DNA</TabsTrigger>
           </TabsList>
 
@@ -535,7 +616,7 @@ export default function HypercubeDashboard() {
                                 <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
                               </AccordionTrigger>
                               {editingGroupId === compId ? (
-                                <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+                                <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-2xl" onClick={e => e.stopPropagation()}>
                                   <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1">
                                       <Label className="text-[10px] uppercase font-bold opacity-50">Track Name</Label>
@@ -553,7 +634,6 @@ export default function HypercubeDashboard() {
                                     </div>
                                     <div className="space-y-1">
                                       <Label className="text-[10px] uppercase font-bold opacity-50">Mood(s)</Label>
-                                      {/* #ЗАЧЕМ: ПЛАН №1000 — Мультиселект настроений для трека. */}
                                       <MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" />
                                     </div>
                                   </div>
@@ -715,6 +795,70 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="documents" className="space-y-4">
+            <Card className="border-border/50 shadow-xl bg-card/50">
+              <CardHeader className="pb-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="flex flex-col gap-1">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> System Manifest</CardTitle>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Sync Vital Knowledge with the Cloud</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="file" ref={docFileInputRef} onChange={handleDocFileSelect} multiple className="hidden" />
+                    <Button onClick={() => docFileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-10 px-6 shadow-lg uppercase tracking-wider gap-2">
+                      <UploadCloud className="h-4 w-4" /> Sync Local Manifests
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0 border-t">
+                <ScrollArea className="h-[500px]">
+                  {isDocsLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Archives...</div> : (
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
+                        <tr>
+                          <th className="p-4 pl-8">Manifest File</th>
+                          <th className="p-4">Category</th>
+                          <th className="p-4 text-center">Version</th>
+                          <th className="p-4">Last Modified</th>
+                          <th className="p-4 text-right pr-8">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/20">
+                        {projectDocs?.map((d: any) => (
+                          <tr key={d.id} className="hover:bg-primary/5 transition-colors group">
+                            <td className="p-4 pl-8">
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-4 w-4 text-primary opacity-70" />
+                                <span className="font-bold text-foreground group-hover:text-primary transition-colors">{d.filename}</span>
+                              </div>
+                            </td>
+                            <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black">{d.category || 'general'}</Badge></td>
+                            <td className="p-4 text-center font-mono text-[10px] opacity-60">v{d.version || '1.0'}</td>
+                            <td className="p-4 font-mono text-[10px] opacity-60">{d.timestamp ? new Date(d.timestamp?.seconds ? d.timestamp.seconds * 1000 : d.timestamp).toLocaleDateString() : 'Original'}</td>
+                            <td className="p-4 text-right pr-8">
+                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}>
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" onClick={() => handleDownloadDoc(d)}>
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="inject" className="space-y-6">
             <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50">
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
@@ -767,6 +911,37 @@ export default function HypercubeDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Manifest Viewer/Editor */}
+      <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card">
+              <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight">
+                      <FileText className="h-5 w-5" /> Manifest Editor: {projectDocs?.find(d => d.id === viewingDocId)?.filename}
+                  </DialogTitle>
+                  <DialogDescription className="text-[10px] uppercase font-bold opacity-50">Cloud context direct modification unit</DialogDescription>
+              </DialogHeader>
+              <div className="flex-grow overflow-hidden mt-4">
+                  <Textarea 
+                      value={editingDocContent} 
+                      onChange={(e) => setEditingDocContent(e.target.value)}
+                      className="h-full font-mono text-xs bg-background/50 resize-none border-primary/10"
+                  />
+              </div>
+              <DialogFooter className="pt-4 border-t border-primary/10 flex justify-between items-center sm:justify-between">
+                  <div className="text-[10px] uppercase font-black opacity-40">
+                      Format: Markdown | Persistence: Firestore
+                  </div>
+                  <div className="flex gap-2">
+                      <Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black">Cancel</Button>
+                      <Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black px-6 shadow-lg">
+                          <ClipboardCheck className="h-4 w-4" /> Push Changes to Cloud
+                      </Button>
+                  </div>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent className="border-primary/20 bg-card"><AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
