@@ -483,18 +483,26 @@ export default function HypercubeDashboard() {
       setIsProcessing(true);
       try {
           const files = await readProjectRootManifests();
+          let count = 0;
           for (const file of files) {
+              if (!file.content || file.content.trim().length === 0) {
+                  console.warn(`Skipping empty content for ${file.filename}`);
+                  continue;
+              }
               const category: any = file.filename.toLowerCase().includes('protocol') ? 'protocol' : 
                                 file.filename.toLowerCase().includes('spec') ? 'spec' : 
                                 file.filename.toLowerCase().includes('contract') ? 'contract' : 'backlog';
+              
+              // Используем saveProjectDocument, которая сама делает setDoc
               await saveProjectDocument(db, {
                   filename: file.filename,
                   content: file.content,
                   category: category,
-                  version: '1.0'
+                  version: '1.1'
               });
+              count++;
           }
-          toast({ title: "Root Synchronized", description: `Uploaded ${files.length} manifests from project root.` });
+          toast({ title: "Sync Complete", description: `Uploaded ${count} manifests with full content.` });
       } catch (e) {
           toast({ variant: "destructive", title: "Sync Failed" });
       } finally {
