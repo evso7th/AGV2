@@ -8,7 +8,7 @@ import path from 'path';
  * #ЧТО: ПЛАН №1007 — Улучшенный поиск файлов для предотвращения пустых документов в Firestore.
  */
 export async function readProjectRootManifests() {
-  const fileList = [
+  const filesToSync = [
     'CODEBASE_SPECIFICATION.md',
     'DNA_rules.txt',
     'FORGE_MASTER_SPEC.md',
@@ -34,36 +34,48 @@ export async function readProjectRootManifests() {
   const results = [];
   const rootDir = process.cwd();
 
-  console.log(`[ManifestAction] Starting sync for ${fileList.length} files...`);
+  console.log(`[ManifestAction] Starting sync for ${filesToSync.length} files...`);
 
-  for (const relativePath of fileList) {
+  for (const relPath of filesToSync) {
     try {
-      const fullPath = path.join(rootDir, relativePath);
-      
-      // Проверяем существование файла
+      // 1. Пытаемся найти по точному пути
+      let fullPath = path.join(rootDir, relPath);
+      let exists = false;
       try {
         await fs.access(fullPath);
+        exists = true;
       } catch {
-        console.warn(`[ManifestAction] File not found at ${fullPath}, skipping.`);
-        continue;
+        // 2. Если не нашли, и это не вложенный путь, пробуем в docs/
+        if (!relPath.includes('/')) {
+          const altPath = path.join(rootDir, 'docs', relPath);
+          try {
+            await fs.access(altPath);
+            fullPath = altPath;
+            exists = true;
+          } catch {}
+        }
       }
 
-      const content = await fs.readFile(fullPath, 'utf-8');
-      
-      if (!content || content.trim().length === 0) {
-        console.warn(`[ManifestAction] File ${relativePath} is empty!`);
+      if (exists) {
+        const content = await fs.readFile(fullPath, 'utf-8');
+        
+        if (content && content.trim().length > 0) {
+          results.push({
+            filename: path.basename(relPath),
+            content: content,
+            path: relPath
+          });
+        } else {
+          console.warn(`[ManifestAction] File found but empty: ${relPath}`);
+        }
+      } else {
+        console.warn(`[ManifestAction] File not found anywhere: ${relPath}`);
       }
-
-      results.push({
-        filename: path.basename(relativePath),
-        content: content,
-        path: relativePath
-      });
     } catch (e) {
-      console.error(`[ManifestAction] Critical error reading ${relativePath}:`, e);
+      console.error(`[ManifestAction] Critical error reading ${relPath}:`, e);
     }
   }
 
-  console.log(`[ManifestAction] Sync complete. Found ${results.length} valid files.`);
+  console.log(`[ManifestAction] Sync complete. Found ${results.length} files with content.`);
   return results;
 }

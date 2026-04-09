@@ -493,7 +493,6 @@ export default function HypercubeDashboard() {
                                 file.filename.toLowerCase().includes('spec') ? 'spec' : 
                                 file.filename.toLowerCase().includes('contract') ? 'contract' : 'backlog';
               
-              // Используем saveProjectDocument, которая сама делает setDoc
               await saveProjectDocument(db, {
                   filename: file.filename,
                   content: file.content,
