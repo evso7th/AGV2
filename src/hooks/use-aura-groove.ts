@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.8 — "Memory Calibration".
- * #ЧТО: ПЛАН №975 — Загрузка истории треков (Blacklist) при инициализации.
+ * #ЗАЧЕМ: Хук управления UI музыкой V5.9 — "Metadata Filters".
+ * #ЧТО: ПЛАН №1008 — Обновление типа availableCompositions для поддержки расширенной фильтрации.
  */
 'use client';
 
@@ -24,7 +24,7 @@ export type AuraGrooveProps = {
   isWarmingUp: boolean;
   warmUpTimeLeft: number;
   loadingText: string;
-  availableCompositions: { id: string; count: number }[];
+  availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
   selectedCompositionIds: string[];
   toggleCompositionFilter: (id: string) => void;
   clearCompositionFilters: () => void;
@@ -140,7 +140,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (isInitialized) {
-        // #ЗАЧЕМ: ПЛАН №975. Загрузка долговременной истории треков.
         const savedHistory = typeof window !== 'undefined' ? localStorage.getItem(TRACK_HISTORY_KEY) : null;
         const playedTrackHistory = savedHistory ? JSON.parse(savedHistory) : [];
 
@@ -153,7 +152,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
           },
           density, composerControlsInstruments, useHeritage, mood, introBars, 
           sessionLickHistory, 
-          playedTrackHistory, // Передаем в воркер
+          playedTrackHistory,
           selectedCompositionIds,
           seed: currentSeed
         });

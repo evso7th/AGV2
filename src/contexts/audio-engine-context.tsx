@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V38.0 — "Absolute Gain Integrity".
- * #ЗАЧЕМ: Исправление тишины через безопасные дефолты калибровки.
- * #ЧТО: ПЛАН №998 — Гарантированное наличие ключа 'master' и повышение баланса аккомпанемента.
+ * @fileOverview Audio Engine Context V39.0 — "Metadata Integrity".
+ * #ЗАЧЕМ: Поддержка расширенных фильтров в DNA Selection Station.
+ * #ЧТО: ПЛАН №1008 — Сбор уникальных жанров и настроений для каждой композиции.
  */
 'use client';
 
@@ -36,7 +36,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.25,            
   melody: 0.65,           
-  accompaniment: 0.80, // #ЗАЧЕМ: ПЛАН №998. Повышено для уверенной слышимости.
+  accompaniment: 0.80,
   drums: 0.85,            
   sparkles: 0.23, 
   sfx: 0.27,      
@@ -71,7 +71,7 @@ interface AudioEngineContextType {
   isBroadcastActive: boolean;
   isPreviewPlaying: boolean;
   isPreviewLooping: boolean;
-  availableCompositions: { id: string; count: number }[];
+  availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -114,7 +114,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
-  const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number }[]>([]);
+  const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -147,7 +147,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
 
-  // #ЗАЧЕМ: ПЛАН №998 — Безопасные дефолты для предотвращения тишины.
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
       const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
       if (typeof window !== 'undefined') {
@@ -238,15 +237,29 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const setupListener = () => {
           if (unsubscribe) return;
           unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
-              const counts: Record<string, number> = {};
+              const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
               const axioms: any[] = [];
               snapshot.docs.forEach(d => {
-                  const data = { id: d.id, ...d.data() };
+                  const data = { id: d.id, ...d.data() } as any;
                   axioms.push(data);
                   const compId = data.compositionId;
-                  if (compId) counts[compId] = (counts[compId] || 0) + 1;
+                  if (compId) {
+                      if (!compMeta[compId]) {
+                          compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
+                      }
+                      compMeta[compId].count++;
+                      const genres = Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []);
+                      genres.forEach(g => compMeta[compId].genres.add(g));
+                      const moods = Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []);
+                      moods.forEach(m => compMeta[compId].moods.add(m));
+                  }
               });
-              const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
+              const meta = Object.entries(compMeta).map(([id, info]) => ({ 
+                  id, 
+                  count: info.count,
+                  genres: Array.from(info.genres),
+                  moods: Array.from(info.moods)
+              })).sort((a,b) => a.id.localeCompare(b.id));
               setAvailableCompositions(meta);
               if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
           }, async (serverError) => {
@@ -300,12 +313,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!db) return;
     try {
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
-      const counts: Record<string, number> = {};
+      const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
       snapshot.docs.forEach(d => {
-          const compId = d.data().compositionId;
-          if (compId) counts[compId] = (counts[compId] || 0) + 1;
+          const data = d.data();
+          const compId = data.compositionId;
+          if (compId) {
+              if (!compMeta[compId]) {
+                  compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
+              }
+              compMeta[compId].count++;
+              const genres = Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []);
+              genres.forEach(g => compMeta[compId].genres.add(g));
+              const moods = Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []);
+              moods.forEach(m => compMeta[compId].moods.add(m));
+          }
       });
-      const meta = Object.entries(counts).map(([id, count]) => ({ id, count })).sort((a,b) => a.id.localeCompare(b.id));
+      const meta = Object.entries(compMeta).map(([id, info]) => ({ 
+          id, 
+          count: info.count,
+          genres: Array.from(info.genres),
+          moods: Array.from(info.moods)
+      })).sort((a,b) => a.id.localeCompare(b.id));
       setAvailableCompositions(meta);
     } catch (e) { console.error('[CloudSync] Metadata failed:', e); }
   }, [db]);

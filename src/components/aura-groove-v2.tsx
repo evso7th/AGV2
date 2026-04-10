@@ -1,8 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.4 — "Lab Navigation".
- * #ЧТО: ПЛАН №904 — Добавлена кнопка прямого перехода в Timbre Lab.
- * #ОБНОВЛЕНО (ПЛАН №909): Добавлен выбор жанра Reggae для Fractal Engine.
+ * #ЗАЧЕМ: UI AuraGroove V3.5 — "Advanced DNA Filters".
+ * #ЧТО: ПЛАН №1008 — Добавлены фильтры по Жанрам и Настроениям в DNA Selection Station.
  */
 'use client';
 
@@ -27,6 +26,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
@@ -64,6 +64,50 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
   dark: 'text-primary/50',
 };
 
+const AVAILABLE_GENRES: Genre[] = ['ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
+const AVAILABLE_MOODS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
+
+function MultiSelector<T extends string>({
+  options,
+  values,
+  onValuesChange,
+  placeholder,
+  className
+}: {
+  options: T[],
+  values: T[],
+  onValuesChange: (vals: T[]) => void,
+  placeholder: string,
+  className?: string
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("h-8 text-[10px] bg-background justify-between font-bold uppercase", className)}>
+          <span className="truncate pr-2">
+            {values.length > 0 ? values.join(", ") : placeholder}
+          </span>
+          <Filter className="h-3 w-3 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[180px] p-0" align="start">
+        <div className="max-h-48 overflow-y-auto p-2">
+          {options.map(opt => (
+            <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group"
+                 onClick={() => {
+                   const next = values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt];
+                   onValuesChange(next);
+                 }}>
+              <Checkbox checked={values.includes(opt)} onCheckedChange={() => {}} className="border-primary/30" />
+              <Label className="text-[10px] font-bold uppercase cursor-pointer flex-grow leading-none">{opt}</Label>
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function AuraGrooveV2({
   isPlaying, isInitializing, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
@@ -82,25 +126,24 @@ export function AuraGrooveV2({
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterSearchText, setFilterSearchText] = useState("");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
+  
+  // #ЗАЧЕМ: Локальные стейты для фильтрации в диалоге ДНК.
+  const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
+  const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
-  
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => 
-    V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && 
-    k !== 'ep_rhodes_warm'
+    V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && k !== 'ep_rhodes_warm'
   );
   
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
-
   const harmonyInstrumentList: ('guitarChords' | 'flute' | 'violin' | 'none')[] = ['guitarChords', 'violin', 'none'];
-  
   const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
-  
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
 
@@ -130,7 +173,12 @@ export function AuraGrooveV2({
   const filteredCompositions = availableCompositions.filter(comp => {
       const matchesSearch = comp.id.toLowerCase().includes(filterSearchText.toLowerCase());
       const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(comp.id) : true;
-      return matchesSearch && matchesSelected;
+      
+      // #ЗАЧЕМ: Фильтрация по жанрам и настроениям в реальном времени.
+      const matchesGenre = selectedFilterGenres.length === 0 || selectedFilterGenres.some(g => comp.genres.includes(g));
+      const matchesMood = selectedFilterMoods.length === 0 || selectedFilterMoods.some(m => comp.moods.includes(m));
+      
+      return matchesSearch && matchesSelected && matchesGenre && matchesMood;
   });
 
   const getPartIcon = (part: string) => {
@@ -419,28 +467,27 @@ export function AuraGrooveV2({
                                         onChange={(e) => setFilterSearchText(e.target.value)}
                                     />
                                 </div>
-                                <div className="flex items-center justify-between px-1">
-                                    <div className="flex items-center gap-2">
-                                        <Button 
-                                            variant="outline" 
-                                            size="sm" 
-                                            onClick={() => setShowSelectedOnly(!showSelectedOnly)}
-                                            className={cn("h-7 px-2 text-[10px] uppercase font-bold transition-all", showSelectedOnly && "bg-primary text-primary-foreground")}
-                                        >
-                                            {showSelectedOnly ? <Eye className="h-3 w-3 mr-1.5" /> : <EyeOff className="h-3 w-3 mr-1.5" />}
-                                            {showSelectedOnly ? "Picked Only" : "All Tracks"}
-                                        </Button>
-                                        <span className="text-[10px] text-muted-foreground font-mono uppercase">
-                                            {filteredCompositions.length} units
-                                        </span>
-                                    </div>
+                                <div className="flex flex-wrap items-center gap-2 px-1">
+                                    <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[110px]" />
+                                    <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[110px]" />
+                                    
+                                    <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        onClick={() => setShowSelectedOnly(!showSelectedOnly)}
+                                        className={cn("h-8 px-2 text-[10px] uppercase font-bold transition-all ml-auto", showSelectedOnly && "bg-primary text-primary-foreground")}
+                                    >
+                                        {showSelectedOnly ? <Eye className="h-3 w-3 mr-1.5" /> : <EyeOff className="h-3 w-3 mr-1.5" />}
+                                        {showSelectedOnly ? "Picked" : "All"}
+                                    </Button>
+                                    
                                     <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        onClick={clearCompositionFilters}
-                                        className="h-7 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
+                                        onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); clearCompositionFilters(); }}
+                                        className="h-8 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
                                     >
-                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Clear Anchor
+                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Reset
                                     </Button>
                                 </div>
                             </div>
@@ -471,15 +518,20 @@ export function AuraGrooveV2({
                                                             onCheckedChange={() => {}}
                                                             className="border-primary/30"
                                                         />
-                                                        <Label 
-                                                            htmlFor={`filter-${id}`} 
-                                                            className={cn(
-                                                                "text-[11px] font-bold cursor-pointer flex-grow leading-tight break-words transition-colors",
-                                                                isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                                                            )}
-                                                        >
-                                                            {id.replace(/_/g, ' ')}
-                                                        </Label>
+                                                        <div className="flex-grow flex flex-col min-w-0">
+                                                            <Label 
+                                                                htmlFor={`filter-${id}`} 
+                                                                className={cn(
+                                                                    "text-[11px] font-bold cursor-pointer leading-tight break-words transition-colors",
+                                                                    isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                                                                )}
+                                                            >
+                                                                {id.replace(/_/g, ' ')}
+                                                            </Label>
+                                                            <div className="text-[8px] uppercase font-black opacity-40 truncate">
+                                                                {comp.genres.join(', ')} | {comp.moods.join(', ')}
+                                                            </div>
+                                                        </div>
                                                         <Badge variant="secondary" className="text-[9px] h-4 px-1.5 opacity-70 font-mono">
                                                             {comp.count}
                                                         </Badge>
