@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №975): Реализована долговременная память треков с синхронизацией HISTORY_UPDATE.
+ * #ОБНОВЛЕНО (ПЛАН №1009): Реализовано циклическое воспроизведение в режиме DNA Anchor (1-2-3-1...).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -30,8 +30,8 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxiomPool: [] as any[], 
-    filterRotationIndex: 0,
-    playedTrackHistory: [] as string[], // #ЗАЧЕМ: Память последних 7 треков.
+    filterRotationIndex: 0, // #ЗАЧЕМ: Индекс для циклического воспроизведения (1-2-3-1...).
+    playedTrackHistory: [] as string[], 
     
     settings: {
         bpm: 75,
@@ -70,8 +70,10 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
-            // Если выбран ручной фильтр, берем по индексу ротации
-            pickedId = manualFilter[this.filterRotationIndex % manualFilter.length];
+            // #ЗАЧЕМ: Реализация циклического воспроизведения (ПЛАН №1009).
+            const idx = this.filterRotationIndex % manualFilter.length;
+            pickedId = manualFilter[idx];
+            console.log(`%c[Anchor] Sequential Cycle: Piece ${idx + 1} of ${manualFilter.length} (${pickedId})`, 'color: #00BFFF; font-weight: bold;');
         } else if (this.cloudAxiomPool.length > 0) {
             // СВОБОДНАЯ ИГРА: Умный рандом с историей
             const uiGenre = this.settings.genre;
@@ -97,11 +99,7 @@ const Scheduler = {
                 if (pickedId) {
                     this.playedTrackHistory.push(pickedId);
                     if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
-                    
-                    // #ЗАЧЕМ: Синхронизация истории с основным потоком для сохранения в localStorage.
                     self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
-                    
-                    console.log(`%c[History] Added to rotation: ${pickedId}. Current Buffer: [${this.playedTrackHistory.join(', ')}]`, 'color: #FFD700;');
                 }
             }
         }
@@ -153,8 +151,6 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        
-        // При каждом старте — гарантированный перевыбор трека
         this.initializeEngine(this.settings);
 
         const loop = () => {
@@ -176,7 +172,7 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        this.filterRotationIndex++; // Инкремент для смены при ручном ресете
+        // В режиме Anchor ручной ресет не инкрементирует индекс, чтобы дать возможность переслушать.
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -190,7 +186,9 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           if (seedChanged) this.filterRotationIndex++;
+           // #ЗАЧЕМ: Сброс индекса ротации при смене состава ДНК или сида (Regenerate).
+           if (seedChanged || filterChanged) this.filterRotationIndex = 0;
+           
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -214,8 +212,11 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // Если пьеса закончилась
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
+             // #ЗАЧЕМ: Инкремент индекса для перехода к следующему треку в цикле.
              this.filterRotationIndex++;
+             
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
