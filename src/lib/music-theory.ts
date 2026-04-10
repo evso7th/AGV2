@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.5 — "Iron Role Isolation".
- * #ЗАЧЕМ: Установлен "Семантический щит" для Аккомпанемента.
- * #ОБНОВЛЕНО (ПЛАН №991): Аккомпанемент больше никогда не играет тембром пианино.
+ * @fileOverview Universal Music Theory Utilities V4.7 — "The Export Integrity".
+ * #ЗАЧЕМ: Исправление ошибки импорта и расширение инструментов нормализации.
+ * #ОБНОВЛЕНО (ПЛАН №1014): Экспортирована функция normalizeStr.
  */
 
 import type { 
@@ -55,7 +55,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     
     let targetHint = hint;
 
-    // 1. Логика Multi-Timbre (Tri-Map Object)
     if (typeof hint === 'object' && !Array.isArray(hint)) {
         if (tension < 0.4) targetHint = hint.low || hint.mid || hint.high;
         else if (tension < 0.75) targetHint = hint.mid || hint.low || hint.high;
@@ -66,19 +65,17 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // 2. ДИНАМИЧЕСКИЕ ГРУППЫ (Пункт №17 Кодекса)
     if (clean === 'dynamicorgan') {
         if (tension < 0.4) return 'organ_prog';
         if (tension < 0.75) return 'organ_soft_jazz';
-        return 'organ'; // Cathedral
+        return 'organ'; 
     }
     if (clean === 'dynamicpad') {
-        if (tension < 0.4) return 'synth'; // Emerald
+        if (tension < 0.4) return 'synth'; 
         if (tension < 0.75) return 'synth_ambient_pad_lush';
         return 'synth_cave_pad';
     }
 
-    // 3. ПРИОРИТЕТ АВТОРИТЕТА: Прямые ID пресетов
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedV2) return matchedV2;
@@ -87,7 +84,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedBass) return matchedBass;
 
-    // 4. СТРОГИЙ МАППИНГ РОЛЕЙ
     if (part === 'melody') {
         if (clean.includes('acoustic')) return 'blackAcoustic';
         if (clean.includes('tele')) return 'telecaster';
@@ -96,8 +92,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (clean.includes('cs80')) return 'cs80';
     }
 
-    // #ЗАЧЕМ: ПЛАН №991. Охранный фильтр для Аккомпанемента.
-    // Аккомпанемент НИКОГДА не играет на пианино. Если коллизия — подменяем на орган/пэд.
     if (part === 'accompaniment') {
         const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
         if (isPianoTimbre) {
@@ -105,7 +99,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
     }
 
-    // 5. ТЕРРИТОРИЯ АВТОМАТИКИ
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
@@ -117,6 +110,10 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
 
     return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
+}
+
+export function normalizeStr(s: string): string {
+    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 export function keyToMidiRoot(key: string | null | undefined): number | null {

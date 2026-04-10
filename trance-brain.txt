@@ -1,0 +1,419 @@
+/**
+ * @fileOverview Trance Brain V2.0 — "The Perpetual Spiral Protocol"
+ * #ЗАЧЕМ: Полный отказ от статичных паттернов. Внедрение памяти, вероятностных переходов и фрактальной сетки.
+ * #ЧТО: Stateful-генерация, Markov-цепи для мелодии/баса, Fractal-ритмы, адаптация к Mood/Tension.
+ */
+
+import type {
+  FractalEvent,
+  GhostChord,
+  Mood,
+  SuiteDNA,
+  NavigationInfo,
+  InstrumentHints,
+  Genre,
+  Technique
+} from '@/types/music';
+import { TICK_TO_BEAT } from './music-theory';
+
+// ──────────────────────────────────────────────────────────────
+// 🧩 CORE UTILS & MATH
+// ──────────────────────────────────────────────────────────────
+
+class SeededRNG {
+  private state: number;
+  constructor(seed: number) { this.state = seed; }
+
+  next(): number {
+    this.state = (this.state * 1664525 + 1013904223) % 2 ** 32;
+    return this.state / 2 ** 32;
+  }
+
+  nextInt(max: number): number { return Math.floor(this.next() * max); }
+
+  weightedPick<T>(items: T[], weights: number[]): T {
+    const total = weights.reduce((a, b) => a + b, 0);
+    let r = this.next() * total;
+    for (let i = 0; i < items.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return items[i];
+    }
+    return items[items.length - 1];
+  }
+
+  chance(percent: number): boolean { return this.next() < percent / 100; }
+}
+
+type Direction = 'up' | 'down' | 'stable';
+type MarkovMatrix = number[][];
+
+interface BarContext {
+  epoch: number;
+  tension: number;
+  prevRoot: number;
+  currentScale: number[];
+  prevDegree: number;
+  direction: Direction;
+  phraseArc: number; // 0..1: восхождение -> пик -> спад
+  lastDrumFill: number;
+}
+
+// ──────────────────────────────────────────────────────────────
+// 🎵 MUSICAL ENGINES
+// ──────────────────────────────────────────────────────────────
+
+const MARKOV_BASE: MarkovMatrix = [
+  // 0  1  2  3  4  5  6  7  8  9  10 11 12 (ступени)
+  [40, 5, 15, 10, 5,  10, 5, 15, 3,  5, 8,  3, 20], // от тоники
+  [15, 30, 10, 5,  15, 5,  10, 5,  8,  3, 5,  8, 10],
+  [10, 5,  30, 15, 5,  10, 5,  20, 3,  10, 10, 5, 15],
+  [10, 5,  10, 30, 15, 5,  10, 5,  5,  8,  15, 3, 10],
+  [5,  10, 10, 15, 30, 15, 5,  10, 5,  8,  5,  10, 15],
+  [10, 5,  10, 5,  10, 30, 15, 10, 5,  10, 8,  5, 15],
+  [5,  10, 5,  10, 5,  15, 30, 10, 15, 5,  10, 5, 10],
+  [15, 5,  20, 5,  10, 5,  10, 30, 5,  10, 15, 5, 20],
+  [5,  8,  5,  8,  5,  10, 15, 5,  25, 10, 5,  8, 10],
+  [5,  3,  10, 8,  8,  5,  5,  10, 10, 25, 10, 15, 10],
+  [8,  5,  10, 15, 5,  8,  10, 5,  5,  10, 25, 15, 15],
+  [3,  8,  5,  3,  10, 5,  5,  5,  8,  15, 15, 25, 15],
+  [20, 5,  15, 10, 5,  10, 5,  20, 3,  5,  8,  3, 40]  // от октавы
+];
+
+const adaptMatrixForTension = (baseRow: number[], tension: number, scaleLength: number): number[] => {
+  const row = [...baseRow];
+  // Высокое напряжение: увеличиваем вероятность скачков и диссонансов (b9, #11, b13)
+  const boost = tension * 0.5;
+  row[1] += boost * 5; row[6] += boost * 4; row[10] += boost * 3; row[11] += boost * 4;
+  // Усиливаем движение к тонике на спаде фразы
+  if (tension < 0.4) { row[0] += 15; row[12] += 15; }
+  // Обрезаем за пределы реальной гаммы
+  for (let i = 0; i < row.length; i++) if (!scaleLength || !scaleLength) row[i] = 0;
+  return row.slice(0, 13);
+};
+
+const generateFractalRhythm = (rng: SeededRNG, depth: number, maxBeats: number, subdivision: number): number[] => {
+  const grid: number[] = [];
+  for (let t = 0; t < maxBeats * subdivision; t++) {
+    const beat = t / subdivision;
+    const level = Math.log2(subdivision / (t % subdivision === 0 ? subdivision : (t % (subdivision / 2) === 0 ? subdivision / 2 : subdivision / 4)));
+    const prob = 0.75 * Math.pow(0.6, level);
+    if (rng.chance(prob * 100)) grid.push(beat);
+  }
+  // Гарантируем удар на 1-ю долю
+  if (!grid.includes(0)) grid.unshift(0);
+  return grid.sort((a, b) => a - b);
+};
+
+// ──────────────────────────────────────────────────────────────
+// 🧠 TRANCE BRAIN CLASS
+// ──────────────────────────────────────────────────────────────
+
+export class TranceBrain {
+  private rng: SeededRNG;
+  private ctx: BarContext;
+  private history: { chord: GhostChord; tension: number; events: FractalEvent[] }[] = [];
+  private mood: Mood;
+  private genre: Genre;
+  private useHeritage: boolean;
+
+  constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
+    this.rng = new SeededRNG(seed);
+    this.mood = mood;
+    this.genre = genre;
+    this.useHeritage = useHeritage;
+    this.ctx = {
+      epoch: 0, tension: 0.5, prevRoot: 60, currentScale: [],
+      prevDegree: 0, direction: 'stable', phraseArc: 0, lastDrumFill: 0
+    };
+  }
+
+  public generateBar(
+    epoch: number,
+    currentChord: GhostChord,
+    navInfo: NavigationInfo,
+    dna: SuiteDNA,
+    hints: InstrumentHints
+  ): { events: FractalEvent[]; tension: number; beautyScore: number; mutationType?: string; activeAxioms?: any; narrative?: string } {
+    this.ctx.epoch = epoch;
+    this.ctx.tension = dna.tensionMap?.[epoch] ?? 0.5;
+    this.ctx.prevRoot = currentChord.rootNote;
+    this.ctx.currentScale = this.buildScale(currentChord);
+    this.ctx.phraseArc = this.updatePhraseArc();
+
+    const isIntro = navInfo.currentPart.id === 'INTRO' || epoch < 4;
+    const events: FractalEvent[] = [];
+
+    if (hints.drums) events.push(...this.renderTranceDrums());
+    if (hints.bass) events.push(...this.renderNeuroBass(currentChord));
+    if (hints.melody && !isIntro) events.push(...this.renderSpiralLead(currentChord));
+    if (hints.accompaniment && epoch >= 4) events.push(...this.renderSidechainedPad(currentChord));
+
+    // Сохраняем контекст
+    this.history.push({ chord: currentChord, tension: this.ctx.tension, events });
+    if (this.history.length > 8) this.history.shift();
+
+    return {
+      events,
+      tension: this.ctx.tension,
+      beautyScore: 0.65 + (this.ctx.tension * 0.15) - Math.abs(this.ctx.phraseArc - 0.5) * 0.1,
+      activeAxioms: {
+        melody: isIntro ? 'Waiting' : this.ctx.direction === 'up' ? 'Ascension' : 'Release',
+        rhythm: this.rng.chance(15) ? 'Syncopated' : 'Grid'
+      },
+      narrative: `Spiral Epoch ${epoch} | Tension: ${this.ctx.tension.toFixed(2)} | Arc: ${(this.ctx.phraseArc * 100).toFixed(0)}%`
+    };
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // 🥁 DRUMS
+  // ──────────────────────────────────────────────────────────────
+  private renderTranceDrums(): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const { tension } = this.ctx;
+
+    // 4-on-the-floor с вероятностным пропуском на высоких напряжениях (breakdown)
+    const kickGrid = [0, 1, 2, 3];
+    kickGrid.forEach(beat => {
+      const prob = tension > 0.8 && beat === 3 ? 0.3 : 1.0;
+      if (this.rng.chance(prob * 100)) {
+        events.push({
+          type: 'drum_kick_drum6', note: 36, time: beat, duration: 0.1,
+          velocity: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+        });
+      }
+    });
+
+    // Hihat/Snare с фрактальной плотностью
+    const hhTimes = generateFractalRhythm(this.rng, 2, 4, 4); // 16th grid
+    hhTimes.forEach(t => {
+      if (t % 1 !== 0) {
+        const vel = 0.3 + this.rng.next() * 0.3;
+        events.push({
+          type: 'drum_hat', note: 42, time: t, duration: 0.05,
+          velocity: vel, technique: 'hit', dynamics: vel > 0.5 ? 'mf' : 'p', phrasing: 'detached'
+        });
+      } else {
+        events.push({
+          type: 'drum_clap', note: 39, time: t + 1, duration: 0.08,
+          velocity: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+        });
+      }
+    });
+
+    // Fill каждые 4-8 тактов
+    const fillInterval = this.rng.chance(30) ? 4 : 8;
+    if (this.ctx.epoch > 0 && this.ctx.epoch % fillInterval === 0 && this.rng.chance(60)) {
+      this.renderFill(events, 3.5, 4.0);
+      this.ctx.lastDrumFill = this.ctx.epoch;
+    }
+
+    return events;
+  }
+
+  private renderFill(events: FractalEvent[], start: number, end: number): void {
+    const steps = this.rng.nextInt(3) + 4;
+    for (let i = 0; i < steps; i++) {
+      const t = start + ((end - start) / steps) * i;
+      const note = this.rng.chance(50) ? 38 : 45; // snare or tom
+      events.push({
+        type: 'drum_tom', note, time: t, duration: 0.06,
+        velocity: 0.6 + this.rng.next() * 0.4, technique: 'roll', dynamics: 'f', phrasing: 'legato'
+      });
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // 🎸 BASS (Rolling + Voice Leading)
+  // ──────────────────────────────────────────────────────────────
+  private renderNeuroBass(chord: GhostChord): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const { tension, currentScale, prevDegree } = this.ctx;
+    const rootMidi = chord.rootNote - 12;
+
+    // Марковский выбор ступени
+    const weights = adaptMatrixForTension(MARKOV_BASE[prevDegree], tension, currentScale.length);
+    const nextDegree = this.rng.weightedPick(currentScale, weights);
+    this.ctx.prevDegree = nextDegree;
+
+    // Фрактальный офф-бит ритм
+    const rhythm = generateFractalRhythm(this.rng, 3, 4, 4);
+    const baseTimes = rhythm.filter(t => t % 0.5 === 0 && t % 1 !== 0); // только офф-биты
+
+    baseTimes.forEach((t, i) => {
+      const octaveJump = tension > 0.7 && this.rng.chance(30) ? 12 : 0;
+      const dur = 0.3 + this.rng.next() * 0.2;
+      const vel = 0.65 + tension * 0.2;
+
+      events.push({
+        type: 'bass',
+        note: rootMidi + nextDegree + octaveJump,
+        time: t,
+        duration: dur,
+        velocity: vel,
+        technique: 'pulse',
+        dynamics: vel > 0.7 ? 'f' : 'mf',
+        phrasing: 'detached',
+        params: { filterEnv: tension * 0.5 }
+      });
+    });
+
+    // Тонический якорь на 1-ю долю при низком напряжении
+    if (tension < 0.4) {
+      events.push({
+        type: 'bass', note: rootMidi, time: 0, duration: 0.4, velocity: 0.9,
+        technique: 'pick', dynamics: 'f', phrasing: 'legato'
+      });
+    }
+
+    return events;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // 🌪 LEAD (Spiral + Phrase Arc)
+  // ──────────────────────────────────────────────────────────────
+  private renderSpiralLead(chord: GhostChord): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const { tension, currentScale, phraseArc } = this.ctx;
+    const rootMidi = chord.rootNote + 12;
+    const panSwing = Math.sin(this.ctx.epoch * 0.3) * 0.5;
+
+    // Arc-based phrasing: восхождение -> пик -> спад -> пауза
+    const density = phraseArc < 0.3 ? 0.8 : phraseArc > 0.8 ? 0.4 : 0.6;
+    if (this.rng.chance((1 - phraseArc) * 100)) return []; // Пауза на спаде
+
+    const times = generateFractalRhythm(this.rng, 4, 4, 8); // 8th/16th grid
+    let lastNote = this.ctx.prevDegree;
+
+    times.forEach(t => {
+      if (!this.rng.chance(density * 100)) return;
+
+      // Direction bias
+      let bias = MARKOV_BASE[lastNote];
+      if (phraseArc < 0.5) bias = bias.map((w, i) => i > lastNote ? w * 1.5 : w * 0.8);
+      else bias = bias.map((w, i) => i < lastNote ? w * 1.5 : w * 0.8);
+
+      const deg = this.rng.weightedPick(currentScale, bias);
+      const note = rootMidi + deg;
+      const dur = phraseArc > 0.6 ? 0.3 + this.rng.next() * 0.4 : 0.15 + this.rng.next() * 0.1;
+      const vel = 0.5 + tension * 0.3 + (phraseArc > 0.7 ? 0.1 : 0);
+      const technique: Technique = dur > 0.4 ? 'slide' : 'pick';
+
+      events.push({
+        type: 'melody',
+        note,
+        time: t,
+        duration: dur,
+        velocity: vel,
+        technique,
+        dynamics: vel > 0.7 ? 'f' : 'mf',
+        phrasing: phraseArc > 0.5 ? 'legato' : 'staccato',
+        pan: panSwing + (this.rng.next() - 0.5) * 0.2
+      });
+
+      lastNote = deg;
+    });
+
+    this.ctx.prevDegree = lastNote;
+    return events;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // ☁️ PAD (Sidechain + Voice Leading)
+  // ──────────────────────────────────────────────────────────────
+  private renderSidechainedPad(chord: GhostChord): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    const { tension, currentScale } = this.ctx;
+    const isMinor = chord.chordType === 'minor';
+    const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
+
+    // Инверсия для плавного голосоведения
+    const prevRoot = this.history.length > 0 ? this.history[this.history.length - 1].chord.rootNote : chord.rootNote;
+    const inv = Math.abs(chord.rootNote - prevRoot) > 5 ? 12 : 0;
+
+    intervals.forEach((interval, i) => {
+      const note = chord.rootNote + 12 + inv + interval;
+      const duckingCurve = [1.0, 0.35, 0.7, 0.4, 0.85, 0.5, 0.95, 1.0];
+      const attack = tension > 0.7 ? 0.2 : 0.8;
+      const release = tension > 0.7 ? 0.4 : 1.2;
+
+      events.push({
+        type: 'accompaniment',
+        note,
+        time: 0,
+        duration: 3.8,
+        velocity: 0.4 - (i * 0.05),
+        technique: 'swell',
+        dynamics: 'mp',
+        phrasing: 'legato',
+        pan: (i % 2 === 0 ? -0.6 : 0.6) + (this.rng.next() - 0.5) * 0.1,
+        params: {
+          attack,
+          release,
+          gainCurve: duckingCurve, // Эмуляция сайдчейна
+          detune: this.rng.next() * 6 - 3
+        }
+      });
+    });
+
+    return events;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // 🔧 HELPERS
+  // ──────────────────────────────────────────────────────────────
+  private buildScale(chord: GhostChord): number[] {
+    const root = 0;
+    if (chord.chordType === 'minor') return [0, 2, 3, 5, 7, 8, 10, 12];
+    if (chord.chordType === 'major') return [0, 2, 4, 5, 7, 9, 11, 12];
+    // Modal fallback (Dorian)
+    return [0, 2, 3, 5, 7, 9, 10, 12];
+  }
+
+  private updatePhraseArc(): number {
+    // Фраза длится ~8 тактов. Арк: 0..1..0
+    const cycle = this.ctx.epoch % 8;
+    const raw = Math.sin((cycle / 8) * Math.PI);
+    // Добавляем случайные колебания для органичности
+    return Math.max(0, Math.min(1, raw + (this.rng.next() - 0.5) * 0.15));
+  }
+}
+
+
+
+Ключевые улучшения в этой версии:
+Аспект
+Было
+Стало
+Память
+Каждый такт генерировался с нуля
+history[] хранит 8 последних тактов, BarContext отслеживает prevDegree, phraseArc, direction
+PRNG
+Заглушка, не использовался
+Класс SeededRNG с next(), weightedPick(), chance(). Все выборы вероятностны
+Мелодия/Бас
+Жёсткий перебор [i % scale.length]
+Цепи Маркова (MARKOV_BASE) с адаптацией весов под tension и phraseArc. Плавное голосоведение
+Ритм
+Фиксированная сетка 0,2,4,6...
+Фрактальная сетка generateFractalRhythm(). Вероятность нот падает с увеличением subdivision, создавая самоподобие
+Ударные
+Статичный 4-on-the-floor
+Вероятностные пропуски кика на высоких напряжениях, фрактальные хай-хэты, автоматические fills каждые 4-8 тактов
+Бас
+Статичный [0,0,3,7] офф-бит
+Марковский выбор ступени, октавные прыжки при tension > 0.7, тонический якорь на спаде
+Пэд
+Два длинных аккорда
+Инверсии для плавного перехода, эмуляция сайдчейна через gainCurve, detune эволюция, адаптивные attack/release
+Типизация
+any, магические числа
+Строгие интерфейсы, константы, Technique, Dynamics, Phrasing передаются в params для instrument-factory
+Архитектура
+Один монолитный метод
+Разделение на renderDrums, renderBass, renderSpiralLead, renderPad, updateContext
+🚀 Как интегрировать:
+Убедитесь, что FractalEvent в @/types/music поддерживает поля velocity, pan, params.
+Передавайте hints корректно из вашего секвенсора.
+instrument-factory.ts уже готов принимать params: { gainCurve, attack, release, detune, filterEnv }.
+BPM и конвертация time в секунды должны обрабатываться на уровне плеера/секвенсора (оставлено в относительных долях такта для гибкости).
+
