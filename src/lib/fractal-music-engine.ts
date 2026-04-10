@@ -56,9 +56,9 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V43.0 — "Blueprint Controlled Dualism".
- * #ЗАЧЕМ: Управление тембром пианиста теперь делегировано Блюпринту и Мозгам.
- * #ОБНОВЛЕНО (ПЛАН №989): Дефолтный тембр пианиста — Родос.
+ * @fileOverview Fractal Music Engine V44.0 — "Observability Guardian".
+ * #ЗАЧЕМ: Гарантированная передача trackName из любого мозга в воркер.
+ * #ЧТО: ПЛАН №1016. evolve() теперь возвращает trackName.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -114,6 +114,13 @@ export class FractalMusicEngine {
               this.config.useHeritage,
               impro
           );
+
+          if (this.tranceBrain) (this.tranceBrain as any).updateCloudAxioms(
+              this.config.cloudAxioms,
+              this.config.activeAnchorId,
+              this.config.useHeritage,
+              impro
+          );
       }
 
       if(moodOrGenreChanged || seedChanged || heritageChanged) this.initialize(true);
@@ -129,7 +136,6 @@ export class FractalMusicEngine {
     const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
     const shuffled = this.random.shuffle(pool);
 
-    // #ЗАЧЕМ: Распределение вступления парами.
     this.lotterySchedule.set(shuffled[0], 0);
     this.lotterySchedule.set(shuffled[1], 0);
     this.lotterySchedule.set(shuffled[2], 3);
@@ -175,6 +181,7 @@ export class FractalMusicEngine {
         this.reggaeBrain = null;
     } else if (this.config.genre === 'trance') {
         this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
+        this.tranceBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, impro);
         this.bluesBrain = null;
         this.ambientBrain = null;
         this.reggaeBrain = null;
@@ -226,6 +233,7 @@ export class FractalMusicEngine {
       mutationType?: string,
       activeAxioms?: any,
       narrative?: string,
+      trackName?: string,
       dynasty?: string,
       newBpm?: number
   } {
@@ -258,7 +266,6 @@ export class FractalMusicEngine {
     const activeLayers = navInfo.currentPart.layers || {};
     const isIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
 
-    // #ЗАЧЕМ: Накопительная активация.
     Object.keys(activeLayers).forEach(layer => {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
@@ -299,7 +306,6 @@ export class FractalMusicEngine {
                     if (this.config.genre === 'blues') defaultInst = 'guitarChords';
                     else defaultInst = 'violin';
                 }
-                // #ЗАЧЕМ: ПЛАН №989. Дефолт для пианиста — Родос.
                 else if (part === 'pianoAccompaniment') {
                     defaultInst = 'ep_rhodes_warm';
                 }
@@ -310,7 +316,6 @@ export class FractalMusicEngine {
         }
     });
 
-    // #ЗАЧЕМ: Инструмент, вступивший в игру, продолжает играть.
     this.activatedParts.forEach(part => {
         const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
@@ -348,6 +353,7 @@ export class FractalMusicEngine {
         beautyScore: barBeauty,
         tension,
         navInfo,
+        trackName: result.trackName, // #ЗАЧЕМ: Прямая передача имени трека в воркер.
         dynasty: this.suiteDNA.dynasty,
         lickId: result.lickId,
         mutationType: result.mutationType,

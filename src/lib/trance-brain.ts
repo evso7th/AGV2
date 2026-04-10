@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Trance Brain V2.6 — "The Heritage Sovereignty".
- * #ЗАЧЕМ: Полноценное обучение Транса работе с Наследием (DNA).
- * #ЧТО: ПЛАН №1015 — Перенос архитектуры Сиблингов и Хронос-фильтрации из BluesBrain.
+ * @fileOverview Trance Brain V2.7 — "The Heritage Sovereignty & Visibility".
+ * #ЗАЧЕМ: Полноценное обучение Транса работе с Наследием (DNA) и прозрачное логирование.
+ * #ЧТО: ПЛАН №1016 — Исправлена маршрутизация activeAxioms и возвращен trackName.
  */
 
 import type {
@@ -37,9 +37,7 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
 
-// ───── MARKOV SPIRAL DEFINITIONS ─────
 const MARKOV_BASE = [
-  // 0  1  2  3  4  5  6  7  8  9  10 11 12 (scale degrees)
   [40, 5, 15, 10, 5,  10, 5, 15, 3,  5, 8,  3, 20], 
   [15, 30, 10, 5,  15, 5,  10, 5,  8,  3, 5,  8, 10],
   [10, 5,  30, 15, 5,  10, 5,  20, 3,  10, 10, 5, 15],
@@ -84,13 +82,12 @@ export class TranceBrain {
     private useHeritage: boolean;
     private isImprovising: boolean = false;
 
-    // --- Heritage & Ensemble State ---
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentThemeMaxTick: number = 0;
-    private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
-    private currentAccompAxioms: { phrase: any[], role: string, id?: string, preferredInstrument?: string }[] = [];
+    private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
+    private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     private currentDrumAxioms: { phrase: any[], role: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
@@ -136,7 +133,7 @@ export class TranceBrain {
         return (epoch - startEpoch) % totalBars;
     }
 
-    private adaptMatrixForTension(baseRow: number[], tension: number): number[] {
+    private adaptMatrixForTension(baseRow: number[], tension: number, scaleLength: number): number[] {
         const row = [...baseRow];
         const boost = tension * 0.5;
         row[1] += boost * 10; row[6] += boost * 15; row[10] += boost * 10;
@@ -195,7 +192,6 @@ export class TranceBrain {
                 }
 
                 if (selected) {
-                    this.currentLickId = selected.id;
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
@@ -206,7 +202,7 @@ export class TranceBrain {
                     const cid = normalizeStr(selected.compositionId);
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
-                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
+                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
                     const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
@@ -220,13 +216,14 @@ export class TranceBrain {
                     });
 
                     const baseBars = selected.bars || 4;
-                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
                 }
             }
         }
+        this.currentTrackName = 'Algorithmic';
         return undefined;
     }
 
@@ -236,7 +233,7 @@ export class TranceBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number, trackName?: string, instrumentOverrides?: Partial<InstrumentHints> } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         this.phraseArc = Math.max(0, Math.min(1, Math.sin((epoch % 8 / 8) * Math.PI)));
@@ -245,7 +242,7 @@ export class TranceBrain {
         const isIntro = navInfo.currentPart.id === 'INTRO' || epoch < 4;
 
         if (epoch >= this.soloistBusyUntilBar && !isIntro) {
-            const nb = this.selectNextAxiom(navInfo, dna, epoch);
+            this.selectNextAxiom(navInfo, dna, epoch);
         }
 
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
@@ -260,9 +257,11 @@ export class TranceBrain {
         if (hints.drums) events.push(...this.renderTranceDrums(epoch, tension));
 
         // 2. BASS (Heritage or Neuro)
+        let activeBassAxiom = 'Neuro Rolling';
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
+                activeBassAxiom = `DNA: ${this.currentBassTheme.id}`;
             } else {
                 events.push(...this.renderNeuroBass(epoch, currentChord, tension, isIntro));
             }
@@ -270,9 +269,11 @@ export class TranceBrain {
 
         // 3. LEAD (Heritage or Spiral)
         let melodyEvents: FractalEvent[] = [];
+        let activeMelAxiom = isIntro ? 'Waiting' : 'Spiral Lead';
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                activeMelAxiom = `DNA: ${this.currentTheme.id}`;
             } else {
                 melodyEvents = this.renderSpiralLead(epoch, resChord, tension);
             }
@@ -281,6 +282,7 @@ export class TranceBrain {
 
         // 4. PADS (Heritage or Sidechained)
         let usedAccomp = false;
+        let activeAccAxiom = 'none';
         if (hints.accompaniment && !isIntro) {
             if (this.currentAccompAxioms.length > 0) {
                 const ax = this.currentAccompAxioms[0];
@@ -288,11 +290,13 @@ export class TranceBrain {
                 if (rendered.length > 0) {
                     events.push(...rendered);
                     usedAccomp = true;
+                    activeAccAxiom = `DNA: ${ax.id}`;
                     if (ax.preferredInstrument) instrumentOverrides.accompaniment = resolveSemanticTimbre(ax.preferredInstrument, tension, 'accompaniment', 'trance');
                 }
             }
             if (!usedAccomp) {
                 events.push(...this.renderSidechainedPad(epoch, currentChord, tension));
+                activeAccAxiom = 'Sidechained Pad';
             }
         }
 
@@ -302,12 +306,13 @@ export class TranceBrain {
 
         return {
             events, tension, beautyScore: 0.75,
+            trackName: this.currentTrackName,
             instrumentOverrides,
             activeAxioms: {
-                melody: isIntro ? 'Waiting' : (this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Lead'),
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Fractal Grid',
-                trackName: this.currentTrackName
+                melody: activeMelAxiom,
+                bass: activeBassAxiom,
+                accompaniment: activeAccAxiom,
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Fractal Grid'
             },
             narrative: `Neuro F-Matrix: Sovereignty Active. [DNA: ${this.currentTrackName}] [Chronos Mode]`
         };
@@ -348,7 +353,7 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
         const scale = [0, 3, 5, 7, 10, 12];
-        const weights = this.adaptMatrixForTension(MARKOV_BASE[this.prevDegree % 13], tension);
+        const weights = this.adaptMatrixForTension(MARKOV_BASE[this.prevDegree % 13], tension, scale.length);
         const nextDeg = this.rng.weightedPick(scale, weights.slice(0, scale.length));
         this.prevDegree = nextDeg;
 
@@ -374,7 +379,7 @@ export class TranceBrain {
 
         rhythm.forEach(t => {
             if (this.rng.chance(density * 100)) {
-                const weights = this.adaptMatrixForTension(MARKOV_BASE[lastDeg % 13], tension);
+                const weights = this.adaptMatrixForTension(MARKOV_BASE[lastDeg % 13], tension, scale.length);
                 const deg = this.rng.weightedPick(scale, weights.slice(0, scale.length));
                 events.push({
                     type: 'melody', note: root + deg + (this.phraseArc > 0.7 ? 12 : 0),
@@ -408,7 +413,7 @@ export class TranceBrain {
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const startEpoch = this.currentTheme.startBar;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
@@ -424,7 +429,7 @@ export class TranceBrain {
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const startEpoch = this.currentBassTheme.startBar;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
@@ -450,7 +455,7 @@ export class TranceBrain {
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { 
                 attack: 0.5, release: 1.0, 
-                gainCurve: [1.0, 0.4, 0.8, 0.5, 0.9, 0.6, 1.0], // Продлеваем сайдчейн на аксиомы
+                gainCurve: [1.0, 0.4, 0.8, 0.5, 0.9, 0.6, 1.0],
                 filterCutoff: 1200 + tension * 1000 
             }
         }));

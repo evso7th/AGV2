@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1009): Реализовано циклическое воспроизведение в режиме DNA Anchor (1-2-3-1...).
+ * #ОБНОВЛЕНО (ПЛАН №1016): Улучшено логирование для отображения DNA и конкретных аксиом.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -30,7 +30,7 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxiomPool: [] as any[], 
-    filterRotationIndex: 0, // #ЗАЧЕМ: Индекс для циклического воспроизведения (1-2-3-1...).
+    filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     
     settings: {
@@ -70,12 +70,10 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
-            // #ЗАЧЕМ: Реализация циклического воспроизведения (ПЛАН №1009).
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
             console.log(`%c[Anchor] Sequential Cycle: Piece ${idx + 1} of ${manualFilter.length} (${pickedId})`, 'color: #00BFFF; font-weight: bold;');
         } else if (this.cloudAxiomPool.length > 0) {
-            // СВОБОДНАЯ ИГРА: Умный рандом с историей
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
 
@@ -87,15 +85,10 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                
-                // Фильтруем те, что уже играли недавно
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
-                
-                // Рандомный выбор из пула "свежих"
                 pickedId = pool[Math.floor(Math.random() * pool.length)];
                 
-                // Обновляем историю
                 if (pickedId) {
                     this.playedTrackHistory.push(pickedId);
                     if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
@@ -172,7 +165,6 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        // В режиме Anchor ручной ресет не инкрементирует индекс, чтобы дать возможность переслушать.
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -186,9 +178,7 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           // #ЗАЧЕМ: Сброс индекса ротации при смене состава ДНК или сида (Regenerate).
            if (seedChanged || filterChanged) this.filterRotationIndex = 0;
-           
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -212,11 +202,8 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // Если пьеса закончилась
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
-             // #ЗАЧЕМ: Инкремент индекса для перехода к следующему треку в цикле.
              this.filterRotationIndex++;
-             
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
@@ -246,6 +233,7 @@ const Scheduler = {
         const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
+        const trackName = payload.trackName || 'Generative';
         const narration = payload.narrative || 'Developing story...';
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'} | PNO: ${h.pianoAccompaniment || 'none'}`;
         const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
@@ -257,8 +245,9 @@ const Scheduler = {
         const melStr = axioms.melody === 'Generative' ? 'Generative (No DNA)' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
 
+        // #ЗАЧЕМ: Добавление [DNA: Name] в основную строку лога.
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ${mutationStr} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ${mutationStr} ` +
             `%c${ensembleStr}\n` +
             `%c  ↳ ${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${narration}`,
