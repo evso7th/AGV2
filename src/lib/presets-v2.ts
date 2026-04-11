@@ -19,7 +19,7 @@ export const V2_PRESETS = {
     ],
     noise: { on: true, gain: 0.02 },
     adsr: { a: 0.6, d: 0.8, s: 0.7, r: 2.0 },
-    lpf: { cutoff: 1400, q: 1.2, mode: '24dB' }, // #ЗАЧЕМ: Утепление (1600 -> 1400)
+    lpf: { cutoff: 1400, q: 1.2, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.18, amount: 400, target: 'filter' },
     chorus: { on: true, rate: 0.2, depth: 0.007, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.2, hc: 3000, mix: 0.15 },
@@ -36,7 +36,7 @@ export const V2_PRESETS = {
     ],
     noise: { on: true, gain: 0.03 },
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 4.0 },
-    lpf: { cutoff: 1200, q: 1.0, mode: '24dB' }, // #ЗАЧЕМ: Глубокое утепление (1400 -> 1200)
+    lpf: { cutoff: 1200, q: 1.0, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.15, amount: 400, target: 'filter' },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.55, fb: 0.35, hc: 2500, mix: 0.25 },
@@ -53,7 +53,7 @@ export const V2_PRESETS = {
     ],
     noise: { on: true, gain: 0.05 },
     adsr: { a: 2.5, d: 3.0, s: 0.9, r: 5.0 },
-    lpf: { cutoff: 750, q: 0.7, mode: '24dB' }, // #ЗАЧЕМ: Еще темнее (800 -> 750)
+    lpf: { cutoff: 750, q: 0.7, mode: '24dB' }, 
     chorus: { on: true, rate: 0.1, depth: 0.01, mix: 0.6 },
     delay: { on: true, time: 0.8, fb: 0.45, hc: 1500, mix: 0.35 },
     reverbMix: 0.5
@@ -74,7 +74,7 @@ export const V2_PRESETS = {
     ],
     noise: { on: false, gain: 0 },
     adsr: { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
-    lpf: { cutoff: 2600, q: 0.9, mode: '24dB' }, // #ЗАЧЕМ: Бархатный тон (3500 -> 2600)
+    lpf: { cutoff: 2600, q: 0.9, mode: '24dB' }, 
     chorus: { on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
     delay: { on: true, time: 0.26, fb: 0.12, hc: 3500, mix: 0.10 },
     reverbMix: 0.18
@@ -91,7 +91,7 @@ export const V2_PRESETS = {
     drawbars: [8, 8, 4, 2, 0, 0, 0, 1, 0],
     keyClick: 0.005,
     adsr: { a: 0.1, d: 0.1, s: 0.9, r: 1.5 },
-    lpf: 3000, // #ЗАЧЕМ: Устранение пронзительности (4500 -> 3000)
+    lpf: 3000, 
     leslie: { mode: 'slow', slow: 0.5, fast: 6.0, accel: 0.7 },
     reverbMix: 0.15
   },
@@ -101,7 +101,7 @@ export const V2_PRESETS = {
     name: 'Soft Jazz Organ',
     volume: 0.85, 
     drawbars: [8, 0, 8, 4, 0, 1, 0, 0, 0], 
-    lpf: 2600, // #ЗАЧЕМ: Мягкое размытие (3200 -> 2600)
+    lpf: 2600, 
     hpf: 80,
     sub: { gain: 0.4 }, 
     adsr: { a: 0.02, d: 0.2, s: 0.9, r: 1.2 },
@@ -115,7 +115,7 @@ export const V2_PRESETS = {
     name: 'Jimmy Smith Trio',
     volume: 0.85, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
-    lpf: 3500, // #ЗАЧЕМ: Удаление "свиста" (8000 -> 3500)
+    lpf: 3500, 
     hpf: 100,
     adsr: { a: 0.005, d: 0.1, s: 0.95, r: 1.0 },
     keyClick: 0.006,
@@ -128,7 +128,7 @@ export const V2_PRESETS = {
     name: 'Prog Rock B3',
     volume: 0.85, 
     drawbars: [8, 8, 8, 8, 4, 2, 0, 0, 0],
-    lpf: 3800, // #ЗАЧЕМ: Обуздание пронзительности (9000 -> 3800)
+    lpf: 3800, 
     adsr: { a: 0.004, d: 0.05, s: 0.98, r: 0.8 },
     keyClick: 0.008,
     leslie: { mode: 'fast', slow: 0.8, fast: 7.2, accel: 0.4 },
@@ -138,9 +138,9 @@ export const V2_PRESETS = {
   reggae_organ: {
     type: 'organ',
     name: 'Roots Bubbler',
-    volume: 0.65,
+    volume: 0.85,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
-    lpf: 2200, // #ЗАЧЕМ: Глухой dub-тон (2500 -> 2200)
+    lpf: 2200, 
     adsr: { a: 0.005, d: 0.08, s: 0.0, r: 0.1 }, 
     keyClick: 0.01,
     leslie: { mode: 'slow', slow: 0.8, fast: 6.5, accel: 0.5 },
@@ -156,10 +156,10 @@ export const V2_PRESETS = {
     name: 'Crystal Clean Lead', 
     volume: 0.16, 
     osc: { width: 0.46, detune: 2, mainGain: 0.9, detGain: 0.1, subGain: 0.15 },
-    pickup: { cutoff: 3600 }, // #ЗАЧЕМ: Смягчение атаки (4500 -> 3600)
+    pickup: { cutoff: 3600 }, 
     drive: { type: 'soft', amount: 0.0 }, 
     comp: { threshold: -18, ratio: 2.5, attack: 0.005, release: 0.2, makeup: 1.5 },
-    post: { lpf: 3800 }, // #ЗАЧЕМ: Обуздание верхов (6500 -> 3800)
+    post: { lpf: 3800 }, 
     adsr: { a: 0.022, d: 0.5, s: 0.8, r: 1.5 }, 
     chorus: { on: false, mix: 0 }, 
     delayA: { time: 0.45, fb: 0.2, hc: 4000, mix: 0 }, 
@@ -171,10 +171,10 @@ export const V2_PRESETS = {
     name: 'Pure Reform Guitar',
     volume: 0.15, 
     osc: { width: 0.5, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
-    pickup: { cutoff: 2800 }, // #ЗАЧЕМ: Удаление резкости (3200 -> 2800)
+    pickup: { cutoff: 2800 }, 
     drive: { type: 'muff', amount: 0.0 }, 
     comp: { threshold: -20, ratio: 3, attack: 0.008, release: 0.15, makeup: 1.5 },
-    post: { lpf: 3200 }, // #ЗАЧЕМ: Плотный, не пронзительный muff (5500 -> 3200)
+    post: { lpf: 3200 }, 
     adsr: { a: 0.022, d: 0.5, s: 0.8, r: 1.5 }, 
     chorus: { on: false, mix: 0 }, 
     delayA: { time: 0.45, fb: 0.2, hc: 4000, mix: 0 }, 
@@ -186,7 +186,7 @@ export const V2_PRESETS = {
     name: 'Tuff Gong Skank',
     volume: 0.55,
     osc: { width: 0.42, detune: 3, mainGain: 0.9, detGain: 0.1, subGain: 0.1 },
-    pickup: { cutoff: 3200 }, // #ЗАЧЕМ: Смягчение (4500 -> 3200)
+    pickup: { cutoff: 3200 }, 
     drive: { type: 'soft', amount: 0.05 },
     comp: { threshold: -25, ratio: 8, attack: 0.002, release: 0.1, makeup: 5 },
     adsr: { a: 0.002, d: 0.1, s: 0.0, r: 0.05 },
@@ -219,7 +219,7 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
 };
 
 export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
-    bass: 'bass_jazz_warm',
+    bass: 'bass_reggae', // Default for reggae
     classicBass: 'bass_rock_pick',
     glideBass: 'bass_ambient',
     ambientDrone: 'bass_ambient_dark',
