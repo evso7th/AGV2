@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V3.2 — "The Kinetic Forest & Neuro-Pumping".
- * #ЗАЧЕМ: Реализация мощного ритмического фундамента и детализированной "кухни".
- * #ЧТО: ПЛАН №1028 — Солидный 4/4 кик, снейр на 2/4, роллинг-бас, детализированная перкуссия и обязательные атмо-ивенты.
+ * @fileOverview Psybient Brain V3.3 — "The Living Kinetic Forest".
+ * #ЗАЧЕМ: Реализация максимально детализированной "кухни" и живых ударных.
+ * #ЧТО: ПЛАН №1029 — Блюзовые пробежки по томам, "вздохи" (dropouts) и плотная фрактальная перкуссия.
  */
 
 import type {
@@ -250,17 +250,24 @@ export class TranceBrain {
                 melody: activeMelAxiom,
                 bass: activeBassAxiom,
                 accompaniment: activeAccAxiom,
-                drums: 'Neuro Pumping'
+                drums: 'Neuro Pumping + Live Kitchen'
             },
-            narrative: `Psybient Matrix: [DNA: ${this.currentTrackName}] [Spiral: ${this.spiralTransposition}] [Chronos Mode]`
+            narrative: `Psybient Matrix: [DNA: ${this.currentTrackName}] [Kitchen: DETAILED] [Toms: BLUESY]`
         };
     }
 
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        const isFourthBar = epoch % 4 === 3;
         
+        // "Breaths" (Kick Dropout logic)
+        // #ЗАЧЕМ: Создает эффект вздоха перед филлом или на переходах.
+        const shouldDropKick = isFourthBar && this.rng.chance(40);
+
         // 4/4 Kick foundation
         [0, 3, 6, 9].forEach(t => {
+            if (shouldDropKick && t >= 6) return; // Drop last two beats for breath
+            
             events.push({
                 type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.0,
                 technique: 'hit', dynamics: 'f', phrasing: 'staccato'
@@ -285,13 +292,45 @@ export class TranceBrain {
             });
         }
 
-        // Tom fills on phrase endings
-        if (epoch % 4 === 3) {
-            const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-            [9, 10, 11].forEach((t, i) => {
+        // Bluesy Tom runs
+        if (isFourthBar) {
+            events.push(...this.renderBluesyTomFill(tension));
+        }
+
+        return events;
+    }
+
+    /**
+     * #ЗАЧЕМ: Блюзовые пробежки по томам (ПЛАН №1029).
+     * #ЧТО: Сложные каскадные ритмы вместо простой сетки.
+     */
+    private renderBluesyTomFill(tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+        
+        // Pattern 1: Rapid 16th triplet descent
+        if (this.rng.chance(50)) {
+            const startTick = 7.5;
+            for(let i=0; i<6; i++) {
+                const typeIdx = Math.floor(i / 2);
                 events.push({
-                    type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.4, weight: 0.8,
-                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (i - 1) * 0.5
+                    type: tomTypes[typeIdx] as any, note: 40, 
+                    time: (startTick + i * 0.75) * TICK_TO_BEAT, 
+                    duration: 0.3, weight: 0.75 + (i * 0.05),
+                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
+                    pan: (i - 2.5) * 0.3
+                });
+            }
+        } else {
+            // Pattern 2: Syncopated accents
+            [6, 7.5, 9, 10.5, 11].forEach((t, i) => {
+                const typeIdx = i % 3;
+                events.push({
+                    type: tomTypes[typeIdx] as any, note: 40, 
+                    time: t * TICK_TO_BEAT, 
+                    duration: 0.4, weight: 0.85,
+                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
+                    pan: (this.rng.next() * 1.4) - 0.7
                 });
             });
         }
@@ -300,43 +339,46 @@ export class TranceBrain {
     }
 
     /**
-     * #ЗАЧЕМ: Детализированная перкуссионная кухня (ПЛАН №1028).
-     * #ЧТО: Бонго, трубки, колокольчики и перкуссия на 16-х долях.
+     * #ЗАЧЕМ: Гипер-детализированная кухня (ПЛАН №1029).
+     * #ЧТО: Сканирующая сетка 16-х долей, заполняющая все пустоты.
      */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const beatDuration = TICK_TO_BEAT;
         
-        // Kitchen percs list
         const kitchenPool = [
             'bongo_pvc-tube-01', 'bongo_pvc-tube-02', 'bongo_pvc-tube-03',
             'bongo_pc-01', 'bongo_pc-02', 'bongo_pc-03',
             'perc-003', 'perc-007', 'perc-012', 'perc-015',
-            'drum_Bell_-_Ambient', 'drum_Bell_-_Astro', 'drum_Bell_-_Soft'
+            'drum_Bell_-_Ambient', 'drum_Bell_-_Astro', 'drum_Bell_-_Soft', 'drum_Bell_-_click'
         ];
 
-        // Trigger random kitchen sounds on off-beats
-        [1.5, 4.5, 7.5, 10.5].forEach(t => {
-            if (this.rng.chance(60 + tension * 20)) {
+        // Scanning grid logic: check every 1.5 ticks (16th note)
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
+            // Skip strong beats (0, 3, 6, 9) to avoid masking kick/snare
+            if (t % 3 === 0) continue;
+
+            // Higher chance on higher tension
+            if (this.rng.chance(75 + tension * 20)) {
                 const sample = kitchenPool[this.rng.nextInt(kitchenPool.length)];
                 events.push({
                     type: sample as any, note: 48, time: t * beatDuration, duration: 0.5, 
-                    weight: 0.45 + (this.rng.next() * 0.2), 
+                    weight: 0.5 + (this.rng.next() * 0.3), // INCREASED VELOCITY
                     technique: 'hit', dynamics: 'p', phrasing: 'detached', 
-                    pan: (this.rng.next() * 1.6) - 0.8
+                    pan: (this.rng.next() * 1.8) - 0.9 // WIDER PAN
                 });
             }
-        });
+        }
 
-        // Occasional rapid triplets
-        if (this.rng.chance(25)) {
-            const start = this.rng.nextInt(8);
-            const sample = kitchenPool[this.rng.nextInt(6)]; // Prefer tubes/bongos for rapid
-            for(let i=0; i<3; i++) {
+        // Rapid "Bubbling" bursts (tubes/perc)
+        if (this.rng.chance(40)) {
+            const start = this.rng.nextInt(6);
+            const sample = kitchenPool[this.rng.nextInt(6)];
+            for(let i=0; i<4; i++) {
                 events.push({
-                    type: sample as any, note: 48, time: (start + i*0.5) * beatDuration, 
-                    duration: 0.2, weight: 0.3, technique: 'hit', dynamics: 'p', 
-                    phrasing: 'staccato', pan: (this.rng.next() * 1.0) - 0.5
+                    type: sample as any, note: 48, time: (start + i*0.375) * beatDuration, 
+                    duration: 0.15, weight: 0.4, technique: 'hit', dynamics: 'p', 
+                    phrasing: 'staccato', pan: (this.rng.next() * 1.2) - 0.6
                 });
             }
         }
@@ -397,28 +439,26 @@ export class TranceBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Обязательные атмосферные события (ПЛАН №1028).
-     * #ЧТО: Спарклы и SFX в каждом такте с адаптивной вероятностью.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. Sparkles (Crystals/Drops)
-        if (this.rng.chance(35 + tension * 30)) {
+        // 1. Sparkles (Crystals/Drops) - GUARANTEED + LOUDER
+        if (this.rng.chance(45 + tension * 30)) {
             events.push({
                 type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
-                duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                duration: 6.0, weight: 0.8, // LOUDER
+                technique: 'hit', dynamics: 'p', phrasing: 'legato',
                 pan: (this.rng.next() * 1.8) - 0.9,
                 params: { mood: this.mood, genre: this.genre, category: tension < 0.5 ? 'light' : 'ambient_common' }
             });
         }
 
-        // 2. SFX (Voices/Lasers)
-        if (this.rng.chance(20 + tension * 20)) {
+        // 2. SFX (Voices/Lasers) - GUARANTEED + LOUDER
+        if (this.rng.chance(30 + tension * 20)) {
             events.push({
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
-                duration: 4.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                duration: 4.0, weight: 0.7, // LOUDER
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                 pan: (this.rng.next() * 1.6) - 0.8,
                 params: { mood: this.mood, genre: this.genre }
             });
@@ -429,7 +469,7 @@ export class TranceBrain {
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.currentTheme.startBar;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
