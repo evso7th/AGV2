@@ -14,8 +14,6 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 
 /**
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
- * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
- *       Добавлена поддержка иерархического микширования (ПЛАН №1024).
  */
 
 export type Mood = FractalMood;
@@ -29,7 +27,6 @@ export type InstrumentPart = FractalInstrumentPart;
 
 /**
  * #ЗАЧЕМ: Декларативное сведение.
- * #ЧТО: Карта громкостей для инструментов.
  */
 export type SoundMix = Partial<Record<InstrumentPart | 'drums' | 'sparkles' | 'sfx', number>>;
 
@@ -199,7 +196,7 @@ export type TimerSettings = {
 };
 
 export type ScoreName = 'evolve' | 'omega' | 'journey' | 'dreamtales' | 'multeity' | 'neuro_f_matrix';
-export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
+export type Genre = 'psybient' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
 export type MutationType = 'transpose' | 'rhythmic_shift' | 'velocity_curve' | 'inversion' | 'register_shift' | 'voicing_change' | 'retrograde' | 'augmentation';
 
@@ -315,12 +312,6 @@ export type HarmonicCenter = {
     center: string;
     satellites: string[];
     weight: number;
-};
-
-export type TensionProfile = {
-    type: 'arc' | 'plateau' | 'wave' | 'crescendo';
-    peakPosition: number;
-    curve: (progress: number, peakPosition: number) => number;
 };
 
 export type MusicBlueprint = {

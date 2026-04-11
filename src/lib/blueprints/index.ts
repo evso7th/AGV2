@@ -38,6 +38,17 @@ import { WinterBridgeBlueprint } from './bridges/winter';
 import { AnxiousBridgeBlueprint } from './bridges/anxious';
 
 export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprint>>> = {
+    psybient: {
+        melancholic: MelancholicTranceBlueprint,
+        dark: DarkTranceBlueprint,
+        anxious: AnxiousTranceBlueprint,
+        joyful: JoyfulTranceBlueprint,
+        calm: CalmTranceBlueprint,
+        epic: EpicTranceBlueprint,
+        enthusiastic: EnthusiasticTranceBlueprint,
+        dreamy: DreamyTranceBlueprint,
+        contemplative: ContemplativeTranceBlueprint,
+    },
     ambient: {
         melancholic: MelancholicAmbientBlueprint,
         dark: DarkAmbientBlueprint,
@@ -48,17 +59,6 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         contemplative: NeutralAmbientBlueprint, 
         epic: EpicAmbientBlueprint,
         anxious: AnxiousAmbientBlueprint,
-    },
-    trance: {
-        melancholic: MelancholicTranceBlueprint,
-        dark: DarkTranceBlueprint,
-        anxious: AnxiousTranceBlueprint,
-        joyful: JoyfulTranceBlueprint,
-        calm: CalmTranceBlueprint,
-        epic: EpicTranceBlueprint,
-        enthusiastic: EnthusiasticTranceBlueprint,
-        dreamy: DreamyTranceBlueprint,
-        contemplative: ContemplativeTranceBlueprint,
     },
     blues: {
         melancholic: WinterBluesBlueprint,
@@ -99,7 +99,6 @@ export function getBridgeBlueprint(mood: Mood): MusicBlueprint {
 }
 
 export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
-    // #ЗАЧЕМ: Отладка маппинга для предотвращения genre mismatch.
     console.log(`%c[Mapping] Requesting: ${genre}/${mood}`, 'color: #00FF7F; font-weight: bold;');
     
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];

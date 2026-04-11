@@ -56,9 +56,7 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.0 — "Observability Guardian".
- * #ЗАЧЕМ: Гарантированная передача trackName из любого мозга в воркер.
- * #ЧТО: ПЛАН №1016. evolve() теперь возвращает trackName.
+ * @fileOverview Fractal Music Engine V44.1 — "The Psybient Sovereign".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -179,7 +177,7 @@ export class FractalMusicEngine {
         this.ambientBrain = null;
         this.tranceBrain = null;
         this.reggaeBrain = null;
-    } else if (this.config.genre === 'trance') {
+    } else if (this.config.genre === 'psybient') {
         this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
         this.tranceBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, impro);
         this.bluesBrain = null;
@@ -289,12 +287,12 @@ export class FractalMusicEngine {
 
                 let defaultInst = 'synth';
                 if (part === 'bass') {
-                    if (this.config.genre === 'trance') defaultInst = 'bass_house';
+                    if (this.config.genre === 'psybient') defaultInst = 'bass_house';
                     else if (this.config.genre === 'reggae') defaultInst = 'bass_reggae';
                     else defaultInst = 'bass_jazz_warm';
                 }
                 else if (part === 'melody') {
-                    if (this.config.genre === 'trance') defaultInst = 'synth';
+                    if (this.config.genre === 'psybient') defaultInst = 'synth';
                     else if (this.config.genre === 'reggae') defaultInst = 'reggae_guitar';
                     else defaultInst = 'organ_soft_jazz';
                 }
@@ -328,7 +326,7 @@ export class FractalMusicEngine {
     this.previousChord = currentChord;
 
     let result: any;
-    if (this.config.genre === 'trance' && this.tranceBrain) {
+    if (this.config.genre === 'psybient' && this.tranceBrain) {
         result = this.tranceBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre === 'reggae' && this.reggaeBrain) {
         result = this.reggaeBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
@@ -353,7 +351,7 @@ export class FractalMusicEngine {
         beautyScore: barBeauty,
         tension,
         navInfo,
-        trackName: result.trackName, // #ЗАЧЕМ: Прямая передача имени трека в воркер.
+        trackName: result.trackName, 
         dynasty: this.suiteDNA.dynasty,
         lickId: result.lickId,
         mutationType: result.mutationType,

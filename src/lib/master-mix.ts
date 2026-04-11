@@ -1,13 +1,21 @@
 
 /**
- * @fileOverview Master Mix Registry V1.0 — "The Sonic DNA".
- * #ЗАЧЕМ: Глобальный реестр эталонных громкостей для каждого жанра.
- * #ЧТО: ПЛАН №1024 — Определение базовых "фейдеров" для Ambient, Trance, Blues и Reggae.
+ * @fileOverview Master Mix Registry V1.1 — "The Psybient Era".
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
+    psybient: {
+        bass: 0.95,
+        melody: 0.70,
+        accompaniment: 0.85,
+        harmony: 0.65,
+        pianoAccompaniment: 0.45,
+        drums: 0.80,
+        sparkles: 0.20,
+        sfx: 0.25
+    },
     ambient: {
         bass: 0.45,
         melody: 0.55,
@@ -17,16 +25,6 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         drums: 0.30,
         sparkles: 0.15,
         sfx: 0.15
-    },
-    trance: {
-        bass: 0.95,
-        melody: 0.75,
-        accompaniment: 0.65,
-        harmony: 0.60,
-        pianoAccompaniment: 0.40,
-        drums: 0.90,
-        sparkles: 0.20,
-        sfx: 0.20
     },
     blues: {
         bass: 0.70,

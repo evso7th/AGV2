@@ -1,7 +1,6 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.5 — "Advanced DNA Filters".
- * #ЧТО: ПЛАН №1008 — Добавлены фильтры по Жанрам и Настроениям в DNA Selection Station.
+ * #ЗАЧЕМ: UI AuraGroove V3.6 — "Psybient Transformation".
  */
 'use client';
 
@@ -64,7 +63,7 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
   dark: 'text-primary/50',
 };
 
-const AVAILABLE_GENRES: Genre[] = ['ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'];
+const AVAILABLE_GENRES: Genre[] = ['psybient', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 const AVAILABLE_MOODS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
 
 function MultiSelector<T extends string>({
@@ -127,7 +126,6 @@ export function AuraGrooveV2({
   const [filterSearchText, setFilterSearchText] = useState("");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   
-  // #ЗАЧЕМ: Локальные стейты для фильтрации в диалоге ДНК.
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
 
@@ -148,8 +146,8 @@ export function AuraGrooveV2({
   const composerControl = isFractalStyle && composerControlsInstruments;
 
   const genreList: Genre[] = isFractalStyle
-    ? ['ambient', 'trance', 'blues', 'reggae']
-    : ['trance', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
+    ? ['ambient', 'psybient', 'blues', 'reggae']
+    : ['psybient', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
   const displayNames: Record<string, string> = {
     'guitarChords': 'Acoustic Chords',
@@ -167,17 +165,15 @@ export function AuraGrooveV2({
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'blackAcoustic': 'Black Acoustic',
-    'reggae': 'Roots Reggae'
+    'reggae': 'Roots Reggae',
+    'psybient': 'Psy-Ambient'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {
       const matchesSearch = comp.id.toLowerCase().includes(filterSearchText.toLowerCase());
       const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(comp.id) : true;
-      
-      // #ЗАЧЕМ: Фильтрация по жанрам и настроениям в реальном времени.
       const matchesGenre = selectedFilterGenres.length === 0 || selectedFilterGenres.some(g => comp.genres.includes(g));
       const matchesMood = selectedFilterMoods.length === 0 || selectedFilterMoods.some(m => comp.moods.includes(m));
-      
       return matchesSearch && matchesSelected && matchesGenre && matchesMood;
   });
 
@@ -242,7 +238,6 @@ export function AuraGrooveV2({
 
                         <ScrollArea className="flex-grow">
                             <div className="flex gap-12 p-10 min-w-max h-[calc(100vh-120px)] items-stretch">
-                                {/* 1. System Preamps (Calibration) */}
                                 <div className="flex flex-col gap-6 pr-12 border-r border-primary/10">
                                     <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
                                         <TowerControl className="h-4 w-4" /> System Preamps
@@ -268,7 +263,6 @@ export function AuraGrooveV2({
                                     </div>
                                 </div>
 
-                                {/* 2. Channel Strips (Parts & Selection) */}
                                 <div className="flex flex-col gap-6">
                                     <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-2 flex items-center gap-2">
                                         <Mic2 className="h-4 w-4" /> Ensemble Mixer
@@ -380,34 +374,13 @@ export function AuraGrooveV2({
               {isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
               {isPlaying ? "Pause" : "Play"}
            </Button>
-           <Button 
-              type="button" 
-              onClick={handleToggleBroadcast} 
-              disabled={isInitializing} 
-              variant={isBroadcastActive ? "destructive" : "outline"}
-              className="h-10 w-10 p-0"
-              title={isBroadcastActive ? "Stop Radio" : "Start Radio (Bluetooth Safe)"}
-           >
+           <Button type="button" onClick={handleToggleBroadcast} disabled={isInitializing} variant={isBroadcastActive ? "destructive" : "outline"} className="h-10 w-10 p-0" title="Radio">
              <TowerControl className={cn("h-5 w-5", isBroadcastActive && "animate-pulse text-primary")} />
            </Button>
-           <Button 
-              type="button" 
-              onClick={handleToggleRecording} 
-              disabled={isInitializing} 
-              variant={isRecording ? "destructive" : "outline"}
-              className="h-10 w-10 p-0"
-              title={isRecording ? "Stop & Download" : "Record Session"}
-           >
+           <Button type="button" onClick={handleToggleRecording} disabled={isInitializing} variant={isRecording ? "destructive" : "outline"} className="h-10 w-10 p-0" title="Record">
              <Radio className={cn("h-5 w-5", isRecording && "animate-pulse")} />
            </Button>
-           <Button 
-              type="button" 
-              onClick={handleSaveMasterpiece} 
-              disabled={isInitializing || !isPlaying} 
-              variant="outline"
-              className="h-10 w-10 p-0"
-              title="Save Masterpiece"
-           >
+           <Button type="button" onClick={handleSaveMasterpiece} disabled={isInitializing || !isPlaying} variant="outline" className="h-10 w-10 p-0" title="Like">
              <ThumbsUp className="h-5 w-5 text-primary" />
            </Button>
            <Button type="button" onClick={handleRegenerate} disabled={isInitializing} variant="outline" className="h-10 w-10 p-0">
@@ -431,20 +404,9 @@ export function AuraGrooveV2({
                 <CardHeader className="p-2 py-1 flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-sm"><FileMusic className="h-4 w-4"/> Composition</CardTitle>
                     
-                    <Dialog open={isFilterModalOpen} onOpenChange={(open) => {
-                        setIsFilterModalOpen(open);
-                        if (open) refreshCloudAxioms();
-                    }}>
+                    <Dialog open={isFilterModalOpen} onOpenChange={(open) => { setIsFilterModalOpen(open); if (open) refreshCloudAxioms(); }}>
                         <DialogTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                disabled={!useHeritage} 
-                                className={cn(
-                                    "h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", 
-                                    selectedCompositionIds.length > 0 && useHeritage ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70"
-                                )}
-                            >
+                            <Button variant="ghost" size="sm" disabled={!useHeritage} className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", selectedCompositionIds.length > 0 && useHeritage ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70")}>
                                 {selectedCompositionIds.length === 1 && useHeritage ? <Lock className="h-3 w-3" /> : <TowerControl className="h-3 w-3" />}
                                 {getAnchorButtonText()}
                             </Button>
@@ -460,35 +422,16 @@ export function AuraGrooveV2({
                             <div className="p-3 pb-1 space-y-3 bg-muted/20">
                                 <div className="relative group">
                                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                    <Input 
-                                        placeholder="Search by track name..." 
-                                        className="pl-9 h-9 text-xs border-primary/10 focus-visible:ring-primary/30 bg-background"
-                                        value={filterSearchText}
-                                        onChange={(e) => setFilterSearchText(e.target.value)}
-                                    />
+                                    <Input placeholder="Search..." className="pl-9 h-9 text-xs border-primary/10 bg-background" value={filterSearchText} onChange={(e) => setFilterSearchText(e.target.value)}/>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2 px-1">
                                     <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[110px]" />
                                     <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[110px]" />
-                                    
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        onClick={() => setShowSelectedOnly(!showSelectedOnly)}
-                                        className={cn("h-8 px-2 text-[10px] uppercase font-bold transition-all ml-auto", showSelectedOnly && "bg-primary text-primary-foreground")}
-                                    >
+                                    <Button variant="outline" size="sm" onClick={() => setShowSelectedOnly(!showSelectedOnly)} className={cn("h-8 px-2 text-[10px] uppercase font-bold transition-all ml-auto", showSelectedOnly && "bg-primary text-primary-foreground")}>
                                         {showSelectedOnly ? <Eye className="h-3 w-3 mr-1.5" /> : <EyeOff className="h-3 w-3 mr-1.5" />}
                                         {showSelectedOnly ? "Picked" : "All"}
                                     </Button>
-                                    
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); clearCompositionFilters(); }}
-                                        className="h-8 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"
-                                    >
-                                        <RotateCcw className="h-3 w-3 mr-1.5" /> Reset
-                                    </Button>
+                                    <Button variant="ghost" size="sm" onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); clearCompositionFilters(); }} className="h-8 px-2 text-[10px] uppercase font-bold text-destructive hover:bg-destructive/10"><RotateCcw className="h-3 w-3 mr-1.5" /> Reset</Button>
                                 </div>
                             </div>
 
@@ -497,45 +440,20 @@ export function AuraGrooveV2({
                                     <div className="space-y-1">
                                         {filteredCompositions.length === 0 ? (
                                             <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                                                <Database className="h-10 w-10 mb-2 stroke-1" />
-                                                <p className="text-[10px] uppercase font-bold tracking-widest">No matching DNA</p>
+                                                <Database className="h-10 w-10 mb-2 stroke-1" /><p className="text-[10px] uppercase font-bold tracking-widest">No matching DNA</p>
                                             </div>
                                         ) : (
                                             filteredCompositions.map(comp => {
-                                                const id = comp.id;
-                                                const isSelected = selectedCompositionIds.includes(id);
+                                                const isSelected = selectedCompositionIds.includes(comp.id);
                                                 return (
-                                                    <div key={id} 
-                                                        className={cn(
-                                                            "flex items-center space-x-3 p-2.5 rounded-lg transition-all border border-transparent cursor-pointer group mb-1",
-                                                            isSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted/50"
-                                                        )}
-                                                        onClick={() => toggleCompositionFilter(id)}
-                                                    >
-                                                        <Checkbox 
-                                                            id={`filter-${id}`} 
-                                                            checked={isSelected}
-                                                            onCheckedChange={() => {}}
-                                                            className="border-primary/30"
-                                                        />
+                                                    <div key={comp.id} className={cn("flex items-center space-x-3 p-2.5 rounded-lg transition-all border border-transparent cursor-pointer group mb-1", isSelected ? "bg-primary/10 border-primary/20" : "hover:bg-muted/50")} onClick={() => toggleCompositionFilter(comp.id)}>
+                                                        <Checkbox checked={isSelected} onCheckedChange={() => {}} className="border-primary/30" />
                                                         <div className="flex-grow flex flex-col min-w-0">
-                                                            <Label 
-                                                                htmlFor={`filter-${id}`} 
-                                                                className={cn(
-                                                                    "text-[11px] font-bold cursor-pointer leading-tight break-words transition-colors",
-                                                                    isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                                                                )}
-                                                            >
-                                                                {id.replace(/_/g, ' ')}
-                                                            </Label>
-                                                            <div className="text-[8px] uppercase font-black opacity-40 truncate">
-                                                                {comp.genres.join(', ')} | {comp.moods.join(', ')}
-                                                            </div>
+                                                            <Label className={cn("text-[11px] font-bold cursor-pointer transition-colors", isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>{comp.id.replace(/_/g, ' ')}</Label>
+                                                            <div className="text-[8px] uppercase font-black opacity-40 truncate">{comp.genres.join(', ')} | {comp.moods.join(', ')}</div>
                                                         </div>
-                                                        <Badge variant="secondary" className="text-[9px] h-4 px-1.5 opacity-70 font-mono">
-                                                            {comp.count}
-                                                        </Badge>
-                                                        {isSelected && <Check className="h-3.5 w-3.5 text-primary animate-in zoom-in duration-300" />}
+                                                        <Badge variant="secondary" className="text-[9px] h-4 px-1.5 opacity-70 font-mono">{comp.count}</Badge>
+                                                        {isSelected && <Check className="h-3.5 w-3.5 text-primary" />}
                                                     </div>
                                                 );
                                             })
@@ -544,9 +462,7 @@ export function AuraGrooveV2({
                                 </ScrollArea>
                             </div>
                             <DialogFooter className="p-4 border-t bg-muted/30">
-                                <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="w-full h-10 font-black uppercase tracking-widest shadow-xl active:scale-95 transition-transform">
-                                    Set Genetic Anchor
-                                </Button>
+                                <Button size="sm" onClick={() => setIsFilterModalOpen(false)} className="w-full h-10 font-black uppercase tracking-widest shadow-xl">Set Genetic Anchor</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
@@ -556,9 +472,7 @@ export function AuraGrooveV2({
                       <Label htmlFor="score-selector" className="text-right text-xs">Style</Label>
                       <Select value={score} onValueChange={(v) => handleScoreChange(v as any)} disabled={isInitializing || isPlaying}>
                           <SelectTrigger id="score-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem>
-                          </SelectContent>
+                          <SelectContent><SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem></SelectContent>
                       </Select>
                   </div>
                    {isFractalStyle && (
@@ -567,9 +481,7 @@ export function AuraGrooveV2({
                           <Label htmlFor="genre-selector" className="text-right text-xs">Genre</Label>
                           <Select value={genre} onValueChange={(v) => setGenre(v as Genre)} disabled={isInitializing || isPlaying}>
                               <SelectTrigger id="genre-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                  {genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{displayNames[g] || g}</SelectItem>)}
-                              </SelectContent>
+                              <SelectContent>{genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{displayNames[g] || g}</SelectItem>)}</SelectContent>
                           </Select>
                       </div>
                       <div className="grid grid-cols-3 items-center gap-2">
@@ -577,35 +489,19 @@ export function AuraGrooveV2({
                           <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
                               <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {moodList.map(m => {
-                                    const category = MOOD_CATEGORIES[m];
-                                    const colorClass = MOOD_COLOR_CLASSES[category];
-                                    return (
-                                        <SelectItem key={m} value={m} className={cn("text-xs capitalize", colorClass)}>
-                                            {m}
-                                        </SelectItem>
-                                    );
-                                })}
+                                {moodList.map(m => (
+                                    <SelectItem key={m} value={m} className={cn("text-xs capitalize", MOOD_COLOR_CLASSES[MOOD_CATEGORIES[m]])}>{m}</SelectItem>
+                                ))}
                               </SelectContent>
                           </Select>
                       </div>
-                      
                       <div className="grid grid-cols-3 items-center gap-2">
-                          <Label htmlFor="heritage-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
-                            <Dna className="h-3.5 w-3.5 text-primary" /> Heritage
-                          </Label>
-                          <div className="col-span-2 flex items-center">
-                              <Switch id="heritage-switch" checked={useHeritage} onCheckedChange={setUseHeritage} disabled={isInitializing || isPlaying}/>
-                          </div>
+                          <Label htmlFor="heritage-switch" className="text-right text-xs flex items-center gap-1.5 justify-end"><Dna className="h-3.5 w-3.5 text-primary" /> Heritage</Label>
+                          <div className="col-span-2 flex items-center"><Switch id="heritage-switch" checked={useHeritage} onCheckedChange={setUseHeritage} disabled={isInitializing || isPlaying}/></div>
                       </div>
-
                       <div className="grid grid-cols-3 items-center gap-2">
-                          <Label htmlFor="composer-control-switch" className="text-right text-xs flex items-center gap-1.5 justify-end">
-                            <Bot className="h-3 w-3" /> Control
-                          </Label>
-                          <div className="col-span-2 flex items-center">
-                              <Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/>
-                          </div>
+                          <Label htmlFor="composer-control-switch" className="text-right text-xs flex items-center gap-1.5 justify-end"><Bot className="h-3 w-3" /> Control</Label>
+                          <div className="col-span-2 flex items-center"><Switch id="composer-control-switch" checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isInitializing || isPlaying}/></div>
                       </div>
                     </>
                   )}
@@ -620,35 +516,6 @@ export function AuraGrooveV2({
                   </div>
                 </CardContent>
               </Card>
-               <Card className="border-0 shadow-none mt-2 bg-transparent">
-                <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4"/> Sleep Timer</CardTitle></CardHeader>
-                <CardContent className="space-y-2 p-3 pt-0">
-                    <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-2">
-                        <Label htmlFor="timer-slider" className="text-right text-xs">Minutes</Label>
-                        <Slider
-                            id="timer-slider"
-                            value={[timerSettings.duration / 60]}
-                            min={0}
-                            max={30}
-                            step={5}
-                            onValueChange={(v) => handleTimerDurationChange(v[0])}
-                            className="col-span-1"
-                            disabled={isInitializing || timerSettings.isActive}
-                        />
-                        <span className="text-xs w-8 text-right font-mono">{timerSettings.duration / 60}</span>
-                    </div>
-                    <div className="flex justify-center items-center gap-4 pt-2">
-                         <Button
-                            onClick={handleToggleTimer}
-                            disabled={isInitializing || timerSettings.duration === 0}
-                            variant={timerSettings.isActive ? 'destructive' : 'secondary'}
-                            className="w-full h-8 text-xs"
-                        >
-                            {timerSettings.isActive ? `Stop Timer (${formatTime(timerSettings.timeLeft)})` : 'Start Timer'}
-                        </Button>
-                    </div>
-                </CardContent>
-              </Card>
             </TabsContent>
 
             <TabsContent value="instruments" className="space-y-1 pt-0 px-1">
@@ -659,39 +526,23 @@ export function AuraGrooveV2({
                           const settings = instrumentSettings[part];
                           if (!settings) return null;
                           let instrumentList: (string | 'none')[] = [];
-                           if (part === 'bass') {
-                              instrumentList = bassInstrumentList;
-                          } else if (part === 'melody') {
-                              instrumentList = melodyInstrumentList;
-                          } else if (part === 'accompaniment') {
-                              instrumentList = textureInstrumentList;
-                          } else if (part === 'harmony') {
-                              instrumentList = harmonyInstrumentList as any;
-                          } else if (part === 'pianoAccompaniment') {
-                              instrumentList = ['piano'];
-                          }
+                           if (part === 'bass') instrumentList = bassInstrumentList;
+                           else if (part === 'melody') instrumentList = melodyInstrumentList;
+                           else if (part === 'accompaniment') instrumentList = textureInstrumentList;
+                           else if (part === 'harmony') instrumentList = harmonyInstrumentList as any;
+                           else if (part === 'pianoAccompaniment') instrumentList = ['piano'];
+                          
                           const isDisabled = isInitializing || isPlaying || composerControl;
-
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2 bg-background/30 border-primary/10">
                                <div className="grid grid-cols-2 items-center gap-2">
-                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">
-                                        {getPartIcon(part as string)}
-                                        {part === 'pianoAccompaniment' ? 'Rhodes' : part}
-                                    </Label>
+                                    <Label className="font-semibold flex items-center gap-1.5 capitalize text-xs">{getPartIcon(part as string)}{part === 'pianoAccompaniment' ? 'Rhodes' : part}</Label>
                                     {part !== 'pianoAccompaniment' ? (
                                         <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
                                             <SelectTrigger className="h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                {instrumentList.map(inst => {
-                                                    const displayName = displayNames[inst] || inst.charAt(0).toUpperCase() + inst.slice(1).replace(/([A-Z])/g, ' $1');
-                                                    return <SelectItem key={inst} value={inst} className="text-xs">{displayName}</SelectItem>
-                                                })}
-                                            </SelectContent>
+                                            <SelectContent>{instrumentList.map(inst => <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst}</SelectItem>)}</SelectContent>
                                         </Select>
-                                    ) : (
-                                        <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>
-                                    )}
+                                    ) : <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>}
                                 </div>
                                  <div className="flex items-center gap-2">
                                     <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
@@ -736,51 +587,26 @@ export function AuraGrooveV2({
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Drum className="h-4 w-4"/>Drums</Label>
                                <Select value={drumSettings.pattern} onValueChange={(v) => setDrumSettings(d => ({...d, pattern: v as any}))} disabled={isInitializing || isPlaying}>
                                   <SelectTrigger className="w-[140px] h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                      <SelectItem value="none" className="text-xs">None</SelectItem>
-                                      <SelectItem value="ambient_beat" className="text-xs">Ambient</SelectItem>
-                                      <SelectItem value="composer" className="text-xs">Composer</SelectItem>
-                                  </SelectContent>
+                                  <SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="ambient_beat">Ambient</SelectItem><SelectItem value="composer">Composer</SelectItem></SelectContent>
                                </Select>
                           </div>
-                          <div className="flex items-center gap-2">
-                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/> Volume</Label>
-                              <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
-                               <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.volume * 100)}</span>
-                          </div>
-                           <div className="flex items-center gap-2 pt-2">
-                              <Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Kick</Label>
-                              <Slider value={[drumSettings.kickVolume]} max={1.5} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, kickVolume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/>
-                               <span className="text-xs w-8 text-right font-mono">{Math.round(drumSettings.kickVolume * 100)}</span>
-                          </div>
+                          <div className="flex items-center gap-2"><Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3"/> Vol</Label><Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/></div>
+                           <div className="flex items-center gap-2 pt-2"><Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Kick</Label><Slider value={[drumSettings.kickVolume]} max={1.5} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, kickVolume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/></div>
                       </div>
                   </CardContent>
               </Card>
             </TabsContent>
           </div>
-
         </Tabs>
       </main>
 
-      {/* Warm up Modal */}
       <Dialog open={isWarmingUp}>
         <DialogContent className="sm:max-w-md border-primary/20 bg-card/95 backdrop-blur-xl">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Engine Synchronization</DialogTitle>
-            <DialogDescription>Warming up the generative engine before starting the broadcast.</DialogDescription>
-          </DialogHeader>
+          <DialogHeader className="sr-only"><DialogTitle>Warming up</DialogTitle></DialogHeader>
           <div className="flex flex-col items-center justify-center p-6 space-y-6">
-            <div className="relative">
-                <div className="absolute inset-0 animate-ping rounded-full bg-primary/20" />
-                <TowerControl className="h-16 w-16 text-primary relative z-10" />
-            </div>
-            <div className="text-center space-y-2">
-                <h2 className="text-xl font-black uppercase tracking-tighter">Warming up engine</h2>
-                <p className="text-sm text-muted-foreground font-bold uppercase tracking-widest opacity-70">Please wait for synchronization...</p>
-            </div>
-            <div className="text-6xl font-black text-primary font-mono tabular-nums">
-                {warmUpTimeLeft}
-            </div>
+            <div className="relative"><div className="absolute inset-0 animate-ping rounded-full bg-primary/20" /><TowerControl className="h-16 w-16 text-primary relative z-10" /></div>
+            <div className="text-center space-y-2"><h2 className="text-xl font-black uppercase tracking-tighter">Warming up engine</h2><p className="text-sm text-muted-foreground font-bold uppercase tracking-widest opacity-70">Please wait for synchronization...</p></div>
+            <div className="text-6xl font-black text-primary font-mono tabular-nums">{warmUpTimeLeft}</div>
           </div>
         </DialogContent>
       </Dialog>

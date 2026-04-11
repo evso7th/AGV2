@@ -105,7 +105,7 @@ import type { Genre } from '@/types/music';
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
 
 const AVAILABLE_GENRES: Genre[] = [
-  'ambient', 'blues', 'trance', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
+  'ambient', 'psybient', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
 ];
 
 const AVAILABLE_MOODS: Mood[] = [
@@ -146,7 +146,8 @@ const DISPLAY_NAMES: Record<string, string> = {
     'piano': 'Acoustic Piano',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'bass_808': '808 Sub Bass',
-    'none': 'No Override'
+    'none': 'No Override',
+    'psybient': 'Psy-Ambient'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -590,9 +591,9 @@ export default function HypercubeDashboard() {
   const filtersActive = explorerSearch || selectedFilterGenres.length > 0 || selectedFilterMoods.length > 0;
 
   return (
-    <div className="min-h-screen bg-background p-4 sm:p-8 font-body overflow-x-hidden">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <header className="flex items-center justify-between">
+    <div className="min-h-screen bg-background p-4 sm:p-8 font-body overflow-x-hidden flex flex-col">
+      <div className="max-w-6xl mx-auto w-full space-y-8 flex-grow flex flex-col">
+        <header className="flex items-center justify-between shrink-0">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
             <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Station</p>
@@ -604,15 +605,15 @@ export default function HypercubeDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase">Active</span></div></CardContent></Card>
         </div>
 
-        <Tabs defaultValue="explore" className="space-y-6">
-          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50">
+        <Tabs defaultValue="explore" className="flex-grow flex flex-col overflow-hidden space-y-6">
+          <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50 shrink-0">
             <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider">Explore</TabsTrigger>
             <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider">Genetic Map</TabsTrigger>
             <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider">Masterpieces</TabsTrigger>
@@ -620,9 +621,9 @@ export default function HypercubeDashboard() {
             <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider">Inject DNA</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="explore" className="space-y-4">
-            <Card className="border-border/50 shadow-xl bg-card/50">
-              <CardHeader className="pb-4">
+          <TabsContent value="explore" className="flex-grow flex flex-col overflow-hidden space-y-4 m-0">
+            <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
+              <CardHeader className="pb-4 shrink-0">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle>
@@ -637,10 +638,10 @@ export default function HypercubeDashboard() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0 border-t">
-                <ScrollArea className="h-[650px] px-4 py-2">
+              <CardContent className="p-0 border-t flex-grow overflow-hidden">
+                <ScrollArea className="h-full px-4 py-2">
                   {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Cloud...</div> : (
-                    <Accordion type="multiple" className="space-y-2">
+                    <Accordion type="multiple" className="space-y-2 pb-10">
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                           <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
@@ -739,10 +740,10 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="genetic" className="space-y-6">
-            <Card className="border-border/50 shadow-xl bg-card/50">
-              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
-              <CardContent className="h-[500px] p-4 pt-0">
+          <TabsContent value="genetic" className="flex-grow">
+            <Card className="border-border/50 shadow-xl bg-card/50 h-full flex flex-col">
+              <CardHeader shrink-0><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
+              <CardContent className="flex-grow p-4 pt-0 min-h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                     <PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} />
@@ -756,10 +757,11 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="masterpieces">
-            <Card className="border-border/50 shadow-xl bg-card/50">
-              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
-              <CardContent><ScrollArea className="h-[500px]"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <TabsContent value="masterpieces" className="flex-grow overflow-hidden">
+            <Card className="border-border/50 shadow-xl bg-card/50 h-full flex flex-col overflow-hidden">
+              <CardHeader shrink-0><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
+              <CardContent className="flex-grow overflow-hidden p-0">
+                <ScrollArea className="h-full px-6 py-4"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10">
                 {globalMasterpieces?.map((m: any) => (
                   <Card key={m.id} className="bg-background/40 border-border/50 p-4 space-y-2 group relative">
                     <div className="flex justify-between items-start"><Badge variant="outline" className="text-[10px] font-black uppercase text-primary">{m.genre}</Badge></div>
@@ -771,9 +773,9 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="documents" className="space-y-4">
-            <Card className="border-border/50 shadow-xl bg-card/50">
-              <CardHeader className="pb-4">
+          <TabsContent value="documents" className="flex-grow flex flex-col overflow-hidden space-y-4 m-0">
+            <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
+              <CardHeader className="pb-4 shrink-0">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   <div className="flex flex-col gap-1">
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> Project Root Manifests</CardTitle>
@@ -787,8 +789,8 @@ export default function HypercubeDashboard() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-0 border-t">
-                <ScrollArea className="h-[500px]">
+              <CardContent className="p-0 border-t flex-grow overflow-hidden">
+                <ScrollArea className="h-full">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
                       <tr>
@@ -820,8 +822,8 @@ export default function HypercubeDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="inject" className="space-y-6">
-            <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50">
+          <TabsContent value="inject" className="flex-grow flex flex-col overflow-hidden space-y-6 m-0">
+            <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shrink-0">
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-12 px-8 shadow-lg uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button>
               <div className="flex items-center gap-3 pl-6 border-l border-border/50">
@@ -830,13 +832,13 @@ export default function HypercubeDashboard() {
               </div>
             </div>
             {stagedAxioms.length > 0 && (
-              <Card className="border-primary/30 shadow-2xl overflow-hidden">
-                <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4">
+              <Card className="border-primary/30 shadow-2xl overflow-hidden flex-grow flex flex-col m-0">
+                <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4 shrink-0">
                   <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
                   <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={() => setStagedAxioms([])} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitInjection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
                 </CardHeader>
-                <CardContent className="p-0">
-                    <ScrollArea className="h-[500px]">
+                <CardContent className="p-0 flex-grow overflow-hidden">
+                    <ScrollArea className="h-full">
                         <table className="w-full text-left text-sm border-collapse">
                             <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
                                 <tr>
@@ -881,9 +883,7 @@ export default function HypercubeDashboard() {
         <AlertDialogContent className="border-primary/20 bg-card">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-bold">
-              {confirmConfig?.desc || "This action is critical and cannot be undone."}
-            </AlertDialogDescription>
+            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>

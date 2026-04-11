@@ -1,8 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.7 — "The Export Integrity".
- * #ЗАЧЕМ: Исправление ошибки импорта и расширение инструментов нормализации.
- * #ОБНОВЛЕНО (ПЛАН №1014): Экспортирована функция normalizeStr.
+ * @fileOverview Universal Music Theory Utilities V4.8 — "Psybient Standard".
  */
 
 import type { 
@@ -386,6 +384,13 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
 }
 
 export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
+    psybient: [
+        [0.6, 0.1, 0.1, 0.1, 0.1], 
+        [0.2, 0.5, 0.2, 0.1, 0.0], 
+        [0.3, 0.1, 0.5, 0.1, 0.0], 
+        [0.2, 0.1, 0.1, 0.5, 0.1], 
+        [0.4, 0.0, 0.1, 0.1, 0.4]  
+    ],
     ambient: [
         [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
         [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
@@ -398,18 +403,11 @@ export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
         [0.6, 0.3, 0.1], 
         [0.4, 0.4, 0.2], 
         [0.5, 0.2, 0.3]  
-    ],
-    trance: [
-        [0.6, 0.1, 0.1, 0.1, 0.1], 
-        [0.2, 0.5, 0.2, 0.1, 0.0], 
-        [0.3, 0.1, 0.5, 0.1, 0.0], 
-        [0.2, 0.1, 0.1, 0.5, 0.1], 
-        [0.4, 0.0, 0.1, 0.1, 0.4]  
     ]
 };
 
 export const GENRE_STATES: Record<string, number[]> = {
+    psybient: [0, 3, 5, 8, 10],      
     ambient: [0, 5, 7, 9, 3, 10], 
-    blues: [0, 5, 7],             
-    trance: [0, 3, 5, 8, 10]      
+    blues: [0, 5, 7]             
 };

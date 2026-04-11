@@ -15,7 +15,7 @@ export type CommonMood = 'dark' | 'neutral' | 'light';
 /**
  * Жанр — управляет формой и плотностью
  */
-export type Genre = 'trance' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
+export type Genre = 'psybient' | 'ambient' | 'progressive' | 'rock' | 'house' | 'rnb' | 'ballad' | 'reggae' | 'blues' | 'celtic';
 
 /**
  * Техника игры
@@ -25,9 +25,6 @@ export type Technique =
   | 'long_notes' | 'boogie' | 'walking' | 'drone' | 'hit' 
   | 'harm' | 'slide' | 'arpeggio' | 'portamento' | 'glissando' | 'glide' 
   | 'pulse' | 'syncopated' | 'bend' | 'vibrato';
-
-export type Dynamics = 'p' | 'mf' | 'f';
-export type Phrasing = 'legato' | 'staccato' | 'detached';
 
 /**
  * Векторные координаты в Гиперкубе (0.0 - 1.0)
@@ -105,3 +102,6 @@ export type BluesSoloPhrase = {
   tech?: string;
   octShift?: number;
 }[];
+
+export type Dynamics = 'p' | 'mf' | 'f';
+export type Phrasing = 'legato' | 'staccato' | 'detached';
