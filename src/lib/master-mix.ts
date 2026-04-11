@@ -1,20 +1,20 @@
 
 /**
- * @fileOverview Master Mix Registry V1.1 — "The Psybient Era".
+ * @fileOverview Master Mix Registry V1.2 — "The Neuro-Pump Standard".
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: {
-        bass: 0.95,
-        melody: 0.70,
-        accompaniment: 0.85,
+        bass: 1.0,           // Visceral impact
+        melody: 0.85,        // Mandatory presence
+        accompaniment: 0.80, // Enveloping mist
         harmony: 0.65,
         pianoAccompaniment: 0.45,
-        drums: 0.80,
-        sparkles: 0.20,
-        sfx: 0.25
+        drums: 0.95,         // Neuro-pumping foundation
+        sparkles: 0.25,
+        sfx: 0.30            // Details & Spices
     },
     ambient: {
         bass: 0.45,
