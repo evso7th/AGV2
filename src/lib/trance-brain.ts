@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V4.0 — "The Sovereign Chronos Standard".
- * #ЗАЧЕМ: Обучение Псибиента методам Амбиента для безупречной работы с Наследием.
- * #ЧТО: ПЛАН №1035 — Мозаичное индексирование, синхронизация слоев и расширенная атмосфера.
+ * @fileOverview Psybient Brain V4.1 — "Total Ensemble Sovereignty".
+ * #ЗАЧЕМ: Реализация полной интеграции всех ролей Наследия (accomp, piano, melody, bass, drums).
+ * #ЧТО: ПЛАН №1036 — Принудительное использование ДНК для аккомпанемента и пианино.
  */
 
 import type {
@@ -20,7 +20,6 @@ import type {
 import {
     calculateMusiNum,
     DEGREE_TO_SEMITONE,
-    SEMITONE_TO_DEGREE,
     normalizePhraseGroup,
     decompressCompactPhrase,
     resolveSemanticTimbre,
@@ -30,7 +29,6 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
-import { DRUM_KITS } from './assets/drum-kits';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -71,9 +69,7 @@ export class TranceBrain {
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
-    private phraseArc: number = 0;
     private spiralTransposition: number = 0;
-    private currentTimeScale: number = 1;
 
     private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
     private lastHarmonySwitchBar: number = -1;
@@ -95,9 +91,6 @@ export class TranceBrain {
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
     }
 
-    /**
-     * #ЗАЧЕМ: Улучшенное мозаичное индексирование из Амбиента.
-     */
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
@@ -105,7 +98,6 @@ export class TranceBrain {
         const barsElapsed = epoch - startEpoch;
         const linearIndex = barsElapsed % totalBars;
         
-        // В Psybient на высоких энергиях допускаем "прыжки" по мозаике
         if (tension > 0.8) {
             const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
             if (rand < 0.15) return (linearIndex + 1) % totalBars;
@@ -114,16 +106,12 @@ export class TranceBrain {
         return linearIndex;
     }
 
-    /**
-     * #ЗАЧЕМ: Система выбора Аксиом, обученная методам Амбиента.
-     */
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = [];
         this.currentDrumAxioms = [];
         this.currentBassTheme = null;
         this.currentNativeRoot = null;
         this.currentPreferredInstrument = null;
-        this.currentTimeScale = 1;
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
@@ -168,7 +156,7 @@ export class TranceBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
-                    // Собираем весь "Ансамбль Сиблингов"
+                    // #ЗАЧЕМ: Полный сбор "Ансамбля Наследия" (ПЛАН №1036).
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => {
                         this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id });
@@ -179,7 +167,8 @@ export class TranceBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    // #ЗАЧЕМ: Захватываем все формы аккомпанемента и пианино.
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                     });
@@ -194,7 +183,7 @@ export class TranceBrain {
         }
         
         this.currentTrackName = 'Algorithmic';
-        this.soloistBusyUntilBar = epoch + 4; // Пауза для поиска нового
+        this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
 
@@ -214,9 +203,7 @@ export class TranceBrain {
     ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        this.phraseArc = Math.max(0, Math.min(1, Math.sin((epoch % 8 / 8) * Math.PI)));
         
-        // Spiral Transposition logic
         if (epoch > 0 && epoch % 8 === 0) {
             const shifts = [0, 3, 5, 7, -2];
             this.spiralTransposition = shifts[calculateMusiNum(epoch, 11, this.seed, shifts.length)];
@@ -234,7 +221,7 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Full Kit Support + Heritage)
+        // 1. DRUMS (DNA First)
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, tension);
             if (heritageDrums.length > 0) {
@@ -246,7 +233,7 @@ export class TranceBrain {
             events.push(...this.renderPsybientKitchen(epoch, tension));
         }
 
-        // 2. BASS (Neuro Rolling or Heritage)
+        // 2. BASS (DNA First)
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
@@ -255,7 +242,7 @@ export class TranceBrain {
             }
         }
 
-        // 3. MELODY (Heritage Sovereignty)
+        // 3. MELODY (DNA First)
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -266,30 +253,44 @@ export class TranceBrain {
             events.push(...melodyEvents);
         }
 
-        // 4. PIANIST (The Sparing Virtuoso)
-        if (hints.pianoAccompaniment && !isIntro) {
-            if (this.rng.chance(35)) {
-                const pianoEvents = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-                events.push(...pianoEvents.events);
+        // 4. ACCOMPANIMENT & PIANO (DNA First Logic)
+        const usedTargetLayers = new Set<string>();
+        
+        if (!isIntro) {
+            // #ЗАЧЕМ: Принудительное исполнение ДНК для пэдов и пианино.
+            this.currentAccompAxioms.forEach(ax => {
+                const role = ax.role.toLowerCase();
+                let target: InstrumentPart | null = null;
+                
+                if (role.includes('piano')) target = 'pianoAccompaniment';
+                else if (role.includes('accomp')) target = 'accompaniment';
+                
+                if (target && hints[target] && !usedTargetLayers.has(target)) {
+                    const renders = this.renderSpecificHeritageAccompaniment(resChord, epoch, ax.phrase, target, tension);
+                    if (renders.length > 0) {
+                        events.push(...renders);
+                        usedTargetLayers.add(target);
+                        if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target);
+                    }
+                }
+            });
+
+            // 5. GENERATIVE FALLBACKS
+            if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
+                events.push(...this.renderSidechainedPad(epoch, resChord, tension));
+            }
+            if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
+                const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+                if (p.events.length > 0) events.push(...p.events);
             }
         }
 
-        // 5. HARMONY (Alternating)
+        // 6. HARMONY (Alternating)
         if (hints.harmony && !isIntro) {
             this.selectHarmonyInstrument(epoch);
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
             events.push(...harEvents);
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
-        }
-
-        // 6. ACCOMPANIMENT (Heritage or Sidechain Pad)
-        if (hints.accompaniment && !isIntro) {
-            const heritageAcc = this.renderHeritageAccompaniment(resChord, epoch, tension);
-            if (heritageAcc.length > 0) {
-                events.push(...heritageAcc);
-            } else {
-                events.push(...this.renderSidechainedPad(epoch, resChord, tension));
-            }
         }
 
         // 7. ATMOSPHERE
@@ -304,9 +305,10 @@ export class TranceBrain {
                 melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Narrative',
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
                 drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Neuro Pumping',
-                piano: hints.pianoAccompaniment ? 'Shadow Virtuoso' : 'none'
+                accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage DNA' : 'Sidechain Pad',
+                piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage DNA' : 'Shadow Virtuoso'
             },
-            narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [BPM: ${newBpm || 'Sync'}] [Atmosphere: Wide]`
+            narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [Heritage Layers: ${usedTargetLayers.size}] [Atmosphere: Wide]`
         };
     }
 
@@ -407,6 +409,19 @@ export class TranceBrain {
         }));
     }
 
+    private renderSpecificHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+
+        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+            type: type, note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
+            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
+        }));
+    }
+
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
@@ -414,7 +429,7 @@ export class TranceBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
 
-        this.currentAccompAxioms.forEach(ax => {
+        this.currentAccompAxioms.filter(ax => ax.role.toLowerCase().includes('accomp')).forEach(ax => {
             const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
             barNotes.forEach(n => {
                 events.push({
