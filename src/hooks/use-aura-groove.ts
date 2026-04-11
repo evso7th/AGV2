@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V6.0 — "Hierarchical Mix Support".
- * #ЧТО: ПЛАН №1024 — Реализация автоматического сведения на основе жанрового Мастер-микса и Блюпринтов.
+ * #ЗАЧЕМ: Хук управления UI музыкой V6.1 — "Volume Restoration Fix".
+ * #ЧТО: ПЛАН №1031 — Изоляция applyAutoMix от manual изменений для предотвращения сброса громкости.
  */
 'use client';
 
@@ -134,7 +134,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   /**
    * #ЗАЧЕМ: Расчет иерархического сведения.
-   * #ЧТО: Master Mix (Genre) + Mood Override (Blueprint).
+   * #ЧТО: ПЛАН №1031 — Очищены зависимости для предотвращения ресета громкостей при движении слайдера.
    */
   const applyAutoMix = useCallback(() => {
       if (!isInitialized) return;
@@ -145,7 +145,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
       const finalMix: SoundMix = { ...masterGenreMix, ...moodOverrideMix };
 
-      console.log(`%c[Mixer] Auto-Calibration: ${genre}/${mood}`, 'color: #4ade80; font-weight: bold;');
+      console.log(`%c[Mixer] Auto-Calibration Triggered: ${genre}/${mood}`, 'color: #4ade80; font-weight: bold;');
 
       // 1. Применяем громкости для инструментов
       const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
@@ -163,7 +163,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
           setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! }));
       }
 
-      // 3. Применяем текстуры
+      // 3. Применяем текстуры (только если они включены)
       if (finalMix.sparkles !== undefined) {
           setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0);
           setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } }));
@@ -172,12 +172,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
           setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0);
           setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } }));
       }
-  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled]);
+  }, [isInitialized, genre, mood, setVolume]); // Убрали textureSettings из зависимостей
 
-  // #ЗАЧЕМ: Перекалибровка при смене жанра или настроения.
+  // #ЗАЧЕМ: Перекалибровка только при смене жанра или настроения.
   useEffect(() => {
       applyAutoMix();
-  }, [genre, mood, applyAutoMix]);
+  }, [genre, mood, isInitialized]); // Убрали applyAutoMix из зависимостей
 
   const updateAllVolumes = useCallback(() => {
     if (!isInitialized) return;
@@ -211,6 +211,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleVolumeChange = (part: InstrumentPart, value: number) => {
     setVolume(part as string, value);
+    
+    // #ЗАЧЕМ: Прямое обновление состояния без ожидания побочных эффектов.
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
     } else if (part === 'drums') {

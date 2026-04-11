@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.1 — "Atmospheric Visibility Fix".
- * #ЗАЧЕМ: Повышение слышимости эффектов в Псибиенте.
- * #ЧТО: ПЛАН №1030 — Рекалибровка VOICE_BALANCE для sparkles и sfx.
+ * @fileOverview Audio Engine Context V39.2 — "Volume Restoration Fix".
+ * #ЗАЧЕМ: Гарантия работы регуляторов громкости.
+ * #ЧТО: ПЛАН №1031 — Усиление стабильности gain-узлов.
  */
 'use client';
 
@@ -38,8 +38,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.65,           
   accompaniment: 0.80,
   drums: 0.85,            
-  sparkles: 0.45,       // INCREASED from 0.115 (Plan 1030)
-  sfx: 0.45,            // INCREASED from 0.135 (Plan 1030)
+  sparkles: 0.45,       
+  sfx: 0.45,            
   harmony: 0.80,        
   pianoAccompaniment: 0.325, 
 };
@@ -173,9 +173,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const setVolumeCallback = useCallback((part: string, volume: number) => {
+    if (!isFinite(volume)) return;
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
+        // #ЗАЧЕМ: Прямое и мгновенное применение громкости.
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
