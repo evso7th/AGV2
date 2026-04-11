@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V3.5 — "The Heritage Sovereignty".
- * #ЗАЧЕМ: Устранение ритмической монотонии и возврат власти Наследию.
- * #ЧТО: ПЛАН №1032 — Уникальные ритмы из DNA, обязательная мелодия, дозированный пианист и переменная гармония.
+ * @fileOverview Psybient Brain V3.6 — "The Atmospheric Expansion".
+ * #ЗАЧЕМ: Устранение однообразия спарклов и внедрение вокальных акцентов.
+ * #ЧТО: ПЛАН №1033 — Ротация категорий спарклов и дозированные голоса в SFX.
  */
 
 import type {
@@ -149,19 +149,16 @@ export class TranceBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
-                    // Sibling Drums
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => {
                         this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id });
                     });
 
-                    // Sibling Bass
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    // Sibling Accomp
                     const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
@@ -213,12 +210,10 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. HERITAGE DRUMS (SOVEREIGN PATTERNS)
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, tension);
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
-                // Если есть ДНК, кик только подчеркивает пульс
                 events.push(...this.renderNeuroBaseKick(epoch, tension));
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
@@ -226,7 +221,6 @@ export class TranceBrain {
             events.push(...this.renderPsybientKitchen(epoch, tension));
         }
 
-        // 2. HERITAGE BASS
         let activeBassAxiom = 'Neuro Rolling';
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
@@ -237,7 +231,6 @@ export class TranceBrain {
             }
         }
 
-        // 3. HERITAGE MELODY (MANDATORY)
         let melodyEvents: FractalEvent[] = [];
         let activeMelAxiom = isIntro ? 'Waiting' : 'Spiral Narrative';
         if (hints.melody && !isIntro) {
@@ -250,16 +243,13 @@ export class TranceBrain {
             events.push(...melodyEvents);
         }
 
-        // 4. INTENTIONAL PIANIST (SPARSE SHADOWS)
         if (hints.pianoAccompaniment && !isIntro) {
-            // #ЗАЧЕМ: Дозированное участие пианиста (ПЛАН №1032).
             if (this.rng.chance(35)) {
                 const pianoEvents = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
                 events.push(...pianoEvents.events);
             }
         }
 
-        // 5. ALTERNATING HARMONY
         if (hints.harmony && !isIntro) {
             this.selectHarmonyInstrument(epoch);
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
@@ -267,12 +257,10 @@ export class TranceBrain {
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
         }
 
-        // 6. SIDECHAINED ACCOMPANIMENT
         if (hints.accompaniment && !isIntro) {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension));
         }
 
-        // 7. ATMOSPHERIC EVENTS
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -364,15 +352,6 @@ export class TranceBrain {
         return events;
     }
 
-    private renderBluesyTomFill(tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-        [9, 10, 11].forEach((t, i) => {
-            events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.4, weight: 0.9, technique: 'hit', dynamics: 'mf', pan: (i - 1) * 0.5 });
-        });
-        return events;
-    }
-
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
@@ -429,7 +408,7 @@ export class TranceBrain {
         const isMinor = chord.chordType === 'minor';
         const thirdInterval = isMinor ? 3 : 4;
         melodyEvents.forEach((m, i) => {
-            if (i % 3 === 0) { // More sparse
+            if (i % 3 === 0) {
                 events.push({
                     ...m,
                     type: 'pianoAccompaniment',
@@ -464,18 +443,34 @@ export class TranceBrain {
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        
+        // --- SPARKLES (The Glittering Jungle) ---
         if (this.rng.chance(60 + tension * 20)) {
+            // #ЗАЧЕМ: Принудительная ротация категорий для расширения палитры (ПЛАН №1033).
+            const categories = ['light', 'ambient_common', 'electronic', 'root', 'promenade'];
+            const categoryIdx = calculateMusiNum(epoch, 13, this.seed, categories.length);
+            const category = categories[categoryIdx];
+
             events.push({
                 type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.0,
                 technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9,
-                params: { mood: this.mood, genre: this.genre, category: tension < 0.5 ? 'light' : 'ambient_common' }
+                params: { mood: this.mood, genre: this.genre, category: category }
             });
         }
+
+        // --- SFX (Voices and Lasers) ---
         if (this.rng.chance(40 + tension * 20)) {
+            // #ЗАЧЕМ: Дозированное использование голосов (ПЛАН №1033).
+            const useVoice = this.rng.chance(15); // 15% шанс на голос
+            
             events.push({
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 0.9,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8,
-                params: { mood: this.mood, genre: this.genre }
+                params: { 
+                    mood: this.mood, 
+                    genre: this.genre,
+                    rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined
+                }
             });
         }
         return events;

@@ -1,3 +1,4 @@
+
 import type { Genre, Mood } from '@/types/music';
 
 const SPARKLE_SAMPLES = {
@@ -248,8 +249,27 @@ export class SparklePlayer {
         let samplePool: AudioBuffer[] = [];
         const rand = Math.random();
 
-        if (category === 'promenade_blues' && this.bluesBuffers.length > 0) samplePool = this.bluesBuffers;
-        else if (category === 'promenade' && this.promenadeBuffers.length > 0) samplePool = this.promenadeBuffers;
+        // #ЗАЧЕМ: Поддержка явного указания категорий для расширения разнообразия (ПЛАН №1033).
+        const cat = (category || '').toUpperCase();
+
+        if (cat === 'PROMENADE_BLUES' && this.bluesBuffers.length > 0) samplePool = this.bluesBuffers;
+        else if (cat === 'PROMENADE' && this.promenadeBuffers.length > 0) samplePool = this.promenadeBuffers;
+        else if (cat === 'ELECTRONIC' && this.electronicBuffers.length > 0) samplePool = this.electronicBuffers;
+        else if (cat === 'LIGHT' && this.lightBuffers.length > 0) samplePool = this.lightBuffers;
+        else if (cat === 'DARK' && this.darkBuffers.length > 0) samplePool = this.darkBuffers;
+        else if (cat === 'AMBIENT_COMMON' && this.ambientCommonBuffers.length > 0) samplePool = this.ambientCommonBuffers;
+        else if (cat === 'ROOT' && this.rootBuffers.length > 0) samplePool = this.rootBuffers;
+        else if (genre === 'psybient') {
+            // Psybient Wide Shuffle: Pick from all available pools if category is generic
+            const allValidPools = [
+                this.ambientCommonBuffers, this.lightBuffers, this.electronicBuffers, 
+                this.rootBuffers, this.promenadeBuffers, this.darkBuffers
+            ].filter(p => p.length > 0);
+            
+            if (allValidPools.length > 0) {
+                samplePool = allValidPools[Math.floor(Math.random() * allValidPools.length)];
+            }
+        }
         else if (genre === 'ambient') samplePool = rand < 0.7 ? this.ambientCommonBuffers : this.darkBuffers;
         else if (mood === 'dark' || mood === 'anxious') samplePool = this.darkBuffers;
         else samplePool = this.rootBuffers;
