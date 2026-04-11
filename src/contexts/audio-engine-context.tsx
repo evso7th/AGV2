@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.0 — "Metadata Integrity".
- * #ЗАЧЕМ: Поддержка расширенных фильтров в DNA Selection Station.
- * #ЧТО: ПЛАН №1008 — Сбор уникальных жанров и настроений для каждой композиции.
- * #ОБНОВЛЕНО (ПЛАН №1020): Рекалибровка громкости: Bass x2, Kitchen x0.5, Budd x0.5.
+ * @fileOverview Audio Engine Context V39.1 — "Atmospheric Visibility Fix".
+ * #ЗАЧЕМ: Повышение слышимости эффектов в Псибиенте.
+ * #ЧТО: ПЛАН №1030 — Рекалибровка VOICE_BALANCE для sparkles и sfx.
  */
 'use client';
 
@@ -35,14 +34,14 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.50,            // Doubled from 0.25 (Plan 1020)
+  bass: 0.50,            
   melody: 0.65,           
   accompaniment: 0.80,
   drums: 0.85,            
-  sparkles: 0.115,       // Halved from 0.23 (Plan 1020)
-  sfx: 0.135,            // Halved from 0.27 (Plan 1020)
+  sparkles: 0.45,       // INCREASED from 0.115 (Plan 1030)
+  sfx: 0.45,            // INCREASED from 0.135 (Plan 1030)
   harmony: 0.80,        
-  pianoAccompaniment: 0.325, // Halved from 0.65 (Plan 1020)
+  pianoAccompaniment: 0.325, 
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
