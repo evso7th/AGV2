@@ -1,6 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V1.2 — "The Neuro-Pump Standard".
+ * @fileOverview Master Mix Registry V1.3 — "Atmospheric Power Standard".
+ * #ЗАЧЕМ: Усиление слышимости спарклов и SFX для Psybient.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -13,8 +14,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         harmony: 0.65,
         pianoAccompaniment: 0.45,
         drums: 0.95,         // Neuro-pumping foundation
-        sparkles: 0.25,
-        sfx: 0.30            // Details & Spices
+        sparkles: 0.45,      // #ЗАЧЕМ: Поднято с 0.25 для яркости.
+        sfx: 0.50            // #ЗАЧЕМ: Поднято с 0.30 для слышимости голосов.
     },
     ambient: {
         bass: 0.45,

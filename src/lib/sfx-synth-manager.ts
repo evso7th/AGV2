@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -122,7 +123,7 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.16;
+        this.preamp.gain.value = 0.55; // #ЗАЧЕМ: Значительное усиление для слышимости голосов.
         this.preamp.connect(destination);
     }
 
@@ -188,14 +189,14 @@ export class SfxSynthManager {
             }
         }
         const rand = Math.random();
+        if (genre === 'psybient') {
+            if (rand < 0.35) return 'voice'; // #ЗАЧЕМ: Повышенная вероятность голосов для Psybient.
+            if (rand < 0.7) return 'laser';
+            return 'common';
+        }
         if (genre === 'blues') {
             if (rand < 0.15) return 'voice'; 
             if (rand < 0.7) return 'dark';  
-            return 'common';
-        }
-        if (genre === 'trance' || genre === 'house' || genre === 'progressive' || genre === 'ambient') {
-            if (rand < 0.4) return 'voice';
-            if (rand < 0.7) return 'laser';
             return 'common';
         }
         if (mood === 'dark' || mood === 'anxious') return rand < 0.6 ? 'dark' : 'voice';
