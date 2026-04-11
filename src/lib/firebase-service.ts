@@ -70,9 +70,6 @@ export function saveProjectDocument(db: Firestore, data: {
     };
 
     setDoc(docRef, payload, { merge: true })
-        .then(() => {
-            toast({ title: "Manifest Synchronized", description: `${data.filename} updated in the Cloud.` });
-        })
         .catch(async (serverError) => {
             const permissionError = new FirestorePermissionError({
                 path: docRef.path,

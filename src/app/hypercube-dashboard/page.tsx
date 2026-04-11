@@ -93,7 +93,8 @@ import {
     resolveSemanticTimbre,
     TICKS_PER_BAR,
     TICK_TO_BEAT,
-    mergeIdenticalNotes
+    mergeIdenticalNotes,
+    SEMITONE_TO_DEGREE
 } from '@/lib/music-theory';
 import { readProjectRootManifests } from '@/app/actions/manifest-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -426,27 +427,45 @@ export default function HypercubeDashboard() {
       try {
         const json = JSON.parse(event.target?.result as string);
         let flattened: any[] = [];
+        
         const processAxiom = (ax: any, idx: number, compId: string) => {
             const phrase = ax.phrase || [];
             const repaired = repairLegacyPhrase(phrase);
-            const calculatedNoteCount = Math.floor(repaired.length / 4);
             
-            // #ЗАЧЕМ: Приоритет инструмента из JSON для Narrative.
+            let maxTick = 0;
+            for (let i = 0; i < repaired.length; i += 4) {
+                const end = (repaired[i] || 0) + (repaired[i+1] || 0);
+                if (end > maxTick) maxTick = end;
+            }
+            
+            const calculatedBars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
+            const calculatedNoteCount = Math.floor(repaired.length / 4);
             const narrative = ax.narrative || ax.instrument || "Heritage component.";
             
             return {
-                ...ax, phrase: repaired, role: (ax.role || 'melody').toLowerCase(), id: `${compId}_${idx}_${Math.random()}`,
-                compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
+                ...ax, 
+                phrase: repaired, 
+                role: (ax.role || 'melody').toLowerCase(), 
+                id: `${compId}_${idx}_${Math.random()}`,
+                compositionId: compId, 
+                genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
                 vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, 
                 narrative: narrative,
                 noteCount: ax.noteCount || calculatedNoteCount,
+                bars: ax.bars || calculatedBars,
+                barOffset: ax.barOffset ?? 0,
+                nativeBpm: ax.nativeBpm || ax.bpm || null,
+                nativeKey: ax.nativeKey || ax.key || 'C',
+                timeSignature: ax.timeSignature || ax.ts || '4/4',
                 ignored: ax.ignored ?? false
             };
         };
         
         if (json.header && json.tracks && Array.isArray(json.tracks)) {
+            // MIDI-JSON format
             const targetId = json.header.name || file.name.replace(/\.[^/.]+$/, "");
+            const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
             json.tracks.forEach((track: any, tIdx: number) => {
                 if (!track.notes || track.notes.length === 0) return;
                 const phrase: number[] = [];
@@ -457,21 +476,37 @@ export default function HypercubeDashboard() {
                     const degIdx = DEGREE_KEYS.indexOf(SEMITONE_TO_DEGREE[semitone] || 'R');
                     phrase.push(tick, duration, degIdx, TECHNIQUE_KEYS.indexOf('pick'));
                 });
-                // #ЗАЧЕМ: Сохранение имени инструмента в метаданных для processAxiom.
                 const instrInfo = track.instrument?.name || track.name || 'Unnamed';
-                flattened.push(processAxiom({ phrase, role: 'melody', instrument: instrInfo }, tIdx, targetId));
+                flattened.push(processAxiom({ 
+                    phrase, role: 'melody', instrument: instrInfo, nativeBpm: bpm 
+                }, tIdx, targetId));
             });
         } else if (Array.isArray(json)) {
-            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, file.name)));
+            // Array of axioms
+            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || file.name)));
         } else {
+            // Batch mode or generic object
             Object.entries(json).forEach(([compId, licks]: any) => { 
-                if(Array.isArray(licks)) licks.forEach((l, i) => flattened.push(processAxiom(l, i, compId))); 
+                if(Array.isArray(licks)) {
+                    licks.forEach((l, i) => flattened.push(processAxiom(l, i, compId))); 
+                } else if (licks.phrase) {
+                    flattened.push(processAxiom(licks, 0, compId));
+                }
             });
         }
+        
+        if (flattened.length === 0) {
+            toast({ variant: "destructive", title: "Empty File", description: "No valid music data found." });
+            return;
+        }
+
         setStagedAxioms(flattened);
         setSelectedIds(new Set(flattened.map(a => a.id)));
         setCurrentFileName(file.name);
-      } catch (err) { toast({ variant: "destructive", title: "Parse Error" }); }
+      } catch (err) { 
+          console.error("[Parser] Error:", err);
+          toast({ variant: "destructive", title: "Parse Error", description: "Invalid JSON format." }); 
+      }
     };
     reader.readAsText(file);
   };
@@ -491,7 +526,9 @@ export default function HypercubeDashboard() {
             commonMood: newCommons, 
             nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
             preferredInstrument: editAxiomData.preferredInstrument || null,
-            noteCount: editAxiomData.noteCount || 0
+            noteCount: editAxiomData.noteCount || 0,
+            barOffset: editAxiomData.barOffset || 0,
+            bars: editAxiomData.bars || 1
         });
         toast({ title: "Axiom Updated" }); setEditingAxiomId(null); setEditAxiomData(null);
     } catch (e) { toast({ variant: "destructive", title: "Update Failed" }); }
@@ -500,12 +537,16 @@ export default function HypercubeDashboard() {
 
   const handleCommitInjection = async () => {
     setIsProcessing(true);
+    let count = 0;
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (let i = 0; i < toInject.length; i++) {
         await saveHeritageAxiom(db, { ...toInject[i], genre: selectedGenre }, i);
+        count++;
       }
-      toast({ title: "DNA Injected" }); setStagedAxioms([]);
+      toast({ title: "DNA Injected", description: `Added ${count} axioms to Cloud.` }); 
+      setStagedAxioms([]);
+      setSelectedIds(new Set());
     } finally { setIsProcessing(false); }
   };
 
@@ -632,7 +673,7 @@ export default function HypercubeDashboard() {
                             </div>
                             <div className="flex items-center gap-2 pr-4">
                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="h-4 w-4" /></Button>
-                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); deleteDocumentNonBlocking(doc(db, 'heritage_axioms', licks[0].id)); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                               <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); licks.forEach(l => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', l.id))); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                             </div>
                           </div>
                           <AccordionContent className="p-0 border-t overflow-visible">
@@ -668,7 +709,6 @@ export default function HypercubeDashboard() {
                                           )}
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60 whitespace-nowrap">
-                                            {/* #ЗАЧЕМ: Добавление NoteCount в колонку Struct */}
                                             O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || 0}
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
@@ -801,7 +841,11 @@ export default function HypercubeDashboard() {
                             <thead className="bg-muted sticky top-0 z-10 text-[10px] uppercase font-black">
                                 <tr>
                                     <th className="p-4 w-12 text-center"><Checkbox checked={selectedIds.size === stagedAxioms.length} onCheckedChange={c => { if(c) setSelectedIds(new Set(stagedAxioms.map(a => a.id))); else setSelectedIds(new Set()); }} /></th>
-                                    <th className="p-4">Source</th><th className="p-4">Role</th><th className="p-4">Meta</th><th className="p-4 text-right">Preview</th>
+                                    <th className="p-4">Source</th>
+                                    <th className="p-4">Role</th>
+                                    <th className="p-4">Struct</th>
+                                    <th className="p-4">Meta</th>
+                                    <th className="p-4 text-right">Preview</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border/20">
@@ -811,6 +855,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
                                         <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
                                         <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars} / N:{ax.noteCount}</td>
+                                        <td className="p-4 text-[10px] font-mono opacity-60">{ax.nativeBpm || '??'}B / {ax.nativeKey} / {ax.timeSignature}</td>
                                         <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                     </tr>
                                 ))}
