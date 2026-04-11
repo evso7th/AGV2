@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V3.7 — "The Atmospheric & Rhythm Dominance".
- * #ЗАЧЕМ: Исправление отсутствия звуков (только кик, нет голосов, мало спарклов).
- * #ЧТО: ПЛАН №1034 — Активация всего драм-кита, форсирование спарклов и вокальных SFX.
+ * @fileOverview Psybient Brain V4.0 — "The Sovereign Chronos Standard".
+ * #ЗАЧЕМ: Обучение Псибиента методам Амбиента для безупречной работы с Наследием.
+ * #ЧТО: ПЛАН №1035 — Мозаичное индексирование, синхронизация слоев и расширенная атмосфера.
  */
 
 import type {
@@ -60,6 +60,7 @@ export class TranceBrain {
 
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
+    
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentThemeMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
@@ -72,6 +73,7 @@ export class TranceBrain {
     private soloistBusyUntilBar: number = -1;
     private phraseArc: number = 0;
     private spiralTransposition: number = 0;
+    private currentTimeScale: number = 1;
 
     private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
     private lastHarmonySwitchBar: number = -1;
@@ -93,19 +95,35 @@ export class TranceBrain {
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
     }
 
+    /**
+     * #ЗАЧЕМ: Улучшенное мозаичное индексирование из Амбиента.
+     */
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
-        return (epoch - startEpoch) % totalBars;
+        const barsElapsed = epoch - startEpoch;
+        const linearIndex = barsElapsed % totalBars;
+        
+        // В Psybient на высоких энергиях допускаем "прыжки" по мозаике
+        if (tension > 0.8) {
+            const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
+            if (rand < 0.15) return (linearIndex + 1) % totalBars;
+        }
+        
+        return linearIndex;
     }
 
+    /**
+     * #ЗАЧЕМ: Система выбора Аксиом, обученная методам Амбиента.
+     */
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = [];
         this.currentDrumAxioms = [];
         this.currentBassTheme = null;
         this.currentNativeRoot = null;
         this.currentPreferredInstrument = null;
+        this.currentTimeScale = 1;
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
@@ -119,7 +137,8 @@ export class TranceBrain {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood];
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('psybient') && (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
+                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                return axGenres.includes('psybient') && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
             });
         }
 
@@ -149,6 +168,7 @@ export class TranceBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
+                    // Собираем весь "Ансамбль Сиблингов"
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => {
                         this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id });
@@ -172,7 +192,9 @@ export class TranceBrain {
                 }
             }
         }
+        
         this.currentTrackName = 'Algorithmic';
+        this.soloistBusyUntilBar = epoch + 4; // Пауза для поиска нового
         return undefined;
     }
 
@@ -189,11 +211,12 @@ export class TranceBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints> } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         this.phraseArc = Math.max(0, Math.min(1, Math.sin((epoch % 8 / 8) * Math.PI)));
         
+        // Spiral Transposition logic
         if (epoch > 0 && epoch % 8 === 0) {
             const shifts = [0, 3, 5, 7, -2];
             this.spiralTransposition = shifts[calculateMusiNum(epoch, 11, this.seed, shifts.length)];
@@ -202,19 +225,20 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const isIntro = navInfo.currentPart.id === 'INTRO' || epoch < 4;
 
+        let newBpm: number | undefined;
         if (epoch >= this.soloistBusyUntilBar && !isIntro) {
-            this.selectNextAxiom(navInfo, dna, epoch);
+            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
 
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
+        // 1. DRUMS (Full Kit Support + Heritage)
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, tension);
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
-                // #ЗАЧЕМ: Добавление ритмической основы (хэты/снейр) даже при наличии Heritage.
                 events.push(...this.renderNeuroBaseSupport(epoch, tension));
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
@@ -222,28 +246,27 @@ export class TranceBrain {
             events.push(...this.renderPsybientKitchen(epoch, tension));
         }
 
-        let activeBassAxiom = 'Neuro Rolling';
+        // 2. BASS (Neuro Rolling or Heritage)
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
-                activeBassAxiom = `DNA: ${this.currentBassTheme.id}`;
             } else {
                 events.push(...this.renderRollingBass(epoch, resChord, tension));
             }
         }
 
+        // 3. MELODY (Heritage Sovereignty)
         let melodyEvents: FractalEvent[] = [];
-        let activeMelAxiom = isIntro ? 'Waiting' : 'Spiral Narrative';
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension);
-                activeMelAxiom = `DNA: ${this.currentTheme.id}`;
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
             }
             events.push(...melodyEvents);
         }
 
+        // 4. PIANIST (The Sparing Virtuoso)
         if (hints.pianoAccompaniment && !isIntro) {
             if (this.rng.chance(35)) {
                 const pianoEvents = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
@@ -251,6 +274,7 @@ export class TranceBrain {
             }
         }
 
+        // 5. HARMONY (Alternating)
         if (hints.harmony && !isIntro) {
             this.selectHarmonyInstrument(epoch);
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
@@ -258,85 +282,55 @@ export class TranceBrain {
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
         }
 
+        // 6. ACCOMPANIMENT (Heritage or Sidechain Pad)
         if (hints.accompaniment && !isIntro) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension));
+            const heritageAcc = this.renderHeritageAccompaniment(resChord, epoch, tension);
+            if (heritageAcc.length > 0) {
+                events.push(...heritageAcc);
+            } else {
+                events.push(...this.renderSidechainedPad(epoch, resChord, tension));
+            }
         }
 
+        // 7. ATMOSPHERE
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
             events, tension, beautyScore: 0.9,
             trackName: this.currentTrackName,
+            newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: activeMelAxiom,
-                bass: activeBassAxiom,
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sovereignty' : 'Neuro Pumping',
-                harmony: this.activeHarmonyInstrument === 'violin' ? 'Violin' : 'Guitar Chords'
+                melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Narrative',
+                bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Neuro Pumping',
+                piano: hints.pianoAccompaniment ? 'Shadow Virtuoso' : 'none'
             },
-            narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [Atmosphere: Enhanced] [Drums: Full Kit]`
+            narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [BPM: ${newBpm || 'Sync'}] [Atmosphere: Wide]`
         };
     }
 
     private renderNeuroBaseSupport(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Kick
         [0, 3, 6, 9].forEach(t => {
-            events.push({
-                type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95,
-                technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-            });
+            events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
-        // Snare support on 2 & 4
         [3, 9].forEach(t => {
-            events.push({
-                type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85,
-                technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-            });
+            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
-        // Hats for consistent drive
-        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
-            events.push({
-                type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
-                duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-            });
-        }
         return events;
     }
 
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Kick on all 4 beats
         [0, 3, 6, 9].forEach(t => {
-            events.push({
-                type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.0,
-                technique: 'hit', dynamics: 'f', phrasing: 'staccato'
-            });
+            events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         });
-        // Snare on 2 and 4
         [3, 9].forEach(t => {
-            events.push({
-                type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95,
-                technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-            });
+            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
-        // Detailed Hats (16th grid)
         for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
-            const isOff = t % 1.5 !== 0;
-            events.push({
-                type: isOff ? 'drum_closed_hi_hat_ghost' : 'drum_25693__walter_odington__hackney-hat-1', 
-                note: 42, time: t * TICK_TO_BEAT, 
-                duration: 0.1, weight: isOff ? 0.4 : 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-            });
-        }
-        // Ride accents
-        if (tension > 0.6) {
-            [0, 3, 6, 9].forEach(t => {
-                events.push({
-                    type: 'drum_ride_wetter', note: 51, time: (t + 0.75) * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-                });
-            });
+            events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
         return events;
     }
@@ -352,15 +346,8 @@ export class TranceBrain {
         this.currentDrumAxioms.forEach(ax => {
             const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
             barNotes.forEach(n => {
-                let type: any = 'drums';
-                const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
-                if (sub === 'kick' || n.deg === 'R') type = 'drum_kick_drum6';
-                else if (sub === 'snare' || n.deg === '2') type = 'drum_snare';
-                else if (sub === 'hat' || n.deg === '5') type = 'drum_25693__walter_odington__hackney-hat-1';
-                else if (sub === 'ride') type = 'drum_ride_wetter';
-                
                 events.push({
-                    type, note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
                     duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
@@ -370,10 +357,9 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007', 'drum_Bell_-_Ambient', 'drum_Bell_-_Soft', 'perc-012', 'perc-015'];
+        const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007', 'drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
         for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
-            if (t % 1.5 === 0) continue; // Skip main beats
-            if (this.rng.chance(65 + tension * 25)) {
+            if (this.rng.chance(60 + tension * 20)) {
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
                     weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
@@ -387,12 +373,57 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
-            const isBeat = t % 3 === 0;
             events.push({
-                type: 'bass', note: isBeat ? root : root + [0, 3, 7, 10][this.rng.nextInt(4)], time: (t + 0.1) * TICK_TO_BEAT, 
-                duration: 1.2 * TICK_TO_BEAT, weight: isBeat ? 1.0 : 0.85, technique: 'pulse', dynamics: 'mf', phrasing: 'detached', params: { filterCutoff: 1000 + tension * 2000 }
+                type: 'bass', note: root, time: (t + 0.1) * TICK_TO_BEAT, 
+                duration: 1.2 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached', params: { filterCutoff: 1000 + tension * 2000 }
             });
         }
+        return events;
+    }
+
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        if (!this.currentTheme) return [];
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
+            technique: 'pick', dynamics: 'mf', phrasing: 'legato'
+        }));
+    }
+
+    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        if (!this.currentBassTheme) return [];
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+            type: 'bass', note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
+            technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+        }));
+    }
+
+    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+
+        this.currentAccompAxioms.forEach(ax => {
+            const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+            barNotes.forEach(n => {
+                events.push({
+                    type: 'accompaniment', note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                    time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
+                    technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
+                });
+            });
+        });
         return events;
     }
 
@@ -407,32 +438,6 @@ export class TranceBrain {
         }));
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.currentTheme.startBar;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
-            technique: 'pick', dynamics: 'mf', phrasing: 'legato'
-        }));
-    }
-
-    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.currentBassTheme.startBar;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-            type: 'bass', note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
-            technique: 'pulse', dynamics: 'f', phrasing: 'detached'
-        }));
-    }
-
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
@@ -441,13 +446,8 @@ export class TranceBrain {
         melodyEvents.forEach((m, i) => {
             if (i % 3 === 0) {
                 events.push({
-                    ...m,
-                    type: 'pianoAccompaniment',
-                    note: m.note + thirdInterval,
-                    weight: 0.35,
-                    technique: 'hit',
-                    phrasing: 'staccato',
-                    params: { ...m.params, release: 2.5 }
+                    ...m, type: 'pianoAccompaniment', note: m.note + thirdInterval,
+                    weight: 0.35, technique: 'hit', phrasing: 'staccato', params: { ...m.params, release: 2.5 }
                 });
             }
         });
@@ -455,12 +455,7 @@ export class TranceBrain {
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        const rootMidi = currentChord.rootNote + 12 + this.spiralTransposition;
-        return [{
-            type: 'harmony', note: rootMidi, time: 0, duration: 4.0, weight: 0.4,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { mood: this.mood }
-        }];
+        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -473,35 +468,14 @@ export class TranceBrain {
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // --- SPARKLES (Increased Frequency) ---
-        // #ЗАЧЕМ: Шанс поднят до 85% для создания плотной атмосферы.
-        if (this.rng.chance(85 + tension * 15)) {
-            const categories = ['light', 'ambient_common', 'electronic', 'root', 'promenade'];
-            const categoryIdx = calculateMusiNum(epoch, 17, this.seed, categories.length);
-            const category = categories[categoryIdx];
-
-            events.push({
-                type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2,
-                technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9,
-                params: { mood: this.mood, genre: this.genre, category: category }
-            });
+        if (this.rng.chance(85)) {
+            const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
+            const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
+            events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
-
-        // --- SFX (Voices and Lasers) ---
-        // #ЗАЧЕМ: Шанс поднят до 60%, шанс голоса до 30%.
-        if (this.rng.chance(60 + tension * 20)) {
-            const useVoice = this.rng.chance(30); 
-            
-            events.push({
-                type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 1.2,
-                technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8,
-                params: { 
-                    mood: this.mood, 
-                    genre: this.genre,
-                    rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined
-                }
-            });
+        if (this.rng.chance(60)) {
+            const useVoice = this.rng.chance(30);
+            events.push({ type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre, rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined } });
         }
         return events;
     }
