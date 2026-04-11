@@ -1,8 +1,8 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1022): Исправлено переключение треков. 
- * Теперь "Regenerate" и завершение пьесы гарантированно меняют донора ДНК.
+ * #ОБНОВЛЕНО (ПЛАН №1032): Форсированный BPM Sync. 
+ * Теперь темп сюиты жестко следует за nativeBpm Наследия.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -72,10 +72,8 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
-            // #ЗАЧЕМ: Последовательный цикл по выбранным трекам.
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
-            console.log(`%c[Anchor] Sequential Cycle: Piece ${idx + 1} of ${manualFilter.length} (${pickedId})`, 'color: #00BFFF; font-weight: bold;');
         } else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
@@ -94,15 +92,11 @@ const Scheduler = {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
-                
                 pickedId = pool[Math.floor(Math.random() * pool.length)];
-                
-                console.log(`%c[Composer] Pool Size: ${uniqueIds.length} | Fresh: ${freshCandidates.length} | Selected: ${pickedId}`, 'color: #ADD8E6;');
             }
         }
 
         if (pickedId) {
-            // Blacklist management
             if (!this.playedTrackHistory.includes(pickedId)) {
                 this.playedTrackHistory.push(pickedId);
                 if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
@@ -142,8 +136,9 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
+        // #ЗАЧЕМ: Принудительная синхронизация BPM из ДНК (ПЛАН №1032).
         const inheritedBpm = fractalMusicEngine.config.tempo;
-        if (inheritedBpm !== this.settings.bpm) {
+        if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
         }
@@ -186,8 +181,6 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           // #ЗАЧЕМ: Если изменились фильтры или жанр — сбрасываем цикл.
-           // Если просто "Regenerate" (seedChanged) — идем к следующему треку.
            if (filterChanged || genreOrMoodChanged) {
                this.filterRotationIndex = 0;
            } else if (seedChanged) {
@@ -214,9 +207,7 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // Piece termination logic
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
-             console.log(`%c${getTimestamp()} [Piece Finished] Transitioning to next track...`, 'color: #FFD700; font-weight: bold;');
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -241,19 +232,16 @@ const Scheduler = {
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
         const trackName = payload.trackName || 'Generative';
-        const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'} | PNO: ${h.pianoAccompaniment || 'none'}`;
         
         const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
-        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
+        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ` +
-            `%c${ensembleStr}\n` +
-            `%c  ↳ ${cognitiveStr}\n` +
+            `%c${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;',
-            'color: #DA70D6;',
             'color: #ADD8E6; font-style: italic;'
         );
 
