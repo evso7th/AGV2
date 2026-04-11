@@ -1,12 +1,14 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1016): Улучшено логирование для отображения DNA и конкретных аксиом.
+ * #ОБНОВЛЕНО (ПЛАН №1022): Исправлено переключение треков. 
+ * Теперь "Regenerate" и завершение пьесы гарантированно меняют донора ДНК.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
+import { normalizeStr } from '@/lib/music-theory';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -70,43 +72,49 @@ const Scheduler = {
         let pickedId: string | null = null;
 
         if (manualFilter.length > 0) {
+            // #ЗАЧЕМ: Последовательный цикл по выбранным трекам.
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
             console.log(`%c[Anchor] Sequential Cycle: Piece ${idx + 1} of ${manualFilter.length} (${pickedId})`, 'color: #00BFFF; font-weight: bold;');
         } else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
+            const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
+                                   (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                return genres.includes(uiGenre) && moods.includes(uiMood);
+                const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                
+                return genres.includes(uiGenre) && (moods.includes(uiMood) || commons.includes(commonMoodFilter));
             });
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
+                
                 pickedId = pool[Math.floor(Math.random() * pool.length)];
                 
-                if (pickedId) {
-                    this.playedTrackHistory.push(pickedId);
-                    if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
-                    self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
-                }
+                console.log(`%c[Composer] Pool Size: ${uniqueIds.length} | Fresh: ${freshCandidates.length} | Selected: ${pickedId}`, 'color: #ADD8E6;');
             }
         }
 
         if (pickedId) {
+            // Blacklist management
+            if (!this.playedTrackHistory.includes(pickedId)) {
+                this.playedTrackHistory.push(pickedId);
+                if (this.playedTrackHistory.length > 7) this.playedTrackHistory.shift();
+                self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
+            }
+
             const anchorAxiom = this.cloudAxiomPool.find(ax => 
-                ax.compositionId && 
-                ax.compositionId.toLowerCase().replace(/[^a-z0-9]/g, '') === pickedId?.toLowerCase().replace(/[^a-z0-9]/g, '') && 
-                ax.nativeKey
+                ax.compositionId && normalizeStr(ax.compositionId) === normalizeStr(pickedId!) && ax.nativeKey
             );
+            
             if (anchorAxiom) {
-                const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
-                const rootName = anchorAxiom.nativeKey.match(/^[A-G][#b]?/)?.[0] || 'C';
-                return { id: pickedId, nativeRoot: 48 + (noteMap[rootName] || 0) }; 
+                return { id: pickedId, nativeRoot: keyToMidiRoot(anchorAxiom.nativeKey) }; 
             }
             return { id: pickedId, nativeRoot: null };
         }
@@ -171,14 +179,21 @@ const Scheduler = {
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
        const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
-       const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
-       const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
+       const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
+       const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           if (seedChanged || filterChanged) this.filterRotationIndex = 0;
+           // #ЗАЧЕМ: Если изменились фильтры или жанр — сбрасываем цикл.
+           // Если просто "Regenerate" (seedChanged) — идем к следующему треку.
+           if (filterChanged || genreOrMoodChanged) {
+               this.filterRotationIndex = 0;
+           } else if (seedChanged) {
+               this.filterRotationIndex++;
+           }
+
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -188,11 +203,8 @@ const Scheduler = {
     },
 
     updateCloudAxioms(axioms: any[]) {
-        const hadAxioms = this.cloudAxiomPool.length > 0;
         this.cloudAxiomPool = axioms || [];
-        const hasAxioms = this.cloudAxiomPool.length > 0;
-        
-        if (this.barCount === 0 && !hadAxioms && hasAxioms) {
+        if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxiomPool.length > 0) {
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
@@ -202,7 +214,9 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // Piece termination logic
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
+             console.log(`%c${getTimestamp()} [Piece Finished] Transitioning to next track...`, 'color: #FFD700; font-weight: bold;');
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -223,36 +237,21 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
-        if (payload.lickId && !payload.lickId.includes('Generative')) {
-            if (!this.sessionLickHistory.includes(payload.lickId)) {
-                this.sessionLickHistory.push(payload.lickId);
-                if (this.sessionLickHistory.length > 50) this.sessionLickHistory.shift();
-            }
-        }
-
         const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
         const trackName = payload.trackName || 'Generative';
-        const narration = payload.narrative || 'Developing story...';
         const ensembleStr = `BASS: ${h.bass || 'none'} | MEL: ${h.melody || 'none'} | ACC: ${h.accompaniment || 'none'} | HAR: ${h.harmony || 'none'} | PNO: ${h.pianoAccompaniment || 'none'}`;
-        const syncStatus = axioms.ensemble ? `[Ensemble: ${axioms.ensemble}]` : '';
-        const dynastyStr = payload.dynasty ? `[Dynasty: ${payload.dynasty.toUpperCase()}]` : '';
-        const mutType = payload.mutationType || 'none';
-        const mutationStr = mutType !== 'none' ? `%c[Mutation: ${mutType.toUpperCase()}]` : `[Mutation: none]`;
-        const mutColor = mutType !== 'none' ? 'color: #FFD700; font-weight: bold;' : 'color: #888;';
         
-        const melStr = axioms.melody === 'Generative' ? 'Generative (No DNA)' : (axioms.melody || 'Breath');
+        const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [ACC: ${axioms.accompaniment || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
 
-        // #ЗАЧЕМ: Добавление [DNA: Name] в основную строку лога.
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ${syncStatus} ${dynastyStr} ${mutationStr} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ` +
             `%c${ensembleStr}\n` +
             `%c  ↳ ${cognitiveStr}\n` +
-            `%c  ↳ Narrative: ${narration}`,
+            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'}`,
             'color: #888;', 
-            mutColor,
             'color: #4ade80; font-weight: bold;',
             'color: #DA70D6;',
             'color: #ADD8E6; font-style: italic;'
@@ -296,3 +295,10 @@ self.onmessage = (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: String(e) });
     }
 };
+
+function keyToMidiRoot(key: string | null | undefined): number | null {
+    if (!key) return null;
+    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
+    const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
+    return 48 + (noteMap[rootName] || 0);
+}
