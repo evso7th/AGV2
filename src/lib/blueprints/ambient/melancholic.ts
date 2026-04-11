@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v44.0).
- * #ЧТО: ПЛАН №752 — Реализована ротация тембров и поддержка гитары в гармонии.
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v44.1).
+ * #ЧТО: ПЛАН №1024 — Добавлена пустая секция soundMix для подготовки к иерархическому сведению.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -125,5 +125,7 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       pianoAccompaniment: { level: -22, pan: 0.2 },
       sfx: { level: -26, pan: 0.0 }
     }
-  }
+  },
+  /** #ЗАЧЕМ: Секция soundMix пуста — используются глобальные настройки жанра 'ambient'. */
+  soundMix: {}
 };

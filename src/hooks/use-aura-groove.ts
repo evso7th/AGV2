@@ -1,16 +1,18 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V5.9 — "Metadata Filters".
- * #ЧТО: ПЛАН №1008 — Обновление типа availableCompositions для поддержки расширенной фильтрации.
+ * #ЗАЧЕМ: Хук управления UI музыкой V6.0 — "Hierarchical Mix Support".
+ * #ЧТО: ПЛАН №1024 — Реализация автоматического сведения на основе жанрового Мастер-микса и Блюпринтов.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre } from '@/types/music';
+import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SoundMix } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
+import { GENRE_MASTER_MIX } from "@/lib/master-mix";
+import { getBlueprint } from "@/lib/blueprints";
 
 const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
@@ -129,6 +131,53 @@ export const useAuraGroove = (): AuraGrooveProps => {
     window.addEventListener('AG_BPM_SYNC', handleBpmSync);
     return () => window.removeEventListener('AG_BPM_SYNC', handleBpmSync);
   }, []);
+
+  /**
+   * #ЗАЧЕМ: Расчет иерархического сведения.
+   * #ЧТО: Master Mix (Genre) + Mood Override (Blueprint).
+   */
+  const applyAutoMix = useCallback(() => {
+      if (!isInitialized) return;
+
+      const masterGenreMix = GENRE_MASTER_MIX[genre];
+      const blueprint = getBlueprint(genre, mood);
+      const moodOverrideMix = blueprint.soundMix || {};
+
+      const finalMix: SoundMix = { ...masterGenreMix, ...moodOverrideMix };
+
+      console.log(`%c[Mixer] Auto-Calibration: ${genre}/${mood}`, 'color: #4ade80; font-weight: bold;');
+
+      // 1. Применяем громкости для инструментов
+      const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
+      parts.forEach(part => {
+          const vol = finalMix[part];
+          if (vol !== undefined) {
+              setVolume(part, vol);
+              setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: vol } }));
+          }
+      });
+
+      // 2. Применяем громкость ударных
+      if (finalMix.drums !== undefined) {
+          setVolume('drums', finalMix.drums);
+          setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! }));
+      }
+
+      // 3. Применяем текстуры
+      if (finalMix.sparkles !== undefined) {
+          setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0);
+          setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } }));
+      }
+      if (finalMix.sfx !== undefined) {
+          setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0);
+          setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } }));
+      }
+  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled]);
+
+  // #ЗАЧЕМ: Перекалибровка при смене жанра или настроения.
+  useEffect(() => {
+      applyAutoMix();
+  }, [genre, mood, applyAutoMix]);
 
   const updateAllVolumes = useCallback(() => {
     if (!isInitialized) return;

@@ -15,7 +15,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 /**
  * #ЗАЧЕМ: Центральный хаб типов AuraGroove.
  * #ЧТО: Ре-экспортирует типы из fractal.ts и определяет UI-специфичные структуры.
- *       Добавлена поддержка активного Генетического Якоря (ПЛАН №622).
+ *       Добавлена поддержка иерархического микширования (ПЛАН №1024).
  */
 
 export type Mood = FractalMood;
@@ -23,9 +23,15 @@ export type { FractalEvent, GhostChord };
 export type NavigationInfo = FractalNavigationInfo;
 export type SuiteDNA = FractalSuiteDNA & {
     sessionHistory?: string[];
-    parentSeeds?: number[]; // #ЗАЧЕМ: Поддержка генетического наследования от Шедевров.
+    parentSeeds?: number[]; 
 };
 export type InstrumentPart = FractalInstrumentPart;
+
+/**
+ * #ЗАЧЕМ: Декларативное сведение.
+ * #ЧТО: Карта громкостей для инструментов.
+ */
+export type SoundMix = Partial<Record<InstrumentPart | 'drums' | 'sparkles' | 'sfx', number>>;
 
 export type PlayableNote = {
     midi: number;
@@ -173,12 +179,12 @@ export type WorkerSettings = {
   textureSettings: TextureSettings;
   density: number;
   composerControlsInstruments: boolean;
-  useHeritage: boolean; // #ЗАЧЕМ: ПЛАН №782. Глобальный переключатель Классов.
+  useHeritage: boolean; 
   mood: Mood;
   seed?: number;
   introBars: number;
   sessionLickHistory?: string[];
-  playedTrackHistory?: string[]; // #ЗАЧЕМ: ПЛАН №975. Долговременная память треков.
+  playedTrackHistory?: string[]; 
   cloudAxioms?: any[]; 
   selectedCompositionIds?: string[];
   activeAnchorId?: string | null; 
@@ -241,7 +247,7 @@ export type InstrumentBehaviorRules = {
     soloToPatternRatio?: number;
     fingerstyle?: { bars: number[]; pattern: string; voicingName: string; }[];
     strum?: { bars: number[]; pattern: string; voicingName: string; }[];
-    pianoProbability?: number; // #ЗАЧЕМ: ПЛАН №989. Декларативный дуализм.
+    pianoProbability?: number; 
 };
 
 export type InstrumentOption<T> = {
@@ -337,6 +343,8 @@ export type MusicBlueprint = {
     ambientEvents: any[];
     continuity: any;
     rendering: any;
+    /** #ЗАЧЕМ: Локальное сведение Блюпринта. */
+    soundMix?: SoundMix;
 };
 
 export type InstrumentHints = FractalInstrumentHints & {
@@ -361,7 +369,6 @@ export interface BluesCognitiveState {
     melancholy: number;
     darkness: number;
   };
-  /** #ЗАЧЕМ: Многоуровневые счетчики стагнации. */
   stagnationStrikes: {
     micro: number;
     meso: number;
@@ -369,8 +376,6 @@ export interface BluesCognitiveState {
   };
   vaccineActive?: { part: string, type: 'jitter' | 'inversion' | 'transposition' | 'rhythm' };
 }
-
-// --- Blues Specific Library Types ---
 
 export type BluesSoloPhrase = {
   t: number;
@@ -390,7 +395,6 @@ export type BluesMelody = {
     phraseIV?: BluesSoloPhrase;
     phraseV?: BluesSoloPhrase;
     phraseTurnaround?: BluesSoloPhrase;
-    // For minor
     phrasei?: BluesSoloPhrase;
     phraseiv?: BluesSoloPhrase;
 };
