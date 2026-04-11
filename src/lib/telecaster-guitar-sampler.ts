@@ -38,6 +38,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster V4.5 — "Transient Adjustment".
  * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
+ * #ОБНОВЛЕНО (ПЛАН №1020): Длина транзиента увеличена до 22мс.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -149,10 +150,10 @@ export class TelecasterGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №901. Длина транзиента 18мс.
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
+            // #ЗАЧЕМ: ПЛАН №1020. Длина транзиента 22мс для бесшовного перехода.
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.04);
+            source.stop(startTime + 0.05);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
@@ -185,9 +186,7 @@ export class TelecasterGuitarSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => {
-            try { source.stop(0); } catch(e) {}
-        });
+        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
         this.activeSources.clear();
     }
 

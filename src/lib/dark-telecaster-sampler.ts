@@ -6,6 +6,7 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 /**
  * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.4 — "Transient Adjustment".
  * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
+ * #ОБНОВЛЕНО (ПЛАН №1020): Длина транзиента увеличена до 22мс.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -217,10 +218,10 @@ export class DarkTelecasterSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        // #ЗАЧЕМ: ПЛАН №901. Длина транзиента 18мс.
-        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
+        // #ЗАЧЕМ: ПЛАН №1020. Длина транзиента 22мс.
+        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
         source.start(startTime);
-        source.stop(startTime + 0.04);
+        source.stop(startTime + 0.05);
         
         this.activeSources.add(source);
         source.onended = () => {

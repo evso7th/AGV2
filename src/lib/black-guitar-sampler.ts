@@ -215,10 +215,10 @@ export class BlackGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №901. Увеличение длины транзиента до 18мс для более четкой атаки.
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.018, 0.005);
+            // #ЗАЧЕМ: ПЛАН №1020. Синхронизация с атакой синтезатора (22мс).
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.04);
+            source.stop(startTime + 0.05);
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
