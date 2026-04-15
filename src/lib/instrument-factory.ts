@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V5.1 — "Organ Deep Reinforcement".
- * #ЗАЧЕМ: Глобальное улучшение тембра органов.
- * #ЧТО: ПЛАН №1090 — Добавлен HPF (18Hz) и принудительный саб-бас (f/2) для всех органов.
+ * @fileOverview Центральная фабрика инструментов V5.2 — "Sonic Softening Update".
+ * #ЗАЧЕМ: Глобальное смягчение тембров.
+ * #ЧТО: ПЛАН №1091 — Снижение частот среза LPF для удаления резкости.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -158,7 +158,7 @@ const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 
 const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const options = typeof opt === 'number' ? { mix: opt } : opt;
-    const { time = 0.35, fb = 0.25, hc = 3000, mix = 0.2 } = options;
+    const { time = 0.35, fb = 0.25, hc = 2500, mix = 0.2 } = options;
 
     const input = ctx.createGain();
     const output = ctx.createGain();
@@ -167,7 +167,7 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     
     const d = ctx.createDelay(2.0); d.delayTime.value = isFinite(time) ? time : 0.35;
     const loop = ctx.createGain(); loop.gain.value = isFinite(fb) ? fb : 0.25;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = isFinite(hc) ? hc : 3000;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = isFinite(hc) ? hc : 2500;
     
     input.connect(dry).connect(output);
     input.connect(d).connect(lp).connect(loop).connect(d);
@@ -187,7 +187,7 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 
 const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const options = typeof opt === 'number' ? { mix: opt } : opt;
-    const { stages = 4, base = 800, depth = 600, rate = 0.16, fb = 0.12, mix = 0.2 } = options;
+    const { stages = 4, base = 700, depth = 500, rate = 0.16, fb = 0.12, mix = 0.2 } = options;
 
     const input = ctx.createGain();
     const output = ctx.createGain();
@@ -199,7 +199,7 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     for (let i = 0; i < (isFinite(stages) ? stages : 4); i++) {
         const ap = ctx.createBiquadFilter(); 
         ap.type = 'allpass'; 
-        ap.frequency.value = (isFinite(base) ? base : 800) * ((i % 2) ? 1.2 : 0.8); 
+        ap.frequency.value = (isFinite(base) ? base : 700) * ((i % 2) ? 1.2 : 0.8); 
         ap.Q.value = 0.6; 
         head.connect(ap); head = ap; filters.push(ap);
     }
@@ -207,7 +207,7 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     filters[filters.length - 1].connect(fbG); fbG.connect(filters[0]);
     
     const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = isFinite(rate) ? rate : 0.16;
-    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 600;
+    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 500;
     lfo.connect(lfoG); filters.forEach(f => lfoG.connect(f.frequency)); lfo.start();
     
     input.connect(dry); 
@@ -265,7 +265,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     comp.connect(filt);
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        const cutoff = p.lpf?.cutoff ?? 2000;
+        // #ЗАЧЕМ: Снижение базового среза для синтезаторов до 1500Гц.
+        const cutoff = p.lpf?.cutoff ?? 1500;
         filt.frequency.value = cutoff;
         filt2.frequency.value = cutoff;
         
@@ -339,7 +340,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     // #ЗАЧЕМ: Фильтр верхних частот (HPF) для очистки суб-низа (ПЛАН №1090).
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 18; 
     
-    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 4000;
+    // #ЗАЧЕМ: Снижение базового среза для органов до 2500Гц.
+    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 2500;
     const leslie = makeChorus(ctx, currentPreset.leslie || {});
     const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.2;
     const vibG = ctx.createGain(); vibG.gain.value = 3.5; vibLfo.connect(vibG); vibLfo.start();
@@ -438,7 +440,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     
-    // #ЗАЧЕМ: ПЛАН №919. Динамический выбор кривой.
     const updateShaperCurve = (amount: number, type?: string) => {
         if (amount < 0.05) {
             shaper.curve = makeLinearCurve();
@@ -452,10 +453,17 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const delay = makeDelay(ctx, currentPreset.delayA || {});
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.2;
     const activeVoiceRecords = new Set<any>();
+    
+    // #ЗАЧЕМ: Снижение частоты кабинета до 2600Гц для удаления резкого "песка".
+    const cabinetFilter = ctx.createBiquadFilter();
+    cabinetFilter.type = 'lowpass';
+    cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2600;
+    
     guitarIn.connect(comp).connect(shaper).connect(phaser.input);
     phaser.output.connect(delay.input);
-    delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
-    delay.output.connect(revSend).connect(reverb);
+    delay.output.connect(cabinetFilter).connect(expressionGain).connect(instrumentGain).connect(master);
+    cabinetFilter.connect(revSend).connect(reverb);
+    
     let cachedWave: PeriodicWave | null = null;
     let lastWidth = -1;
     const getPulseWave = (w: number) => {
@@ -491,11 +499,12 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             osc.stop(finalTime + 0.5); 
         },
         allNotesOff: () => { activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); },
-        disconnect: () => { phaser.stop(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, phaser.input, delay.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
+        disconnect: () => { phaser.stop(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, phaser.input, delay.input, revSend, cabinetFilter].forEach(n => { try { n.disconnect(); } catch(e){} }); },
         setPreset: (p: any) => { 
             currentPreset = p; 
             updateShaperCurve(p.drive?.amount || 0, p.drive?.type);
             phaser.setMix(p.phaser?.on ? 0.2 : 0); 
+            if (isFinite(p.post?.lpf)) cabinetFilter.frequency.setTargetAtTime(p.post.lpf, ctx.currentTime, 0.05);
             cachedWave = null; 
         }
     };
