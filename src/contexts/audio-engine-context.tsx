@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.2 — "Volume Restoration Fix".
- * #ЗАЧЕМ: Гарантия работы регуляторов громкости.
- * #ЧТО: ПЛАН №1031 — Усиление стабильности gain-узлов.
+ * @fileOverview Audio Engine Context V39.3 — "Pause Logic Simplification".
+ * #ЗАЧЕМ: Реализация требования "Pause just stops the music".
+ * #ЧТО: Удален тайм-аут при остановке, обеспечено немедленное прекращение звука.
  */
 'use client';
 
@@ -177,7 +177,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        // #ЗАЧЕМ: Прямое и мгновенное применение громкости.
         gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
     }
   }, []);
@@ -537,10 +536,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
+                // #ЗАЧЕМ: Упрощенная логика паузы (ПЛАН №1096).
+                // "Ничего больше, только пауза".
                 setIsPlayingState(false);
                 masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
                 workerRef.current.postMessage({ command: 'stop' });
-                setTimeout(() => stopAllSounds(), 50); 
+                stopAllSounds(); 
             }
         },
         updateSettings: (s) => {
