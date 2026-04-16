@@ -1,9 +1,8 @@
 /**
- * @fileOverview Ambient Brain V72.0 — "Sonic Landscape Protocol".
- * #ЗАЧЕМ: Превращение ударных в текстурное звуковое полотно.
- * #ЧТО: ПЛАН №1092 — Текстурная перкуссия, редкие хэты и "влажный" райд.
- * #ОБНОВЛЕНО (ПЛАН №1095): Anti-Hum Ripple Logic для устранения монотонности.
- * #FIX: Добавлен отсутствующий метод selectNextAxiom.
+ * @fileOverview Ambient Brain V73.0 — "The Pure Percussive Fog".
+ * #ЗАЧЕМ: Окончательная реализация Плана №1092.
+ * #ЧТО: Полный отказ от бита. Ударные превращены в диффузный ландшафт.
+ * #ОБНОВЛЕНО (ПЛАН №1095): Поддержка Anti-Hum Ripple и selectNextAxiom.
  */
 
 import type {
@@ -225,10 +224,6 @@ export class AmbientBrain {
         return undefined;
     }
 
-    /**
-     * #ЗАЧЕМ: Anti-Hum Logic (ПЛАН №1095).
-     * #ЧТО: Дробление и перелив длинных нот (>= 1 такт) в тона аккорда.
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.9) return [e]; 
 
@@ -453,12 +448,16 @@ export class AmbientBrain {
         };
     }
 
+    /**
+     * #ЗАЧЕМ: "Percussive Fog" — неритмичный звуковой ландшафт (ПЛАН №1092).
+     */
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        if (this.random.next() < 0.6) {
-            const time = this.random.next() < 0.7 ? 0 : 6;
+        // 1. GHOST KICK: Редкий и случайный импульс, не бит!
+        if (this.random.next() < 0.35) {
+            const time = this.random.next() * TICKS_PER_BAR; // Полностью случайно в такте
             events.push({
                 type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any,
                 note: 36, time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.65,
@@ -466,28 +465,28 @@ export class AmbientBrain {
             });
         }
 
-        if (this.random.next() < 0.2) {
+        // 2. WETTEST RIDE: Плывущий атмосферный акцент
+        if (this.random.next() < 0.45) {
             events.push({
                 type: 'drum_ride_wetter', note: 51,
-                time: (this.random.nextInt(TICKS_PER_BAR)) * TICK_TO_BEAT,
-                duration: 2.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato',
-                pan: (this.random.next() * 1.4) - 0.7
+                time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT,
+                duration: 2.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                pan: (this.random.next() * 1.6) - 0.8
             });
         }
 
-        if (tension > 0.4 && this.random.next() < 0.3) {
-            [1.5, 4.5, 7.5, 10.5].forEach(t => {
-                if (this.random.next() < 0.4) {
-                    events.push({
-                        type: 'drum_closed_hi_hat_ghost', note: 42,
-                        time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2 + (this.random.next() * 0.2),
-                        technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
-                    });
-                }
+        // 3. RARE HATS: Только как мерцание при напряжении
+        if (tension > 0.6 && this.random.next() < 0.2) {
+            const t = this.random.next() * TICKS_PER_BAR;
+            events.push({
+                type: 'drum_closed_hi_hat_ghost', note: 42,
+                time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2 + (this.random.next() * 0.15),
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
             });
         }
 
-        const hitCount = 1 + this.random.nextInt(Math.floor(tension * 5) + 1);
+        // 4. KITCHEN (Bongs, Tubes, Bells): Плотное текстурное облако
+        const hitCount = 2 + this.random.nextInt(Math.floor(tension * 6) + 2);
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
             const time = this.random.next() * TICKS_PER_BAR;
@@ -496,15 +495,16 @@ export class AmbientBrain {
             events.push({
                 type: perc as any, note: 48, 
                 time: time * TICK_TO_BEAT, duration: 1.0, 
-                weight: 0.4 + (this.random.next() * 0.4), 
+                weight: 0.4 + (this.random.next() * 0.35), 
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan
             });
         }
 
+        // 5. HERITAGE DNA (Diffused)
         if (this.currentDrumAxioms.length > 0) {
             const hDrums = this.renderHeritageDrums(epoch, tension);
             hDrums.forEach(e => {
-                e.weight *= 0.4; 
+                e.weight *= 0.35; 
                 events.push(e);
             });
         }
@@ -512,6 +512,9 @@ export class AmbientBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Диффузная деконструкция ударных Наследия (ПЛАН №1092).
+     */
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
@@ -521,20 +524,24 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
 
         this.currentDrumAxioms.forEach(ax => {
-            const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+            // #ЧТО: Просеиваем ДНК, убирая "бит-сетку". Берем только 30% событий.
+            const barNotes = ax.phrase.filter(n => {
+                const isCorrectBar = n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR;
+                const passesFogFilter = calculateMusiNum(n.t, 13, this.seed, 100) < 30;
+                return isCorrectBar && passesFogFilter;
+            });
             
             barNotes.forEach(n => {
-                let pan = 0;
+                let pan = (this.random.next() * 1.4) - 0.7;
                 const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-                
-                if ([41, 43, 45].includes(midiNote)) pan = (n.t % TICKS_PER_BAR < (TICKS_PER_BAR / 2)) ? -0.4 : 0.4;
 
                 events.push({
                     type: 'drums', 
                     note: midiNote, 
-                    time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    // #ЧТО: Добавляем джиттер для размытия ритма.
+                    time: (n.t - barOffset + (this.random.next() - 0.5) * 0.8) * TICK_TO_BEAT, 
                     duration: 0.1, 
-                    weight: 0.8, 
+                    weight: 0.5, 
                     technique: 'hit', 
                     dynamics: 'p', 
                     phrasing: 'staccato', 
@@ -553,7 +560,7 @@ export class AmbientBrain {
             time: 0, duration: 4.0, weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 1.5, release: 2.0, filterCutoff: 300 + (tension * 200) }
         };
-        return [e];
+        return this.rippleLongNote(e, chord);
     }
 
     private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
