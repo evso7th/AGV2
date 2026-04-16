@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Ambient Brain V70.0 — "Sonic Landscape Protocol".
  * #ЗАЧЕМ: Превращение ударных в текстурное звуковое полотно.
@@ -253,7 +252,7 @@ export class AmbientBrain {
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.current テーマ.phrase, this.currentThemeMaxTick, this.currentTimeScale);
+                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
             } 
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
