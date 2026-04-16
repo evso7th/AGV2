@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Blues Brain V72.1 — "Reference Correction".
- * #ЗАЧЕМ: Исправление критической ошибки MOOD_TO_COMMON.
+ * @fileOverview Blues Brain V73.0 — "Imperial Drum Narrative".
+ * #ЗАЧЕМ: Реализация Плана №1102. Обогащение ударных филлами и "вздохами".
  */
 
 import {
@@ -16,7 +16,9 @@ import {
   BluesCognitiveState,
   CommonMood,
   InstrumentPart,
-  Technique
+  Technique,
+  Dynamics,
+  Phrasing
 } from '@/types/music';
 import {
     DEGREE_TO_SEMITONE,
@@ -87,7 +89,7 @@ export class BluesBrain {
   private currentPreferredInstrument: string | null = null;
 
   private currentBassAxiom: any[] = [];
-  private currentAccompAxioms: { phrase: any[], role: string, id?: string, preferredInstrument?: string }[] = [];
+  private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
   private currentDrumAxioms: { phrase: any[], role: string }[] = [];
 
   private currentLickId: string = '';
@@ -396,11 +398,16 @@ export class BluesBrain {
     };
   }
 
+  /**
+   * #ЗАЧЕМ: Улучшенный гибридный барабанщик для Блюза (ПЛАН №1102).
+   * #ЧТО: Смесь ДНК-основы, томовых филлов и атмосферных акцентов.
+   */
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
       const dnaKickTicks = new Set<number>();
       const dnaSnareTicks = new Set<number>();
 
+      // 1. HERITAGE BASE: Извлекаем ритмический скелет из DNA
       if (this.currentDrumAxioms.length > 0) {
           const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
           const startEpoch = this.soloistBusyUntilBar - totalBars;
@@ -410,7 +417,6 @@ export class BluesBrain {
           this.currentDrumAxioms.forEach(ax => {
               const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
               const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
-              
               barNotes.forEach(n => {
                   const tickInBar = n.t - barOffset;
                   if (sub === 'kick' || n.deg === 'R') dnaKickTicks.add(tickInBar);
@@ -419,40 +425,58 @@ export class BluesBrain {
           });
       }
 
+      // 2. CORE BEAT: Гарантируем основу, если DNA пуста
       if (dnaKickTicks.size === 0) [0, 6].forEach(t => dnaKickTicks.add(t));
+      if (dnaSnareTicks.size === 0) [3, 9].forEach(t => dnaSnareTicks.add(t));
+
       dnaKickTicks.forEach(t => {
           events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       });
 
-      if (dnaSnareTicks.size === 0) [3, 9].forEach(t => dnaSnareTicks.add(t));
       dnaSnareTicks.forEach(t => {
-          events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+          events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       });
 
+      // 3. BREATHS (GHOST NOTES): "Вздохи" между основными ударами
       [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
-          if (!dnaKickTicks.has(t) && !dnaSnareTicks.has(t) && this.random.next() < 0.3) {
-              events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+          if (!dnaKickTicks.has(t) && !dnaSnareTicks.has(t) && this.random.next() < 0.25) {
+              events.push({ 
+                  type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, 
+                  duration: 0.1, weight: 0.2 + (this.random.next() * 0.15), 
+                  technique: 'ghost', dynamics: 'p', phrasing: 'staccato' 
+              });
           }
       });
 
-      [0, 3, 6, 9].forEach(t => {
-          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
-      });
-      if (tension > 0.6) {
-          [1.5, 4.5, 7.5, 10.5].forEach(t => {
-              events.push({ type: 'drum_open_hh_top2', note: 46, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
+      // 4. ATMOSPHERIC RIDE: Редкие влажные акценты (10% шанс)
+      if (this.random.next() < 0.1) {
+          events.push({
+              type: 'drum_ride_wetter', note: 51, time: (this.random.nextInt(12)) * TICK_TO_BEAT, 
+              duration: 2.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.2
           });
       }
 
+      // 5. HI-HATS: Стабильный пульс
+      [0, 3, 6, 9].forEach(t => {
+          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
+      });
+
+      // 6. DYNAMIC FILLS: Томовые проходки каждые 4-8 тактов
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       
       if (isFourthBar || isEighthBar || isSoloistResting) {
-          const intensity = isEighthBar ? 1.0 : 0.75;
+          const intensity = isEighthBar ? 1.0 : 0.7;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          const pans = [-0.5, 0.0, 0.5];
+          const pans = [-0.4, 0.0, 0.4];
+          
+          // Тройной филл в конце такта
           [9, 10, 11].forEach((t, i) => {
-              events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.6 + i * 0.1) * intensity, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] });
+              events.push({ 
+                  type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
+                  duration: 0.5, weight: (0.6 + i * 0.1) * intensity, 
+                  technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] 
+              });
           });
       }
 
@@ -519,7 +543,7 @@ export class BluesBrain {
                       const cid = this.normalize(selected.compositionId);
                       const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
-                      const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                      const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                       accompSiblings.forEach(ax => {
                           const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
                           this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
@@ -580,15 +604,6 @@ export class BluesBrain {
           if (barNotes.length > 0) return barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
       }
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
-  }
-
-  private renderUnisonAccompaniment(bassEvents: FractalEvent[], chord: GhostChord, type: string): FractalEvent[] {
-      const events: FractalEvent[] = []; const third = chord.chordType === 'minor' ? 3 : 4;
-      bassEvents.slice(0, 2).forEach(bass => {
-          events.push({ ...bass, type: 'accompaniment', note: this.constrainAccompanimentOctave(type === 'strict' ? bass.note : bass.note + 12), weight: 0.4, technique: 'hit', phrasing: 'staccato', duration: 0.4 });
-          events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave((bass.note || 0) + 24 + third), time: bass.time + (1.5 * TICK_TO_BEAT), duration: 1.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-      });
-      return events;
   }
 
   private renderRiffBass(chord: GhostChord, epoch: number): FractalEvent[] {
@@ -717,7 +732,7 @@ export class BluesBrain {
           phrasing: 'staccato' 
       });
       events.push({ 
-          type: 'drum_snare_ghost_note', 
+          type: 'drum_snare', 
           note: 38, 
           time: 9 * TICK_TO_BEAT, 
           duration: 0.1, 
