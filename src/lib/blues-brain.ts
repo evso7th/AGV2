@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Blues Brain V72.0 — "The Absolute Continuity Reform".
- * #ЗАЧЕМ: Окончательное исправление маршрутизации и фолбеков.
- * #ЧТО: ПЛАН №1000 — Роль с 'piano' -> Rhodes. Роль с 'accomp' -> Accompaniment.
+ * @fileOverview Blues Brain V72.1 — "Reference Correction".
+ * #ЗАЧЕМ: Исправление критической ошибки MOOD_TO_COMMON.
  */
 
 import {
@@ -38,6 +37,12 @@ import {
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 import { BLUES_SOLO_PLANS } from './assets/blues_guitar_solo';
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -313,7 +318,6 @@ export class BluesBrain {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №1000 — Простейшая и жесткая маршрутизация.
                 if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 
@@ -331,7 +335,6 @@ export class BluesBrain {
             });
         }
         
-        // #ЗАЧЕМ: Гарантированный подхват адаптивным пэдом если ДНК в этом такте молчит.
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
