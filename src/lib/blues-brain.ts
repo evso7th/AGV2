@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Blues Brain V74.1 — "Sovereign Anchor Protocol".
+ * @fileOverview Blues Brain V74.2 — "The Imperial Pulse".
  * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
  * #ЧТО: Исправлена ошибка MIDI_NOTE_NAMES (ПЛАН №1106).
+ * #ЧТО: ПЛАН №1108 — Ликвидация суеты в кике. Переход к минималистичному груву.
  */
 
 import {
@@ -394,6 +395,10 @@ export class BluesBrain {
     };
   }
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №1108. Ликвидация суеты в блюзовых ударных.
+   * #ЧТО: Кик только на 1 и (иногда) 3. Усиление "вздохов" (ghost notes).
+   */
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
       const dnaKickTicks = new Set<number>();
@@ -410,150 +415,88 @@ export class BluesBrain {
               const sub = ax.role.toLowerCase().split(' ')[1] || 'kick';
               barNotes.forEach(n => {
                   const tickInBar = n.t - barOffset;
-                  if (sub === 'kick' || n.deg === 'R') dnaKickTicks.add(tickInBar);
-                  else if (sub === 'snare' || n.deg === '2') dnaSnareTicks.add(tickInBar);
+                  // Собираем скелет, но фильтруем слишком частые удары из DNA
+                  if (sub === 'kick' && (tickInBar === 0 || tickInBar === 6)) dnaKickTicks.add(tickInBar);
+                  else if (sub === 'snare' && (tickInBar === 3 || tickInBar === 9)) dnaSnareTicks.add(tickInBar);
               });
           });
       }
 
-      if (dnaKickTicks.size === 0) [0, 6].forEach(t => dnaKickTicks.add(t));
-      if (dnaSnareTicks.size === 0) [3, 9].forEach(t => dnaSnareTicks.add(t));
+      // --- ПРИНУДИТЕЛЬНЫЙ БЛЮЗОВЫЙ ФУНДАМЕНТ ---
+      // Кик на 1-ю долю всегда
+      events.push({ 
+          type: 'drum_kick_reso', note: 36, time: 0, 
+          duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+      });
+      
+      // Кик на 3-ю долю только при напряжении или удаче (не частим!)
+      if (tension > 0.6 || this.random.next() < 0.4) {
+          events.push({ 
+              type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, 
+              duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+          });
+      }
 
-      dnaKickTicks.forEach(t => {
-          events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      // Снейр на 2 и 4 всегда
+      [3, 9].forEach(t => {
+          events.push({ 
+              type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, 
+              duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+          });
       });
 
-      dnaSnareTicks.forEach(t => {
-          events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-      });
-
+      // --- THE BREATH (GHOST NOTES) ---
+      // Заполняем пустоты тихими касаниями снейра
       [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
-          if (!dnaKickTicks.has(t) && !dnaSnareTicks.has(t) && this.random.next() < 0.25) {
+          if (this.random.next() < 0.35) {
               events.push({ 
                   type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, 
-                  duration: 0.1, weight: 0.2 + (this.random.next() * 0.15), 
+                  duration: 0.1, weight: 0.1 + (this.random.next() * 0.15), 
                   technique: 'ghost', dynamics: 'p', phrasing: 'staccato' 
               });
           }
       });
 
-      if (this.random.next() < 0.1) {
+      // --- ATMOSPHERE (WET RIDE) ---
+      if (this.random.next() < 0.12) {
           events.push({
-              type: 'drum_ride_wetter', note: 51, time: (this.random.nextInt(12)) * TICK_TO_BEAT, 
-              duration: 2.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.2
+              type: 'drum_ride_wetter', note: 51, 
+              time: (this.random.nextInt(12)) * TICK_TO_BEAT, 
+              duration: 3.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.3
           });
       }
 
+      // Хэты - ровный пульс
       [0, 3, 6, 9].forEach(t => {
-          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 });
+          events.push({ 
+              type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
+              time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, 
+              technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1 
+          });
       });
 
+      // --- DYNAMIC FILLS (TOMS) ---
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       
       if (isFourthBar || isEighthBar || isSoloistResting) {
-          const intensity = isEighthBar ? 1.0 : 0.7;
+          const intensity = isEighthBar ? 0.9 : 0.6;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          const pans = [-0.4, 0.0, 0.4];
+          const pans = [-0.5, 0.0, 0.5];
           
+          // Филл только в конце такта
           [9, 10, 11].forEach((t, i) => {
-              events.push({ 
-                  type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
-                  duration: 0.5, weight: (0.6 + i * 0.1) * intensity, 
-                  technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] 
-              });
+              if (this.random.next() < 0.8) {
+                  events.push({ 
+                      type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
+                      duration: 0.5, weight: (0.5 + i * 0.1) * intensity, 
+                      technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: pans[i] 
+                  });
+              }
           });
       }
 
       return events;
-  }
-
-  private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-      this.currentBassAxiom = []; this.currentAccompAxioms = []; this.currentDrumAxioms = []; this.currentNativeRoot = null; this.ensembleStatus = 'ADAPTIVE'; this.currentTimeScale = 1;
-      this.currentPreferredInstrument = null;
-
-      if (this.config.isImprovising && this.random.next() < 0.25 && epoch > 12) {
-          this.soloistRestingUntilBar = epoch + 2;
-          this.currentAxiom = [];
-          return undefined;
-      }
-
-      if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
-          const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
-          
-          let effectiveAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : this.sessionAnchorId;
-          
-          let filteredPool: any[] = [];
-          if (effectiveAnchor) {
-              filteredPool = poolToUse.filter(ax => this.normalize(ax.compositionId) === effectiveAnchor);
-          } else {
-              const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-              filteredPool = poolToUse.filter(ax => {
-                  const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                  const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                  return axGenres.includes(this.config.genre) && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
-              });
-          }
-
-          if (filteredPool.length > 0) {
-              let basePool = filteredPool.filter(ax => ax.role === 'melody');
-              if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
-              if (basePool.length > 0) {
-                  const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                  const suitePlayhead = epoch % (maxDonorBars || 144);
-                  let selected: any = null;
-
-                  if (this.config.isImprovising) {
-                      if (!effectiveAnchor) {
-                          const firstSelection = basePool[calculateMusiNum(this.seed, 19, 0, basePool.length)];
-                          this.sessionAnchorId = this.normalize(firstSelection.compositionId);
-                          effectiveAnchor = this.sessionAnchorId;
-                          filteredPool = poolToUse.filter(ax => this.normalize(ax.compositionId) === effectiveAnchor);
-                          basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
-                      }
-                      const idx = calculateMusiNum(this.seed, 19, epoch, basePool.length);
-                      selected = basePool[idx];
-                  } else {
-                      const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
-                      if (sameOffsetPool.length > 0) {
-                          const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
-                          selected = sameOffsetPool[idx];
-                      } else {
-                          const candidates = basePool.filter(ax => !this.state.recentLicks.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
-                          selected = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
-                      }
-                  }
-
-                  if (selected) {
-                      this.currentLickId = selected.id; this.currentTrackName = selected.compositionId;
-                      this.state.recentLicks.push(selected.id); if (this.state.recentLicks.length > 15) this.state.recentLicks.shift();
-                      this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-                      this.currentPreferredInstrument = selected.preferredInstrument || null;
-
-                      let rawPhrase = decompressCompactPhrase(selected.phrase); const phrasesToNormalize = [rawPhrase];
-
-                      if (selected.role === 'melody') {
-                          rawPhrase = mergeIdenticalNotes(rawPhrase);
-                      }
-
-                      const cid = this.normalize(selected.compositionId);
-                      const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                      if (bassSibling) { const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb); this.currentBassAxiom = rb; }
-                      const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && this.normalize(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                      accompSiblings.forEach(ax => {
-                          const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
-                          this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
-                      });
-                      const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalize(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                      drumSiblings.forEach(ax => { const p = decompressCompactPhrase(ax.phrase); this.currentDrumAxioms.push({ phrase: p, role: ax.role }); });
-                      normalizePhraseGroup(phrasesToNormalize);
-                      const baseBars = selected.bars || 4; this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
-                      this.currentAxiom = rawPhrase; this.soloistBusyUntilBar = epoch + baseBars; this.ensembleStatus = 'SIBLING'; return selected.nativeBpm || undefined;
-                  }
-              }
-          }
-      }
-      this.ensembleStatus = 'LOCAL'; this.currentLickId = 'L01'; this.currentAxiom = decompressCompactPhrase(BLUES_SOLO_LICKS['LN_01'].phrase as any); this.currentAxiomMaxTick = 48; this.soloistBusyUntilBar = epoch + 4; return undefined;
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
