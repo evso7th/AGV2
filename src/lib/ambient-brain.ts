@@ -1,8 +1,9 @@
 /**
- * @fileOverview Ambient Brain V71.0 — "Sonic Landscape Protocol".
+ * @fileOverview Ambient Brain V72.0 — "Sonic Landscape Protocol".
  * #ЗАЧЕМ: Превращение ударных в текстурное звуковое полотно.
  * #ЧТО: ПЛАН №1092 — Текстурная перкуссия, редкие хэты и "влажный" райд.
  * #ОБНОВЛЕНО (ПЛАН №1095): Anti-Hum Ripple Logic для устранения монотонности.
+ * #FIX: Добавлен отсутствующий метод selectNextAxiom.
  */
 
 import type {
@@ -15,7 +16,9 @@ import type {
     InstrumentPart,
     Genre,
     CommonMood,
-    Technique
+    Technique,
+    Dynamics,
+    Phrasing
 } from '@/types/music';
 import {
     calculateMusiNum,
@@ -32,7 +35,8 @@ import {
     keyToMidiRoot,
     resolveSemanticTimbre,
     TICKS_PER_BAR,
-    TICK_TO_BEAT
+    TICK_TO_BEAT,
+    normalizeStr
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -51,7 +55,6 @@ export class AmbientBrain {
     private random: any;
     private useHeritage: boolean;
     private isImprovising: boolean = false;
-    private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
 
     private fog: number = 0.3;
     private pulse: number = 0.15;
@@ -106,10 +109,6 @@ export class AmbientBrain {
         return { next, nextInt };
     }
 
-    private normalizeStr(s: string): string {
-        return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
@@ -128,37 +127,129 @@ export class AmbientBrain {
         return linearIndex;
     }
 
+    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
+        this.currentTheme = null;
+        this.currentBassTheme = null;
+        this.currentAccompAxioms = [];
+        this.currentDrumAxioms = [];
+        this.currentNativeRoot = null;
+        this.currentPreferredInstrument = null;
+        this.ensembleStatus = 'ADAPTIVE';
+
+        if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
+
+        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
+        const targetAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : null;
+        
+        let filteredPool: any[] = [];
+        if (targetAnchor) {
+            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === targetAnchor);
+        } else {
+            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            filteredPool = poolToUse.filter(ax => {
+                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                return axGenres.includes('ambient') && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
+            });
+        }
+
+        if (filteredPool.length > 0) {
+            let basePool = filteredPool.filter(ax => ax.role === 'melody');
+            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
+
+            if (basePool.length > 0) {
+                const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                const suitePlayhead = epoch % (maxDonorBars || 144);
+                let selected: any = null;
+
+                if (this.isImprovising) {
+                    selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
+                } else {
+                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
+                    selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
+                }
+
+                if (selected) {
+                    this.currentTrackName = selected.compositionId;
+                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
+                    this.currentPreferredInstrument = selected.preferredInstrument || null;
+                    
+                    let rawPhrase = decompressCompactPhrase(selected.phrase);
+                    if (selected.role === 'melody') rawPhrase = mergeIdenticalNotes(rawPhrase);
+
+                    const cid = normalizeStr(selected.compositionId);
+                    
+                    const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    if (bassSibling) {
+                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
+                    }
+
+                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    accompSiblings.forEach(ax => {
+                        this.currentAccompAxioms.push({ 
+                            phrase: decompressCompactPhrase(ax.phrase), 
+                            role: ax.role, 
+                            id: ax.id, 
+                            preferredInstrument: ax.preferredInstrument,
+                            endBar: epoch + (selected.bars || 4)
+                        });
+                    });
+
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    drumSiblings.forEach(ax => { 
+                        this.currentDrumAxioms.push({ 
+                            phrase: decompressCompactPhrase(ax.phrase), 
+                            role: ax.role,
+                            endBar: epoch + (selected.bars || 4)
+                        }); 
+                    });
+
+                    const baseBars = selected.bars || 4;
+                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentTheme = { 
+                        phrase: rawPhrase, 
+                        startBar: epoch, 
+                        endBar: epoch + baseBars, 
+                        id: selected.id,
+                        tags: selected.tags || []
+                    };
+                    this.soloistBusyUntilBar = epoch + baseBars;
+                    this.ensembleStatus = 'SIBLING';
+                    return selected.nativeBpm || undefined;
+                }
+            }
+        }
+        
+        this.currentTrackName = 'Generative';
+        this.soloistBusyUntilBar = epoch + 4;
+        return undefined;
+    }
+
     /**
      * #ЗАЧЕМ: Anti-Hum Logic (ПЛАН №1095).
      * #ЧТО: Дробление и перелив длинных нот (>= 1 такт) в тона аккорда.
      */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-        // Порог: 4.0 доли (1 такт)
         if (e.duration < 3.9) return [e]; 
 
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
-        // Приоритетные тона: Тоника (0), Терция (3/4), Квинта (7), Секста/Септима (9/10)
         const chordTones = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 9];
         
-        // Дробим на сегменты по 2 доли (полтакта)
         const numChunks = Math.ceil(e.duration / 2.0);
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
         for (let i = 0; i < numChunks; i++) {
-            // Первый сегмент сохраняет оригинальную ступень или тонику, остальные — переливаются
             let note: number;
             if (i === 0) {
                 note = e.note;
             } else {
-                // Питч выбирается детерминированно на основе времени начала оригинальной ноты
                 const degreeIdx = calculateMusiNum(Math.floor(e.time * 3) + i, 11, this.seed, chordTones.length);
                 const degree = chordTones[degreeIdx];
                 note = baseOctaveMidi + degree;
             }
 
-            // Коррекция октавы в зависимости от типа
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             let finalNote = note;
             if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
@@ -172,7 +263,6 @@ export class AmbientBrain {
                 duration: chunkDur,
                 params: { 
                     ...e.params, 
-                    // Смягчаем атаку для переливов
                     attack: i === 0 ? (e.params?.attack || 1.5) : 0.8,
                     release: 2.5 
                 }
@@ -460,11 +550,9 @@ export class AmbientBrain {
         const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
         const e: FractalEvent = {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition + this.microTransposition),
-            time: 0, duration: 4.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 1.5, release: 2.0, filterCutoff: 300 + (tension * 200) }
         };
-        // Бас не рипплим, он должен быть "фундаментально" стабильным, но если захочется — раскомментировать:
-        // return this.rippleLongNote(e, chord);
         return [e];
     }
 
@@ -480,11 +568,10 @@ export class AmbientBrain {
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
             duration: n.d * TICK_TO_BEAT * timeScale, 
             weight: 0.7,
-            technique: (localTension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato',
+            technique: (localTension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? ('vb' as Technique) : ('pick' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
         }));
 
-        // #ЗАЧЕМ: Применяем Anti-Hum Ripple к мелодии Наследия.
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -513,11 +600,10 @@ export class AmbientBrain {
         const rawEvents = barNotes.map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            technique: tension > 0.7 ? 'hit' : 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
+            technique: tension > 0.7 ? ('hit' as Technique) : ('swell' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { mood: this.mood }
         }));
 
-        // #ЗАЧЕМ: Применяем Anti-Hum Ripple к аккомпанементу Наследия.
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -529,7 +615,6 @@ export class AmbientBrain {
             weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         };
-        // #ЗАЧЕМ: Принудительное дробление статичного пэда.
         return this.rippleLongNote(e, chord);
     }
 
@@ -540,7 +625,6 @@ export class AmbientBrain {
             time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        // #ЗАЧЕМ: Принудительное дробление статичного мелодического пэда.
         return this.rippleLongNote(e, chord);
     }
 
