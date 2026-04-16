@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Drum Arsenal Protocol V2.0.
+ * @fileOverview Drum Arsenal Protocol V2.1.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №736): Реализовано обязательное использование расширенной перкуссии (perc-001..015, tube, bongo).
+ * #ОБНОВЛЕНО (ПЛАН №1092): Расширение текстурных наборов для создания ландшафтного Эмбиента.
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -51,8 +51,8 @@ export const DRUM_KITS: DrumKitLibrary = {
             kick: ['drum_kick_soft'],
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
-            ride: [],
-            perc: ['perc-003', 'bongo_pvc-tube-01', 'drum_Bell_-_Soft']
+            ride: ['drum_ride_wetter'],
+            perc: ['perc-003', 'bongo_pvc-tube-01', 'drum_Bell_-_Soft', 'bongo_pc-02']
         },
         calm: {
             kick: ['drum_kick_soft'],
@@ -65,8 +65,8 @@ export const DRUM_KITS: DrumKitLibrary = {
             kick: ['drum_kick_reso'],
             snare: ['drum_snare_off'],
             hihat: [],
-            ride: [],
-            perc: ['perc-012', 'bongo_pvc-tube-03', 'drum_Bell_-_Gong']
+            ride: ['drum_a-ride1'],
+            perc: ['perc-012', 'bongo_pvc-tube-03', 'drum_Bell_-_Gong', 'perc-008']
         }
     },
 

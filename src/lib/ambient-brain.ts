@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V69.0 — "Absolute Role Isolation".
- * #ЗАЧЕМ: Синхронизация логики маршрутизации с BluesBrain.
- * #ЧТО: ПЛАН №1000 — Принудительная изоляция пианино и аккомпанемента.
+ * @fileOverview Ambient Brain V70.0 — "Sonic Landscape Protocol".
+ * #ЗАЧЕМ: Превращение ударных в текстурное звуковое полотно.
+ * #ЧТО: ПЛАН №1092 — Текстурная перкуссия, редкие хэты и "влажный" райд.
  */
 
 import type {
@@ -205,7 +205,6 @@ export class AmbientBrain {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
                 
-                // #ЗАЧЕМ: ПЛАН №1000 — Принудительная изоляция.
                 if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
@@ -254,7 +253,7 @@ export class AmbientBrain {
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
+                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.current テーマ.phrase, this.currentThemeMaxTick, this.currentTimeScale);
             } 
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
@@ -285,13 +284,10 @@ export class AmbientBrain {
             instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
         }
 
+        // #ЗАЧЕМ: Тотальная переработка ударных для Эмбиента (ПЛАН №1092).
         if (hints.drums) {
-            const heritageDrums = this.renderHeritageDrums(epoch, localTension);
-            if (heritageDrums.length > 0) {
-                events.push(...heritageDrums);
-            } else {
-                events.push(...this.renderTexturalPercussion(epoch, localTension));
-            }
+            const landscapeDrums = this.renderSonicLandscape(epoch, localTension);
+            events.push(...landscapeDrums);
         }
 
         if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
@@ -307,137 +303,84 @@ export class AmbientBrain {
                 melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
-                drums: this.currentDrumAxioms.length > 0 ? `Heritage (${this.currentDrumAxioms.length} layers)` : 'Sonic Cube',
+                drums: 'Sonic Landscape', // #ЧТО: Новая роль ударных в отчете.
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style} [${this.pianistMode.toUpperCase()}]` : 'none'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Pianist: ${this.pianistMode}] [Chronos Mode]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Landscape: Pumping Textures]`
         };
     }
 
-    private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
+    /**
+     * #ЗАЧЕМ: Генератор перкуссионного ландшафта (ПЛАН №1092).
+     * #ЧТО: Мягкий кик, редкие хэты, влажный райд и диффузная перкуссия.
+     */
+    private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const root = chord.rootNote + this.currentTransposition + this.microTransposition;
-        const scale = [0, 7, 12, 14, 12, 7, 0];
-        [0, 6].forEach((t, i) => {
+        const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
+
+        // 1. DEEP KICK (Rare & Soft)
+        // Только на 1-ю или 3-ю долю и только в 60% тактов.
+        if (this.random.next() < 0.6) {
+            const time = this.random.next() < 0.7 ? 0 : 6;
             events.push({
-                type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]),
-                time: t * TICK_TO_BEAT, duration: 6.0 * TICK_TO_BEAT, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato'
-            });
-        });
-        events.push({
-            type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12),
-            time: 0, duration: 4.0, weight: 0.35, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 2.5, mood: this.mood }
-        });
-        if (hints.melody) {
-            events.push({
-                type: 'melody', note: root + 24, time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 2.5, release: 3.0, mood: this.mood }
+                type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any,
+                note: 36, time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.65,
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
-        return events;
-    }
 
-    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        this.currentAccompAxioms = [];
-        this.currentDrumAxioms = [];
-        this.currentNativeRoot = null;
-        this.currentTimeScale = 1;
-        this.currentPreferredInstrument = null;
-        
-        let cloudAxiom: any = null;
-
-        if (this.isImprovising && this.random.next() < 0.3 && epoch > 8) {
-            this.soloistRestingUntilBar = epoch + 2;
-            this.currentTheme = null;
-            return undefined;
+        // 2. WETTEST RIDE (Atmospheric Ping)
+        // Редкое появление (20% шанс), создает ощущение пространства.
+        if (this.random.next() < 0.2) {
+            events.push({
+                type: 'drum_ride_wetter', note: 51,
+                time: (this.random.nextInt(TICKS_PER_BAR)) * TICK_TO_BEAT,
+                duration: 2.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                pan: (this.random.next() * 1.4) - 0.7
+            });
         }
 
-        const poolToUse = ((this.useHeritage && this.cloudAxioms.length > 0) ? this.cloudAxioms : (this.useHeritage ? (dna.cloudAxioms || []) : [])).filter(ax => ax.ignored !== true);
-
-        if (poolToUse.length > 0) {
-            const targetAnchor = this.activeAnchorId ? this.normalizeStr(this.activeAnchorId) : null;
-            let filteredPool: any[] = [];
-            if (targetAnchor) {
-                filteredPool = poolToUse.filter(ax => this.normalizeStr(ax.compositionId) === targetAnchor);
-            } else {
-                const commonMoodFilter = MOOD_TO_COMMON[this.mood];
-                filteredPool = poolToUse.filter(ax => {
-                    const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                    const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                    return axGenres.includes(this.genre) && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
-                });
-            }
-
-            if (filteredPool.length > 0) {
-                let basePool = filteredPool.filter(ax => ax.role === 'melody');
-                if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
-
-                if (basePool.length > 0) {
-                    const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                    const suitePlayhead = epoch % (maxDonorBars || 144);
-
-                    if (this.isImprovising) {
-                        const idx = calculateMusiNum(this.seed, 13, epoch, basePool.length);
-                        cloudAxiom = basePool[idx];
-                    } else {
-                        const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % maxDonorBars));
-                        if (sameOffsetPool.length > 0) {
-                            const idx = calculateMusiNum(this.seed, 17, epoch, sameOffsetPool.length);
-                            cloudAxiom = sameOffsetPool[idx];
-                        } else {
-                            const candidates = basePool.filter(ax => !this.usedThemeHistory.includes(ax.id)).sort((a, b) => Math.abs((a.barOffset || 0) - suitePlayhead) - Math.abs((b.barOffset || 0) - suitePlayhead));
-                            cloudAxiom = candidates.length > 0 ? candidates[0] : basePool[this.random.nextInt(basePool.length)];
-                        }
-                    }
-                    if (cloudAxiom) { this.usedThemeHistory.push(cloudAxiom.id); if (this.usedThemeHistory.length > 20) this.usedThemeHistory.shift(); }
+        // 3. RARE HATS (Ghostly accents)
+        // Появляются только при росте Tension.
+        if (tension > 0.4 && this.random.next() < 0.3) {
+            [1.5, 4.5, 7.5, 10.5].forEach(t => {
+                if (this.random.next() < 0.4) {
+                    events.push({
+                        type: 'drum_closed_hi_hat_ghost', note: 42,
+                        time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2 + (this.random.next() * 0.2),
+                        technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
+                    });
                 }
-            }
+            });
         }
 
-        if (cloudAxiom) {
-            this.currentNativeRoot = keyToMidiRoot(cloudAxiom.nativeKey);
-            this.currentPreferredInstrument = cloudAxiom.preferredInstrument || null;
-
-            let rawPhrase = decompressCompactPhrase(cloudAxiom.phrase);
-            if (cloudAxiom.role === 'melody') {
-                rawPhrase = mergeIdenticalNotes(rawPhrase);
-            }
-
-            const phrasesToNormalize = [rawPhrase];
-            const cid = this.normalizeStr(cloudAxiom.compositionId);
-
-            const bassSibling = poolToUse.find(ax => ax.role === 'bass' && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
-            if (bassSibling) {
-                const rb = decompressCompactPhrase(bassSibling.phrase); phrasesToNormalize.push(rb);
-                this.currentBassTheme = { phrase: rb, startBar: epoch, endBar: epoch + (cloudAxiom.bars || 4) };
-            }
-            const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
-            accompSiblings.forEach(ax => {
-                const p = decompressCompactPhrase(ax.phrase); phrasesToNormalize.push(p);
-                this.currentAccompAxioms.push({ phrase: p, role: ax.role, id: ax.id, endBar: epoch + (cloudAxiom.bars || 4), preferredInstrument: ax.preferredInstrument });
+        // 4. SONIC KITCHEN (Bells, Bongos, Tubes)
+        // Хаотичное, но гармоничное распределение.
+        const hitCount = 1 + this.random.nextInt(Math.floor(tension * 5) + 1);
+        for (let i = 0; i < hitCount; i++) {
+            const perc = kit.perc[this.random.nextInt(kit.perc.length)];
+            const time = this.random.next() * TICKS_PER_BAR;
+            const pan = (this.random.next() * 1.8) - 0.9;
+            
+            events.push({
+                type: perc as any, note: 48, 
+                time: time * TICK_TO_BEAT, duration: 1.0, 
+                weight: 0.4 + (this.random.next() * 0.4), 
+                technique: 'hit', dynamics: 'p', phrasing: 'detached', pan
             });
-            const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && this.normalizeStr(ax.compositionId) === cid && ax.barOffset === cloudAxiom.barOffset);
-            drumSiblings.forEach(ax => {
-                const p = decompressCompactPhrase(ax.phrase);
-                this.currentDrumAxioms.push({ phrase: p, role: ax.role, endBar: epoch + (cloudAxiom.bars || 4) });
-            });
-
-            normalizePhraseGroup(phrasesToNormalize);
-            const phraseBars = cloudAxiom.bars || 4;
-            this.currentThemeMaxTick = phraseBars * TICKS_PER_BAR;
-            this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + phraseBars, id: cloudAxiom.id, tags: cloudAxiom.tags || [] };
-            this.currentTrackName = cloudAxiom.compositionId;
-            this.soloistBusyUntilBar = epoch + phraseBars;
-            this.ensembleStatus = 'SIBLING';
-            return cloudAxiom.nativeBpm || undefined;
-        } else {
-            this.ensembleStatus = 'LOCAL';
-            this.currentTheme = null;
-            this.soloistBusyUntilBar = epoch + 4;
-            return undefined;
         }
+
+        // 5. HERITAGE FILTER (Softening DNA drums)
+        if (this.currentDrumAxioms.length > 0) {
+            const hDrums = this.renderHeritageDrums(epoch, tension);
+            hDrums.forEach(e => {
+                e.weight *= 0.4; // Глушим ДНК-барабаны, чтобы они не разрушали ландшафт
+                events.push(e);
+            });
+        }
+
+        return events;
     }
 
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
@@ -483,23 +426,6 @@ export class AmbientBrain {
         }];
     }
 
-    private renderTexturalPercussion(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
-        
-        if (this.random.next() < 0.4 || epoch % 4 === 3) events.push({ type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any, note: 36, time: 0, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-        
-        const hits = 2 + this.random.nextInt(2);
-        for(let i=0; i<hits; i++) {
-            const perc = kit.perc[this.random.nextInt(kit.perc.length)];
-            const pan = (Math.random() * 1.4) - 0.7;
-            const time = (this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT);
-            events.push({ type: perc as any, note: 48, time, duration: 1.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan });
-        }
-        
-        return events;
-    }
-
     private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
@@ -515,11 +441,11 @@ export class AmbientBrain {
         }));
     }
 
-    private renderThemeBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
+    private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, localTension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         if (barNotes.length === 0) return []; 
@@ -623,14 +549,5 @@ export class AmbientBrain {
         let stage = Math.min(2, Math.floor((epoch / 150) * 3));
         const atom = GEO_ATLAS[dna.itinerary[stage]];
         if (atom) { this.fog = atom.fog; this.depth = atom.depth; this.registerShift = atom.reg; }
-    }
-
-    private computeTensionWaves(timeSec: number): number[] {
-        const p = [8, 45, 180, 600]; const phi = [0.0, 1.309, 2.618, 4.188]; const psi = [0.785, 2.094, 3.927, 5.498]; const beta = 7.2360679775; const md = [0.05, 0.12, 0.25, 0.40];
-        return [0, 1, 2, 3].map(n => (Math.sin(2 * Math.PI * timeSec / p[n] + phi[n])) * (1 + md[n] * Math.sin(2 * Math.PI * timeSec / (p[n] / beta) + psi[n])));
-    }
-
-    private computeGlobalTension(waves: number[]): number {
-        const w = [0.15, 0.35, 0.30, 0.20]; let t = 0; for (let n = 0; n < 4; n++) t += w[n] * waves[n]; return (t + 1) / 2;
     }
 }
