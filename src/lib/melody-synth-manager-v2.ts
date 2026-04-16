@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №999 — Бесшовная смена инструментов без блокировки планировщика.
+ * #ЧТО: ПЛАН №1112 — Укрепление иерархии и предотвращение тишины.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -53,7 +53,7 @@ export class MelodySynthManagerV2 {
 
     async init() {
         if (this.isInitialized) return;
-        const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'synth';
+        const initialPresetName = this.partName === 'bass' ? 'bass_jazz_warm' : 'telecaster';
         await this.setInstrument(initialPresetName);
         this.isInitialized = true;
     }
@@ -84,20 +84,11 @@ export class MelodySynthManagerV2 {
                 output: this.preamp
             });
             
-            if (this.partName === 'melody' && newInstrument) {
-                const isGuitar = presetName.toLowerCase().includes('guitar') || 
-                                 presetName.toLowerCase().includes('acoustic') ||
-                                 presetName.toLowerCase().includes('telecaster');
-                
-                const multiplier = isGuitar ? 1.0 : 0.5;
-                const baseVolume = preset.volume || 0.7;
-                newInstrument.setVolume(baseVolume * multiplier);
-            }
-
             const oldInst = this.synth;
             this.synth = newInstrument;
             this.activePresetName = presetName;
 
+            // #ЗАЧЕМ: Удержание старого инструмента до полной готовности нового.
             if (oldInst) {
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
@@ -126,11 +117,16 @@ export class MelodySynthManagerV2 {
             };
         });
         
-        if (instrumentHint && instrumentHint !== this.activePresetName && !this.isChangingInstrument) {
+        // #ЗАЧЕМ: ПЛАН №1112. Укрепление иерархии fallbacks.
+        let finalHint = instrumentHint;
+        if (!finalHint || finalHint === 'melody') {
+            finalHint = this.partName === 'bass' ? 'bass_jazz_warm' : 'telecaster';
+        }
+
+        if (finalHint !== this.activePresetName && !this.isChangingInstrument) {
             const isPhraseBoundary = barCount % 4 === 0;
-            const isInitialDefault = this.activePresetName === 'synth' || this.activePresetName === 'none' || this.activePresetName === 'bass_jazz_warm';
-            if (notesToPlay.length === 0 || isPhraseBoundary || isInitialDefault) {
-                this.setInstrument(instrumentHint);
+            if (notesToPlay.length === 0 || isPhraseBoundary || this.activePresetName === 'none') {
+                this.setInstrument(finalHint);
             }
         }
 
@@ -139,6 +135,7 @@ export class MelodySynthManagerV2 {
 
         const currentActive = this.activePresetName;
         
+        // 1. SAMPLERS (High Priority)
         if (currentActive === 'cs80') {
             this.cs80Sampler.schedule(notesToPlay, barStartTime, tempo);
             return;
@@ -159,8 +156,14 @@ export class MelodySynthManagerV2 {
             }
         }
         
-        if (!this.synth) return;
+        // 2. SYNTHS (With Transient Support)
+        if (!this.synth) {
+            // Если синтезатор еще не готов, используем Telecaster как аварийный выход.
+            if (this.partName === 'melody') this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
+            return;
+        }
         
+        // Hybrid Layering
         if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
