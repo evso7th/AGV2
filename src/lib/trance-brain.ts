@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V4.1 — "Total Ensemble Sovereignty".
- * #ЗАЧЕМ: Реализация полной интеграции всех ролей Наследия (accomp, piano, melody, bass, drums).
- * #ЧТО: ПЛАН №1036 — Принудительное использование ДНК для аккомпанемента и пианино.
+ * @fileOverview Psybient Brain V4.2 — "Atmospheric Purge".
+ * #ЗАЧЕМ: Точечная очистка Псиамбиента от избыточного шума.
+ * #ЧТО: ПЛАН №1100 — Спарклы и SFX в 3 раза реже. Колокольчики выведены в редкие акценты.
  */
 
 import type {
@@ -156,7 +156,6 @@ export class TranceBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
-                    // #ЗАЧЕМ: Полный сбор "Ансамбля Наследия" (ПЛАН №1036).
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => {
                         this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id });
@@ -167,7 +166,6 @@ export class TranceBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    // #ЗАЧЕМ: Захватываем все формы аккомпанемента и пианино.
                     const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
@@ -257,7 +255,6 @@ export class TranceBrain {
         const usedTargetLayers = new Set<string>();
         
         if (!isIntro) {
-            // #ЗАЧЕМ: Принудительное исполнение ДНК для пэдов и пианино.
             this.currentAccompAxioms.forEach(ax => {
                 const role = ax.role.toLowerCase();
                 let target: InstrumentPart | null = null;
@@ -357,14 +354,30 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1100 — Очистка кухонной перкуссии.
+     * #ЧТО: Снижение плотности, удаление колокольчиков из основного цикла.
+     */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007', 'drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
-        for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
-            if (this.rng.chance(60 + tension * 20)) {
+        // Bells removed from primary pool
+        const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
+        const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
+
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) { // Slower steps
+            // 3x general reduction
+            if (this.rng.chance(20 + tension * 10)) {
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                    weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                });
+            }
+            
+            // #ЗАЧЕМ: Колокольчики как редкие акценты (5% шанс).
+            if (this.rng.chance(5)) {
+                events.push({
+                    type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 1.5, 
+                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.6) - 0.8
                 });
             }
         }
@@ -422,26 +435,6 @@ export class TranceBrain {
         }));
     }
 
-    private renderHeritageAccompaniment(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-
-        this.currentAccompAxioms.filter(ax => ax.role.toLowerCase().includes('accomp')).forEach(ax => {
-            const barNotes = ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-            barNotes.forEach(n => {
-                events.push({
-                    type: 'accompaniment', note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                    time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
-                    technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
-                });
-            });
-        });
-        return events;
-    }
-
     private renderLegacySolo(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const lickKeys = Object.keys(BLUES_SOLO_LICKS).filter(k => k.startsWith('LN_'));
         const key = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
@@ -481,14 +474,19 @@ export class TranceBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1100 — 3-х кратное разрежение атмосферных событий.
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        if (this.rng.chance(85)) {
+        // Chance reduced from 85% to 28%
+        if (this.rng.chance(28)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
-        if (this.rng.chance(60)) {
+        // Chance reduced from 60% to 20%
+        if (this.rng.chance(20)) {
             const useVoice = this.rng.chance(30);
             events.push({ type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre, rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined } });
         }
