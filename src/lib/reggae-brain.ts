@@ -1,8 +1,11 @@
 
 /**
- * @fileOverview Reggae Brain V2.3 — "Global Aria Protocol".
- * #ЗАЧЕМ: Применение Singing Guitars к даб-соло.
- * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для Roots-мелодий.
+ * @fileOverview Reggae Brain V3.0 — "Heritage First Standard".
+ * #ЗАЧЕМ: Максимальное упрощение. Регги теперь — это прозрачный проигрыватель Наследия.
+ * #ЧТО: ПЛАН №1125 — Вычищена вся специфичная логика (One-drop, Skank). 
+ *       Внедрена копия логики Psybient/Ambient для свободной игры.
+ *       Дефолты: Melody(Telecaster), Accomp(Prog Organ), Harmony(GuitarChords), Piano(Rhodes).
+ *       Соблюдение Плана №1118 (Aria Protocol).
  */
 
 import type {
@@ -15,13 +18,13 @@ import type {
     InstrumentPart,
     Genre,
     CommonMood,
-    Technique
+    Technique,
+    Dynamics,
+    Phrasing
 } from '@/types/music';
 import {
     calculateMusiNum,
     DEGREE_TO_SEMITONE,
-    SEMITONE_TO_DEGREE,
-    normalizePhraseGroup,
     decompressCompactPhrase,
     resolveSemanticTimbre,
     mergeIdenticalNotes,
@@ -30,7 +33,6 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
-import { DRUM_KITS } from './assets/drum-kits';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -48,16 +50,22 @@ export class ReggaeBrain {
 
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
+    
+    // Memory for consistent track playback
+    private sessionAnchorId: string | null = null; 
+    private currentTrackName: string = 'Algorithmic';
+    private currentNativeRoot: number | null = null;
+    private currentPreferredInstrument: string | null = null;
+    
+    // Sibling Containers
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentThemeMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
-    
-    private currentTrackName: string = 'Algorithmic';
-    private sessionAnchorId: string | null = null; 
-    private currentNativeRoot: number | null = null;
-    private currentPreferredInstrument: string | null = null;
+    private currentDrumAxioms: { phrase: any[], role: string }[] = [];
+
     private soloistBusyUntilBar: number = -1;
+    private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -84,16 +92,18 @@ export class ReggaeBrain {
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
     }
 
-    private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+    private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
         if (this.isImprovising) {
-            return calculateMusiNum(epoch, 7, this.seed, totalBars);
+            return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
         return (epoch - startEpoch) % totalBars;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        this.currentAccompAxioms = [];
+        this.currentTheme = null;
         this.currentBassTheme = null;
+        this.currentAccompAxioms = [];
+        this.currentDrumAxioms = [];
         this.currentNativeRoot = null;
         this.currentPreferredInstrument = null;
         
@@ -118,19 +128,20 @@ export class ReggaeBrain {
             if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
             if (basePool.length > 0) {
+                if (!effectiveAnchor) {
+                    const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                    this.sessionAnchorId = normalizeStr(first.compositionId);
+                    effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                }
+
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const suitePlayhead = epoch % (maxDonorBars || 144);
+                
                 let selected: any = null;
-
                 if (this.isImprovising) {
-                    if (!effectiveAnchor) {
-                        const firstSelection = basePool[calculateMusiNum(this.seed, 11, 0, basePool.length)];
-                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
-                        effectiveAnchor = this.sessionAnchorId;
-                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
-                    }
-                    selected = basePool[calculateMusiNum(this.seed, 13, epoch, basePool.length)];
+                    selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
                     selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
@@ -145,15 +156,15 @@ export class ReggaeBrain {
                     if (selected.role === 'melody') rawPhrase = mergeIdenticalNotes(rawPhrase);
 
                     const cid = normalizeStr(selected.compositionId);
+                    
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bassSibling) {
-                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
-                    }
+                    if (bassSibling) this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
 
-                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    accompSiblings.forEach(ax => {
-                        this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
-                    });
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentAccompAxioms = accompSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
+
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -173,207 +184,107 @@ export class ReggaeBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints> } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const events: FractalEvent[] = [];
         const isIntro = navInfo.currentPart.id === 'INTRO' || epoch < 4;
 
+        let newBpm: number | undefined;
         if (epoch >= this.soloistBusyUntilBar && !isIntro) {
-            this.selectNextAxiom(navInfo, dna, epoch);
+            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
 
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        if (hints.drums) events.push(...this.renderOneDropDrums(epoch, tension));
+        // 1. DRUMS (DNA Based)
+        if (hints.drums) {
+            if (this.currentDrumAxioms.length > 0) {
+                events.push(...this.renderHeritageDrums(epoch, tension));
+            } else {
+                events.push(...this.renderDefaultReggaePulse(epoch, tension));
+            }
+        }
 
-        let activeBassAxiom = 'Roots Syncopation';
+        // 2. BASS (DNA Based)
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
-                activeBassAxiom = `DNA: ${this.currentBassTheme.id}`;
             } else {
-                events.push(...this.renderRootsBass(epoch, resChord, tension));
+                events.push(...this.renderGenerativeBass(epoch, resChord, tension));
             }
         }
 
-        let activeAccAxiom = 'none';
-        if (hints.accompaniment && !isIntro) {
-            if (this.random.next() < 0.15) {
-                const skankEvents = this.renderTheSkank(epoch, resChord, tension);
-                events.push(...skankEvents);
-                activeAccAxiom = 'Rare Skank Accent';
+        // 3. ACCOMPANIMENT / PIANO / HARMONY (DNA Based)
+        const usedLayers = new Set<string>();
+        this.currentAccompAxioms.forEach(ax => {
+            const role = ax.role.toLowerCase();
+            let target: InstrumentPart | null = null;
+            if (role.includes('piano')) target = 'pianoAccompaniment';
+            else if (role.includes('accomp')) target = 'accompaniment';
+            else if (role.includes('harmony') || role.includes('strings')) target = 'harmony';
+
+            if (target && hints[target] && !usedLayers.has(target)) {
+                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
+                usedLayers.add(target);
+                if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target);
             }
-            instrumentOverrides.accompaniment = 'reggae_organ';
+        });
+
+        // Fallbacks for empty layers
+        if (hints.accompaniment && !usedLayers.has('accompaniment')) {
+            events.push(...this.renderGenerativePad(resChord, tension));
+            instrumentOverrides.accompaniment = 'organ_prog';
+        }
+        if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
+            instrumentOverrides.pianoAccompaniment = 'ep_rhodes_warm';
+        }
+        if (hints.harmony && !usedLayers.has('harmony')) {
+            instrumentOverrides.harmony = 'guitarChords';
         }
 
-        let melEvents: FractalEvent[] = [];
-        let activeMelAxiom = isIntro ? 'Waiting' : 'Tuff Gong Solo';
+        // 4. MELODY (The Soul - DNA Based with Aria Protocol)
+        let activeMelLick = 'none';
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melEvents = this.renderHeritageMelody(epoch, resChord, tension);
-                activeMelAxiom = `DNA: ${this.currentTheme.id}`;
+                events.push(...this.renderHeritageMelody(epoch, resChord, tension));
+                activeMelLick = this.currentTheme.id;
             } else {
-                melEvents = this.renderLyricalSolo(epoch, resChord, tension);
+                events.push(...this.renderGenerativeAriaMelody(epoch, resChord, tension));
+                activeMelLick = 'Generative Aria';
             }
-            events.push(...melEvents);
-            instrumentOverrides.melody = 'reggae_guitar';
-        }
-
-        if (hints.pianoAccompaniment && !isIntro) {
-            events.push(...this.renderBubbling(epoch, resChord, tension));
+            instrumentOverrides.melody = 'telecaster';
         }
 
         return {
-            events, tension, beautyScore: 0.85,
+            events, tension, beautyScore: 0.88,
             trackName: this.currentTrackName,
+            newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: activeMelAxiom,
-                bass: activeBassAxiom,
-                drums: tension > 0.7 ? 'Steppers' : 'One-Drop',
-                accompaniment: activeAccAxiom,
-                piano: 'Bubbling'
+                melody: isIntro ? 'Waiting' : activeMelLick,
+                bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Generative Pulse',
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Standard Pulse'
             },
-            narrative: `Reggae Roots: [DNA: ${this.currentTrackName}] [Riddim: ${tension > 0.7 ? 'Steppers' : 'One-Drop'}] [Skank: Rare]`
+            narrative: `Reggae Player: [DNA: ${this.currentTrackName}] [Protocol: ARIA]`
         };
-    }
-
-    private renderOneDropDrums(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const isSteppers = tension > 0.75;
-
-        if (!isSteppers) {
-            events.push({
-                type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0,
-                technique: 'hit', dynamics: 'f', phrasing: 'staccato'
-            });
-            events.push({
-                type: 'drum_snare', note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9,
-                technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: -0.1
-            });
-        } else {
-            [0, 3, 6, 9].forEach(t => {
-                events.push({
-                    type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9,
-                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-                });
-            });
-            events.push({
-                type: 'drum_snare', note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0,
-                technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: -0.1
-            });
-        }
-
-        [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
-            const isOff = t % 3 !== 0;
-            events.push({
-                type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
-                duration: 0.1, weight: isOff ? 0.7 : 0.4,
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.1
-            });
-        });
-
-        return events;
-    }
-
-    private renderRootsBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const root = chord.rootNote - 12;
-        
-        const patterns = [
-            [1.5, 4.5, 7.5, 10.5],
-            [0, 1.5, 6, 7.5],
-            [3, 4.5, 9, 10.5],
-        ];
-        
-        const activePattern = patterns[calculateMusiNum(epoch, 7, this.seed, patterns.length)];
-        
-        activePattern.forEach((t, i) => {
-            const note = i === 0 ? root : root + [0, 7, 5, 3][calculateMusiNum(epoch + i, 11, this.seed, 4)];
-            events.push({
-                type: 'bass', note, time: t * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 1.0,
-                technique: 'pulse', dynamics: 'mf', phrasing: 'detached',
-                params: { filterCutoff: 300 + tension * 400 }
-            });
-        });
-
-        return events;
-    }
-
-    private renderTheSkank(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const root = chord.rootNote + 12;
-        
-        [3, 9].forEach(t => {
-            events.push({
-                type: 'accompaniment', note: root, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.6,
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.3
-            });
-        });
-
-        return events;
-    }
-
-    private renderBubbling(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const root = chord.rootNote + 12;
-        
-        [4, 5, 10, 11].forEach(t => {
-            if (this.random.next() < 0.7) {
-                events.push({
-                    type: 'pianoAccompaniment', note: root + 12, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.3,
-                    technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: -0.2
-                });
-            }
-        });
-
-        return events;
-    }
-
-    private renderLyricalSolo(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        if (epoch % 2 === 0) return []; 
-        
-        const root = chord.rootNote + 12;
-        const scale = [0, 2, 3, 5, 7, 9, 10]; 
-        
-        [0, 3, 6, 9].forEach(t => {
-            if (this.random.next() < 0.4) {
-                const note = root + scale[this.random.nextInt(scale.length)];
-                // #ЗАЧЕМ: Aria Protocol - нахлест и вокальность.
-                events.push({
-                    type: 'melody', note, time: (t + 0.5) * TICK_TO_BEAT, 
-                    duration: (0.8 * TICK_TO_BEAT) * 1.25, 
-                    weight: 0.7,
-                    technique: tension > 0.4 ? 'vb' : 'pick', 
-                    dynamics: 'mf', phrasing: 'legato', pan: -0.3
-                });
-            }
-        });
-
-        return events;
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.currentTheme.startBar;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         
-        return barNotes.map(n => {
-            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато.
+        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
             const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-                time: (n.t - barOffset + 0.5) * TICK_TO_BEAT, 
-                // ARIA Overlap
-                duration: (n.d * TICKS_PER_BAR * TICK_TO_BEAT) * 1.25, 
-                weight: 0.8,
+                time: (n.t - barOffset) * TICK_TO_BEAT, 
+                duration: (n.d * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                weight: 0.85,
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', phrasing: 'legato'
             };
@@ -382,21 +293,93 @@ export class ReggaeBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.currentBassTheme.startBar;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         
-        return barNotes.map(n => ({
+        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset + 0.2) * TICK_TO_BEAT, 
-            duration: n.d * TICKS_PER_BAR * TICK_TO_BEAT, weight: 1.0,
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
     }
 
+    private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+        
+        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+            type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
+            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
+        }));
+    }
+
+    private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
+        if (this.currentDrumAxioms.length === 0) return [];
+        const events: FractalEvent[] = [];
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBars;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const barOffset = mosaicBar * TICKS_PER_BAR;
+
+        this.currentDrumAxioms.forEach(ax => {
+            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
+                events.push({
+                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+                });
+            });
+        });
+        return events;
+    }
+
+    private renderDefaultReggaePulse(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        events.push({ type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        events.push({ type: 'drum_snare', note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        [0, 3, 6, 9].forEach(t => {
+            events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        });
+        return events;
+    }
+
+    private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const root = chord.rootNote - 12;
+        return [
+            { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
+            { type: 'bass', note: root + 7, time: 7.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
+        ];
+    }
+
+    private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
+        return [{
+            type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
+            technique: 'swell', dynamics: 'p', phrasing: 'legato'
+        }];
+    }
+
+    private renderGenerativeAriaMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        if (epoch % 2 === 0) return [];
+        const root = chord.rootNote + 12;
+        const scale = [0, 2, 3, 5, 7, 9, 10]; 
+        const t = [0, 3, 6, 9][this.random.nextInt(4)];
+        const note = root + scale[this.random.nextInt(scale.length)];
+        return [{
+            type: 'melody', note, time: t * TICK_TO_BEAT, 
+            duration: (1.5 * TICK_TO_BEAT) * 1.25, // Aria Protocol
+            weight: 0.75, technique: tension > 0.4 ? 'vb' : 'pick', 
+            dynamics: 'mf', phrasing: 'legato'
+        }];
+    }
+
     private constrainBassOctave(note: number): number {
         let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
     }
 }
