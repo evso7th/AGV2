@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V74.0 — "Sovereign Anchor Protocol".
+ * @fileOverview Blues Brain V74.1 — "Sovereign Anchor Protocol".
  * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
- * #ЧТО: Внедрена блокировка sessionAnchorId для предотвращения перескоков.
+ * #ЧТО: Исправлена ошибка MIDI_NOTE_NAMES (ПЛАН №1106).
  */
 
 import {
@@ -46,6 +46,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
+
+const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -93,7 +95,7 @@ export class BluesBrain {
 
   private currentLickId: string = '';
   private currentTrackName: string = 'Local';
-  private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
+  private sessionAnchorId: string | null = null; 
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
   private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
 
@@ -479,7 +481,6 @@ export class BluesBrain {
       if (this.config.useHeritage && this.config.cloudAxioms && this.config.cloudAxioms.length > 0) {
           const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
           
-          // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
           let effectiveAnchor = this.config.activeAnchorId ? this.normalize(this.config.activeAnchorId) : this.sessionAnchorId;
           
           let filteredPool: any[] = [];
@@ -503,7 +504,6 @@ export class BluesBrain {
                   let selected: any = null;
 
                   if (this.config.isImprovising) {
-                      // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
                       if (!effectiveAnchor) {
                           const firstSelection = basePool[calculateMusiNum(this.seed, 19, 0, basePool.length)];
                           this.sessionAnchorId = this.normalize(firstSelection.compositionId);
@@ -787,5 +787,13 @@ export class BluesBrain {
           }];
       }
       return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
+  }
+
+  private constrainBassOctave(note: number): number {
+      let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
+  }
+
+  private constrainAccompanimentOctave(note: number): number {
+      let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
   }
 }
