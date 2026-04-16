@@ -1,8 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1098): Исправление логики Паузы. 
- * Теперь Play после Pause не сбрасывает выбранный музыкальный Якорь.
+ * #ОБНОВЛЕНО (ПЛАН №1120): Добавление информации о тембрах в лог.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -147,10 +146,6 @@ const Scheduler = {
         if (this.isRunning) return;
         this.isRunning = true;
         
-        // #ЗАЧЕМ: ПЛАН №1098. Интеллектуальное возобновление.
-        // Мы НЕ вызываем initializeEngine безусловно, чтобы не менять выбранный трек при выходе из паузы.
-        // Инициализация происходит только если движка еще нет, или он работает в алгоритмическом режиме 
-        // (Generative), в то время как данные в облаке уже доступны.
         if (!fractalMusicEngine) {
             this.initializeEngine(this.settings);
         } else {
@@ -158,7 +153,6 @@ const Scheduler = {
             const engineIsAlgorithmic = !fractalMusicEngine.config.activeAnchorId;
             const heritageDataAvailable = this.cloudAxiomPool.length > 0;
             
-            // Если движок "родился" до того как дошли аксиомы, даем ему шанс подцепить Наследие при старте.
             if (isUsingHeritage && engineIsAlgorithmic && heritageDataAvailable) {
                 this.initializeEngine(this.settings);
             }
@@ -250,14 +244,18 @@ const Scheduler = {
         
         const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
+        
+        // #ЗАЧЕМ: Прозрачность состава ансамбля (ПЛАН №1120)
+        const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ` +
             `%c${cognitiveStr}\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'}`,
+            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'} | %c${ensembleStr}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;',
-            'color: #ADD8E6; font-style: italic;'
+            'color: #ADD8E6; font-style: italic;',
+            'color: #DA70D6; font-size: 10px; font-weight: bold;'
         );
 
         self.postMessage({ 
