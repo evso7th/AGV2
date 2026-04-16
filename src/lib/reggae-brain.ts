@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Reggae Brain V2.1 — "The Roots Riddim Protocol".
- * #ЗАЧЕМ: Очистка Риддима от навязчивого сканка.
- * #ЧТО: ПЛАН №1028 — Сканк переведен в разряд редких акцентов (15%). 
+ * @fileOverview Reggae Brain V2.2 — "Sovereign Anchor Protocol".
+ * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
  */
 
 import type {
@@ -54,6 +53,7 @@ export class ReggaeBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
+    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
@@ -99,11 +99,13 @@ export class ReggaeBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        const targetAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : null;
+        
+        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
+        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
-        if (targetAnchor) {
-            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === targetAnchor);
+        if (effectiveAnchor) {
+            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood];
             filteredPool = poolToUse.filter(ax => {
@@ -122,6 +124,14 @@ export class ReggaeBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
+                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
+                    if (!effectiveAnchor) {
+                        const firstSelection = basePool[calculateMusiNum(this.seed, 11, 0, basePool.length)];
+                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
                     selected = basePool[calculateMusiNum(this.seed, 13, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
@@ -179,10 +189,8 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. BARBARIC ONE-DROP (DRUMS)
         if (hints.drums) events.push(...this.renderOneDropDrums(epoch, tension));
 
-        // 2. RIDDIM BASS (DEEP SYNC)
         let activeBassAxiom = 'Roots Syncopation';
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
@@ -193,11 +201,8 @@ export class ReggaeBrain {
             }
         }
 
-        // 3. THE SKANK (RARE ACCENTS ONLY)
         let activeAccAxiom = 'none';
         if (hints.accompaniment && !isIntro) {
-            // #ЗАЧЕМ: Убираем постоянный сканк (ПЛАН №1028).
-            // Шанс 15%, что в этом такте вообще будет сканк.
             if (this.random.next() < 0.15) {
                 const skankEvents = this.renderTheSkank(epoch, resChord, tension);
                 events.push(...skankEvents);
@@ -206,7 +211,6 @@ export class ReggaeBrain {
             instrumentOverrides.accompaniment = 'reggae_organ';
         }
 
-        // 4. MELODY / SOLO
         let melEvents: FractalEvent[] = [];
         let activeMelAxiom = isIntro ? 'Waiting' : 'Tuff Gong Solo';
         if (hints.melody && !isIntro) {
@@ -220,7 +224,6 @@ export class ReggaeBrain {
             instrumentOverrides.melody = 'reggae_guitar';
         }
 
-        // 5. BUBBLING (ORGAN TRIPLETS)
         if (hints.pianoAccompaniment && !isIntro) {
             events.push(...this.renderBubbling(epoch, resChord, tension));
         }
@@ -244,7 +247,6 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const isSteppers = tension > 0.75;
 
-        // ONE-DROP: Kick + Snare only on 3rd beat (tick 6)
         if (!isSteppers) {
             events.push({
                 type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0,
@@ -255,7 +257,6 @@ export class ReggaeBrain {
                 technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: -0.1
             });
         } else {
-            // STEPPERS: Kick on every beat
             [0, 3, 6, 9].forEach(t => {
                 events.push({
                     type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9,
@@ -268,7 +269,6 @@ export class ReggaeBrain {
             });
         }
 
-        // Hats with Shuffle Feel
         [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
             const isOff = t % 3 !== 0;
             events.push({
@@ -366,7 +366,7 @@ export class ReggaeBrain {
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - barOffset + 0.5) * TICK_TO_BEAT, 
-            duration: n.d * TICK_TO_BEAT, weight: 0.8,
+            duration: n.d * TICKS_PER_BAR * TICK_TO_BEAT, weight: 0.8,
             technique: 'pick', dynamics: 'mf', phrasing: 'legato'
         }));
     }
@@ -382,7 +382,7 @@ export class ReggaeBrain {
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset + 0.2) * TICK_TO_BEAT, 
-            duration: n.d * TICK_TO_BEAT, weight: 1.0,
+            duration: n.d * TICKS_PER_BAR * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
     }

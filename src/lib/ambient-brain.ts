@@ -1,8 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain V73.0 — "The Pure Percussive Fog".
- * #ЗАЧЕМ: Окончательная реализация Плана №1092.
- * #ЧТО: Полный отказ от бита. Ударные превращены в диффузный ландшафт.
- * #ОБНОВЛЕНО (ПЛАН №1095): Поддержка Anti-Hum Ripple и selectNextAxiom.
+ * @fileOverview Ambient Brain V74.0 — "Sovereign Anchor Protocol".
+ * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
  */
 
 import type {
@@ -82,6 +81,7 @@ export class AmbientBrain {
     private currentDrumAxioms: { phrase: any[], role: string, endBar: number }[] = [];
 
     private currentTrackName: string = '';
+    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
     private currentMutationType: string = 'none';
 
@@ -138,11 +138,13 @@ export class AmbientBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        const targetAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : null;
+        
+        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
+        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
-        if (targetAnchor) {
-            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === targetAnchor);
+        if (effectiveAnchor) {
+            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood];
             filteredPool = poolToUse.filter(ax => {
@@ -162,6 +164,14 @@ export class AmbientBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
+                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
+                    if (!effectiveAnchor) {
+                        const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
                     selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
@@ -272,7 +282,7 @@ export class AmbientBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, trackName?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
 
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const localTension = tension;
@@ -301,6 +311,7 @@ export class AmbientBrain {
             events.push(...bridgeEvents);
             return {
                 events, tension: localTension, beautyScore: 0.5,
+                trackName: this.currentTrackName,
                 activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
                 narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
             };
@@ -435,6 +446,7 @@ export class AmbientBrain {
         return {
             events, tension: localTension, beautyScore: 0.5,
             mutationType: this.currentMutationType, newBpm,
+            trackName: this.currentTrackName,
             instrumentOverrides,
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
@@ -448,16 +460,12 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: "Percussive Fog" — неритмичный звуковой ландшафт (ПЛАН №1092).
-     */
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        // 1. GHOST KICK: Редкий и случайный импульс, не бит!
         if (this.random.next() < 0.35) {
-            const time = this.random.next() * TICKS_PER_BAR; // Полностью случайно в такте
+            const time = this.random.next() * TICKS_PER_BAR; 
             events.push({
                 type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any,
                 note: 36, time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.65,
@@ -465,7 +473,6 @@ export class AmbientBrain {
             });
         }
 
-        // 2. WETTEST RIDE: Плывущий атмосферный акцент
         if (this.random.next() < 0.45) {
             events.push({
                 type: 'drum_ride_wetter', note: 51,
@@ -475,7 +482,6 @@ export class AmbientBrain {
             });
         }
 
-        // 3. RARE HATS: Только как мерцание при напряжении
         if (tension > 0.6 && this.random.next() < 0.2) {
             const t = this.random.next() * TICKS_PER_BAR;
             events.push({
@@ -485,7 +491,6 @@ export class AmbientBrain {
             });
         }
 
-        // 4. KITCHEN (Bongs, Tubes, Bells): Плотное текстурное облако
         const hitCount = 2 + this.random.nextInt(Math.floor(tension * 6) + 2);
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
@@ -500,7 +505,6 @@ export class AmbientBrain {
             });
         }
 
-        // 5. HERITAGE DNA (Diffused)
         if (this.currentDrumAxioms.length > 0) {
             const hDrums = this.renderHeritageDrums(epoch, tension);
             hDrums.forEach(e => {
@@ -512,9 +516,6 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Диффузная деконструкция ударных Наследия (ПЛАН №1092).
-     */
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.currentDrumAxioms.length === 0) return [];
@@ -524,7 +525,6 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
 
         this.currentDrumAxioms.forEach(ax => {
-            // #ЧТО: Просеиваем ДНК, убирая "бит-сетку". Берем только 30% событий.
             const barNotes = ax.phrase.filter(n => {
                 const isCorrectBar = n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR;
                 const passesFogFilter = calculateMusiNum(n.t, 13, this.seed, 100) < 30;
@@ -538,7 +538,6 @@ export class AmbientBrain {
                 events.push({
                     type: 'drums', 
                     note: midiNote, 
-                    // #ЧТО: Добавляем джиттер для размытия ритма.
                     time: (n.t - barOffset + (this.random.next() - 0.5) * 0.8) * TICK_TO_BEAT, 
                     duration: 0.1, 
                     weight: 0.5, 

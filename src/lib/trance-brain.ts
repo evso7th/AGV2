@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V4.2 — "Atmospheric Purge".
- * #ЗАЧЕМ: Точечная очистка Псиамбиента от избыточного шума.
- * #ЧТО: ПЛАН №1100 — Спарклы и SFX в 3 раза реже. Колокольчики выведены в редкие акценты.
+ * @fileOverview Psybient Brain V43.0 — "Sovereign Anchor Protocol".
+ * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
  */
 
 import type {
@@ -66,6 +65,7 @@ export class TranceBrain {
     private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
+    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
@@ -116,11 +116,13 @@ export class TranceBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        const targetAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : null;
+        
+        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
+        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
-        if (targetAnchor) {
-            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === targetAnchor);
+        if (effectiveAnchor) {
+            filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood];
             filteredPool = poolToUse.filter(ax => {
@@ -140,6 +142,14 @@ export class TranceBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
+                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
+                    if (!effectiveAnchor) {
+                        const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
                     selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
@@ -354,18 +364,12 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1100 — Очистка кухонной перкуссии.
-     * #ЧТО: Снижение плотности, удаление колокольчиков из основного цикла.
-     */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Bells removed from primary pool
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
 
-        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) { // Slower steps
-            // 3x general reduction
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) { 
             if (this.rng.chance(20 + tension * 10)) {
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
@@ -373,7 +377,6 @@ export class TranceBrain {
                 });
             }
             
-            // #ЗАЧЕМ: Колокольчики как редкие акценты (5% шанс).
             if (this.rng.chance(5)) {
                 events.push({
                     type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 1.5, 
@@ -474,18 +477,13 @@ export class TranceBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1100 — 3-х кратное разрежение атмосферных событий.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Chance reduced from 85% to 28%
         if (this.rng.chance(28)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
-        // Chance reduced from 60% to 20%
         if (this.rng.chance(20)) {
             const useVoice = this.rng.chance(30);
             events.push({ type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre, rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined } });
