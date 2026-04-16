@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V74.0 — "Sovereign Anchor Protocol".
- * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
+ * @fileOverview Ambient Brain V75.0 — "Global Aria Protocol".
+ * #ЗАЧЕМ: Внедрение певучести (Singing Guitars) для всех амбиентных мелодий.
+ * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для лирических линий.
  */
 
 import type {
@@ -81,7 +82,7 @@ export class AmbientBrain {
     private currentDrumAxioms: { phrase: any[], role: string, endBar: number }[] = [];
 
     private currentTrackName: string = '';
-    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
+    private sessionAnchorId: string | null = null; 
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
     private currentMutationType: string = 'none';
 
@@ -138,8 +139,6 @@ export class AmbientBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        
-        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
@@ -164,7 +163,6 @@ export class AmbientBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
-                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
                     if (!effectiveAnchor) {
                         const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                         this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
@@ -412,7 +410,8 @@ export class AmbientBrain {
         events.push(...melodyEvents);
 
         let pianoInfo = { style: 'none', count: 0 };
-        if (hints.pianoAccompaniment) {
+        const pianoHint = hints.pianoAccompaniment;
+        if (pianoHint) {
             if (!usedTargetLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, localTension, melodyEvents);
                 if (p.events.length > 0) {
@@ -428,9 +427,9 @@ export class AmbientBrain {
             const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
             const pianoProb = pianoRules?.pianoProbability ?? 0.3; 
             const pianoRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
-            this.pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
+            const pianistMode = pianoRoll < pianoProb ? 'acoustic' : 'rhodes';
             
-            instrumentOverrides.pianoAccompaniment = this.pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
+            instrumentOverrides.pianoAccompaniment = pianistMode === 'acoustic' ? 'piano' : 'ep_rhodes_warm';
         }
 
         if (hints.drums) {
@@ -454,7 +453,7 @@ export class AmbientBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
                 drums: 'Sonic Landscape', 
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
-                piano: pianoInfo.count > 0 ? `${pianoInfo.style} [${this.pianistMode.toUpperCase()}]` : 'none'
+                piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Landscape: Pumping Textures]`
         };
@@ -568,15 +567,23 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, localTension);
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-        const rawEvents = barNotes.map(n => ({
-            type: type as any,
-            note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-            duration: n.d * TICK_TO_BEAT * timeScale, 
-            weight: 0.7,
-            technique: (localTension > 0.6 && n.d >= 4 && this.random.next() < 0.3) ? ('vb' as Technique) : ('pick' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
-            params: { attack: 0.3, release: 1.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
-        }));
+        const rawEvents = barNotes.map(n => {
+            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато для пения.
+            const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb';
+            
+            return {
+                type: type as any,
+                note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+                time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
+                // ARIA Overlap
+                duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
+                weight: 0.7,
+                technique: useVibrato ? ('vb' as Technique) : ('pick' as Technique), 
+                dynamics: 'p' as Dynamics, 
+                phrasing: 'legato' as Phrasing,
+                params: { attack: 0.3, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
+            };
+        });
 
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
@@ -624,14 +631,17 @@ export class AmbientBrain {
         return this.rippleLongNote(e, chord);
     }
 
-    private renderMelodicPadBase(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    private renderMelodicPadBase(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const shift = [0, 2, 4, 7, 9, 7, 4, 0][calculateMusiNum(epoch, 4, this.seed, 8)];
         const e: FractalEvent = {
-            type: 'melody', note: Math.min(chord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+            time: 0, 
+            // #ЗАЧЕМ: Aria Overlap для процедурных пэдов.
+            duration: 4.5, 
+            weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        return this.rippleLongNote(e, chord);
+        return this.rippleLongNote(e, resChord);
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
@@ -652,7 +662,7 @@ export class AmbientBrain {
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato',
-                    params: { ...m.params, release: 2.0 }
+                    params: { ...m.params, release: 2.5 }
                 });
             }
         });
@@ -721,12 +731,12 @@ export class AmbientBrain {
             type: 'accompaniment', 
             note: this.constrainAccompanimentOctave(root + 12), 
             time: 0, 
-            duration: 4.0, 
+            duration: 4.25, // Aria Overlap
             weight: 0.3, 
             technique: 'swell', 
             dynamics: 'p', 
             phrasing: 'legato', 
-            params: { attack: 1.5, release: 2.0, mood: this.mood } 
+            params: { attack: 1.5, release: 2.5, mood: this.mood } 
         };
         events.push(...this.rippleLongNote(padE, chord));
 
@@ -735,7 +745,7 @@ export class AmbientBrain {
                 type: 'melody', 
                 note: root + 24, 
                 time: 1.5, 
-                duration: 2.5, 
+                duration: 3.125, // Aria Overlap
                 weight: 0.5, 
                 technique: 'swell', 
                 dynamics: 'p', 

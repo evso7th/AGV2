@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V2.2 — "Sovereign Anchor Protocol".
- * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
+ * @fileOverview Reggae Brain V2.3 — "Global Aria Protocol".
+ * #ЗАЧЕМ: Применение Singing Guitars к даб-соло.
+ * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для Roots-мелодий.
  */
 
 import type {
@@ -53,7 +54,7 @@ export class ReggaeBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
-    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
+    private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
@@ -99,8 +100,6 @@ export class ReggaeBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        
-        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
@@ -124,7 +123,6 @@ export class ReggaeBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
-                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
                     if (!effectiveAnchor) {
                         const firstSelection = basePool[calculateMusiNum(this.seed, 11, 0, basePool.length)];
                         this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
@@ -345,9 +343,13 @@ export class ReggaeBrain {
         [0, 3, 6, 9].forEach(t => {
             if (this.random.next() < 0.4) {
                 const note = root + scale[this.random.nextInt(scale.length)];
+                // #ЗАЧЕМ: Aria Protocol - нахлест и вокальность.
                 events.push({
-                    type: 'melody', note, time: (t + 0.5) * TICK_TO_BEAT, duration: 0.8, weight: 0.7,
-                    technique: 'pick', dynamics: 'mf', phrasing: 'legato', pan: -0.3
+                    type: 'melody', note, time: (t + 0.5) * TICK_TO_BEAT, 
+                    duration: (0.8 * TICK_TO_BEAT) * 1.25, 
+                    weight: 0.7,
+                    technique: tension > 0.4 ? 'vb' : 'pick', 
+                    dynamics: 'mf', phrasing: 'legato', pan: -0.3
                 });
             }
         });
@@ -363,12 +365,19 @@ export class ReggaeBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         
-        return barNotes.map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - barOffset + 0.5) * TICK_TO_BEAT, 
-            duration: n.d * TICKS_PER_BAR * TICK_TO_BEAT, weight: 0.8,
-            technique: 'pick', dynamics: 'mf', phrasing: 'legato'
-        }));
+        return barNotes.map(n => {
+            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато.
+            const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
+            return {
+                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: (n.t - barOffset + 0.5) * TICK_TO_BEAT, 
+                // ARIA Overlap
+                duration: (n.d * TICKS_PER_BAR * TICK_TO_BEAT) * 1.25, 
+                weight: 0.8,
+                technique: useVibrato ? 'vb' as Technique : 'pick', 
+                dynamics: 'mf', phrasing: 'legato'
+            };
+        });
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {

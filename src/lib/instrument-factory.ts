@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V5.2 — "Sonic Softening Update".
- * #ЗАЧЕМ: Глобальное смягчение тембров.
- * #ЧТО: ПЛАН №1091 — Снижение частот среза LPF для удаления резкости.
- * #ОБНОВЛЕНО (ПЛАН №1115): Aria Protocol - смягчение release и фильтра гитары.
+ * @fileOverview Центральная фабрика инструментов V5.3 — "Global Aria Protocol".
+ * #ЗАЧЕМ: Глобальное внедрение певучести и мягкости.
+ * #ЧТО: ПЛАН №1118 — Закрепление теплых фильтров и естественного релиза.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -247,9 +246,9 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     voiceState.node.gain.cancelScheduledValues(now);
-    // #ЗАЧЕМ: Aria Protocol - более длинный и мягкий релиз.
-    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
-    return now + (release * 4.5); 
+    // #ЗАЧЕМ: Aria Protocol - длинный, вокальный хвост.
+    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2, 0.001));
+    return now + (release * 5.0); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -267,7 +266,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     comp.connect(filt);
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        const cutoff = p.lpf?.cutoff ?? 1500;
+        const cutoff = p.lpf?.cutoff ?? 1200; // GLOBAL SOFTENING
         filt.frequency.value = cutoff;
         filt2.frequency.value = cutoff;
         
@@ -306,7 +305,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10; 
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10; 
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -337,10 +336,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
-    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 18; 
-    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 2500;
+    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 25; 
+    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 2200;
     const leslie = makeChorus(ctx, currentPreset.leslie || {});
-    const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.2;
+    const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.4;
     const vibG = ctx.createGain(); vibG.gain.value = 3.5; vibLfo.connect(vibG); vibLfo.start();
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.1;
     const activeVoiceRecords = new Set<any>();
@@ -367,7 +366,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
             const nodes: AudioNode[] = [voiceGain, osc];
             const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(f / 2, when);
-            const subG = ctx.createGain(); subG.gain.value = 0.4; 
+            const subG = ctx.createGain(); subG.gain.value = 0.35; 
             sub.connect(subG).connect(voiceGain); sub.start(when); 
             nodes.push(sub, subG);
             const adsr = getADSR(currentPreset);
@@ -378,7 +377,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
         },
@@ -416,7 +415,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
         },
@@ -429,7 +428,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const guitarIn = ctx.createGain();
-    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     
     const updateShaperCurve = (amount: number, type?: string) => {
@@ -446,10 +445,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.2;
     const activeVoiceRecords = new Set<any>();
     
-    // #ЗАЧЕМ: Aria Protocol - снижение среза кабинета до 2200Гц для мягкого пения.
+    // Aria Protocol: Vocal Tone Correction
     const cabinetFilter = ctx.createBiquadFilter();
     cabinetFilter.type = 'lowpass';
-    cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2200;
+    cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2100;
     
     guitarIn.connect(comp).connect(shaper).connect(phaser.input);
     phaser.output.connect(delay.input);
@@ -486,7 +485,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             osc.stop(finalTime + 0.5); 
         },

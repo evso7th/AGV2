@@ -11,8 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1112 — Укрепление иерархии и предотвращение тишины.
- * #ОБНОВЛЕНО (ПЛАН №1115): Внедрена Aria Protocol — принудительный нахлест (extraDuration) для "пения".
+ * #ЧТО: ПЛАН №1118 — Глобальное закрепление Aria Protocol (нахлест нот).
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -105,9 +104,8 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: Aria Protocol - принудительный нахлест для певучего соло.
-            // 0.4 секунды — это "безопасное пение", позволяющее ноте звучать под началом следующей.
-            const extraDuration = this.partName === 'melody' ? 0.4 : 0;
+            // #ЗАЧЕМ: Aria Protocol - обязательный нахлест для всех жанров.
+            const extraDuration = this.partName === 'melody' ? 0.45 : 0;
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -161,7 +159,8 @@ export class MelodySynthManagerV2 {
             return;
         }
         
-        if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
+        // Aria Transient Logic
+        if (currentActive === 'guitar_shineOn' || currentActive === 'synth' || currentActive === 'organ') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);

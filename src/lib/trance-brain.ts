@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V43.0 — "Sovereign Anchor Protocol".
- * #ЗАЧЕМ: Фиксация трека-донора на всю длительность пьесы (ПЛАН №1105).
+ * @fileOverview Psybient Brain V44.0 — "Global Aria Protocol".
+ * #ЗАЧЕМ: Применение Singing Guitars ко всем транс-мелодиям.
+ * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для бесконечной спирали.
  */
 
 import type {
@@ -28,7 +29,7 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
-import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
+import { DRUM_KITS } from './assets/drum-kits';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -65,7 +66,7 @@ export class TranceBrain {
     private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
-    private sessionAnchorId: string | null = null; // #ЗАЧЕМ: ПЛАН №1105. Фиксация трека на сессию.
+    private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
@@ -116,8 +117,6 @@ export class TranceBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        
-        // #ЗАЧЕМ: ПЛАН №1105. Определение эффективного Якоря на сессию.
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
@@ -142,7 +141,6 @@ export class TranceBrain {
                 let selected: any = null;
 
                 if (this.isImprovising) {
-                    // #ЗАЧЕМ: ПЛАН №1105. В режиме импровизации фиксируем трек при первом выборе.
                     if (!effectiveAnchor) {
                         const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                         this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
@@ -405,11 +403,21 @@ export class TranceBrain {
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
-            technique: 'pick', dynamics: 'mf', phrasing: 'legato'
-        }));
+        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато.
+            const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
+            
+            return {
+                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: (n.t - barOffset) * TICK_TO_BEAT, 
+                // ARIA Overlap
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
+                weight: 1.0,
+                technique: useVibrato ? 'vb' as Technique : ('pick' as Technique), 
+                dynamics: 'mf', 
+                phrasing: 'legato'
+            };
+        });
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -433,7 +441,9 @@ export class TranceBrain {
 
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
+            time: (n.t - barOffset) * TICK_TO_BEAT, 
+            duration: n.d * TICK_TO_BEAT, 
+            weight: 0.6,
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
@@ -443,10 +453,19 @@ export class TranceBrain {
         const key = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
         const lick = BLUES_SOLO_LICKS[key];
         if (!lick) return [];
-        return decompressCompactPhrase(lick.phrase as any).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pick', dynamics: 'mf', phrasing: 'legato'
-        }));
+        return decompressCompactPhrase(lick.phrase as any).map(n => {
+            // ARIA Implementation
+            const useVibrato = (tension > 0.4 && n.d >= 3);
+            return {
+                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: n.t * TICK_TO_BEAT, 
+                duration: (n.d * TICK_TO_BEAT) * 1.25, // Overlap
+                weight: 0.9, 
+                technique: useVibrato ? 'vb' as Technique : 'pick', 
+                dynamics: 'mf', 
+                phrasing: 'legato'
+            };
+        });
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
