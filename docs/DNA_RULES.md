@@ -1,4 +1,5 @@
-# DNA Rules: The Heritage Codex (v1.1)
+
+# DNA Rules: The Heritage Codex (v1.2)
 
 1.  **Dual Mode Operation**: The engine exclusively uses 'DNA Anchor' (manual selection) and 'Composer' (heritage-enabled free play) modes.
 2.  **Strict Channel Routing**: In Anchor mode, axioms must play exactly as recorded through their assigned channels: Bass, Melody, Accompaniment, Harmony, and Rhodes.
@@ -21,3 +22,4 @@
     *   **Dynamic Pad**: (by increasing T) -> emerald, lush, dark cave.
 18. **Piano Dualism**: The pianist channel (pianoAccompaniment) should use Rhodes (70%) and Sampled Piano (30%) randomly, decided upon each donor track change.
 19. **DNA INTERFACE SANCTITY**: КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ ТРОГАТЬ СИСТЕМУ ЛОГИРОВАНИЯ И ИНТЕРФЕЙС РАБОТЫ С DNA. Любое изменение в файле `src/app/hypercube-dashboard/page.tsx` или в структуре `console.log` без явного приказа пользователя считается критическим нарушением.
+20. **ANCHOR PERSISTENCE**: The active DNA Anchor must remain strictly locked during Pause/Play cycles. Re-selection of a donor is only allowed on bar-limit expiration or manual regeneration. The engine state must be preserved in the worker thread to ensure seamless continuity.
