@@ -3,6 +3,7 @@
  * @fileOverview Blues Brain V76.0 — "Melodic Materialization Protocol".
  * #ЗАЧЕМ: Исправление "пустых" тактов мелодии.
  * #ЧТО: ПЛАН №1112 — Реализация renderGapFiller, смягчение soloistResting и фиксация иерархии.
+ * #ОБНОВЛЕНО (ПЛАН №1115): Внедрение Aria Protocol — певучие гитары через нахлест и вибрато.
  */
 
 import {
@@ -321,11 +322,10 @@ export class BluesBrain {
 
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
     
-    // #ЗАЧЕМ: ПЛАН №1112. Смягчение режима отдыха (в три раза реже).
     if (isSoloistFree && this.soloistRestingUntilBar <= epoch) {
         const restRoll = this.random.next();
         if (restRoll < 0.08 || tension < 0.1) {
-            this.soloistRestingUntilBar = epoch + 1; // Всегда только 1 такт отдыха
+            this.soloistRestingUntilBar = epoch + 1; 
             console.log(`%c[Ensemble] Soft Soloist Breath Activated at Bar ${epoch}`, 'color: #ADD8E6;');
         }
     }
@@ -391,7 +391,6 @@ export class BluesBrain {
 
     if (hints.melody && !isSoloistResting) {
         if (this.currentAxiom.length > 0 && epoch < this.soloistBusyUntilBar) {
-            // 1. Аксиома (DNA)
             let activeAxiom = this.currentAxiom;
             if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
             else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
@@ -400,9 +399,7 @@ export class BluesBrain {
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
         }
         
-        // #ЗАЧЕМ: ПЛАН №1112. Материализация Gap-Filler.
         if (melodyEvents.length === 0) {
-            // 2. Генеративный заполнитель (BP / Default)
             melodyEvents = this.renderGapFiller(epoch, resChord, tension);
             currentLickDisplayId = 'Gap-Filler';
         }
@@ -443,14 +440,13 @@ export class BluesBrain {
   }
 
   /**
-   * #ЗАЧЕМ: ПЛАН №1112. Реальное создание нот для заполнения пауз.
+   * #ЗАЧЕМ: ПЛАН №1115. Материализация Gap-Filler с нахлестом и вибрато (Aria Protocol).
    */
   private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 12;
-      const scale = [0, 3, 5, 6, 7, 10]; // Blues Scale
+      const scale = [0, 3, 5, 6, 7, 10]; 
       
-      // Генерируем 1-3 ноты в такте
       const noteCount = calculateMusiNum(epoch, 3, this.seed, 3) + 1;
       const ticks = [0, 3, 6, 9].sort(() => this.random.next() - 0.5).slice(0, noteCount);
       
@@ -462,9 +458,11 @@ export class BluesBrain {
               type: 'melody',
               note: Math.min(note, this.MELODY_CEILING),
               time: t * TICK_TO_BEAT,
-              duration: 1.5 * TICK_TO_BEAT,
+              // #ЗАЧЕМ: Увеличение длительности для Aria Protocol (нахлест).
+              duration: (1.5 * TICK_TO_BEAT) * 1.25,
               weight: 0.65 + (tension * 0.15),
-              technique: 'pick',
+              // #ЗАЧЕМ: Адаптивное вибрато.
+              technique: tension > 0.4 ? 'vb' : 'pick',
               dynamics: 'p',
               phrasing: 'legato'
           });
@@ -549,13 +547,22 @@ export class BluesBrain {
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
-    return phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => ({
-        type: type as any,
-        note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-        time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
-        duration: n.d * TICK_TO_BEAT * timeScale,
-        weight: 0.75, technique: n.tech as any, dynamics: 'p', phrasing: 'legato'
-    }));
+    return phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
+        // #ЗАЧЕМ: Aria Protocol - автоматическое вибрато на длинные ноты.
+        const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
+        
+        return {
+            type: type as any,
+            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
+            // #ЗАЧЕМ: Увеличение длительности для нахлеста (Singing).
+            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
+            weight: 0.75, 
+            technique: useVibrato ? 'vb' as Technique : (n.tech as any || 'pick'), 
+            dynamics: 'p', 
+            phrasing: 'legato'
+        };
+    });
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {

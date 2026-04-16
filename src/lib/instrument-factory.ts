@@ -3,6 +3,7 @@
  * @fileOverview Центральная фабрика инструментов V5.2 — "Sonic Softening Update".
  * #ЗАЧЕМ: Глобальное смягчение тембров.
  * #ЧТО: ПЛАН №1091 — Снижение частот среза LPF для удаления резкости.
+ * #ОБНОВЛЕНО (ПЛАН №1115): Aria Protocol - смягчение release и фильтра гитары.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -246,8 +247,9 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     voiceState.node.gain.cancelScheduledValues(now);
-    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 4, 0.001));
-    return now + (release * 3.5); 
+    // #ЗАЧЕМ: Aria Protocol - более длинный и мягкий релиз.
+    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 3, 0.001));
+    return now + (release * 4.5); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -265,7 +267,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     comp.connect(filt);
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        // #ЗАЧЕМ: Снижение базового среза для синтезаторов до 1500Гц.
         const cutoff = p.lpf?.cutoff ?? 1500;
         filt.frequency.value = cutoff;
         filt2.frequency.value = cutoff;
@@ -305,7 +306,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10; 
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10; 
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -336,11 +337,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
-    
-    // #ЗАЧЕМ: Фильтр верхних частот (HPF) для очистки суб-низа (ПЛАН №1090).
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 18; 
-    
-    // #ЗАЧЕМ: Снижение базового среза для органов до 2500Гц.
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 2500;
     const leslie = makeChorus(ctx, currentPreset.leslie || {});
     const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.2;
@@ -348,9 +345,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.1;
     const activeVoiceRecords = new Set<any>();
 
-    // Chain: organSum -> HPF (18Hz) -> LPF -> Leslie
     organSum.connect(hpf).connect(filt).connect(leslie.input);
-    
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
     leslie.output.connect(revSend).connect(reverb);
 
@@ -371,13 +366,10 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const osc = ctx.createOscillator(); osc.setPeriodicWave(wave); osc.frequency.setValueAtTime(f, when);
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
             const nodes: AudioNode[] = [voiceGain, osc];
-            
-            // #ЗАЧЕМ: Принудительный саб-бас для всех органов (ПЛАН №1090).
             const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(f / 2, when);
             const subG = ctx.createGain(); subG.gain.value = 0.4; 
             sub.connect(subG).connect(voiceGain); sub.start(when); 
             nodes.push(sub, subG);
-
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes, voiceState, cleaned: false };
@@ -386,7 +378,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
         },
@@ -424,7 +416,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
         },
@@ -454,10 +446,10 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.2;
     const activeVoiceRecords = new Set<any>();
     
-    // #ЗАЧЕМ: Снижение частоты кабинета до 2600Гц для удаления резкого "песка".
+    // #ЗАЧЕМ: Aria Protocol - снижение среза кабинета до 2200Гц для мягкого пения.
     const cabinetFilter = ctx.createBiquadFilter();
     cabinetFilter.type = 'lowpass';
-    cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2600;
+    cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2200;
     
     guitarIn.connect(comp).connect(shaper).connect(phaser.input);
     phaser.output.connect(delay.input);
@@ -494,7 +486,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10;
+            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 5) + 10;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
             osc.stop(finalTime + 0.5); 
         },
@@ -520,11 +512,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const instrumentGain = ctx.createGain(); 
     instrumentGain.gain.value = isFinite(preset.volume) ? preset.volume : 0.7;
     const expressionGain = ctx.createGain(); expressionGain.gain.value = 1.0;
-    
-    // #ЗАЧЕМ: ПЛАН №905. Внедрение узла панорамирования в цепочку.
     const panner = ctx.createStereoPanner();
     panner.pan.value = isFinite(preset.pan) ? preset.pan : 0;
-
     const reverb = ctx.createConvolver();
     if (plateIRUrl) loadIR(ctx, plateIRUrl).then(buf => { if (buf) reverb.buffer = buf; });
     reverb.connect(master);
@@ -533,19 +522,15 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     else if (type === 'organ') engine = buildOrganEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else if (type === 'guitar') engine = buildGuitarEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
     else engine = buildSynthEngine(ctx, preset, master, reverb, instrumentGain, expressionGain);
-    
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -12.0; 
     limiter.knee.value = 0; 
     limiter.ratio.value = 20; 
     limiter.attack.value = 0.003; 
     limiter.release.value = 0.1;
-    
-    // Chain: Engine -> Expression -> Gain -> Panner -> Master -> Limiter
     master.connect(panner);
     panner.connect(limiter);
     limiter.connect(output || ctx.destination);
-
     return {
         connect: (dest) => limiter.connect(dest || output),
         disconnect: () => { if (engine.allNotesOff) engine.allNotesOff(); if (engine.disconnect) engine.disconnect(); master.disconnect(); limiter.disconnect(); panner.disconnect(); },

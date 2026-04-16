@@ -12,6 +12,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
  * #ЧТО: ПЛАН №1112 — Укрепление иерархии и предотвращение тишины.
+ * #ОБНОВЛЕНО (ПЛАН №1115): Внедрена Aria Protocol — принудительный нахлест (extraDuration) для "пения".
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -88,7 +89,6 @@ export class MelodySynthManagerV2 {
             this.synth = newInstrument;
             this.activePresetName = presetName;
 
-            // #ЗАЧЕМ: Удержание старого инструмента до полной готовности нового.
             if (oldInst) {
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
@@ -105,6 +105,8 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
+            // #ЗАЧЕМ: Aria Protocol - принудительный нахлест для певучего соло.
+            // 0.4 секунды — это "безопасное пение", позволяющее ноте звучать под началом следующей.
             const extraDuration = this.partName === 'melody' ? 0.4 : 0;
             return { 
                 midi: e.note, 
@@ -117,7 +119,6 @@ export class MelodySynthManagerV2 {
             };
         });
         
-        // #ЗАЧЕМ: ПЛАН №1112. Укрепление иерархии fallbacks.
         let finalHint = instrumentHint;
         if (!finalHint || finalHint === 'melody') {
             finalHint = this.partName === 'bass' ? 'bass_jazz_warm' : 'telecaster';
@@ -135,7 +136,6 @@ export class MelodySynthManagerV2 {
 
         const currentActive = this.activePresetName;
         
-        // 1. SAMPLERS (High Priority)
         if (currentActive === 'cs80') {
             this.cs80Sampler.schedule(notesToPlay, barStartTime, tempo);
             return;
@@ -156,14 +156,11 @@ export class MelodySynthManagerV2 {
             }
         }
         
-        // 2. SYNTHS (With Transient Support)
         if (!this.synth) {
-            // Если синтезатор еще не готов, используем Telecaster как аварийный выход.
             if (this.partName === 'melody') this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
             return;
         }
         
-        // Hybrid Layering
         if (currentActive === 'guitar_shineOn' || currentActive === 'synth') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
