@@ -1,8 +1,8 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1032): Форсированный BPM Sync. 
- * Теперь темп сюиты жестко следует за nativeBpm Наследия.
+ * #ОБНОВЛЕНО (ПЛАН №1098): Исправление логики Паузы. 
+ * Теперь Play после Pause не сбрасывает выбранный музыкальный Якорь.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -129,14 +129,13 @@ const Scheduler = {
             activeAnchorId: anchorInfo.id, 
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
-            cloudAxioms: this.cloudAxiomPool,
+            cloudAxioms: this.cloudAxiPool,
             isImprovising: isImprovising
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        // #ЗАЧЕМ: Принудительная синхронизация BPM из ДНК (ПЛАН №1032).
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
@@ -147,7 +146,23 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        this.initializeEngine(this.settings);
+        
+        // #ЗАЧЕМ: ПЛАН №1098. Интеллектуальное возобновление.
+        // Мы НЕ вызываем initializeEngine безусловно, чтобы не менять выбранный трек при выходе из паузы.
+        // Инициализация происходит только если движка еще нет, или он работает в алгоритмическом режиме 
+        // (Generative), в то время как данные в облаке уже доступны.
+        if (!fractalMusicEngine) {
+            this.initializeEngine(this.settings);
+        } else {
+            const isUsingHeritage = this.settings.useHeritage;
+            const engineIsAlgorithmic = !fractalMusicEngine.config.activeAnchorId;
+            const heritageDataAvailable = this.cloudAxiomPool.length > 0;
+            
+            // Если движок "родился" до того как дошли аксиомы, даем ему шанс подцепить Наследие при старте.
+            if (isUsingHeritage && engineIsAlgorithmic && heritageDataAvailable) {
+                this.initializeEngine(this.settings);
+            }
+        }
 
         const loop = () => {
             if (!this.isRunning) return;

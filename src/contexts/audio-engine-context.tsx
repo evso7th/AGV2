@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.3 — "Pause Logic Simplification".
- * #ЗАЧЕМ: Реализация требования "Pause just stops the music".
- * #ЧТО: Удален тайм-аут при остановке, обеспечено немедленное прекращение звука.
+ * @fileOverview Audio Engine Context V39.4 — "Resilient Pause Protocol".
+ * #ЗАЧЕМ: Устранение нежелательной смены треков при выходе из паузы.
+ * #ЧТО: ПЛАН №1098 — Удален форсированный fetch при каждом нажатии Play.
  */
 'use client';
 
@@ -529,15 +529,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (!context || !workerRef.current) return;
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
-                if (settingsRef.current) await syncContextDNA(settingsRef.current.genre, settingsRef.current.mood, settingsRef.current.selectedCompositionIds);
+                // #ЗАЧЕМ: ПЛАН №1098. Удален синхронный fetch. Данные уже в воркере по подписке.
+                // Это предотвращает лишние пересбросы состояния при нажатии Play.
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05);
                 stopAllSounds(); 
                 nextBarTimeRef.current = context.currentTime + 0.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
-                // #ЗАЧЕМ: Упрощенная логика паузы (ПЛАН №1096).
-                // "Ничего больше, только пауза".
                 setIsPlayingState(false);
                 masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
                 workerRef.current.postMessage({ command: 'stop' });
