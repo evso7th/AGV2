@@ -1,10 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V3.5 — "Heritage First Standard".
- * #ЗАЧЕМ: Полноценная интеграция с Облачным Наследием.
- * #ЧТО: ПЛАН №1130 — Внедрена логика Sibling Search и Session Anchor из Ambient/Blues.
- *       Регги теперь — это прозрачный проигрыватель аксиом с поддержкой Протокола Ария.
- *       Дефолты: Melody(Telecaster), Accomp(Prog Organ), Harmony(GuitarChords), Piano(Rhodes).
+ * @fileOverview Reggae Brain V3.6 — "Heritage Access Restored".
+ * #ЗАЧЕМ: Исправление отсутствия звука наследия в Регги.
+ * #ЧТО: ПЛАН №1132 — 1. Удалена блокировка isIntro для режима Heritage.
+ *       2. Разрешена инициализация Аксиом на 0-м такте.
  */
 
 import type {
@@ -50,13 +49,11 @@ export class ReggaeBrain {
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
     
-    // Memory for consistent track playback (Anchor Persistence)
     private sessionAnchorId: string | null = null; 
     private currentTrackName: string = 'Algorithmic';
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     
-    // Sibling Containers for Ensemble Synchronization
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentThemeMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
@@ -89,12 +86,11 @@ export class ReggaeBrain {
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        
+        // Reset busy state to allow immediate re-selection if data just arrived
+        if (this.soloistBusyUntilBar === -1) this.soloistBusyUntilBar = 0;
     }
 
-    /**
-     * #ЗАЧЕМ: Определение индекса такта внутри фразы донора.
-     * В режиме импровизации индекс случаен, в режиме Анкора — линеен.
-     */
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
@@ -102,9 +98,6 @@ export class ReggaeBrain {
         return (epoch - startEpoch) % totalBars;
     }
 
-    /**
-     * #ЗАЧЕМ: Поиск и фиксация трека-донора и всех его "сиблингов".
-     */
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentTheme = null;
         this.currentBassTheme = null;
@@ -116,8 +109,6 @@ export class ReggaeBrain {
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        
-        // #ЗАЧЕМ: Генетическая блокировка (Anchor Lockdown).
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
@@ -127,7 +118,6 @@ export class ReggaeBrain {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood];
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                // В свободном режиме ищем по жанру и настроению
                 return axGenres.includes('reggae') && (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
             });
         }
@@ -137,12 +127,10 @@ export class ReggaeBrain {
             if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
             if (basePool.length > 0) {
-                // Если сессионный якорь еще не выбран — выбираем его сейчас и навсегда
                 if (!effectiveAnchor) {
                     const firstChoice = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                     this.sessionAnchorId = normalizeStr(firstChoice.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
-                    // Перефильтровываем пул под новый якорь
                     filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
@@ -168,39 +156,16 @@ export class ReggaeBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
-                    // --- SIBLING SEARCH ENGINE ---
-                    // Ищем бас, ударные и аккомпанемент, записанные в этом же фрагменте
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
-                        this.currentBassTheme = { 
-                            phrase: decompressCompactPhrase(bassSibling.phrase), 
-                            startBar: epoch, 
-                            endBar: epoch + (selected.bars || 4), 
-                            id: bassSibling.id 
-                        };
+                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => 
-                        (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && 
-                        normalizeStr(ax.compositionId) === cid && 
-                        ax.barOffset === selected.barOffset
-                    );
-                    this.currentAccompAxioms = accompSiblings.map(ax => ({ 
-                        phrase: decompressCompactPhrase(ax.phrase), 
-                        role: ax.role, 
-                        id: ax.id, 
-                        preferredInstrument: ax.preferredInstrument 
-                    }));
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentAccompAxioms = accompSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drumSiblings = poolToUse.filter(ax => 
-                        ax.role.toLowerCase().includes('drum') && 
-                        normalizeStr(ax.compositionId) === cid && 
-                        ax.barOffset === selected.barOffset
-                    );
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ 
-                        phrase: decompressCompactPhrase(ax.phrase), 
-                        role: ax.role 
-                    }));
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -212,6 +177,7 @@ export class ReggaeBrain {
         }
         
         this.currentTrackName = 'Algorithmic';
+        this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
 
@@ -225,11 +191,13 @@ export class ReggaeBrain {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const events: FractalEvent[] = [];
-        const isIntro = navInfo.currentPart.id === 'INTRO' || epoch < 4;
+        
+        // #ЗАЧЕМ: ПЛАН №1132. В режиме Наследия "интро" не должно блокировать выбор аксиом.
+        const isStructuralIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
 
         let newBpm: number | undefined;
-        // #ЗАЧЕМ: Смена аксиомы только когда солист "освободился".
-        if (epoch >= this.soloistBusyUntilBar && !isIntro) {
+        // Разрешаем выбор аксиомы даже в интро, если это режим Heritage
+        if (epoch >= this.soloistBusyUntilBar) {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
 
@@ -237,7 +205,7 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (DNA First)
+        // 1. DRUMS
         if (hints.drums) {
             if (this.currentDrumAxioms.length > 0) {
                 events.push(...this.renderHeritageDrums(epoch, tension));
@@ -246,7 +214,7 @@ export class ReggaeBrain {
             }
         }
 
-        // 2. BASS (DNA First)
+        // 2. BASS
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
@@ -255,7 +223,7 @@ export class ReggaeBrain {
             }
         }
 
-        // 3. ACCOMPANIMENT / PIANO / HARMONY (DNA First Logic)
+        // 3. ACCOMPANIMENT / PIANO / HARMONY
         const usedLayers = new Set<string>();
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
@@ -273,29 +241,25 @@ export class ReggaeBrain {
             }
         });
 
-        // Fallbacks for empty layers
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderGenerativePad(resChord, tension));
-            instrumentOverrides.accompaniment = 'organ_prog';
-        }
-        if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
-            instrumentOverrides.pianoAccompaniment = 'ep_rhodes_warm';
-        }
-        if (hints.harmony && !usedLayers.has('harmony')) {
-            instrumentOverrides.harmony = 'guitarChords';
         }
 
-        // 4. MELODY (The Soul - DNA Based with Aria Protocol)
+        // 4. MELODY
         let activeMelLick = 'none';
-        if (hints.melody && !isIntro) {
+        if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderHeritageMelody(epoch, resChord, tension));
-                activeMelLick = this.currentTheme.id;
-            } else {
+                const heritageMel = this.renderHeritageMelody(epoch, resChord, tension);
+                if (heritageMel.length > 0) {
+                    events.push(...heritageMel);
+                    activeMelLick = this.currentTheme.id;
+                }
+            }
+            
+            if (activeMelLick === 'none') {
                 events.push(...this.renderGenerativeAriaMelody(epoch, resChord, tension));
                 activeMelLick = 'Generative Aria';
             }
-            instrumentOverrides.melody = 'telecaster';
         }
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
@@ -306,7 +270,7 @@ export class ReggaeBrain {
             newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: isIntro ? 'Waiting' : activeMelLick,
+                melody: activeMelLick,
                 bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Generative Pulse',
                 drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Standard Pulse'
             },
@@ -321,13 +285,11 @@ export class ReggaeBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
         return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
-            // #ЗАЧЕМ: Aria Protocol - автоматическое вибрато на затяжные ноты.
             const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
-            
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 0.85 + (tension * 0.1),
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', phrasing: 'legato'
@@ -382,10 +344,8 @@ export class ReggaeBrain {
 
     private renderDefaultReggaePulse(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Bass Drum on 3 (Standard One-Drop feeling)
         events.push({ type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         events.push({ type: 'drum_snare', note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-        // Steady Hats
         [0, 3, 6, 9].forEach(t => {
             events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         });
@@ -415,7 +375,7 @@ export class ReggaeBrain {
         const note = root + scale[this.random.nextInt(scale.length)];
         return [{
             type: 'melody', note, time: t * TICK_TO_BEAT, 
-            duration: (1.5 * TICK_TO_BEAT) * 1.25, // Aria Protocol
+            duration: (1.5 * TICK_TO_BEAT) * 1.25, 
             weight: 0.75, technique: tension > 0.4 ? 'vb' : 'pick', 
             dynamics: 'mf', phrasing: 'legato'
         }];

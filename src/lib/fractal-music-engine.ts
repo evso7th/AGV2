@@ -56,7 +56,7 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.1 — "The Psybient Sovereign".
+ * @fileOverview Fractal Music Engine V44.2 — "Heritage Connectivity Restoration".
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -97,28 +97,14 @@ export class FractalMusicEngine {
           const impro = (this.config.selectedCompositionIds || []).length === 0;
           this.config.isImprovising = impro;
 
-          if (this.bluesBrain) (this.bluesBrain as any).updateCloudAxioms(
-              this.config.cloudAxioms,
-              this.config.selectedCompositionIds,
-              this.config.activeAnchorId,
-              null,
-              this.config.useHeritage,
-              impro
-          );
+          const axioms = this.config.cloudAxioms || [];
+          const anchor = this.config.activeAnchorId;
+          const useH = this.config.useHeritage;
 
-          if (this.ambientBrain) (this.ambientBrain as any).updateCloudAxioms(
-              this.config.cloudAxioms,
-              this.config.activeAnchorId,
-              this.config.useHeritage,
-              impro
-          );
-
-          if (this.tranceBrain) (this.tranceBrain as any).updateCloudAxioms(
-              this.config.cloudAxioms,
-              this.config.activeAnchorId,
-              this.config.useHeritage,
-              impro
-          );
+          if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
+          if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+          if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+          if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
       }
 
       if(moodOrGenreChanged || seedChanged || heritageChanged) this.initialize(true);
@@ -162,38 +148,25 @@ export class FractalMusicEngine {
     const impro = (this.config.selectedCompositionIds || []).length === 0;
     this.config.isImprovising = impro;
 
+    const axioms = this.config.cloudAxioms || [];
+    const anchor = this.config.activeAnchorId;
+    const useH = this.config.useHeritage;
+
     if (this.config.genre === 'blues') {
-        this.bluesBrain = new BluesBrain(
-            this.config.seed,
-            this.config.mood,
-            this.config.sessionLickHistory,
-            this.config.cloudAxioms,
-            this.config.selectedCompositionIds,
-            this.config.activeAnchorId,
-            this.config.genre,
-            this.config.useHeritage
-        );
-        this.bluesBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.selectedCompositionIds, this.config.activeAnchorId, null, this.config.useHeritage, impro);
-        this.ambientBrain = null;
-        this.tranceBrain = null;
-        this.reggaeBrain = null;
+        this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
+        this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'psybient') {
-        this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
-        this.tranceBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, impro);
-        this.bluesBrain = null;
-        this.ambientBrain = null;
-        this.reggaeBrain = null;
+        this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, useH);
+        this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'reggae') {
-        this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
-        this.bluesBrain = null;
-        this.ambientBrain = null;
-        this.tranceBrain = null;
+        this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
+        this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null;
     } else {
-        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, this.config.useHeritage);
-        this.ambientBrain.updateCloudAxioms(this.config.cloudAxioms || [], this.config.activeAnchorId, this.config.useHeritage, impro);
-        this.bluesBrain = null;
-        this.tranceBrain = null;
-        this.reggaeBrain = null;
+        this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, useH);
+        this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+        this.bluesBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
