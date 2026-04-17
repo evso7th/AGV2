@@ -1,7 +1,7 @@
 /**
- * @fileOverview Reggae Brain V3.9 — "Heritage Materialization & Aria Standard".
- * #ЗАЧЕМ: Исправление тишины в мелодии.
- * #ЧТО: ПЛАН №1140 — Исправлена опечатка в currentThemeMaxTick, реализован живой Gap-Filler и Aria Protocol.
+ * @fileOverview Reggae Brain V4.0 — "Full Ensemble & Aria Standard".
+ * #ЗАЧЕМ: Исправление тишины в каналах Harmony и Piano.
+ * #ЧТО: ПЛАН №1145 — Реализованы генеративные fallbacks (Skank & Bubbling) и расширено логирование.
  */
 
 import type {
@@ -159,14 +159,13 @@ export class ReggaeBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accompSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                     const baseBars = selected.bars || 4;
-                    // #ЗАЧЕМ: Исправление опечатки. Теперь свойство называется правильно.
                     this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
@@ -220,12 +219,15 @@ export class ReggaeBrain {
 
         // 3. ACCOMPANIMENT / PIANO / HARMONY
         const usedLayers = new Set<string>();
+        let pianoAxiomId = 'none';
+        let harmonyAxiomId = 'none';
+
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = null;
-            if (role.includes('piano')) target = 'pianoAccompaniment';
+            if (role.includes('piano')) { target = 'pianoAccompaniment'; pianoAxiomId = ax.id; }
             else if (role.includes('accomp')) target = 'accompaniment';
-            else if (role.includes('harmony') || role.includes('strings')) target = 'harmony';
+            else if (role.includes('harmony') || role.includes('strings') || role.includes('guitar')) { target = 'harmony'; harmonyAxiomId = ax.id; }
 
             if (target && hints[target] && !usedLayers.has(target)) {
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
@@ -236,6 +238,23 @@ export class ReggaeBrain {
                 }
             }
         });
+
+        // Generative Harmony Fallback (Guitar Chords Skank)
+        if (hints.harmony && !usedLayers.has('harmony')) {
+            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
+            usedLayers.add('harmony');
+            harmonyAxiomId = 'Generative Skank';
+        }
+
+        // Generative Piano Fallback (Rhodes Bubbling)
+        if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
+            const p = this.renderVirtuosoPiano(epoch, resChord, tension, events.filter(e => e.type === 'melody'));
+            if (p.events.length > 0) {
+                events.push(...p.events);
+                usedLayers.add('pianoAccompaniment');
+                pianoAxiomId = p.style;
+            }
+        }
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderGenerativePad(resChord, tension));
@@ -279,7 +298,9 @@ export class ReggaeBrain {
             activeAxioms: {
                 melody: activeMelLick,
                 bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Generative Pulse',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Standard Pulse'
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Standard Pulse',
+                harmony: harmonyAxiomId,
+                piano: pianoAxiomId
             },
             narrative: `Reggae ${modeStr}: [DNA: ${this.currentTrackName}] [Protocol: ARIA]`
         };
@@ -306,6 +327,29 @@ export class ReggaeBrain {
                 technique: tension > 0.4 ? 'vb' : 'pick',
                 dynamics: 'p',
                 phrasing: 'legato'
+            });
+        });
+        return events;
+    }
+
+    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 12;
+        const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
+        const events: FractalEvent[] = [];
+        
+        [3, 9].forEach(t => { // Beats 2 and 4 (Skank)
+            intervals.forEach(interval => {
+                events.push({
+                    type: 'harmony',
+                    note: this.constrainAccompanimentOctave(root + interval),
+                    time: t * TICK_TO_BEAT,
+                    duration: 0.5 * TICK_TO_BEAT, // Short skank
+                    weight: 0.45 + (tension * 0.1),
+                    technique: 'hit',
+                    dynamics: 'p',
+                    phrasing: 'staccato',
+                    chordName: chord.chordType === 'minor' ? 'Am' : 'A'
+                });
             });
         });
         return events;
@@ -396,8 +440,50 @@ export class ReggaeBrain {
     private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
         return [{
             type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
-            technique: 'swell', dynamics: 'p', phrasing: 'legate'
+            technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }];
+    }
+
+    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 12;
+        const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
+
+        if (melodyEvents.length > 0) {
+            // Shadow Mode: дублирование мелодии терциями (Rhodes Bubbling)
+            melodyEvents.forEach((m, i) => {
+                if (i % 2 === 0) {
+                    events.push({
+                        ...m,
+                        type: 'pianoAccompaniment',
+                        note: this.constrainAccompanimentOctave(m.note + (chord.chordType === 'minor' ? 3 : 4)),
+                        weight: 0.35,
+                        technique: 'hit',
+                        phrasing: 'staccato'
+                    });
+                }
+            });
+            return { events, style: 'Melodic Shadow' };
+        } else {
+            // Bubbling Mode: синкопированные аккорды (Rhodes)
+            [1.5, 4.5, 7.5, 10.5].forEach(t => {
+                if (this.random.next() < 0.6) {
+                    intervals.forEach(interval => {
+                        events.push({
+                            type: 'pianoAccompaniment',
+                            note: this.constrainAccompanimentOctave(root + interval + 12),
+                            time: t * TICK_TO_BEAT,
+                            duration: 0.3 * TICK_TO_BEAT,
+                            weight: 0.3,
+                            technique: 'hit',
+                            dynamics: 'p',
+                            phrasing: 'staccato'
+                        });
+                    });
+                }
+            });
+            return { events, style: 'Rhodes Bubbling' };
+        }
     }
 
     private constrainBassOctave(note: number): number {
