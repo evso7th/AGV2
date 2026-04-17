@@ -2,13 +2,13 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.0).
- * #ЧТО: Глубокий, меланхоличный даб. Фокус на пространстве и басе.
+ * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.2 — Bluesified).
+ * #ЧТО: ПЛАН №1135 — Замена всех инструментов на блюзовые (Telecaster, Jazz Bass, Soft Jazz Organ).
  */
 export const MelancholicReggaeBlueprint: MusicBlueprint = {
     id: 'melancholic_reggae',
     name: 'Midnight Dub Station',
-    description: 'Deep roots dub with atmospheric echoes and a solid one-drop foundation.',
+    description: 'Deep roots dub with atmospheric echoes and a bluesy instrumental palette.',
     mood: 'melancholic',
     musical: {
         key: { root: 'A', scale: 'dorian', octave: 1 },
@@ -22,10 +22,11 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'MistyMorning', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true, bass: true, harmony: true },
+                layers: { accompaniment: true, sfx: true, bass: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'reggae_organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_reggae', weight: 1.0 }] }
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
@@ -38,9 +39,11 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'The Roots Cycle', duration: { percent: 80 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'reggae_guitar', weight: 1.0 }] },
-                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'reggae_organ', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_dub', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 1.0 }] },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
@@ -51,7 +54,11 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Smoke & Echo', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true, harmony: true },
+                layers: { accompaniment: true, sfx: true, harmony: true, bass: true },
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                },
                 bundles: [{ id: 'REG_OUTRO_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }

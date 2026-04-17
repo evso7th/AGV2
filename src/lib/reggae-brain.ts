@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V3.6 — "Heritage Access Restored".
- * #ЗАЧЕМ: Исправление отсутствия звука наследия в Регги.
- * #ЧТО: ПЛАН №1132 — 1. Удалена блокировка isIntro для режима Heritage.
- *       2. Разрешена инициализация Аксиом на 0-м такте.
+ * @fileOverview Reggae Brain V3.7 — "Bluesy Heritage Standard".
+ * #ЗАЧЕМ: Приведение регги к блюзовому звуковому стандарту.
+ * #ЧТО: ПЛАН №1135 — 1. Обновление дефолтных инструментов (Telecaster, Jazz Bass).
+ *       2. Укрепление иерархии: Axiom > BP > Default.
  */
 
 import type {
@@ -87,7 +87,6 @@ export class ReggaeBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         
-        // Reset busy state to allow immediate re-selection if data just arrived
         if (this.soloistBusyUntilBar === -1) this.soloistBusyUntilBar = 0;
     }
 
@@ -192,11 +191,7 @@ export class ReggaeBrain {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: ПЛАН №1132. В режиме Наследия "интро" не должно блокировать выбор аксиом.
-        const isStructuralIntro = navInfo.currentPart.id === 'INTRO' || navInfo.currentPart.id === 'PROLOGUE';
-
         let newBpm: number | undefined;
-        // Разрешаем выбор аксиомы даже в интро, если это режим Heritage
         if (epoch >= this.soloistBusyUntilBar) {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
         }
@@ -235,12 +230,15 @@ export class ReggaeBrain {
             if (target && hints[target] && !usedLayers.has(target)) {
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
                 usedLayers.add(target);
+                
+                // #ЗАЧЕМ: Иерархия 1 — Аксиома всегда определяет инструмент, если он задан.
                 if (ax.preferredInstrument) {
                     instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
                 }
             }
         });
 
+        // #ЗАЧЕМ: Иерархия 2 — Блюпринт (через hints) действует, если Аксиома не задала слой.
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderGenerativePad(resChord, tension));
         }
@@ -249,10 +247,12 @@ export class ReggaeBrain {
         let activeMelLick = 'none';
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                const heritageMel = this.renderHeritageMelody(epoch, resChord, tension);
-                if (heritageMel.length > 0) {
-                    events.push(...heritageMel);
-                    activeMelLick = this.currentTheme.id;
+                events.push(...this.renderHeritageMelody(epoch, resChord, tension));
+                activeMelLick = this.currentTheme.id;
+                
+                // #ЗАЧЕМ: Иерархия 1 — Аксиома для мелодии.
+                if (this.currentPreferredInstrument) {
+                    instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
                 }
             }
             
@@ -261,6 +261,13 @@ export class ReggaeBrain {
                 activeMelLick = 'Generative Aria';
             }
         }
+
+        // #ЗАЧЕМ: Иерархия 3 — Финальные дефолты "Блюзового" набора.
+        if (!instrumentOverrides.melody && hints.melody) instrumentOverrides.melody = 'telecaster';
+        if (!instrumentOverrides.bass && hints.bass) instrumentOverrides.bass = 'bass_jazz_warm';
+        if (!instrumentOverrides.accompaniment && hints.accompaniment) instrumentOverrides.accompaniment = 'organ_soft_jazz';
+        if (!instrumentOverrides.harmony && hints.harmony) instrumentOverrides.harmony = 'guitarChords';
+        if (!instrumentOverrides.pianoAccompaniment && hints.pianoAccompaniment) instrumentOverrides.pianoAccompaniment = 'ep_rhodes_warm';
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
