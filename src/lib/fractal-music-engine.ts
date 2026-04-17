@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -56,7 +55,9 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.2 — "Heritage Connectivity Restoration".
+ * @fileOverview Fractal Music Engine V44.3 — "Heritage Connectivity Restoration".
+ * #ЗАЧЕМ: Исправление отсутствия звука в Регги.
+ * #ЧТО: ПЛАН №1138 — Добавлена передача cloudAxioms в ReggaeBrain.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -161,6 +162,7 @@ export class FractalMusicEngine {
         this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
+        // #ЗАЧЕМ: Восстановление связи Reggae с Облаком (ПЛАН №1138)
         this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
         this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null;
     } else {
@@ -261,20 +263,21 @@ export class FractalMusicEngine {
                 let defaultInst = 'synth';
                 if (part === 'bass') {
                     if (this.config.genre === 'psybient') defaultInst = 'bass_house';
-                    else if (this.config.genre === 'reggae') defaultInst = 'bass_reggae';
+                    else if (this.config.genre === 'reggae') defaultInst = 'bass_jazz_warm';
                     else defaultInst = 'bass_jazz_warm';
                 }
                 else if (part === 'melody') {
                     if (this.config.genre === 'psybient') defaultInst = 'synth';
-                    else if (this.config.genre === 'reggae') defaultInst = 'reggae_guitar';
+                    else if (this.config.genre === 'reggae') defaultInst = 'telecaster';
                     else defaultInst = 'organ_soft_jazz';
                 }
                 else if (part === 'accompaniment') {
-                    if (this.config.genre === 'reggae') defaultInst = 'reggae_organ';
+                    if (this.config.genre === 'reggae') defaultInst = 'organ_prog';
                     else defaultInst = 'synth_ambient_pad_lush';
                 }
                 else if (part === 'harmony') {
-                    if (this.config.genre === 'blues') defaultInst = 'guitarChords';
+                    if (this.config.genre === 'reggae') defaultInst = 'guitarChords';
+                    else if (this.config.genre === 'blues') defaultInst = 'guitarChords';
                     else defaultInst = 'violin';
                 }
                 else if (part === 'pianoAccompaniment') {

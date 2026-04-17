@@ -1,9 +1,7 @@
-
 /**
- * @fileOverview Reggae Brain V3.7 — "Bluesy Heritage Standard".
- * #ЗАЧЕМ: Приведение регги к блюзовому звуковому стандарту.
- * #ЧТО: ПЛАН №1135 — 1. Обновление дефолтных инструментов (Telecaster, Jazz Bass).
- *       2. Укрепление иерархии: Axiom > BP > Default.
+ * @fileOverview Reggae Brain V3.8 — "Heritage Materialization Protocol".
+ * #ЗАЧЕМ: Исправление тишины в мелодии.
+ * #ЧТО: ПЛАН №1138 — Реализация renderGapFiller, исправление синхронизации тиков и Aria Protocol.
  */
 
 import type {
@@ -87,6 +85,7 @@ export class ReggaeBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         
+        // Позволяем системе искать аксиомы сразу
         if (this.soloistBusyUntilBar === -1) this.soloistBusyUntilBar = 0;
     }
 
@@ -94,6 +93,7 @@ export class ReggaeBrain {
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
+        // В режиме Anchor играем линейно от момента старта
         return (epoch - startEpoch) % totalBars;
     }
 
@@ -114,7 +114,7 @@ export class ReggaeBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 return axGenres.includes('reggae') && (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
@@ -231,14 +231,12 @@ export class ReggaeBrain {
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
                 usedLayers.add(target);
                 
-                // #ЗАЧЕМ: Иерархия 1 — Аксиома всегда определяет инструмент, если он задан.
                 if (ax.preferredInstrument) {
                     instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
                 }
             }
         });
 
-        // #ЗАЧЕМ: Иерархия 2 — Блюпринт (через hints) действует, если Аксиома не задала слой.
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderGenerativePad(resChord, tension));
         }
@@ -250,29 +248,28 @@ export class ReggaeBrain {
                 events.push(...this.renderHeritageMelody(epoch, resChord, tension));
                 activeMelLick = this.currentTheme.id;
                 
-                // #ЗАЧЕМ: Иерархия 1 — Аксиома для мелодии.
                 if (this.currentPreferredInstrument) {
                     instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
                 }
             }
             
             if (activeMelLick === 'none') {
-                events.push(...this.renderGenerativeAriaMelody(epoch, resChord, tension));
-                activeMelLick = 'Generative Aria';
+                events.push(...this.renderGapFiller(epoch, resChord, tension));
+                activeMelLick = 'Gap-Filler';
             }
         }
 
-        // #ЗАЧЕМ: Иерархия 3 — Финальные дефолты "Блюзового" набора.
+        // Bluesified Defaults
         if (!instrumentOverrides.melody && hints.melody) instrumentOverrides.melody = 'telecaster';
         if (!instrumentOverrides.bass && hints.bass) instrumentOverrides.bass = 'bass_jazz_warm';
-        if (!instrumentOverrides.accompaniment && hints.accompaniment) instrumentOverrides.accompaniment = 'organ_soft_jazz';
+        if (!instrumentOverrides.accompaniment && hints.accompaniment) instrumentOverrides.accompaniment = 'organ_prog';
         if (!instrumentOverrides.harmony && hints.harmony) instrumentOverrides.harmony = 'guitarChords';
         if (!instrumentOverrides.pianoAccompaniment && hints.pianoAccompaniment) instrumentOverrides.pianoAccompaniment = 'ep_rhodes_warm';
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
         return {
-            events, tension, beautyScore: 0.92,
+            events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             newBpm,
             instrumentOverrides,
@@ -283,6 +280,32 @@ export class ReggaeBrain {
             },
             narrative: `Reggae ${modeStr}: [DNA: ${this.currentTrackName}] [Protocol: ARIA]`
         };
+    }
+
+    private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 12;
+        const scale = [0, 3, 5, 7, 10]; 
+        
+        const noteCount = calculateMusiNum(epoch, 2, this.seed, 2) + 1;
+        const ticks = [0, 3, 6, 9].sort(() => Math.random() - 0.5).slice(0, noteCount);
+        
+        ticks.forEach(t => {
+            const degIdx = calculateMusiNum(epoch + t, 11, this.seed, scale.length);
+            const note = root + scale[degIdx];
+            
+            events.push({
+                type: 'melody',
+                note: Math.min(note, this.MELODY_CEILING),
+                time: t * TICK_TO_BEAT,
+                duration: (1.5 * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                weight: 0.7 + (tension * 0.2),
+                technique: tension > 0.4 ? 'vb' : 'pick',
+                dynamics: 'p',
+                phrasing: 'legato'
+            });
+        });
+        return events;
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -296,7 +319,7 @@ export class ReggaeBrain {
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, 
+                duration: (n.d * TICK_TO_BEAT) * 1.25, // Aria Overlap
                 weight: 0.85 + (tension * 0.1),
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', phrasing: 'legato'
@@ -370,21 +393,7 @@ export class ReggaeBrain {
     private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
         return [{
             type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }];
-    }
-
-    private renderGenerativeAriaMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (epoch % 2 === 0) return [];
-        const root = chord.rootNote + 12;
-        const scale = [0, 2, 3, 5, 7, 9, 10]; 
-        const t = [0, 3, 6, 9][this.random.nextInt(4)];
-        const note = root + scale[this.random.nextInt(scale.length)];
-        return [{
-            type: 'melody', note, time: t * TICK_TO_BEAT, 
-            duration: (1.5 * TICK_TO_BEAT) * 1.25, 
-            weight: 0.75, technique: tension > 0.4 ? 'vb' : 'pick', 
-            dynamics: 'mf', phrasing: 'legato'
+            technique: 'swell', dynamics: 'p', phrasing: 'legate'
         }];
     }
 

@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.2 — Bluesified).
- * #ЧТО: ПЛАН №1135 — Замена всех инструментов на блюзовые (Telecaster, Jazz Bass, Soft Jazz Organ).
+ * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.3 — Bluesified).
+ * #ЧТО: ПЛАН №1138 — Окончательная замена всех инструментов на блюзовые (Telecaster, Jazz Bass, Soft Jazz Organ).
  */
 export const MelancholicReggaeBlueprint: MusicBlueprint = {
     id: 'melancholic_reggae',
