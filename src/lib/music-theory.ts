@@ -63,6 +63,13 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
+    // #ЗАЧЕМ: ПЛАН №1150. Принудительное разрешение рояля для канала Piano.
+    // Это предотвращает глобальное мапирование 'piano' -> 'ep_rhodes_warm' для этого канала.
+    if (part === 'pianoAccompaniment') {
+        if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
+        if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
+    }
+
     if (clean === 'dynamicorgan') {
         if (tension < 0.4) return 'organ_prog';
         if (tension < 0.75) return 'organ_soft_jazz';
