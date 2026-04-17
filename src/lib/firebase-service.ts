@@ -122,6 +122,7 @@ export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
         narrative: data.narrative || "Heritage component.",
         nativeBpm: data.nativeBpm ?? data.bpm ?? null,
         nativeKey: data.nativeKey ?? data.key ?? null,
+        nativeScale: data.nativeScale ?? data.scale ?? null,
         timeSignature: data.timeSignature ?? data.ts ?? null,
         ignored: data.ignored ?? false,
         preferredInstrument: data.preferredInstrument || null,

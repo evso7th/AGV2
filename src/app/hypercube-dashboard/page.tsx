@@ -114,26 +114,35 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
+const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian'];
+
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
 const INSTRUMENT_OPTIONS = [
-    'guitar', 'telecaster', 'blackAcoustic', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
-    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'dynamicOrgan',
-    'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'dynamicPad',
-    'theremin', 'mellotron', 'violin', 'flute', 'piano', 'bass_jazz_warm', 'bass_808', 'none'
+    'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'ep_rhodes_warm', 
+    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ',
+    'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80', 'theremin', 'mellotron',
+    'bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 
+    'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 
+    'bass_rock_pick', 'bass_slap', 'bass_cs80',
+    'blackAcoustic', 'telecaster', 'darkTelecaster', 'piano', 'violin', 'flute', 'guitarChords',
+    'dynamicOrgan', 'dynamicPad', 'none'
 ];
 
 const DISPLAY_NAMES: Record<string, string> = {
     'guitar': 'Dynamic Guitar',
     'telecaster': 'Telecaster Clean',
     'blackAcoustic': 'Black Acoustic',
-    'cs80': 'CS-80 Brass',
+    'darkTelecaster': 'Dark Telecaster',
+    'cs80': 'CS-80 / Vangelis',
     'guitar_shineOn': 'Shine On Lead',
     'guitar_muffLead': 'Muff Lead',
+    'reggae_guitar': 'Roots Skank Guitar',
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'organ_jimmy_smith': 'Jimmy Smith B3',
     'organ_prog': 'Prog Rock B3',
+    'reggae_organ': 'Roots Bubbler B3',
     'dynamicOrgan': '⚡ DYNAMIC ORGAN',
     'synth': 'Emerald Pad',
     'synth_ambient_pad_lush': 'Lush Pad',
@@ -144,8 +153,21 @@ const DISPLAY_NAMES: Record<string, string> = {
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
     'piano': 'Acoustic Piano',
+    'guitarChords': 'Acoustic Chords',
     'bass_jazz_warm': 'Warm Jazz Bass',
+    'bass_jazz_fretless': 'Fretless Jaco',
+    'bass_blues': 'Blues Bass',
+    'bass_ambient': 'Ambient Sub',
+    'bass_ambient_dark': 'Abyssal Bass',
+    'bass_trance_acid': 'Acid Bass',
+    'bass_reggae': 'Reggae Bass',
+    'bass_dub': 'Dub Bass',
+    'bass_house': 'House Bass',
     'bass_808': '808 Sub Bass',
+    'bass_deep_house': 'Deep House Bass',
+    'bass_rock_pick': 'Rock Picked Bass',
+    'bass_slap': 'Slap Funk Bass',
+    'bass_cs80': 'CS80 Hybrid Bass',
     'none': 'No Override',
     'psybient': 'Psy-Ambient'
 };
@@ -248,6 +270,7 @@ export default function HypercubeDashboard() {
   const [editMoodValue, setEditMoodValue] = useState<Mood[]>([]);
   const [editBpmValue, setEditBpmValue] = useState<string>("72");
   const [editKeyValue, setEditKeyValue] = useState<string>("E");
+  const [editScaleValue, setEditScaleValue] = useState<string>("dorian");
   const [editTsValue, setEditTsValue] = useState<string>("4/4");
 
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
@@ -341,6 +364,7 @@ export default function HypercubeDashboard() {
     else if (role.includes('accomp')) channel = 'accompaniment';
 
     const instrument = resolveSemanticTimbre(axiom.preferredInstrument || (channel === 'bass' ? 'bass_jazz_warm' : 'organ_soft_jazz'), 0.5, channel);
+    
     const events: FractalEvent[] = phrase.map(n => ({
         type: channel,
         note: (channel === 'bass' ? 31 : (channel === 'drums' ? 36 : 60)) + (DEGREE_TO_SEMITONE[n.deg] || 0),
@@ -368,7 +392,7 @@ export default function HypercubeDashboard() {
       finally { setIsProcessing(false); }
   };
 
-  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newScale: string, newTs: string, licks: any[]) => {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
@@ -376,11 +400,11 @@ export default function HypercubeDashboard() {
         licks.forEach(ax => { 
             batch.update(doc(db, 'heritage_axioms', ax.id), { 
                 compositionId: newId, genre: newG, mood: newM, commonMood: newCommonMoods,
-                nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs 
+                nativeBpm: newBpm, nativeKey: newKey, nativeScale: newScale, timeSignature: newTs 
             }); 
         });
         await batch.commit();
-        toast({ title: "Track Updated" });
+        toast({ title: "Track Metadata Updated" });
     } finally { setIsProcessing(false); setEditingGroupId(null); }
   };
 
@@ -458,13 +482,13 @@ export default function HypercubeDashboard() {
                 barOffset: ax.barOffset ?? 0,
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || 'C',
+                nativeScale: ax.nativeScale || ax.scale || 'dorian',
                 timeSignature: ax.timeSignature || ax.ts || '4/4',
                 ignored: ax.ignored ?? false
             };
         };
         
         if (json.header && json.tracks && Array.isArray(json.tracks)) {
-            // MIDI-JSON format
             const targetId = json.header.name || file.name.replace(/\.[^/.]+$/, "");
             const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
             json.tracks.forEach((track: any, tIdx: number) => {
@@ -483,10 +507,8 @@ export default function HypercubeDashboard() {
                 }, tIdx, targetId));
             });
         } else if (Array.isArray(json)) {
-            // Array of axioms
             json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, ax.compositionId || file.name)));
         } else {
-            // Batch mode or generic object
             Object.entries(json).forEach(([compId, licks]: any) => { 
                 if(Array.isArray(licks)) {
                     licks.forEach((l, i) => flattened.push(processAxiom(l, i, compId))); 
@@ -526,6 +548,8 @@ export default function HypercubeDashboard() {
             mood: newMoods, 
             commonMood: newCommons, 
             nativeBpm: editAxiomData.nativeBpm ? parseInt(editAxiomData.nativeBpm) : null,
+            nativeKey: editAxiomData.nativeKey || 'C',
+            nativeScale: editAxiomData.nativeScale || 'dorian',
             preferredInstrument: editAxiomData.preferredInstrument || null,
             noteCount: editAxiomData.noteCount || 0,
             barOffset: editAxiomData.barOffset || 0,
@@ -652,23 +676,35 @@ export default function HypercubeDashboard() {
                               </AccordionTrigger>
                               {editingGroupId === compId ? (
                                 <div className="flex flex-col gap-2 p-2 bg-background/80 rounded border border-primary/20 w-full max-2xl" onClick={e => e.stopPropagation()}>
-                                  <div className="grid grid-cols-2 gap-2">
+                                  <div className="grid grid-cols-3 gap-2">
                                     <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Name</Label><Input value={editNameValue} onChange={e => setEditNameValue(e.target.value)} className="h-7 text-xs" /></div>
                                     <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">BPM</Label><Input value={editBpmValue} onChange={e => setEditBpmValue(e.target.value)} className="h-7 text-xs" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Scale</Label>
+                                        <Select value={editScaleValue} onValueChange={setEditScaleValue}>
+                                            <SelectTrigger className="h-7 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{AVAILABLE_SCALES.map(s => <SelectItem key={s} value={s} className="text-xs uppercase">{s}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
                                   </div>
-                                  <div className="grid grid-cols-2 gap-2">
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Key</Label>
+                                        <Select value={editKeyValue} onValueChange={setEditKeyValue}>
+                                            <SelectTrigger className="h-7 text-xs bg-background"><SelectValue /></SelectTrigger>
+                                            <SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" /></div>
                                     <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" /></div>
                                   </div>
                                   <div className="flex gap-2 pt-1">
-                                    <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
+                                    <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editScaleValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
                                     <Button size="sm" variant="ghost" onClick={() => setEditingGroupId(null)}><X className="h-4 w-4" /> Cancel</Button>
                                   </div>
                                 </div>
                               ) : (
-                                <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); }}>
+                                <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || 'C'); setEditScaleValue(licks[0].nativeScale || 'dorian'); }}>
                                   <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
-                                  <div className="text-[9px] uppercase font-bold opacity-50">G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')}</div>
+                                  <div className="text-[9px] uppercase font-bold opacity-50">G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')} | {licks[0].nativeKey} {licks[0].nativeScale}</div>
                                 </div>
                               )}
                             </div>
@@ -742,7 +778,7 @@ export default function HypercubeDashboard() {
 
           <TabsContent value="genetic" className="flex-grow">
             <Card className="border-border/50 shadow-xl bg-card/50 h-full flex flex-col">
-              <CardHeader shrink-0><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
+              <CardHeader className="shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
               <CardContent className="flex-grow p-4 pt-0 min-h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -759,7 +795,7 @@ export default function HypercubeDashboard() {
 
           <TabsContent value="masterpieces" className="flex-grow overflow-hidden">
             <Card className="border-border/50 shadow-xl bg-card/50 h-full flex flex-col overflow-hidden">
-              <CardHeader shrink-0><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
+              <CardHeader className="shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Star className="h-5 w-5" /> Masterpieces</CardTitle></CardHeader>
               <CardContent className="flex-grow overflow-hidden p-0">
                 <ScrollArea className="h-full px-6 py-4"><div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 pb-10">
                 {globalMasterpieces?.map((m: any) => (
@@ -857,7 +893,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
                                         <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
                                         <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars} / N:{ax.noteCount}</td>
-                                        <td className="p-4 text-[10px] font-mono opacity-60">{ax.nativeBpm || '??'}B / {ax.nativeKey} / {ax.timeSignature}</td>
+                                        <td className="p-4 text-[10px] font-mono opacity-60">{ax.nativeBpm || '??'}B / {ax.nativeKey} / {ax.nativeScale}</td>
                                         <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                     </tr>
                                 ))}
