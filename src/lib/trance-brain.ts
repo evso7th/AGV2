@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V44.0 — "Global Aria Protocol".
- * #ЗАЧЕМ: Применение Singing Guitars ко всем транс-мелодиям.
- * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для бесконечной спирали.
+ * @fileOverview Psybient Brain V45.0 — "Grounded Groove Protocol".
+ * #ЗАЧЕМ: Исправление "молотилки" в ударных.
+ * #ЧТО: ПЛАН №1160 — Увеличение шага сетки (t += 1.5/3.0) и снижение вероятности перкуссии.
  */
 
 import type {
@@ -93,6 +93,7 @@ export class TranceBrain {
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        if (totalBars <= 0) return 0;
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
@@ -123,7 +124,7 @@ export class TranceBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -180,7 +181,7 @@ export class TranceBrain {
                     });
 
                     const baseBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
@@ -227,7 +228,7 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (DNA First)
+        // 1. DRUMS
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, tension);
             if (heritageDrums.length > 0) {
@@ -239,7 +240,7 @@ export class TranceBrain {
             events.push(...this.renderPsybientKitchen(epoch, tension));
         }
 
-        // 2. BASS (DNA First)
+        // 2. BASS
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
@@ -248,7 +249,7 @@ export class TranceBrain {
             }
         }
 
-        // 3. MELODY (DNA First)
+        // 3. MELODY
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -259,7 +260,7 @@ export class TranceBrain {
             events.push(...melodyEvents);
         }
 
-        // 4. ACCOMPANIMENT & PIANO (DNA First Logic)
+        // 4. ACCOMPANIMENT & PIANO
         const usedTargetLayers = new Set<string>();
         
         if (!isIntro) {
@@ -280,7 +281,6 @@ export class TranceBrain {
                 }
             });
 
-            // 5. GENERATIVE FALLBACKS
             if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
                 events.push(...this.renderSidechainedPad(epoch, resChord, tension));
             }
@@ -290,7 +290,6 @@ export class TranceBrain {
             }
         }
 
-        // 6. HARMONY (Alternating)
         if (hints.harmony && !isIntro) {
             this.selectHarmonyInstrument(epoch);
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
@@ -298,7 +297,6 @@ export class TranceBrain {
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
         }
 
-        // 7. ATMOSPHERE
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -336,7 +334,11 @@ export class TranceBrain {
         [3, 9].forEach(t => {
             events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
-        for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
+        
+        // #ЗАЧЕМ: Увеличение шага сетки хэтов. Больше никакого зуда 16-ми долями.
+        // #ЧТО: t += 3.0 (четверти) при низком напряжении, t += 1.5 (восьмые) при высоком.
+        const hhStep = tension > 0.7 ? 1.5 : 3.0;
+        for (let t = 0; t < TICKS_PER_BAR; t += hhStep) {
             events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
         return events;
@@ -367,18 +369,20 @@ export class TranceBrain {
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
 
-        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) { 
-            if (this.rng.chance(20 + tension * 10)) {
+        // #ЗАЧЕМ: Усмирение перкуссии. Ритм стал разреженным и осмысленным.
+        // #ЧТО: Шаг сетки увеличен до 3.0 (четверти). Снижена вероятность попадания.
+        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
+            if (this.rng.chance(15 + tension * 5)) {
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                    weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
             
-            if (this.rng.chance(5)) {
+            if (this.rng.chance(3)) {
                 events.push({
-                    type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 1.5, 
-                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.6) - 0.8
+                    type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 2.5, 
+                    weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.6) - 0.8
                 });
             }
         }
@@ -388,10 +392,11 @@ export class TranceBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
+        // Psybient Rolling: обычно 8-е доли (шаг 1.5)
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             events.push({
                 type: 'bass', note: root, time: (t + 0.1) * TICK_TO_BEAT, 
-                duration: 1.2 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached', params: { filterCutoff: 1000 + tension * 2000 }
+                duration: 1.2 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached', params: { filterEnv: 1000 + tension * 2000 }
             });
         }
         return events;
@@ -399,18 +404,15 @@ export class TranceBrain {
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
-            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато.
             const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
-            
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                // ARIA Overlap
                 duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 1.0,
                 technique: useVibrato ? 'vb' as Technique : ('pick' as Technique), 
@@ -454,12 +456,11 @@ export class TranceBrain {
         const lick = BLUES_SOLO_LICKS[key];
         if (!lick) return [];
         return decompressCompactPhrase(lick.phrase as any).map(n => {
-            // ARIA Implementation
             const useVibrato = (tension > 0.4 && n.d >= 3);
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: n.t * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, // Overlap
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 0.9, 
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', 
