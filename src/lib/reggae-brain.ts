@@ -1,7 +1,7 @@
 /**
- * @fileOverview Reggae Brain V3.8 — "Heritage Materialization Protocol".
+ * @fileOverview Reggae Brain V3.9 — "Heritage Materialization & Aria Standard".
  * #ЗАЧЕМ: Исправление тишины в мелодии.
- * #ЧТО: ПЛАН №1138 — Реализация renderGapFiller, исправление синхронизации тиков и Aria Protocol.
+ * #ЧТО: ПЛАН №1140 — Исправлена опечатка в currentThemeMaxTick, реализован живой Gap-Filler и Aria Protocol.
  */
 
 import type {
@@ -85,15 +85,14 @@ export class ReggaeBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         
-        // Позволяем системе искать аксиомы сразу
         if (this.soloistBusyUntilBar === -1) this.soloistBusyUntilBar = 0;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
+        if (totalBars <= 0) return 0;
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
-        // В режиме Anchor играем линейно от момента старта
         return (epoch - startEpoch) % totalBars;
     }
 
@@ -151,7 +150,7 @@ export class ReggaeBrain {
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
                     
                     let rawPhrase = decompressCompactPhrase(selected.phrase);
-                    if (selected.role === 'melody') rawPhrase = mergeIdenticalNotes(rawPhrase);
+                    if (selected.role === 'melody' || selected.role.includes('accomp')) rawPhrase = mergeIdenticalNotes(rawPhrase);
 
                     const cid = normalizeStr(selected.compositionId);
                     
@@ -167,7 +166,8 @@ export class ReggaeBrain {
                     this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                     const baseBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
+                    // #ЗАЧЕМ: Исправление опечатки. Теперь свойство называется правильно.
+                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
@@ -245,11 +245,14 @@ export class ReggaeBrain {
         let activeMelLick = 'none';
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                events.push(...this.renderHeritageMelody(epoch, resChord, tension));
-                activeMelLick = this.currentTheme.id;
-                
-                if (this.currentPreferredInstrument) {
-                    instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
+                const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension);
+                if (heritageMelody.length > 0) {
+                    events.push(...heritageMelody);
+                    activeMelLick = this.currentTheme.id;
+                    
+                    if (this.currentPreferredInstrument) {
+                        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
+                    }
                 }
             }
             
@@ -341,7 +344,7 @@ export class ReggaeBrain {
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -356,7 +359,7 @@ export class ReggaeBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         if (this.currentDrumAxioms.length === 0) return [];
         const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
