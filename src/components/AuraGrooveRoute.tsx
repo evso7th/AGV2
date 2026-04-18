@@ -1,9 +1,9 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V5.0 — "Navigator Preset Mastery".
- * #ЧТО: ПЛАН №1250 — 1. Бесконечные колеса с низкой чувствительностью (0.03).
- *       2. Модальный эквалайзер и микшер с поддержкой пресетов.
- *       3. Перенос кнопок в Header по стандарту Expert UI.
+ * #ЗАЧЕМ: UI AuraGroove V5.2 — "The Navigator Ergo-Logic".
+ * #ЧТО: ПЛАН №1255 — 1. Переназначение кнопок Header (Settings2 -> Mixer, Navigation -> EQ).
+ *       2. Перенос доступа к Expert Mode на вкладку Samples.
+ *       3. Модальные окна с поддержкой пресетов в LocalStorage.
  */
 'use client';
 
@@ -12,7 +12,7 @@ import {
     Plus, X, Shuffle, Music, Pause, Settings2, 
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
-    Save, FolderOpen, Trash2, Check, Navigation, Sliders
+    Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -99,7 +99,6 @@ function VerticalSpinner({
         if (selected && selected.id !== value) onChange(selected.id);
     }, [value, items, infiniteItems, onChange]);
 
-    // #ЗАЧЕМ: ПЛАН №1250. Сверхнизкая чувствительность для точности (0.03).
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
         scrollRef.current.scrollTop += e.deltaY * 0.03;
@@ -199,10 +198,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/timbre-lab')} title="Timbre Lab"><Settings2 className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer"><Sliders className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Mixer"><SlidersHorizontal className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} title="Expert Mode"><Navigation className="h-5 w-5" /></Button>
+                        {/* #ЗАЧЕМ: ПЛАН №1255. Кнопки Header переназначены на модальные окна. */}
+                        <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Simple Mixer"><Settings2 className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer"><Navigation className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
                     </div>
                 </div>
@@ -248,21 +246,26 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </div>
 
             <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between shrink-0">
-                <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
-                    <DialogContent className="sm:max-w-xl bg-card border-primary/20">
-                        <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
-                        <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
-                            const vol = ch.key === 'master' ? props.calibrationGains.master : (ch.key === 'drums' ? props.drumSettings.volume : (['sparkles','sfx'].includes(ch.key) ? (props.textureSettings as any)[ch.key].volume : (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5));
-                            return (<div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group"><span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span><Slider orientation="vertical" value={[vol]} max={ch.key === 'master' ? 1.5 : 1.0} step={0.01} onValueChange={v => { if(ch.key === 'master') props.handleCalibrationChange('master', v[0]); else props.handleVolumeChange(ch.key as any, v[0]); }} className="h-full" /><span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span></div>);
-                        })}</div>
-                        <PresetManager title="Mixer" presets={props.mixerPresets} onSave={props.saveMixerPreset} onLoad={props.loadMixerPreset} onDelete={props.deleteMixerPreset} />
-                    </DialogContent>
-                </Dialog>
-                <Button variant="outline" className={cn("h-10 gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")} onClick={() => router.push('/aura-groove')}>
+                <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10" title="Spectrum Monitor"><Activity className="h-5 w-5" /></Button>
+                
+                {/* #ЗАЧЕМ: Кнопка перехода в Expert Mode спрятана здесь, как вы и просили. */}
+                <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity" title="Expert System"><Cog className="h-4 w-4" /></Button>
+
+                <Button variant="outline" className={cn("h-10 gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")} onClick={() => props.handleToggleTimer()}>
                     <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
                 </Button>
             </footer>
+
+            <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
+                <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
+                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
+                    <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
+                        const vol = ch.key === 'master' ? props.calibrationGains.master : (ch.key === 'drums' ? props.drumSettings.volume : (['sparkles','sfx'].includes(ch.key) ? (props.textureSettings as any)[ch.key].volume : (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5));
+                        return (<div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group"><span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span><Slider orientation="vertical" value={[vol]} max={ch.key === 'master' ? 1.5 : 1.0} step={0.01} onValueChange={v => { if(ch.key === 'master') props.handleCalibrationChange('master', v[0]); else props.handleVolumeChange(ch.key as any, v[0]); }} className="h-full" /><span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span></div>);
+                    })}</div>
+                    <PresetManager title="Mixer" presets={props.mixerPresets} onSave={props.saveMixerPreset} onLoad={props.loadMixerPreset} onDelete={props.deleteMixerPreset} />
+                </DialogContent>
+            </Dialog>
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
                 <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
