@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V5.3 — "Global Aria Protocol".
- * #ЗАЧЕМ: Глобальное внедрение певучести и мягкости.
- * #ЧТО: ПЛАН №1118 — Закрепление теплых фильтров и естественного релиза.
+ * @fileOverview Центральная фабрика инструментов V6.0 — "Velvet Sound Standard".
+ * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов и органов.
+ * #ЧТО: ПЛАН №1280 — Усиление фильтрации в ВЧ, добавление аналоговой теплоты и сложных огибающих.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -76,7 +76,19 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     } catch { return null; }
 };
 
-// ───── DISTORTION CURVES ─────
+// ───── DISTORTION CURVES (WARMTH) ─────
+
+const makeSoftSaturation = (amount = 0.2) => {
+    const n = 8192;
+    const c = new Float32Array(n);
+    const k = amount * 2;
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        // Мягкая нелинейность для "аналогового" звука
+        c[i] = (1 + k) * x / (1 + k * Math.abs(x));
+    }
+    return c;
+};
 
 const makeLinearCurve = (n = 8192) => {
     const c = new Float32Array(n);
@@ -129,7 +141,7 @@ interface SimpleFX {
 
 const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const options = typeof opt === 'number' ? { mix: opt } : opt;
-    const { rate = 0.3, depth = 0.004, mix = 0.3 } = options;
+    const { rate = 0.25, depth = 0.005, mix = 0.3 } = options;
     
     const input = ctx.createGain();
     const output = ctx.createGain();
@@ -137,8 +149,8 @@ const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const wet = ctx.createGain(); wet.gain.value = isFinite(mix) ? mix : 0.3;
     
     const delay = ctx.createDelay(0.05); delay.delayTime.value = 0.015;
-    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = isFinite(rate) ? rate : 0.3;
-    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 0.004;
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = isFinite(rate) ? rate : 0.25;
+    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 0.005;
     lfo.connect(lfoG).connect(delay.delayTime); lfo.start();
     
     input.connect(dry).connect(output);
@@ -158,16 +170,16 @@ const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 
 const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const options = typeof opt === 'number' ? { mix: opt } : opt;
-    const { time = 0.35, fb = 0.25, hc = 2500, mix = 0.2 } = options;
+    const { time = 0.4, fb = 0.25, hc = 2000, mix = 0.2 } = options;
 
     const input = ctx.createGain();
     const output = ctx.createGain();
     const dry = ctx.createGain(); dry.gain.value = 1 - (isFinite(mix) ? mix : 0.2);
     const wet = ctx.createGain(); wet.gain.value = isFinite(mix) ? mix : 0.2;
     
-    const d = ctx.createDelay(2.0); d.delayTime.value = isFinite(time) ? time : 0.35;
+    const d = ctx.createDelay(2.0); d.delayTime.value = isFinite(time) ? time : 0.4;
     const loop = ctx.createGain(); loop.gain.value = isFinite(fb) ? fb : 0.25;
-    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = isFinite(hc) ? hc : 2500;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = isFinite(hc) ? hc : 2000;
     
     input.connect(dry).connect(output);
     input.connect(d).connect(lp).connect(loop).connect(d);
@@ -187,7 +199,7 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 
 const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     const options = typeof opt === 'number' ? { mix: opt } : opt;
-    const { stages = 4, base = 700, depth = 500, rate = 0.16, fb = 0.12, mix = 0.2 } = options;
+    const { stages = 4, base = 600, depth = 400, rate = 0.15, fb = 0.1, mix = 0.2 } = options;
 
     const input = ctx.createGain();
     const output = ctx.createGain();
@@ -199,15 +211,15 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     for (let i = 0; i < (isFinite(stages) ? stages : 4); i++) {
         const ap = ctx.createBiquadFilter(); 
         ap.type = 'allpass'; 
-        ap.frequency.value = (isFinite(base) ? base : 700) * ((i % 2) ? 1.2 : 0.8); 
+        ap.frequency.value = (isFinite(base) ? base : 600) * ((i % 2) ? 1.1 : 0.9); 
         ap.Q.value = 0.6; 
         head.connect(ap); head = ap; filters.push(ap);
     }
-    const fbG = ctx.createGain(); fbG.gain.value = isFinite(fb) ? fb : 0.12; 
+    const fbG = ctx.createGain(); fbG.gain.value = isFinite(fb) ? fb : 0.1; 
     filters[filters.length - 1].connect(fbG); fbG.connect(filters[0]);
     
-    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = isFinite(rate) ? rate : 0.16;
-    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 500;
+    const lfo = ctx.createOscillator(); lfo.type = 'sine'; lfo.frequency.value = isFinite(rate) ? rate : 0.15;
+    const lfoG = ctx.createGain(); lfoG.gain.value = isFinite(depth) ? depth : 400;
     lfo.connect(lfoG); filters.forEach(f => lfoG.connect(f.frequency)); lfo.start();
     
     input.connect(dry); 
@@ -229,26 +241,27 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
 interface VoiceState { node: GainNode; startTime: number; }
 
 const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: number, d: number, s: number, velocity = 1): VoiceState => {
-    const attack = isFinite(a) ? Math.max(a, 0.003) : 0.01;
-    const decay = isFinite(d) ? Math.max(d, 0.01) : 0.1;
+    const attack = isFinite(a) ? Math.max(a, 0.005) : 0.02;
+    const decay = isFinite(d) ? Math.max(d, 0.02) : 0.2;
     const sustain = isFinite(s) ? clamp(s, 0, 1) * velocity : 0.7 * velocity;
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.linearRampToValueAtTime(velocity, now + attack);
+    // Мягкая экспоненциальная атака вместо линейной
+    gain.gain.exponentialRampToValueAtTime(velocity, now + attack);
     gain.gain.setTargetAtTime(sustain, now + attack, Math.max(decay / 3, 0.001));
     return { node: gain, startTime: now };
 };
 
 const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number, r: number): number => {
-    const release = isFinite(r) ? Math.max(r, 0.02) : 0.3;
+    const release = isFinite(r) ? Math.max(r, 0.05) : 0.5;
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     voiceState.node.gain.cancelScheduledValues(now);
     // #ЗАЧЕМ: Aria Protocol - длинный, вокальный хвост.
-    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2, 0.001));
-    return now + (release * 5.0); 
+    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2.5, 0.001));
+    return now + (release * 6.0); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -257,27 +270,36 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
+    const sat = ctx.createWaveShaper(); sat.curve = makeSoftSaturation(0.15); // Теплота
+    
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
+    
     const chorus = makeChorus(ctx, currentPreset.chorus || {});
     const delay = makeDelay(ctx, currentPreset.delay || {});
-    const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.18;
+    const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.25;
 
-    comp.connect(filt);
+    comp.connect(sat).connect(filt);
+    
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        const cutoff = p.lpf?.cutoff ?? 1200; // GLOBAL SOFTENING
+        const cutoff = p.lpf?.cutoff ?? 1000; // GLOBAL SOFTENING
         filt.frequency.value = cutoff;
         filt2.frequency.value = cutoff;
+        filt.Q.value = p.lpf?.q ?? 1.0;
+        filt2.Q.value = p.lpf?.q ?? 1.0;
         
-        if (p.lpf?.mode === '24dB') { filt.connect(filt2); filt2.connect(chorus.input); }
+        if (p.lpf?.mode === '24dB' || true) { // Навязываем 24дБ для мягкости
+            filt.connect(filt2); filt2.connect(chorus.input); 
+        }
         else { filt.connect(chorus.input); }
     };
     rebuild(currentPreset);
+    
     chorus.output.connect(delay.input);
     delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
     delay.output.connect(revSend).connect(reverb);
-    staticNodes.push(comp, filt, filt2, chorus.input, delay.input, revSend);
+    staticNodes.push(comp, sat, filt, filt2, chorus.input, delay.input, revSend);
 
     return {
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
@@ -287,6 +309,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(comp);
             const nodes: AudioNode[] = [voiceGain];
             const oscConfigs = currentPreset.osc || [{ type: 'sawtooth', gain: 0.5 }];
+            
             oscConfigs.forEach((o: any) => {
                 const osc = ctx.createOscillator(); osc.type = o.type;
                 osc.frequency.setValueAtTime(f * Math.pow(2, o.octave || 0), when);
@@ -294,6 +317,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
                 osc.connect(g).connect(voiceGain); osc.start(when);
                 nodes.push(osc, g);
             });
+            
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes, voiceState, cleaned: false };
@@ -301,11 +325,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
 
-            const safeDuration = duration && isFinite(duration) ? duration : 1.0;
+            const safeDuration = duration && isFinite(duration) ? duration : 1.5;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
-            const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10; 
+            const totalLifeInSec = Math.max(0, when - ctx.currentTime) + safeDuration + (adsr.r * 10) + 5; 
 
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -328,7 +351,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             currentPreset = p; 
             rebuild(p); 
             chorus.setMix(p.chorus?.on ? (p.chorus?.mix ?? 0.3) : 0); 
-            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.18; 
+            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.25; 
         }
     };
 };
@@ -336,15 +359,18 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
-    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 25; 
-    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 2200;
-    const leslie = makeChorus(ctx, currentPreset.leslie || {});
+    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
+    const sat = ctx.createWaveShaper(); sat.curve = makeSoftSaturation(0.2); // Теплый "клиппинг" Hammond
+    const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
+    const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
+    
     const vibLfo = ctx.createOscillator(); vibLfo.frequency.value = 6.4;
     const vibG = ctx.createGain(); vibG.gain.value = 3.5; vibLfo.connect(vibG); vibLfo.start();
-    const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.1;
+    
+    const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.15;
     const activeVoiceRecords = new Set<any>();
 
-    organSum.connect(hpf).connect(filt).connect(leslie.input);
+    organSum.connect(hpf).connect(sat).connect(filt).connect(leslie.input);
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
     leslie.output.connect(revSend).connect(reverb);
 
@@ -354,7 +380,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         drawbars.forEach((v, i) => { if (v > 0) real[indices[i]] = v / 8; });
         return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
     };
-    let wave = getWave(currentPreset.drawbars || [8,0,8,5,0,3,0,0,0]);
+    let wave = getWave(currentPreset.drawbars || [8,0,8,0,0,0,0,0,0]);
 
     return {
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
@@ -364,26 +390,33 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(organSum);
             const osc = ctx.createOscillator(); osc.setPeriodicWave(wave); osc.frequency.setValueAtTime(f, when);
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
-            const nodes: AudioNode[] = [voiceGain, osc];
+            
             const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(f / 2, when);
-            const subG = ctx.createGain(); subG.gain.value = 0.35; 
+            const subG = ctx.createGain(); subG.gain.value = 0.45; // Усиленный низ
             sub.connect(subG).connect(voiceGain); sub.start(when); 
-            nodes.push(sub, subG);
+            
+            const nodes: AudioNode[] = [voiceGain, osc, sub, subG];
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
             const record = { nodes, voiceState, cleaned: false };
+            
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
-            const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
+            
+            const safeDuration = isFinite(duration as number) ? (duration as number) : 1.2;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10;
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
+            
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 12) * 1000);
             nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
-        disconnect: () => { leslie.stop(); try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){} activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); [organSum, hpf, filt, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
-        setPreset: (p: any) => { currentPreset = p; wave = getWave(p.drawbars || [8,0,8,5,0,3,0,0,0]); revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.1; if (isFinite(p.lpf)) filt.frequency.setTargetAtTime(p.lpf, ctx.currentTime, 0.05); }
+        disconnect: () => { leslie.stop(); try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){} activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); [organSum, hpf, sat, filt, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
+        setPreset: (p: any) => { 
+            currentPreset = p; 
+            wave = getWave(p.drawbars || [8,0,8,0,0,0,0,0,0]); 
+            revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.15; 
+            if (isFinite(p.lpf)) filt.frequency.setTargetAtTime(p.lpf, ctx.currentTime, 0.05); 
+        }
     };
 };
 
@@ -414,9 +447,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 4) + 10;
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 8) * 1000);
             nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
@@ -445,7 +476,6 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.2;
     const activeVoiceRecords = new Set<any>();
     
-    // Aria Protocol: Vocal Tone Correction
     const cabinetFilter = ctx.createBiquadFilter();
     cabinetFilter.type = 'lowpass';
     cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2100;
@@ -484,9 +514,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             activeVoiceRecords.add(record);
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            const schedDelay = Math.max(0, when - ctx.currentTime);
-            const totalLifeInSec = schedDelay + safeDuration + (adsr.r * 6) + 10;
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, totalLifeInSec * 1000);
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 12) * 1000);
             osc.stop(finalTime + 0.5); 
         },
         allNotesOff: () => { activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); },
