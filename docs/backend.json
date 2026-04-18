@@ -96,47 +96,25 @@
     "providers": ["anonymous", "password"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "User",
-          "schema": { "$ref": "#/backend/entities/User" },
-          "description": "User profiles and settings."
-        }
-      },
-      {
-        "path": "/heritage_axioms/{axiomId}",
-        "definition": {
-          "entityName": "HeritageAxiom",
-          "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
-          "description": "Global shared library of musical fragments."
-        }
-      },
-      {
-        "path": "/project_documents/{docId}",
-        "definition": {
-          "entityName": "ProjectDocument",
-          "schema": { "$ref": "#/backend/entities/ProjectDocument" },
-          "description": "System manifest and knowledge base."
-        }
-      },
-      {
-        "path": "/masterpieces/{masterpieceId}",
-        "definition": {
-          "entityName": "Masterpiece",
-          "schema": { "$ref": "#/backend/entities/Masterpiece" },
-          "description": "Saved musical snapshots with high resonance."
-        }
-      },
-      {
-        "path": "/routes/{routeId}",
-        "definition": {
-          "entityName": "SavedRoute",
-          "schema": { "$ref": "#/backend/entities/SavedRoute" },
-          "description": "User-defined musical routes."
-        }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profiles and settings."
+    },
+    "/heritage_axioms/{axiomId}": {
+      "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
+      "description": "Global shared library of musical fragments."
+    },
+    "/project_documents/{docId}": {
+      "schema": { "$ref": "#/backend/entities/ProjectDocument" },
+      "description": "System manifest and knowledge base."
+    },
+    "/masterpieces/{masterpieceId}": {
+      "schema": { "$ref": "#/backend/entities/Masterpiece" },
+      "description": "Saved musical snapshots with high resonance."
+    },
+    "/routes/{routeId}": {
+      "schema": { "$ref": "#/backend/entities/SavedRoute" },
+      "description": "User-defined musical routes."
+    }
   }
 }
