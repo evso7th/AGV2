@@ -197,8 +197,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* #ЗАЧЕМ: ПЛАН №1260. Перестановка кнопок: EQ слева от Микшера. */}
-                        <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer"><Navigation className="h-5 w-5" /></Button>
+                        {/* #ЗАЧЕМ: ПЛАН №1260. Перестановка кнопок: EQ слева от Микшера. Текстовая метка "EQ". */}
+                        <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer" className="font-black text-xs">EQ</Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Simple Mixer"><Settings2 className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
                     </div>
