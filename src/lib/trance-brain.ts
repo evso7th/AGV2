@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V46.0 — "Panoramic Groove Protocol".
- * #ЗАЧЕМ: Разнообразие ударных согласно Плану №1195.
- * #ЧТО: Панорамированные томы, редкие влажные райды и атмосферные "вздохи".
+ * @fileOverview Psybient Brain V46.1 — "Runtime Stability Patch".
+ * #ЗАЧЕМ: Исправление критической ошибки ReferenceError: MOOD_TO_COMMON.
+ * #ЧТО: ПЛАН №1205 — Добавлена отсутствующая константа маппинга настроений.
  */
 
 import type {
@@ -31,6 +31,12 @@ import {
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
 
 class SeededRNG {
   private state: number;
@@ -234,7 +240,6 @@ export class TranceBrain {
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
-            // #ЗАЧЕМ: Добавление панорамированных филлов на границах фраз.
             if (epoch % 4 === 3 && tension > 0.4) {
                 events.push(...this.renderNeuroFills(epoch, tension));
             }
@@ -340,7 +345,6 @@ export class TranceBrain {
             events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
 
-        // #ЗАЧЕМ: Редкий Wettest Ride для воздуха.
         if (this.rng.chance(15)) {
             events.push({
                 type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.7
@@ -350,16 +354,13 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Панорамированные филлы томами.
-     */
     private renderNeuroFills(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         const fillTicks = [9, 10, 11];
         
         fillTicks.forEach((t, i) => {
-            const pan = -0.8 + (i * 0.8); // Плавная панорама слева направо
+            const pan = -0.8 + (i * 0.8); 
             events.push({
                 type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
                 weight: 0.7 + (tension * 0.3), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
@@ -372,7 +373,7 @@ export class TranceBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         if (this.currentDrumAxioms.length === 0) return [];
         const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -396,7 +397,6 @@ export class TranceBrain {
 
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
             if (this.rng.chance(15 + tension * 5)) {
-                // #ЗАЧЕМ: Усиленная панорама перкуссии.
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
                     weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
@@ -528,8 +528,6 @@ export class TranceBrain {
             events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
         
-        // #ЗАЧЕМ: Атмосферные "вздохи" через систему SFX.
-        // #ЧТО: Повышенная вероятность при низком напряжении (дыхание системы).
         const breathChance = tension < 0.3 ? 35 : 15;
         if (this.rng.chance(breathChance)) {
             events.push({ 
