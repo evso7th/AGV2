@@ -1,24 +1,24 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.2 — "The Route Navigator".
- * #ЧТО: ПЛАН №1230 — Исправлена остановка после такта 0. Переход по маршруту теперь ждет завершения пьесы.
+ * #ЗАЧЕМ: Хук управления музыкой V7.5 — "Route Persistence Protocol".
+ * #ЧТО: ПЛАН №1240 — Сохранение и загрузка маршрутов из Firestore.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, deleteDoc } from 'firebase/firestore';
 import type { 
     DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
     InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
-    Mood, Genre, SoundMix, RouteItem 
+    Mood, Genre, SoundMix, RouteItem, SavedRoute
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { useFirestore } from "@/firebase";
+import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
-
-const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
+import { useToast } from "./use-toast";
 
 export type AuraGrooveProps = {
   isPlaying: boolean;
@@ -80,6 +80,10 @@ export type AuraGrooveProps = {
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
+  saveRoute: (name: string) => Promise<void>;
+  loadRoute: (route: SavedRoute) => void;
+  deleteSavedRoute: (id: string) => Promise<void>;
+  savedRoutes: SavedRoute[] | null;
   isShuffle: boolean;
   setShuffle: (val: boolean) => void;
   isRepeat: boolean;
@@ -98,6 +102,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   } = useAudioEngine(); 
   
   const db = useFirestore();
+  const { user } = useUser();
+  const { toast } = useToast();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
@@ -137,6 +143,47 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const lastBarCountRef = useRef(-1);
 
+  // --- Persistence ---
+  const routesQuery = useMemoFirebase(() => 
+    user ? query(collection(db, 'routes'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')) : null
+  , [db, user]);
+  const { data: savedRoutes } = useCollection<SavedRoute>(routesQuery);
+
+  const saveRoute = async (name: string) => {
+      if (!user) { toast({ title: "Auth Required", description: "Sign in to save routes." }); return; }
+      if (route.length === 0) { toast({ title: "Route Empty", description: "Add some scenes first." }); return; }
+      try {
+          const items = route.map(it => ({ genre: it.genre, mood: it.mood }));
+          await addDoc(collection(db, 'routes'), {
+              userId: user.uid,
+              name,
+              items,
+              createdAt: serverTimestamp()
+          });
+          toast({ title: "Route Saved", description: `"${name}" added to Cloud.` });
+      } catch (e) { toast({ variant: "destructive", title: "Save Failed" }); }
+  };
+
+  const loadRoute = (saved: SavedRoute) => {
+      const items: RouteItem[] = saved.items.map((it, idx) => ({
+          id: `route-${Date.now()}-${idx}`,
+          genre: it.genre,
+          mood: it.mood,
+          status: 'pending'
+      }));
+      setRoute(items);
+      setActiveRouteIndex(0);
+      if (items.length > 0) applyRouteItem(items[0]);
+      toast({ title: "Route Loaded", description: `"${saved.name}" is active.` });
+  };
+
+  const deleteSavedRoute = async (id: string) => {
+      try {
+          await deleteDoc(doc(db, 'routes', id));
+          toast({ title: "Route Deleted" });
+      } catch (e) { toast({ variant: "destructive", title: "Delete Failed" }); }
+  };
+
   useEffect(() => { initialize(); }, [initialize]);
 
   const applyRouteItem = useCallback((item: RouteItem) => {
@@ -145,7 +192,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setGenre(g); 
     setMood(m); 
     setCurrentSeed(Date.now());
-    // We update the route status in a follow-up to keep visual sync
   }, []);
 
   const handleRouteTransition = useCallback(() => {
@@ -158,7 +204,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
               const nextMood = (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)];
               const newItem: RouteItem = { id: `route-${Date.now()}`, genre: nextGenre, mood: nextMood, status: 'pending' };
               setRoute(prev => [...prev, newItem]);
-              // Index will stay the same for now, effectively pointing to the new item
               nextIndex = activeRouteIndex + 1;
           } else {
               setEngineIsPlaying(false);
@@ -177,11 +222,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm);
             const currentBar = payload.barCount;
-            
-            // #ЗАЧЕМ: Детекция реального перехода.
-            // Если такт стал 0, а до этого был > 0 — значит пьеса закончилась и пошел мост/новый цикл.
             if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
-                console.log(`%c[Navigator] Piece finished. Moving to next route item.`, 'color: #primary; font-weight: bold;');
                 handleRouteTransition();
             }
             lastBarCountRef.current = currentBar;
@@ -215,7 +256,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
           const idx = prev.findIndex(it => it.id === id);
           const next = prev.filter(it => it.id !== id);
           if (idx === activeRouteIndex) {
-              setActiveRouteIndex(-1); // Stop or move? For now just stop logic.
+              setActiveRouteIndex(-1);
           } else if (idx < activeRouteIndex) {
               setActiveRouteIndex(activeRouteIndex - 1);
           }
@@ -231,11 +272,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
           if (nextIdx < 0 || nextIdx >= prev.length) return prev;
           const n = [...prev];
           [n[idx], n[nextIdx]] = [n[nextIdx], n[idx]];
-          
-          // Keep active index pointed to the same physical item
           if (activeRouteIndex === idx) setActiveRouteIndex(nextIdx);
           else if (activeRouteIndex === nextIdx) setActiveRouteIndex(idx);
-          
           return n;
       });
   };
@@ -292,12 +330,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            // Если маршрут не пуст, но индекс -1 (первый запуск), стартуем с первого
             if (activeRouteIndex === -1 && route.length > 0) {
                 setActiveRouteIndex(0);
                 applyRouteItem(route[0]);
             }
-            // Сбрасываем счетчик тактов для корректной детекции следующего перехода
             lastBarCountRef.current = -1;
         }
         setEngineIsPlaying(!isPlaying);
@@ -325,7 +361,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
-    route, addToRoute, removeFromRoute, moveRouteItem, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
+    route, addToRoute, removeFromRoute, moveRouteItem, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
+    isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI
   };
 };

@@ -421,3 +421,14 @@ export type RouteItem = {
     status: 'pending' | 'playing' | 'completed' | 'bridge';
     seed?: number;
 };
+
+/**
+ * #ЗАЧЕМ: Сохраненный в БД маршрут.
+ */
+export type SavedRoute = {
+    id: string;
+    userId: string;
+    name: string;
+    items: { genre: Genre | 'random'; mood: Mood | 'random' }[];
+    createdAt: any;
+};

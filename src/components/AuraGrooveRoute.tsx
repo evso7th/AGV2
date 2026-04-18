@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.7 — "The Navigator".
- * #ЧТО: План №1235 — Иконка шестеренки теперь ведет в Expert Mode (/aura-groove).
+ * #ЗАЧЕМ: UI AuraGroove V4.8 — "The Route Architect".
+ * #ЧТО: ПЛАН №1240 — 1. Снижена чувствительность скролла. 2. Добавлен раздел сохранения маршрутов.
  */
 'use client';
 
@@ -9,7 +9,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
     Plus, X, Shuffle, Music, Pause, Settings2, 
     Activity, Timer, ThumbsUp, Radio, TowerControl,
-    Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2
+    Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
+    Save, FolderOpen, Trash2, Check, Navigation
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
@@ -94,9 +96,11 @@ function VerticalSpinner({
         }
     }, [value, items, infiniteItems, onChange]);
 
+    // #ЗАЧЕМ: Снижение чувствительности скролла (ПЛАН №1240).
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
-        scrollRef.current.scrollTop += e.deltaY;
+        // Демпфирование входного сигнала в 10 раз.
+        scrollRef.current.scrollTop += e.deltaY * 0.1;
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -148,9 +152,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
     const [isStudioOpen, setIsStudioOpen] = useState(false);
     const [isSystemsOpen, setIsSystemsOpen] = useState(false);
+    const [isSaveRouteOpen, setIsSaveRouteOpen] = useState(false);
+    const [isLoadRouteOpen, setIsLoadRouteOpen] = useState(false);
+    const [routeName, setRouteName] = useState("");
 
     const handleAdd = () => {
         props.addToRoute(selectedGenre, selectedMood);
+    };
+
+    const handleSave = async () => {
+        if (!routeName.trim()) return;
+        await props.saveRoute(routeName);
+        setRouteName("");
+        setIsSaveRouteOpen(false);
     };
 
     return (
@@ -203,14 +217,70 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-9 shadow-lg">
                     <Plus className="h-3.5 w-3.5 mr-2" /> Add to Route
                 </Button>
-                <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => props.setShuffle(!props.isShuffle)}
-                    className={cn("h-9 w-9", props.isShuffle && "bg-primary/10 border-primary/40 text-primary")}
-                >
-                    <Shuffle className="h-4 w-4" />
-                </Button>
+                <div className="flex gap-1">
+                    <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-9 w-9" title="Save Route"><Save className="h-4 w-4" /></Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-card border-primary/20">
+                            <DialogHeader>
+                                <DialogTitle className="font-black uppercase text-primary">Save Current Route</DialogTitle>
+                                <DialogDescription className="text-xs">Enter a name for this sequence of scenes.</DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Input 
+                                    placeholder="e.g. Morning Meditation" 
+                                    value={routeName} 
+                                    onChange={(e) => setRouteName(e.target.value)}
+                                    className="border-primary/10 bg-background"
+                                />
+                            </div>
+                            <DialogFooter>
+                                <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest"><Check className="mr-2 h-4 w-4" /> Save to Cloud</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-9 w-9" title="Load Route"><FolderOpen className="h-4 w-4" /></Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-card border-primary/20 sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle className="font-black uppercase text-primary">My Journeys</DialogTitle>
+                                <DialogDescription className="text-xs uppercase font-bold opacity-50">Select a saved route to play.</DialogDescription>
+                            </DialogHeader>
+                            <ScrollArea className="h-64 pr-3 mt-2">
+                                <div className="space-y-2">
+                                    {props.savedRoutes?.length === 0 ? (
+                                        <div className="py-20 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest">No saved journeys</div>
+                                    ) : (
+                                        props.savedRoutes?.map(saved => (
+                                            <div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-transparent hover:border-primary/20 group">
+                                                <div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}>
+                                                    <div className="text-xs font-black uppercase">{saved.name}</div>
+                                                    <div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} scenes</div>
+                                                </div>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => props.deleteSavedRoute(saved.id)}>
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Button 
+                        variant="outline" 
+                        size="icon" 
+                        onClick={() => props.setShuffle(!props.isShuffle)}
+                        className={cn("h-9 w-9", props.isShuffle && "bg-primary/10 border-primary/40 text-primary")}
+                    >
+                        <Shuffle className="h-4 w-4" />
+                    </Button>
+                </div>
             </div>
 
             <div className="flex-grow overflow-hidden flex flex-col p-3 gap-2">

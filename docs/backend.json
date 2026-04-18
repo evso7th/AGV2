@@ -69,6 +69,27 @@
         "bpm": { "type": "number" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
+    },
+    "SavedRoute": {
+      "title": "SavedRoute",
+      "description": "A named sequence of musical scenes for playback.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "genre": { "type": "string" },
+              "mood": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "items"]
     }
   },
   "auth": {
@@ -106,6 +127,14 @@
           "entityName": "Masterpiece",
           "schema": { "$ref": "#/backend/entities/Masterpiece" },
           "description": "Saved musical snapshots with high resonance."
+        }
+      },
+      {
+        "path": "/routes/{routeId}",
+        "definition": {
+          "entityName": "SavedRoute",
+          "schema": { "$ref": "#/backend/entities/SavedRoute" },
+          "description": "User-defined musical routes."
         }
       }
     ]

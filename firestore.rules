@@ -14,13 +14,11 @@ service cloud.firestore {
 
     // --- Heritage Axioms (The Hypercube) ---
     match /heritage_axioms/{axiomId} {
-      // Allow any authenticated user to read and contribute to the heritage
       allow read, write: if isSignedIn();
     }
 
     // --- System Knowledge Base ---
     match /project_documents/{docId} {
-      // Critical manifest files - restricted to authenticated users
       allow read, write: if isSignedIn();
     }
 
@@ -36,6 +34,13 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       allow update: if isSignedIn() && request.auth.uid == userId;
       allow delete: if false;
+    }
+
+    // --- Saved Routes ---
+    match /routes/{routeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
   }
 }
