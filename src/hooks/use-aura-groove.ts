@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.7 — "Local Sovereignty".
- * #ЧТО: ПЛАН №1245 — Переход на LocalStorage для маршрутов и истории сессий.
+ * #ЗАЧЕМ: Хук управления музыкой V7.8 — "Local Sovereignty & Presets".
+ * #ЧТО: ПЛАН №1250 — Добавлена логика пресетов для EQ и Микшера (LocalStorage).
  */
 'use client';
 
@@ -20,6 +20,10 @@ import { useToast } from "./use-toast";
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
 const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
+const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
+const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
+
+export type PresetItem = { id: string; name: string; values: any };
 
 export type AuraGrooveProps = {
   isPlaying: boolean;
@@ -92,6 +96,15 @@ export type AuraGrooveProps = {
   activeRouteIndex: number;
   showAdvancedUI: boolean;
   setShowAdvancedUI: (val: boolean) => void;
+  // --- Preset Specific ---
+  eqPresets: PresetItem[];
+  saveEqPreset: (name: string) => void;
+  loadEqPreset: (id: string) => void;
+  deleteEqPreset: (id: string) => void;
+  mixerPresets: PresetItem[];
+  saveMixerPreset: (name: string) => void;
+  loadMixerPreset: (id: string) => void;
+  deleteMixerPreset: (id: string) => void;
 };
 
 export const useAuraGroove = (): AuraGrooveProps => {
@@ -140,6 +153,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
+  const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
 
   const lastBarCountRef = useRef(-1);
 
@@ -148,9 +163,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (typeof window === 'undefined') return;
       
       const savedJourneys = localStorage.getItem(SAVED_JOURNEYS_KEY);
-      if (savedJourneys) {
-          try { setSavedRoutes(JSON.parse(savedJourneys)); } catch (e) { console.error(e); }
-      }
+      if (savedJourneys) { try { setSavedRoutes(JSON.parse(savedJourneys)); } catch (e) {} }
 
       const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
       if (lastRoute) {
@@ -158,9 +171,98 @@ export const useAuraGroove = (): AuraGrooveProps => {
               const parsed = JSON.parse(lastRoute);
               setRoute(parsed);
               if (parsed.length > 0) setActiveRouteIndex(0);
-          } catch (e) { console.error(e); }
+          } catch (e) {}
       }
+
+      const savedEq = localStorage.getItem(EQ_PRESETS_KEY);
+      if (savedEq) { try { setEqPresets(JSON.parse(savedEq)); } catch (e) {} }
+
+      const savedMixer = localStorage.getItem(MIXER_PRESETS_KEY);
+      if (savedMixer) { try { setMixerPresets(JSON.parse(savedMixer)); } catch (e) {} }
   }, []);
+
+  // --- EQ Presets Logic ---
+  const saveEqPreset = (name: string) => {
+      const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
+      const updated = [...eqPresets, newPreset];
+      setEqPresets(updated);
+      localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+      toast({ title: "EQ Preset Saved" });
+  };
+
+  const loadEqPreset = (id: string) => {
+      const preset = eqPresets.find(p => p.id === id);
+      if (preset) {
+          setEqSettings(preset.values);
+          preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
+          toast({ title: "EQ Preset Loaded", description: preset.name });
+      }
+  };
+
+  const deleteEqPreset = (id: string) => {
+      const updated = eqPresets.filter(p => p.id !== id);
+      setEqPresets(updated);
+      localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+  };
+
+  // --- Mixer Presets Logic ---
+  const saveMixerPreset = (name: string) => {
+      const values = {
+          bass: instrumentSettings.bass.volume,
+          melody: instrumentSettings.melody.volume,
+          accompaniment: instrumentSettings.accompaniment.volume,
+          harmony: instrumentSettings.harmony.volume,
+          piano: instrumentSettings.pianoAccompaniment.volume,
+          drums: drumSettings.volume,
+          sparkles: textureSettings.sparkles.volume,
+          sfx: textureSettings.sfx.volume,
+          master: calibrationGains.master
+      };
+      const newPreset: PresetItem = { id: `mixer-${Date.now()}`, name, values };
+      const updated = [...mixerPresets, newPreset];
+      setMixerPresets(updated);
+      localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+      toast({ title: "Mixer Preset Saved" });
+  };
+
+  const loadMixerPreset = (id: string) => {
+      const preset = mixerPresets.find(p => p.id === id);
+      if (preset) {
+          const v = preset.values;
+          setVolume('bass', v.bass);
+          setVolume('melody', v.melody);
+          setVolume('accompaniment', v.accompaniment);
+          setVolume('harmony', v.harmony);
+          setVolume('pianoAccompaniment', v.piano);
+          setVolume('drums', v.drums);
+          setVolume('sparkles', v.sparkles);
+          setVolume('sfx', v.sfx);
+          setCalibrationGain('master', v.master);
+
+          setInstrumentSettings(prev => ({
+              ...prev,
+              bass: { ...prev.bass, volume: v.bass },
+              melody: { ...prev.melody, volume: v.melody },
+              accompaniment: { ...prev.accompaniment, volume: v.accompaniment },
+              harmony: { ...prev.harmony, volume: v.harmony },
+              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.piano }
+          }));
+          setDrumSettings(prev => ({ ...prev, volume: v.drums }));
+          setTextureSettings(prev => ({
+              ...prev,
+              sparkles: { ...prev.sparkles, volume: v.sparkles },
+              sfx: { ...prev.sfx, volume: v.sfx }
+          }));
+
+          toast({ title: "Mixer Preset Loaded", description: preset.name });
+      }
+  };
+
+  const deleteMixerPreset = (id: string) => {
+      const updated = mixerPresets.filter(p => p.id !== id);
+      setMixerPresets(updated);
+      localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+  };
 
   // --- Persist Current Route ---
   useEffect(() => {
@@ -170,8 +272,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [route]);
 
   const saveRoute = (name: string) => {
-      if (route.length === 0) { toast({ title: "Route Empty", description: "Add some scenes first." }); return; }
-      
+      if (route.length === 0) { toast({ title: "Route Empty" }); return; }
       const newSavedRoute: SavedRoute = {
           id: `local-route-${Date.now()}`,
           userId: 'local-user',
@@ -179,11 +280,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
           items: route.map(it => ({ genre: it.genre, mood: it.mood })),
           createdAt: new Date().toISOString()
       };
-
       const updated = [newSavedRoute, ...savedRoutes];
       setSavedRoutes(updated);
       localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
-      toast({ title: "Journey Saved", description: `"${name}" is stored locally.` });
+      toast({ title: "Journey Saved", description: name });
   };
 
   const loadRoute = (saved: SavedRoute) => {
@@ -196,14 +296,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(items);
       setActiveRouteIndex(0);
       if (items.length > 0) applyRouteItem(items[0]);
-      toast({ title: "Journey Loaded", description: `"${saved.name}" is active.` });
+      toast({ title: "Journey Loaded", description: saved.name });
   };
 
   const deleteSavedRoute = (id: string) => {
       const updated = savedRoutes.filter(r => r.id !== id);
       setSavedRoutes(updated);
       localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
-      toast({ title: "Journey Deleted" });
   };
 
   useEffect(() => { initialize(); }, [initialize]);
@@ -244,7 +343,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm);
             const currentBar = payload.barCount;
-            // Transition logic for Navigator
             if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
                 handleRouteTransition();
             }
@@ -278,11 +376,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => {
           const idx = prev.findIndex(it => it.id === id);
           const next = prev.filter(it => it.id !== id);
-          if (idx === activeRouteIndex) {
-              setActiveRouteIndex(-1);
-          } else if (idx < activeRouteIndex) {
-              setActiveRouteIndex(activeRouteIndex - 1);
-          }
+          if (idx === activeRouteIndex) setActiveRouteIndex(-1);
+          else if (idx < activeRouteIndex) setActiveRouteIndex(activeRouteIndex - 1);
           return next;
       });
   };
@@ -353,10 +448,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            if (activeRouteIndex === -1 && route.length > 0) {
-                setActiveRouteIndex(0);
-                applyRouteItem(route[0]);
-            }
+            if (activeRouteIndex === -1 && route.length > 0) { setActiveRouteIndex(0); applyRouteItem(route[0]); }
             lastBarCountRef.current = -1;
         }
         setEngineIsPlaying(!isPlaying);
@@ -370,7 +462,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
         toggleBroadcast();
     },
-    handleSaveMasterpiece: () => { if (!isInitialized) return; /* Masterpieces remain in Cloud as they are shared/curated */ },
+    handleSaveMasterpiece: () => {},
     drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: (part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); },
     handleBassTechniqueChange: () => {}, handleVolumeChange, textureSettings, 
     handleTextureEnabledChange: (part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})),
@@ -386,6 +478,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     mood, setMood, genre, setGenre, introBars, setIntroBars,
     route, addToRoute, removeFromRoute, moveRouteItem, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
-    showAdvancedUI, setShowAdvancedUI
+    showAdvancedUI, setShowAdvancedUI,
+    eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
+    mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
   };
 };
