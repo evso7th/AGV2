@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.8 — "Local Sovereignty & Presets".
- * #ЧТО: ПЛАН №1250 — Добавлена логика пресетов для EQ и Микшера (LocalStorage).
+ * #ЗАЧЕМ: Хук управления музыкой V7.9 — "Direct Volume Routing".
+ * #ЧТО: ПЛАН №1265 — Исправление неработающих регуляторов в Студио-Микшере.
  */
 'use client';
 
@@ -181,7 +181,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (savedMixer) { try { setMixerPresets(JSON.parse(savedMixer)); } catch (e) {} }
   }, []);
 
-  // --- EQ Presets Logic ---
   const saveEqPreset = (name: string) => {
       const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
       const updated = [...eqPresets, newPreset];
@@ -205,14 +204,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
   };
 
-  // --- Mixer Presets Logic ---
   const saveMixerPreset = (name: string) => {
       const values = {
           bass: instrumentSettings.bass.volume,
           melody: instrumentSettings.melody.volume,
           accompaniment: instrumentSettings.accompaniment.volume,
           harmony: instrumentSettings.harmony.volume,
-          piano: instrumentSettings.pianoAccompaniment.volume,
+          pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
           drums: drumSettings.volume,
           sparkles: textureSettings.sparkles.volume,
           sfx: textureSettings.sfx.volume,
@@ -229,11 +227,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
       const preset = mixerPresets.find(p => p.id === id);
       if (preset) {
           const v = preset.values;
+          
           setVolume('bass', v.bass);
           setVolume('melody', v.melody);
           setVolume('accompaniment', v.accompaniment);
           setVolume('harmony', v.harmony);
-          setVolume('pianoAccompaniment', v.piano);
+          setVolume('pianoAccompaniment', v.pianoAccompaniment);
           setVolume('drums', v.drums);
           setVolume('sparkles', v.sparkles);
           setVolume('sfx', v.sfx);
@@ -245,7 +244,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
               melody: { ...prev.melody, volume: v.melody },
               accompaniment: { ...prev.accompaniment, volume: v.accompaniment },
               harmony: { ...prev.harmony, volume: v.harmony },
-              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.piano }
+              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment }
           }));
           setDrumSettings(prev => ({ ...prev, volume: v.drums }));
           setTextureSettings(prev => ({
@@ -264,7 +263,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
   };
 
-  // --- Persist Current Route ---
   useEffect(() => {
       if (route.length > 0) {
           localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(route));
@@ -434,7 +432,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const handleVolumeChange = (part: any, value: number) => {
     setVolume(part, value);
-    if (part in instrumentSettings) { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } })); }
+    if (part in instrumentSettings) { 
+        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } })); 
+    }
     else if (part === 'drums') { setDrumSettings(prev => ({ ...prev, volume: value })); }
     else if (part === 'sparkles' || part === 'sfx') { setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); }
   };

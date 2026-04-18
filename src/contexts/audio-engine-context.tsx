@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.2 — "Persistent Sovereignty".
- * #ЗАЧЕМ: Гарантия уникальности первой сессии через LocalStorage.
- * #ЧТО: ПЛАН №1245 — Загрузка истории треков при инициализации.
+ * @fileOverview Audio Engine Context V40.3 — "Mixer Integrity Fix".
+ * #ЗАЧЕМ: Исправление неработающих регуляторов громкости в микшере.
+ * #ЧТО: ПЛАН №1265 — Прямое управление GainNode без избыточных калибровок шин.
  */
 'use client';
 
@@ -95,7 +95,7 @@ interface AudioEngineContextType {
   startPreview: (preset: any, type: string, loop: boolean) => Promise<void>;
   stopPreview: () => void;
   updatePreviewPreset: (preset: any) => void;
-  togglePreview_Loop: () => void;
+  togglePreviewLoop: () => void;
   analyser: AnalyserNode | null;
 }
 
@@ -180,15 +180,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        gainNode.gain.setTargetAtTime(balancedVolume, audioContextRef.current.currentTime, 0.01);
+        // #ЗАЧЕМ: Усиление отклика. Использование setValueAtTime перед Target.
+        const now = audioContextRef.current.currentTime;
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
   }, []);
 
   const applyCalibration = useCallback((gains: Record<string, number>) => {
-      if (!isInitialized) return;
+      if (!isInitialized || !audioContextRef.current) return;
+      const now = audioContextRef.current.currentTime;
       const m = gains.master ?? 1.0;
       
-      masterGainNodeRef.current?.gain.setTargetAtTime(m, audioContextRef.current!.currentTime, 0.05);
+      // #ЗАЧЕМ: Устранение конфликтов. Модулируется только Master Gain.
+      masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
       
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
@@ -199,7 +204,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
       
-      accompanimentManagerV2Ref.current?.setPreampGain(gains.master);
+      accompanimentManagerV2Ref.current?.setPreampGain(1.0); // Reset local preamp to unity
 
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
@@ -471,7 +476,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             };
         }
 
-        // #ЗАЧЕМ: Загрузка истории для обеспечения уникальности первой сессии.
         const savedHistory = localStorage.getItem('AuraGroove_TrackHistory');
         if (savedHistory && workerRef.current) {
             try {
