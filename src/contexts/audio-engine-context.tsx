@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V39.6 — "The Safe Arbiter Awakening".
- * #ЗАЧЕМ: Реализация цикла обратной связи AI Arbiter (ПЛАН №1185).
- * #ЧТО: Автоматическое сохранение высокорезонансных тактов в Firestore.
+ * @fileOverview Audio Engine Context V40.0 — "Sonic Vision Integration".
+ * #ЗАЧЕМ: Добавление спектроанализатора для визуального контроля частот.
  */
 'use client';
 
@@ -96,6 +95,7 @@ interface AudioEngineContextType {
   stopPreview: () => void;
   updatePreviewPreset: (preset: any) => void;
   togglePreviewLoop: () => void;
+  analyser: AnalyserNode | null;
 }
 
 const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
@@ -146,6 +146,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
+  
+  // #ЗАЧЕМ: Спектроанализатор.
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
       const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
@@ -391,8 +394,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
             
+            // #ЗАЧЕМ: Инициализация анализатора.
+            analyserNodeRef.current = context.createAnalyser();
+            analyserNodeRef.current.fftSize = 512; // 256 bars
+            
             samplersMasterGainRef.current.connect(masterGainNodeRef.current);
-            masterGainNodeRef.current.connect(speakerGainNodeRef.current);
+            masterGainNodeRef.current.connect(analyserNodeRef.current);
+            analyserNodeRef.current.connect(speakerGainNodeRef.current);
             speakerGainNodeRef.current.connect(context.destination);
             
             const recDest = context.createMediaStreamDestination();
@@ -441,7 +449,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
-                    // Dynamic Balancing
                     const melodyInst = payload.instrumentHints?.melody;
                     if (melodyInst && audioContextRef.current && gainNodesRef.current.melody) {
                         const isHeavy = melodyInst.toLowerCase().includes('organ') || 
@@ -457,8 +464,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
 
-                    // #ЗАЧЕМ: Пробуждение AI Arbiter (ПЛАН №1185).
-                    // #ЧТО: Автоматическое сохранение "Шедевров" при высоком резонансе.
                     if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         console.log(`%c[AI Arbiter] High resonance detected (${payload.beautyScore.toFixed(2)}). Saving Masterpiece...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, { 
@@ -549,6 +554,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   return (
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
+        analyser: analyserNodeRef.current,
         setIsPlaying: async (playing) => {
             const context = audioContextRef.current;
             if (!context || !workerRef.current) return;

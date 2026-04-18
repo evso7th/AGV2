@@ -1,6 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.6 — "Psybient Transformation".
+ * #ЗАЧЕМ: UI AuraGroove V3.7 — "Visual Frequency Control".
+ * #ЧТО: ПЛАН №1200 — Добавлен спектроанализатор и кнопка вызова.
  */
 'use client';
 
@@ -10,7 +11,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock, Dna, Settings2, Mic2
+  Guitar, Lock, Dna, Settings2, Mic2, Activity
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { formatTime, cn } from "@/lib/utils";
 import type { Mood, Genre, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
+import { SpectrumAnalyzer } from "@/components/SpectrumAnalyzer";
 
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
@@ -128,6 +130,9 @@ export function AuraGrooveV2({
   
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
+
+  // #ЗАЧЕМ: Стейт для окна спектра.
+  const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -514,6 +519,53 @@ export function AuraGrooveV2({
                     <Label htmlFor="density-slider" className="text-right text-xs">Density</Label>
                     <Slider id="density-slider" value={[density]} min={0.1} max={1} step={0.05} onValueChange={(v) => setDensity(v[0])} className="col-span-2" disabled={isInitializing}/>
                   </div>
+                </CardContent>
+              </Card>
+              
+               <Card className="border-0 shadow-none bg-transparent mt-2">
+                <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4"/> Systems</CardTitle></CardHeader>
+                <CardContent className="space-y-3 p-3 pt-0">
+                    <div className="flex items-center gap-2">
+                         <Button
+                            onClick={handleToggleTimer}
+                            disabled={isInitializing || timerSettings.duration === 0}
+                            variant={timerSettings.isActive ? 'destructive' : 'secondary'}
+                            className="flex-grow h-8 text-[10px] uppercase font-black"
+                        >
+                            {timerSettings.isActive ? `Stop (${formatTime(timerSettings.timeLeft)})` : `Timer (${timerSettings.duration / 60}m)`}
+                        </Button>
+                        
+                        <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="w-10 h-8 p-0" title="Spectrum Analyzer">
+                                    <Activity className={cn("h-4 w-4", isPlaying && "text-primary animate-pulse")} />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-2xl bg-card border-primary/20 shadow-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight">
+                                        <Activity className="h-5 w-5" /> Spectrum Analyzer
+                                    </DialogTitle>
+                                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest opacity-70">Real-time Frequency Distribution</DialogDescription>
+                                </DialogHeader>
+                                <div className="py-4 h-[350px]">
+                                    <SpectrumAnalyzer />
+                                </div>
+                                <DialogFooter>
+                                    <Button variant="ghost" size="sm" onClick={() => setIsSpectrumOpen(false)} className="uppercase text-[10px] font-black">Close Monitor</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
+                    {/* Tiny slider for timer duration adjustment if not active */}
+                    {!timerSettings.isActive && (
+                        <Slider 
+                            value={[timerSettings.duration / 60]} 
+                            min={0} max={30} step={5} 
+                            onValueChange={(v) => handleTimerDurationChange(v[0])}
+                            className="px-1"
+                        />
+                    )}
                 </CardContent>
               </Card>
             </TabsContent>
