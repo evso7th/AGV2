@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V46.1 — "Runtime Stability Patch".
- * #ЗАЧЕМ: Исправление критической ошибки ReferenceError: MOOD_TO_COMMON.
- * #ЧТО: ПЛАН №1205 — Добавлена отсутствующая константа маппинга настроений.
+ * @fileOverview Psybient Brain V47.0 — "Skilled Ensemble Protocol".
+ * #ЗАЧЕМ: Исправление "молотилки" и добавление атмосферных элементов.
+ * #ЧТО: ПЛАН №1210 — Живой грув с ghost-нотами, панорамированные томы, вздохи и wet ride.
  */
 
 import type {
@@ -240,7 +240,8 @@ export class TranceBrain {
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
-            if (epoch % 4 === 3 && tension > 0.4) {
+            // #ЗАЧЕМ: Добавление панорамированных филлов (ПЛАН №1210).
+            if (epoch % 4 === 3) {
                 events.push(...this.renderNeuroFills(epoch, tension));
             }
         }
@@ -312,7 +313,7 @@ export class TranceBrain {
             activeAxioms: {
                 melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Narrative',
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Neuro Pumping',
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro',
                 accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage DNA' : 'Sidechain Pad',
                 piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage DNA' : 'Shadow Virtuoso'
             },
@@ -331,39 +332,71 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Профессиональный Psybient-ритм (ПЛАН №1210).
+     * #ЧТО: Четкий 4/4 пульс с ghost-нотами и динамической сеткой хэтов.
+     */
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        
+        // 1. Kick (Solid Pulse)
         [0, 3, 6, 9].forEach(t => {
             events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         });
+
+        // 2. Snare / Clap
         [3, 9].forEach(t => {
-            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
+
+        // 3. Skilled Ghost Notes (Snare)
+        if (tension > 0.3) {
+            [1.5, 4.5, 7.5, 10.5].forEach(t => {
+                if (this.rng.chance(35)) {
+                    events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
+                }
+            });
+        }
         
+        // 4. Dynamic Hats (Stable but Varied)
         const hhStep = tension > 0.7 ? 1.5 : 3.0;
-        for (let t = 0; t < TICKS_PER_BAR; t += hhStep) {
-            events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
+            const isStrong = t % 3 === 0;
+            const chance = isStrong ? 100 : (tension * 60 + 10);
+            if (this.rng.chance(chance)) {
+                events.push({ 
+                    type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
+                    time: t * TICK_TO_BEAT, duration: 0.1, 
+                    weight: isStrong ? 0.55 : 0.35, 
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                });
+            }
         }
 
-        if (this.rng.chance(15)) {
+        // 5. Rare Wettest Ride
+        if (this.rng.chance(12)) {
             events.push({
-                type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.7
+                type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.5, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.6
             });
         }
 
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Панорамированные филлы (ПЛАН №1210).
+     */
     private renderNeuroFills(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         const fillTicks = [9, 10, 11];
         
+        // Филл плавно перемещается слева направо
         fillTicks.forEach((t, i) => {
             const pan = -0.8 + (i * 0.8); 
             events.push({
-                type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
-                weight: 0.7 + (tension * 0.3), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
+                type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.6,
+                weight: 0.75 + (tension * 0.25), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
             });
         });
 
@@ -390,23 +423,26 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Панорамированная перкуссия (ПЛАН №1210).
+     */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
 
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            if (this.rng.chance(15 + tension * 5)) {
+            if (this.rng.chance(20 + tension * 10)) {
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                    weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
             
-            if (this.rng.chance(5)) {
+            if (this.rng.chance(8)) {
                 events.push({
                     type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 2.5, 
-                    weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.6) - 0.8
+                    weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.4) - 0.7
                 });
             }
         }
@@ -520,15 +556,19 @@ export class TranceBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: Атмосферные вздохи (ПЛАН №1210).
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        if (this.rng.chance(28)) {
+        if (this.rng.chance(25)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
         
-        const breathChance = tension < 0.3 ? 35 : 15;
+        // #ЗАЧЕМ: Повышенная вероятность вздохов в моменты "затишья".
+        const breathChance = tension < 0.3 ? 35 : 18;
         if (this.rng.chance(breathChance)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
