@@ -129,6 +129,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isCalibrationModalOpen, setIsCalibrationModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
 
+  // --- DNA Filter State ---
+  const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
+
   // --- Queue & Route Logic ---
   const [route, setRoute] = useState<RouteItem[]>([]);
   const [activeRouteIndex, setActiveRouteIndex] = useState(-1);
