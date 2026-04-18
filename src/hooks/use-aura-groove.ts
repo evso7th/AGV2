@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.9 — "Direct Volume Routing".
- * #ЧТО: ПЛАН №1265 — Исправление неработающих регуляторов в Студио-Микшере.
+ * #ЗАЧЕМ: Хук управления музыкой V8.0 — "Drag & Drop Support".
+ * #ЧТО: ПЛАН №1270 — Добавлена функция reorderRoute для поддержки перетаскивания.
  */
 'use client';
 
@@ -16,6 +16,7 @@ import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
 import { useToast } from "./use-toast";
+import { arrayMove } from "@dnd-kit/sortable";
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
@@ -85,6 +86,7 @@ export type AuraGrooveProps = {
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
+  reorderRoute: (activeId: string, overId: string) => void;
   saveRoute: (name: string) => void;
   loadRoute: (route: SavedRoute) => void;
   deleteSavedRoute: (id: string) => void;
@@ -394,6 +396,26 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   };
 
+  const reorderRoute = (activeId: string, overId: string) => {
+      if (activeId === overId) return;
+      setRoute(prev => {
+          const oldIndex = prev.findIndex(item => item.id === activeId);
+          const newIndex = prev.findIndex(item => item.id === overId);
+          const next = arrayMove(prev, oldIndex, newIndex);
+          
+          // Update active index if it moved
+          if (activeRouteIndex === oldIndex) {
+              setActiveRouteIndex(newIndex);
+          } else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) {
+              setActiveRouteIndex(activeRouteIndex - 1);
+          } else if (activeRouteIndex < oldIndex && activeRouteIndex >= newIndex) {
+              setActiveRouteIndex(activeRouteIndex + 1);
+          }
+          
+          return next;
+      });
+  };
+
   const applyAutoMix = useCallback(() => {
       if (!isInitialized) return;
       const masterGenreMix = GENRE_MASTER_MIX[genre];
@@ -476,7 +498,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
-    route, addToRoute, removeFromRoute, moveRouteItem, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
+    route, addToRoute, removeFromRoute, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,

@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V5.3 — "The Navigator Ergo-Logic Refined".
- * #ЧТО: ПЛАН №1260 — Перестановка кнопок в Header: EQ теперь слева от Микшера.
+ * #ЗАЧЕМ: UI AuraGroove V5.5 — "Drag & Drop Mastery".
+ * #ЧТО: ПЛАН №1270 — Реализация перемещения строк маршрута пальцем (dnd-kit).
  */
 'use client';
 
@@ -10,7 +10,8 @@ import {
     Plus, X, Shuffle, Music, Pause, Settings2, 
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
-    Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog
+    Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
+    GripVertical
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -21,9 +22,30 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
+import type { RouteItem } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+
+// DND Kit Imports
+import {
+  DndContext, 
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  TouchSensor
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const GENRES = [
     { id: 'ambient', label: 'Deep Ambient' },
@@ -99,7 +121,6 @@ function VerticalSpinner({
 
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
-        // #ЗАЧЕМ: Снижение чувствительности скролла.
         scrollRef.current.scrollTop += e.deltaY * 0.03;
     };
 
@@ -174,6 +195,67 @@ function PresetManager({
     );
 }
 
+// #ЗАЧЕМ: Компонент для перемещаемой строки маршрута.
+function SortableRouteItem({ 
+    item, 
+    isActive, 
+    onRemove 
+}: { 
+    item: RouteItem, 
+    isActive: boolean, 
+    onRemove: (id: string) => void 
+}) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: item.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "flex items-center justify-between p-2 rounded-lg border transition-all group",
+                isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent",
+                isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
+            )}
+        >
+            <div className="flex items-center gap-3 overflow-hidden">
+                <div 
+                    {...attributes} 
+                    {...listeners} 
+                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors"
+                    title="Drag to reorder"
+                >
+                    <GripVertical className="h-4 w-4" />
+                </div>
+                <div className="truncate">
+                    <div className="text-[11px] font-black uppercase tracking-tight">
+                        {item.genre} / {item.mood}
+                    </div>
+                </div>
+            </div>
+            <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                onClick={() => onRemove(item.id)}
+            >
+                <X className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+}
+
 export function AuraGrooveRoute(props: AuraGrooveProps) {
     const router = useRouter();
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
@@ -185,8 +267,33 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isLoadRouteOpen, setIsLoadRouteOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
 
+    // #ЗАЧЕМ: Настройка сенсоров для dnd-kit.
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Срабатывает только после движения в 8px, чтобы не мешать кликам.
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 250, // Длинное нажатие для начала перетаскивания на мобильных.
+                tolerance: 5,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            props.reorderRoute(active.id as string, over.id as string);
+        }
+    };
 
     return (
         <div className="w-full h-full flex flex-col bg-card overflow-hidden">
@@ -197,7 +304,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* #ЗАЧЕМ: ПЛАН №1260. Перестановка кнопок: EQ слева от Микшера. Текстовая метка "EQ". */}
                         <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer" className="font-black text-xs">EQ</Button>
                         <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Simple Mixer"><Settings2 className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
@@ -247,7 +353,29 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <div className="flex-grow overflow-hidden flex flex-col p-3 gap-2">
                 <div className="flex items-center justify-between px-1"><Label className="text-[10px] font-black uppercase opacity-50">Current Path</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} steps</Badge></div>
-                <ScrollArea className="flex-grow pr-3"><div className="space-y-1.5 pb-4">{props.route.map((item, idx) => (<div key={item.id} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all group", idx === props.activeRouteIndex && props.isPlaying ? "bg-primary/10 border-primary/40" : "bg-muted/30 border-transparent")}><div className="flex items-center gap-3 overflow-hidden"><div className="flex flex-col gap-0.5"><Button variant="ghost" size="icon" className="h-4 w-4 p-0 text-muted-foreground" onClick={() => props.moveRouteItem(item.id, 'up')} disabled={idx === 0}><ArrowUp className="h-3 w-3" /></Button><Button variant="ghost" size="icon" className="h-4 w-4 p-0 text-muted-foreground" onClick={() => props.moveRouteItem(item.id, 'down')} disabled={idx === props.route.length - 1}><ArrowDown className="h-3 w-3" /></Button></div><div className="truncate"><div className="text-[11px] font-black uppercase">{item.genre} / {item.mood}</div></div></div><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100" onClick={() => props.removeFromRoute(item.id)}><X className="h-4 w-4" /></Button></div>))}</div></ScrollArea>
+                <ScrollArea className="flex-grow pr-3">
+                    <div className="space-y-1.5 pb-4">
+                        <DndContext 
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <SortableContext 
+                                items={props.route.map(i => i.id)}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {props.route.map((item, idx) => (
+                                    <SortableRouteItem 
+                                        key={item.id} 
+                                        item={item} 
+                                        isActive={idx === props.activeRouteIndex && props.isPlaying}
+                                        onRemove={props.removeFromRoute}
+                                    />
+                                ))}
+                            </SortableContext>
+                        </DndContext>
+                    </div>
+                </ScrollArea>
             </div>
 
             <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between shrink-0">
