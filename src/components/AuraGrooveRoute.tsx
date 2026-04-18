@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.8 — "The Route Architect".
- * #ЧТО: ПЛАН №1240 — 1. Снижена чувствительность скролла. 2. Добавлен раздел сохранения маршрутов.
+ * #ЗАЧЕМ: UI AuraGroove V4.9 — "Local Sovereignty".
+ * #ЧТО: ПЛАН №1245 — Переход на локальное управление маршрутами (LocalStorage).
  */
 'use client';
 
@@ -96,10 +96,8 @@ function VerticalSpinner({
         }
     }, [value, items, infiniteItems, onChange]);
 
-    // #ЗАЧЕМ: Снижение чувствительности скролла (ПЛАН №1240).
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
-        // Демпфирование входного сигнала в 10 раз.
         scrollRef.current.scrollTop += e.deltaY * 0.1;
     };
 
@@ -160,9 +158,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         props.addToRoute(selectedGenre, selectedMood);
     };
 
-    const handleSave = async () => {
+    const handleSave = () => {
         if (!routeName.trim()) return;
-        await props.saveRoute(routeName);
+        props.saveRoute(routeName);
         setRouteName("");
         setIsSaveRouteOpen(false);
     };
@@ -220,46 +218,46 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <div className="flex gap-1">
                     <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                         <DialogTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-9 w-9" title="Save Route"><Save className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" className="h-9 w-9" title="Save Journey"><Save className="h-4 w-4" /></Button>
                         </DialogTrigger>
                         <DialogContent className="bg-card border-primary/20">
                             <DialogHeader>
-                                <DialogTitle className="font-black uppercase text-primary">Save Current Route</DialogTitle>
-                                <DialogDescription className="text-xs">Enter a name for this sequence of scenes.</DialogDescription>
+                                <DialogTitle className="font-black uppercase text-primary">Capture Journey</DialogTitle>
+                                <DialogDescription className="text-xs">Give this sequence a name to store it in your local library.</DialogDescription>
                             </DialogHeader>
                             <div className="py-4">
                                 <Input 
-                                    placeholder="e.g. Morning Meditation" 
+                                    placeholder="e.g. Midnight Meditation" 
                                     value={routeName} 
                                     onChange={(e) => setRouteName(e.target.value)}
                                     className="border-primary/10 bg-background"
                                 />
                             </div>
                             <DialogFooter>
-                                <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest"><Check className="mr-2 h-4 w-4" /> Save to Cloud</Button>
+                                <Button onClick={handleSave} className="w-full font-black uppercase tracking-widest"><Check className="mr-2 h-4 w-4" /> Store Journey</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
                     <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                         <DialogTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-9 w-9" title="Load Route"><FolderOpen className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" className="h-9 w-9" title="My Journeys"><FolderOpen className="h-4 w-4" /></Button>
                         </DialogTrigger>
                         <DialogContent className="bg-card border-primary/20 sm:max-w-md">
                             <DialogHeader>
-                                <DialogTitle className="font-black uppercase text-primary">My Journeys</DialogTitle>
-                                <DialogDescription className="text-xs uppercase font-bold opacity-50">Select a saved route to play.</DialogDescription>
+                                <DialogTitle className="font-black uppercase text-primary">Library of Journeys</DialogTitle>
+                                <DialogDescription className="text-xs uppercase font-bold opacity-50">Pick a stored sequence from your local memory.</DialogDescription>
                             </DialogHeader>
                             <ScrollArea className="h-64 pr-3 mt-2">
                                 <div className="space-y-2">
                                     {props.savedRoutes?.length === 0 ? (
-                                        <div className="py-20 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest">No saved journeys</div>
+                                        <div className="py-20 text-center opacity-30 text-[10px] font-bold uppercase tracking-widest">Local library is empty</div>
                                     ) : (
                                         props.savedRoutes?.map(saved => (
                                             <div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-transparent hover:border-primary/20 group">
                                                 <div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}>
                                                     <div className="text-xs font-black uppercase">{saved.name}</div>
-                                                    <div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} scenes</div>
+                                                    <div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} segments</div>
                                                 </div>
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => props.deleteSavedRoute(saved.id)}>
                                                     <Trash2 className="h-3.5 w-3.5" />
@@ -285,7 +283,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <div className="flex-grow overflow-hidden flex flex-col p-3 gap-2">
                 <div className="flex items-center justify-between px-1">
-                    <Label className="text-[10px] font-black uppercase opacity-50">Playing Route</Label>
+                    <Label className="text-[10px] font-black uppercase opacity-50">Current Path</Label>
                     <Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} steps</Badge>
                 </div>
                 <ScrollArea className="flex-grow pr-3">
@@ -293,7 +291,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         {props.route.length === 0 ? (
                             <div className="py-12 flex flex-col items-center justify-center opacity-30 text-center">
                                 <Music className="h-8 w-8 mb-2 stroke-1" />
-                                <p className="text-[10px] font-bold uppercase tracking-widest leading-tight">Route is empty.<br/>Add scenes or hit Shuffle.</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest leading-tight">No path defined.<br/>Add segments or hit Shuffle.</p>
                             </div>
                         ) : (
                             props.route.map((item, idx) => (
@@ -312,7 +310,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         <div className="truncate">
                                             <div className="text-[11px] font-black uppercase truncate">{item.genre} / {item.mood}</div>
                                             <div className="text-[8px] font-bold opacity-40 uppercase">
-                                                {idx === props.activeRouteIndex && props.isPlaying ? 'Now Flying' : 'Ready for flight'}
+                                                {idx === props.activeRouteIndex && props.isPlaying ? 'Now Playing' : 'Queued'}
                                             </div>
                                         </div>
                                     </div>

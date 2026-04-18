@@ -1,24 +1,25 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.6 — "Firestore Optimization".
- * #ЧТО: ПЛАН №1241 — 1. Исправление разрешений Firestore. 2. Переход на неблокирующие записи.
+ * #ЗАЧЕМ: Хук управления музыкой V7.7 — "Local Sovereignty".
+ * #ЧТО: ПЛАН №1245 — Переход на LocalStorage для маршрутов и истории сессий.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { collection, serverTimestamp, query, where, orderBy, doc } from 'firebase/firestore';
 import type { 
     DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
     InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
     Mood, Genre, SoundMix, RouteItem, SavedRoute
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
-import { saveMasterpiece } from "@/lib/firebase-service";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
 import { useToast } from "./use-toast";
+
+const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
+const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
+const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
 
 export type AuraGrooveProps = {
   isPlaying: boolean;
@@ -80,10 +81,10 @@ export type AuraGrooveProps = {
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
-  saveRoute: (name: string) => Promise<void>;
+  saveRoute: (name: string) => void;
   loadRoute: (route: SavedRoute) => void;
-  deleteSavedRoute: (id: string) => Promise<void>;
-  savedRoutes: SavedRoute[] | null;
+  deleteSavedRoute: (id: string) => void;
+  savedRoutes: SavedRoute[];
   isShuffle: boolean;
   setShuffle: (val: boolean) => void;
   isRepeat: boolean;
@@ -96,13 +97,11 @@ export type AuraGrooveProps = {
 export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
-    setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, resetWorker, setVolume, setInstrument,
+    setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
     setEQGain, setCalibrationGain, calibrationGains
   } = useAudioEngine(); 
   
-  const db = useFirestore();
-  const { user } = useUser();
   const { toast } = useToast();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
@@ -140,28 +139,51 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isShuffle, setShuffle] = useState(false);
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
 
   const lastBarCountRef = useRef(-1);
 
-  // --- Persistence ---
-  const routesQuery = useMemoFirebase(() => 
-    user ? query(collection(db, 'routes'), where('userId', '==', user.uid), orderBy('createdAt', 'desc')) : null
-  , [db, user]);
-  const { data: savedRoutes } = useCollection<SavedRoute>(routesQuery);
+  // --- Initial Load from LocalStorage ---
+  useEffect(() => {
+      if (typeof window === 'undefined') return;
+      
+      const savedJourneys = localStorage.getItem(SAVED_JOURNEYS_KEY);
+      if (savedJourneys) {
+          try { setSavedRoutes(JSON.parse(savedJourneys)); } catch (e) { console.error(e); }
+      }
 
-  const saveRoute = async (name: string) => {
-      if (!user) { toast({ title: "Auth Required", description: "Sign in to save routes." }); return; }
+      const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
+      if (lastRoute) {
+          try { 
+              const parsed = JSON.parse(lastRoute);
+              setRoute(parsed);
+              if (parsed.length > 0) setActiveRouteIndex(0);
+          } catch (e) { console.error(e); }
+      }
+  }, []);
+
+  // --- Persist Current Route ---
+  useEffect(() => {
+      if (route.length > 0) {
+          localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(route));
+      }
+  }, [route]);
+
+  const saveRoute = (name: string) => {
       if (route.length === 0) { toast({ title: "Route Empty", description: "Add some scenes first." }); return; }
       
-      const items = route.map(it => ({ genre: it.genre, mood: it.mood }));
-      // #ЗАЧЕМ: Использование неблокирующего добавления документа.
-      addDocumentNonBlocking(collection(db, 'routes'), {
-          userId: user.uid,
+      const newSavedRoute: SavedRoute = {
+          id: `local-route-${Date.now()}`,
+          userId: 'local-user',
           name,
-          items,
-          createdAt: serverTimestamp()
-      });
-      toast({ title: "Route Saving...", description: `"${name}" will be added to Cloud.` });
+          items: route.map(it => ({ genre: it.genre, mood: it.mood })),
+          createdAt: new Date().toISOString()
+      };
+
+      const updated = [newSavedRoute, ...savedRoutes];
+      setSavedRoutes(updated);
+      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
+      toast({ title: "Journey Saved", description: `"${name}" is stored locally.` });
   };
 
   const loadRoute = (saved: SavedRoute) => {
@@ -174,13 +196,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(items);
       setActiveRouteIndex(0);
       if (items.length > 0) applyRouteItem(items[0]);
-      toast({ title: "Route Loaded", description: `"${saved.name}" is active.` });
+      toast({ title: "Journey Loaded", description: `"${saved.name}" is active.` });
   };
 
-  const deleteSavedRoute = async (id: string) => {
-      // #ЗАЧЕМ: Использование неблокирующего удаления документа.
-      deleteDocumentNonBlocking(doc(db, 'routes', id));
-      toast({ title: "Deleting Route..." });
+  const deleteSavedRoute = (id: string) => {
+      const updated = savedRoutes.filter(r => r.id !== id);
+      setSavedRoutes(updated);
+      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
+      toast({ title: "Journey Deleted" });
   };
 
   useEffect(() => { initialize(); }, [initialize]);
@@ -221,6 +244,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm);
             const currentBar = payload.barCount;
+            // Transition logic for Navigator
             if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
                 handleRouteTransition();
             }
@@ -346,7 +370,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
         toggleBroadcast();
     },
-    handleSaveMasterpiece: () => { if (!isInitialized) return; saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }); },
+    handleSaveMasterpiece: () => { if (!isInitialized) return; /* Masterpieces remain in Cloud as they are shared/curated */ },
     drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: (part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); },
     handleBassTechniqueChange: () => {}, handleVolumeChange, textureSettings, 
     handleTextureEnabledChange: (part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})),

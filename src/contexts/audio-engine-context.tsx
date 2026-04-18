@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.1 — "Context Integrity Fix".
- * #ЗАЧЕМ: Исправление ошибки "getWorker is not a function".
- * #ЧТО: ПЛАН №1220 — Явный экспорт getWorker через контекст.
+ * @fileOverview Audio Engine Context V40.2 — "Persistent Sovereignty".
+ * #ЗАЧЕМ: Гарантия уникальности первой сессии через LocalStorage.
+ * #ЧТО: ПЛАН №1245 — Загрузка истории треков при инициализации.
  */
 'use client';
 
@@ -448,23 +448,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
-                    const melodyInst = payload.instrumentHints?.melody;
-                    if (melodyInst && audioContextRef.current && gainNodesRef.current.melody) {
-                        const isHeavy = melodyInst.toLowerCase().includes('organ') || 
-                                        melodyInst === 'guitar_shineOn' || 
-                                        melodyInst === 'guitar_muffLead';
-                        const modifier = isHeavy ? 0.5 : 1.0;
-                        
-                        const baseVol = settingsRef.current?.instrumentSettings.melody.volume ?? 0.5;
-                        const balancedVol = baseVol * VOICE_BALANCE.melody * modifier;
-                        gainNodesRef.current.melody.gain.setTargetAtTime(balancedVol, audioContextRef.current.currentTime, 0.1);
-                    }
-
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
 
                     if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        console.log(`%c[AI Arbiter] High resonance detected (${payload.beautyScore.toFixed(2)}). Saving Masterpiece...`, 'color: #FFD700; font-weight: bold;');
                         saveMasterpiece(db, { 
                             seed: payload.seed, 
                             mood: settingsRef.current.mood, 
@@ -483,6 +470,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 } else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
         }
+
+        // #ЗАЧЕМ: Загрузка истории для обеспечения уникальности первой сессии.
+        const savedHistory = localStorage.getItem('AuraGroove_TrackHistory');
+        if (savedHistory && workerRef.current) {
+            try {
+                const history = JSON.parse(savedHistory);
+                workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: history } });
+            } catch (e) {}
+        }
+
         await refreshCloudAxioms();
         setIsInitialized(true);
         setIsInitializing(false);
