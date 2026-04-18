@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.5 — "Dynamic Timbre Balancing".
- * #ЗАЧЕМ: Реализация автоматического сведения (ПЛАН №1165).
- * #ЧТО: Громкость мелодии теперь зависит от плотности выбранного инструмента.
+ * @fileOverview Audio Engine Context V39.6 — "The Safe Arbiter Awakening".
+ * #ЗАЧЕМ: Реализация цикла обратной связи AI Arbiter (ПЛАН №1185).
+ * #ЧТО: Автоматическое сохранение высокорезонансных тактов в Firestore.
  */
 'use client';
 
@@ -441,7 +441,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
-                    // #ЗАЧЕМ: ПЛАН №1165. Динамическая балансировка громкости мелодии на основе типа инструмента.
+                    // Dynamic Balancing
                     const melodyInst = payload.instrumentHints?.melody;
                     if (melodyInst && audioContextRef.current && gainNodesRef.current.melody) {
                         const isHeavy = melodyInst.toLowerCase().includes('organ') || 
@@ -456,8 +456,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
-                    if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
+
+                    // #ЗАЧЕМ: Пробуждение AI Arbiter (ПЛАН №1185).
+                    // #ЧТО: Автоматическое сохранение "Шедевров" при высоком резонансе.
+                    if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                        console.log(`%c[AI Arbiter] High resonance detected (${payload.beautyScore.toFixed(2)}). Saving Masterpiece...`, 'color: #FFD700; font-weight: bold;');
+                        saveMasterpiece(db, { 
+                            seed: payload.seed, 
+                            mood: settingsRef.current.mood, 
+                            genre: settingsRef.current.genre, 
+                            density: settingsRef.current.density, 
+                            bpm: payload.actualBpm || settingsRef.current.bpm, 
+                            instrumentSettings: settingsRef.current.instrumentSettings, 
+                            isArbiterFind: true 
+                        });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
                 } else if (type === 'HISTORY_UPDATE' && payload) {

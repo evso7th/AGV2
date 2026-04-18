@@ -1,7 +1,7 @@
 
 /**
  * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1120): Добавление информации о тембрах в лог.
+ * #ОБНОВЛЕНО (ПЛАН №1185): Пробуждение AI Arbiter — вывод Beauty Score в логи.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -245,11 +245,11 @@ const Scheduler = {
         const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
         
-        // #ЗАЧЕМ: Прозрачность состава ансамбля (ПЛАН №1120)
         const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
 
+        // #ЗАЧЕМ: Прозрачность работы Арбитра. Beauty Score (B) добавлен в основной лог такта.
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} ` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} ` +
             `%c${cognitiveStr}\n` +
             `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'} | %c${ensembleStr}`,
             'color: #888;', 
