@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.7 — "Visual Frequency Control".
- * #ЧТО: ПЛАН №1200 — Добавлен спектроанализатор и кнопка вызова.
+ * #ЗАЧЕМ: UI AuraGroove V3.8 — "Expert Mode Domain".
+ * #ЧТО: ПЛАН №1235 — Добавлена кнопка возврата в Navigator (/home).
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock, Dna, Settings2, Mic2, Activity
+  Guitar, Lock, Dna, Settings2, Mic2, Activity, Navigation
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -110,7 +110,7 @@ function MultiSelector<T extends string>({
 }
 
 export function AuraGrooveV2({
-  isPlaying, isInitializing, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
+  isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
   setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
   bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
   isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
@@ -130,8 +130,6 @@ export function AuraGrooveV2({
   
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
-
-  // #ЗАЧЕМ: Стейт для окна спектра.
   const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
 
   useEffect(() => {
@@ -216,6 +214,7 @@ export function AuraGrooveV2({
             <h1 className="text-lg font-bold text-primary">AuraGroove</h1>
           </div>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => router.push('/home')} title="Return to Navigator"><Navigation className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={() => router.push('/timbre-lab')} aria-label="Open Timbre Lab"><Settings2 className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} aria-label="Open Dashboard"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome} aria-label="Go to Home"><Home className="h-5 w-5" /></Button>
@@ -557,7 +556,6 @@ export function AuraGrooveV2({
                             </DialogContent>
                         </Dialog>
                     </div>
-                    {/* Tiny slider for timer duration adjustment if not active */}
                     {!timerSettings.isActive && (
                         <Slider 
                             value={[timerSettings.duration / 60]} 
@@ -651,17 +649,6 @@ export function AuraGrooveV2({
           </div>
         </Tabs>
       </main>
-
-      <Dialog open={isWarmingUp}>
-        <DialogContent className="sm:max-w-md border-primary/20 bg-card/95 backdrop-blur-xl">
-          <DialogHeader className="sr-only"><DialogTitle>Warming up</DialogTitle></DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6 space-y-6">
-            <div className="relative"><div className="absolute inset-0 animate-ping rounded-full bg-primary/20" /><TowerControl className="h-16 w-16 text-primary relative z-10" /></div>
-            <div className="text-center space-y-2"><h2 className="text-xl font-black uppercase tracking-tighter">Warming up engine</h2><p className="text-sm text-muted-foreground font-bold uppercase tracking-widest opacity-70">Please wait for synchronization...</p></div>
-            <div className="text-6xl font-black text-primary font-mono tabular-nums">{warmUpTimeLeft}</div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

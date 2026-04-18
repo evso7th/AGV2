@@ -8,6 +8,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Music } from 'lucide-react';
 import Image from 'next/image';
 
+/**
+ * #ЗАЧЕМ: Корневая страница.
+ * #ЧТО: ПЛАН №1235 — Теперь ведет в /home по умолчанию.
+ */
 export default function Home() {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
@@ -17,7 +21,7 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
-    router.push('/aura-groove');
+    router.push('/home');
   };
 
   return (

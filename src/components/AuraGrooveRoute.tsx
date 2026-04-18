@@ -1,17 +1,18 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.6 — "Advanced Interactive Navigator".
- * #ЧТО: План №1230 — Поддержка мыши, клавиатуры и свайпов. Увеличена высота колес.
+ * #ЗАЧЕМ: UI AuraGroove V4.7 — "The Navigator".
+ * #ЧТО: План №1235 — Иконка шестеренки теперь ведет в Expert Mode (/aura-groove).
  */
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
-    Plus, X, Shuffle, Repeat, Music, Pause, Play, Settings2, 
-    ChevronUp, ChevronDown, Activity, Timer, ThumbsUp, Radio, TowerControl,
-    Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2, Speaker
+    Plus, X, Shuffle, Music, Pause, Settings2, 
+    Activity, Timer, ThumbsUp, Radio, TowerControl,
+    Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2
 } from 'lucide-react';
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -72,7 +73,7 @@ function VerticalSpinner({
             const idx = items.findIndex(i => i.id === value);
             scrollRef.current.scrollTop = middleOffset + (idx * itemHeight);
         }
-    }, []);
+    }, [items, value, middleOffset]);
 
     const handleScroll = useCallback(() => {
         if (!scrollRef.current) return;
@@ -93,13 +94,11 @@ function VerticalSpinner({
         }
     }, [value, items, infiniteItems, onChange]);
 
-    // #ЗАЧЕМ: Поддержка колесика мыши.
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
         scrollRef.current.scrollTop += e.deltaY;
     };
 
-    // #ЗАЧЕМ: Поддержка клавиатуры.
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!scrollRef.current) return;
         if (e.key === 'ArrowUp') {
@@ -143,6 +142,7 @@ function VerticalSpinner({
 }
 
 export function AuraGrooveRoute(props: AuraGrooveProps) {
+    const router = useRouter();
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
     const [selectedMood, setSelectedMood] = useState<any>('melancholic');
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
@@ -155,7 +155,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     return (
         <div className="w-full h-full flex flex-col bg-card overflow-hidden">
-            {/* Header (Expert Style Mirror) */}
             <header className="p-3 border-b border-primary/10 bg-background/40">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex flex-row items-center gap-2">
@@ -163,8 +162,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => window.location.href = '/timbre-lab'}><Settings2 className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => props.setShowAdvancedUI(true)}><Activity className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} title="Expert Mode"><Settings2 className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsSpectrumOpen(true)}><Activity className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
                     </div>
                 </div>
@@ -189,7 +188,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </header>
 
-            {/* Wheels Section (Increased Height) */}
             <div className="grid grid-cols-2 gap-px bg-primary/10 border-b border-primary/10 shrink-0">
                 <div className="bg-card flex flex-col">
                     <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
@@ -201,7 +199,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </div>
 
-            {/* Interaction Bar */}
             <div className="p-2 flex gap-2 bg-muted/20 shrink-0">
                 <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-9 shadow-lg">
                     <Plus className="h-3.5 w-3.5 mr-2" /> Add to Route
@@ -216,7 +213,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </Button>
             </div>
 
-            {/* Route List */}
             <div className="flex-grow overflow-hidden flex flex-col p-3 gap-2">
                 <div className="flex items-center justify-between px-1">
                     <Label className="text-[10px] font-black uppercase opacity-50">Playing Route</Label>
@@ -265,7 +261,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </ScrollArea>
             </div>
 
-            {/* Main Controls (Systems & Studio) */}
             <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex gap-2">
                     <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
@@ -309,11 +304,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </Dialog>
 
                     <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" size="icon" className="h-10 w-10">
-                                <Activity className={cn("h-5 w-5", props.isPlaying && "text-primary animate-pulse")} />
-                            </Button>
-                        </DialogTrigger>
                         <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
                             <DialogHeader>
                                 <DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle>
