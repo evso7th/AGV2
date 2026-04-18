@@ -1,9 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V5.2 — "The Navigator Ergo-Logic".
- * #ЧТО: ПЛАН №1255 — 1. Переназначение кнопок Header (Settings2 -> Mixer, Navigation -> EQ).
- *       2. Перенос доступа к Expert Mode на вкладку Samples.
- *       3. Модальные окна с поддержкой пресетов в LocalStorage.
+ * #ЗАЧЕМ: UI AuraGroove V5.3 — "The Navigator Ergo-Logic Refined".
+ * #ЧТО: ПЛАН №1260 — Перестановка кнопок в Header: EQ теперь слева от Микшера.
  */
 'use client';
 
@@ -101,6 +99,7 @@ function VerticalSpinner({
 
     const handleWheel = (e: React.WheelEvent) => {
         if (!scrollRef.current) return;
+        // #ЗАЧЕМ: Снижение чувствительности скролла.
         scrollRef.current.scrollTop += e.deltaY * 0.03;
     };
 
@@ -198,9 +197,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                     </div>
                     <div className="flex items-center gap-1">
-                        {/* #ЗАЧЕМ: ПЛАН №1255. Кнопки Header переназначены на модальные окна. */}
-                        <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Simple Mixer"><Settings2 className="h-5 w-5" /></Button>
+                        {/* #ЗАЧЕМ: ПЛАН №1260. Перестановка кнопок: EQ слева от Микшера. */}
                         <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} title="Equalizer"><Navigation className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} title="Simple Mixer"><Settings2 className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
                     </div>
                 </div>
@@ -221,8 +220,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </header>
 
             <div className="grid grid-cols-2 gap-px bg-primary/10 border-b border-primary/10 shrink-0">
-                <div className="bg-card flex flex-col"><Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label><VerticalSpinner items={GENRES} value={selectedGenre} onChange={setSelectedGenre} /></div>
-                <div className="bg-card flex flex-col"><Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Mood</Label><VerticalSpinner items={MOODS} value={selectedMood} onChange={setSelectedMood} /></div>
+                <div className="bg-card flex flex-col">
+                    <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
+                    <VerticalSpinner items={GENRES} value={selectedGenre} onChange={setSelectedGenre} />
+                </div>
+                <div className="bg-card flex flex-col">
+                    <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Mood</Label>
+                    <VerticalSpinner items={MOODS} value={selectedMood} onChange={setSelectedMood} />
+                </div>
             </div>
 
             <div className="p-2 flex gap-2 bg-muted/20 shrink-0">
@@ -248,7 +253,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between shrink-0">
                 <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10" title="Spectrum Monitor"><Activity className="h-5 w-5" /></Button>
                 
-                {/* #ЗАЧЕМ: Кнопка перехода в Expert Mode спрятана здесь, как вы и просили. */}
                 <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity" title="Expert System"><Cog className="h-4 w-4" /></Button>
 
                 <Button variant="outline" className={cn("h-10 gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")} onClick={() => props.handleToggleTimer()}>
