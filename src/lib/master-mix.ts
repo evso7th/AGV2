@@ -30,7 +30,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     blues: {
         bass: 0.70,
         melody: 0.90,
-        accompaniment: 0.60,
+        accompaniment: 0.30, // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.60) для прозрачности микса.
         harmony: 0.75,
         pianoAccompaniment: 0.50,
         drums: 0.75,
