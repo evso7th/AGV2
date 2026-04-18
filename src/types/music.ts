@@ -187,6 +187,7 @@ export type WorkerSettings = {
   activeAnchorId?: string | null; 
   ancestor?: any;
   masterpieces?: any[]; 
+  targetBpm?: number | null; // For morphing
 };
 
 export type TimerSettings = {
@@ -407,4 +408,16 @@ export type BluesGuitarRiff = {
     };
     fingerstyle?: { probability: number; pattern: string; voicingName: string }[];
     strum?: { probability: number; pattern: string; voicingName: string }[];
+};
+
+/**
+ * #ЗАЧЕМ: Типы для маршрутов (Playing Route).
+ */
+export type RouteItem = {
+    id: string;
+    genre: Genre | 'random';
+    mood: Mood | 'random';
+    label?: string;
+    status: 'pending' | 'playing' | 'completed' | 'bridge';
+    seed?: number;
 };

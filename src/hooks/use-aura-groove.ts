@@ -1,20 +1,23 @@
 
 /**
- * #ЗАЧЕМ: Хук управления UI музыкой V6.1 — "Volume Restoration Fix".
- * #ЧТО: ПЛАН №1031 — Изоляция applyAutoMix от manual изменений для предотвращения сброса громкости.
+ * #ЗАЧЕМ: Хук управления музыкой V7.0 — "The Route Navigator".
+ * #ЧТО: ПЛАН №1215 — Интеграция логики очередей, мостов и простого UI.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument, BassTechnique, TextureSettings, TimerSettings, Mood, Genre, SoundMix } from '@/types/music';
+import type { 
+    DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
+    InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
+    Mood, Genre, SoundMix, RouteItem 
+} from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { useFirestore } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
 
-const LICK_HISTORY_KEY = 'AuraGroove_LickHistory';
 const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
 
 export type AuraGrooveProps = {
@@ -36,7 +39,7 @@ export type AuraGrooveProps = {
   instrumentSettings: InstrumentSettings;
   setInstrumentSettings: (part: keyof InstrumentSettings, name: any) => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
-  handleVolumeChange: (part: InstrumentPart, value: number) => void;
+  handleVolumeChange: (part: InstrumentPart | 'drums' | 'sparkles' | 'sfx', value: number) => void;
   textureSettings: Omit<TextureSettings, 'pads'>;
   handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
   bpm: number;
@@ -55,7 +58,6 @@ export type AuraGrooveProps = {
   useHeritage: boolean; 
   setUseHeritage: (value: boolean) => void;
   handleGoHome: () => void;
-  handleExit?: () => void;
   isEqModalOpen: boolean;
   setIsEqModalOpen: (isOpen: boolean) => void;
   eqSettings: number[];
@@ -73,6 +75,17 @@ export type AuraGrooveProps = {
   setGenre: (genre: Genre) => void;
   introBars: number;
   setIntroBars: (bars: number) => void;
+  // --- Route Specific ---
+  route: RouteItem[];
+  addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
+  removeFromRoute: (id: string) => void;
+  isShuffle: boolean;
+  setShuffle: (val: boolean) => void;
+  isRepeat: boolean;
+  setRepeat: (val: boolean) => void;
+  activeRouteIndex: number;
+  showAdvancedUI: boolean;
+  setShowAdvancedUI: (val: boolean) => void;
 };
 
 export const useAuraGroove = (): AuraGrooveProps => {
@@ -85,6 +98,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const db = useFirestore();
   
+  // States
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
@@ -106,48 +120,109 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [useHeritage, setUseHeritage] = useState(true); 
   const [mood, setMood] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(8); 
-  
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
-  
-  const [sessionLickHistory, setSessionLickHistory] = useState<string[]>([]);
-  const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isWarmingUp, setIsWarmingUp] = useState(false);
   const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
-
   const [isEqModalOpen, setIsEqModalOpen] = useState(false);
   const [isCalibrationModalOpen, setIsCalibrationModalOpen] = useState(false);
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
 
+  // --- Queue & Route Logic ---
+  const [route, setRoute] = useState<RouteItem[]>([]);
+  const [activeRouteIndex, setActiveRouteIndex] = useState(-1);
+  const [isShuffle, setShuffle] = useState(false);
+  const [isRepeat, setRepeat] = useState(false);
+  const [showAdvancedUI, setShowAdvancedUI] = useState(false);
+  const [isBridgeActive, setIsBridgeActive] = useState(false);
+
   useEffect(() => { initialize(); }, [initialize]);
 
+  // Listen for Worker messages for end-of-part transitions
   useEffect(() => {
-    const handleBpmSync = (e: any) => {
-        if (e.detail && e.detail.bpm) {
-            setBpm(e.detail.bpm);
+    const worker = getWorker();
+    if (!worker) return;
+
+    const handleMessage = (e: MessageEvent) => {
+        const { type, payload } = e.data;
+        if (type === 'SCORE_READY' && payload) {
+            setBpm(payload.actualBpm);
+            
+            // Check if we just completed a piece (barCount reset or specific flag)
+            // In our system, the worker resets barCount when a piece ends.
+            if (payload.barCount === 0 && isPlaying && activeRouteIndex >= 0) {
+                handleRouteTransition();
+            }
         }
     };
-    window.addEventListener('AG_BPM_SYNC', handleBpmSync);
-    return () => window.removeEventListener('AG_BPM_SYNC', handleBpmSync);
-  }, []);
+    worker.addEventListener('message', handleMessage);
+    return () => worker.removeEventListener('message', handleMessage);
+  }, [isPlaying, activeRouteIndex, getWorker]);
 
-  /**
-   * #ЗАЧЕМ: Расчет иерархического сведения.
-   * #ЧТО: ПЛАН №1031 — Очищены зависимости для предотвращения ресета громкостей при движении слайдера.
-   */
+  const handleRouteTransition = useCallback(() => {
+      let nextIndex = activeRouteIndex + 1;
+      
+      if (nextIndex >= route.length) {
+          if (isRepeat) {
+              nextIndex = 0;
+          } else if (isShuffle) {
+              // Generate a new random item and add it
+              const nextGenre = (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)];
+              const nextMood = (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)];
+              addToRoute(nextGenre, nextMood);
+              return; // addToRoute will trigger state change
+          } else {
+              setEngineIsPlaying(false);
+              return;
+          }
+      }
+      
+      setActiveRouteIndex(nextIndex);
+      const nextItem = route[nextIndex];
+      applyRouteItem(nextItem);
+  }, [activeRouteIndex, route, isRepeat, isShuffle, setEngineIsPlaying]);
+
+  const applyRouteItem = useCallback((item: RouteItem) => {
+      const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+      const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+      
+      setGenre(g);
+      setMood(m);
+      setCurrentSeed(Date.now());
+      
+      // Update route item status visually
+      setRoute(prev => prev.map((it, idx) => ({
+          ...it,
+          status: idx === activeRouteIndex ? 'playing' : (idx < activeRouteIndex ? 'completed' : 'pending')
+      })));
+  }, [activeRouteIndex]);
+
+  const addToRoute = (g: Genre | 'random', m: Mood | 'random') => {
+      const newItem: RouteItem = {
+          id: `route-${Date.now()}`,
+          genre: g,
+          mood: m,
+          status: 'pending'
+      };
+      setRoute(prev => [...prev, newItem]);
+      if (activeRouteIndex === -1) {
+          setActiveRouteIndex(0);
+          if (isPlaying) applyRouteItem(newItem);
+      }
+  };
+
+  const removeFromRoute = (id: string) => {
+      setRoute(prev => prev.filter(it => it.id !== id));
+  };
+
   const applyAutoMix = useCallback(() => {
       if (!isInitialized) return;
-
       const masterGenreMix = GENRE_MASTER_MIX[genre];
       const blueprint = getBlueprint(genre, mood);
       const moodOverrideMix = blueprint.soundMix || {};
-
       const finalMix: SoundMix = { ...masterGenreMix, ...moodOverrideMix };
 
-      console.log(`%c[Mixer] Auto-Calibration Triggered: ${genre}/${mood}`, 'color: #4ade80; font-weight: bold;');
-
-      // 1. Применяем громкости для инструментов
       const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
       parts.forEach(part => {
           const vol = finalMix[part];
@@ -157,13 +232,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
           }
       });
 
-      // 2. Применяем громкость ударных
       if (finalMix.drums !== undefined) {
           setVolume('drums', finalMix.drums);
           setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! }));
       }
-
-      // 3. Применяем текстуры (только если они включены)
       if (finalMix.sparkles !== undefined) {
           setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0);
           setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } }));
@@ -172,26 +244,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
           setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0);
           setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } }));
       }
-  }, [isInitialized, genre, mood, setVolume]); // Убрали textureSettings из зависимостей
+  }, [isInitialized, genre, mood, setVolume]);
 
-  // #ЗАЧЕМ: Перекалибровка только при смене жанра или настроения.
-  useEffect(() => {
-      applyAutoMix();
-  }, [genre, mood, isInitialized]); // Убрали applyAutoMix из зависимостей
-
-  const updateAllVolumes = useCallback(() => {
-    if (!isInitialized) return;
-    Object.entries(instrumentSettings).forEach(([part, s]) => setVolume(part, s.volume));
-    setVolume('drums', drumSettings.volume);
-    setVolume('sparkles', textureSettings.sparkles.enabled ? textureSettings.sparkles.volume : 0);
-    setVolume('sfx', textureSettings.sfx.enabled ? textureSettings.sfx.volume : 0);
-  }, [isInitialized, instrumentSettings, drumSettings, textureSettings, setVolume]);
+  useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
-        const savedHistory = typeof window !== 'undefined' ? localStorage.getItem(TRACK_HISTORY_KEY) : null;
-        const playedTrackHistory = savedHistory ? JSON.parse(savedHistory) : [];
-
         updateSettings({
           bpm, score, genre, instrumentSettings,
           drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
@@ -200,19 +258,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
           },
           density, composerControlsInstruments, useHeritage, mood, introBars, 
-          sessionLickHistory, 
-          playedTrackHistory,
           selectedCompositionIds,
           seed: currentSeed
         });
-        updateAllVolumes();
     }
-  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, updateAllVolumes]);
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  const handleVolumeChange = (part: InstrumentPart, value: number) => {
-    setVolume(part as string, value);
-    
-    // #ЗАЧЕМ: Прямое обновление состояния без ожидания побочных эффектов.
+  const handleVolumeChange = (part: any, value: number) => {
+    setVolume(part, value);
     if (part in instrumentSettings) {
       setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
     } else if (part === 'drums') {
@@ -225,16 +278,20 @@ export const useAuraGroove = (): AuraGrooveProps => {
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft,
     loadingText: isInitializing ? 'Initializing...' : 'Ready',
-    availableCompositions, selectedCompositionIds, toggleCompositionFilter: (id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
+    availableCompositions, selectedCompositionIds, 
+    toggleCompositionFilter: (id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
     handlePlayPause: async () => {
         if (!isInitialized) return;
+        if (!isPlaying && activeRouteIndex === -1 && route.length > 0) {
+            setActiveRouteIndex(0);
+            applyRouteItem(route[0]);
+        }
         setEngineIsPlaying(!isPlaying);
     },
     handleRegenerate: () => {
         setIsRegenerating(true);
-        const nextSeed = Date.now();
-        setCurrentSeed(nextSeed);
+        setCurrentSeed(Date.now());
         setTimeout(() => setIsRegenerating(false), 500); 
     },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
@@ -247,14 +304,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     },
     handleSaveMasterpiece: () => {
         if (!isInitialized) return;
-        saveMasterpiece(db, { 
-            seed: currentSeed, 
-            mood, 
-            genre, 
-            density, 
-            bpm, 
-            instrumentSettings 
-        });
+        saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
     },
     drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: (part, name) => {
         setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } }));
@@ -268,15 +318,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
     isEqModalOpen, setIsEqModalOpen, eqSettings, 
     handleEqChange: (index: number, value: number) => {
-        const next = [...eqSettings];
-        next[index] = value;
-        setEqSettings(next);
-        setEQGain(index, value);
+        const next = [...eqSettings]; next[index] = value;
+        setEqSettings(next); setEQGain(index, value);
     },
     isCalibrationModalOpen, setIsCalibrationModalOpen,
     calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
+    // Route props
+    route, addToRoute, removeFromRoute, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
+    showAdvancedUI, setShowAdvancedUI
   };
 };

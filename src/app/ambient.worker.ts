@@ -1,7 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker (Architecture: "The Sovereign Rotation")
- * #ОБНОВЛЕНО (ПЛАН №1185): Пробуждение AI Arbiter — вывод Beauty Score в логи.
+ * @file AuraGroove Music Worker V5.0 — "The Route Engine".
+ * #ОБНОВЛЕНО (ПЛАН №1215): Реализация BPM Morphing во время мостов.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -34,6 +34,10 @@ const Scheduler = {
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     
+    // Morphing State
+    targetBpm: null as number | null,
+    bpmStep: 0,
+
     settings: {
         bpm: 75,
         score: 'neuro_f_matrix', 
@@ -128,17 +132,23 @@ const Scheduler = {
             activeAnchorId: anchorInfo.id, 
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
-            cloudAxioms: this.cloudAxiPool,
+            cloudAxioms: this.cloudAxiomPool,
             isImprovising: isImprovising
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        const inheritedBpm = fractalMusicEngine.config.tempo;
-        if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
-            this.settings.bpm = inheritedBpm;
-            self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
+        // Setup morphing if requested
+        if (settings.targetBpm) {
+            this.targetBpm = settings.targetBpm;
+            this.bpmStep = (this.targetBpm - this.settings.bpm) / 4; // Over 4 bars of bridge
+        } else {
+            const inheritedBpm = fractalMusicEngine.config.tempo;
+            if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
+                this.settings.bpm = inheritedBpm;
+                self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
+            }
         }
     },
 
@@ -216,6 +226,16 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
+        // BPM Morphing Logic
+        if (this.targetBpm !== null) {
+            this.settings.bpm += this.bpmStep;
+            if (Math.abs(this.settings.bpm - this.targetBpm) < 0.5) {
+                this.settings.bpm = this.targetBpm;
+                this.targetBpm = null;
+            }
+            self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
+        }
+
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
@@ -232,7 +252,7 @@ const Scheduler = {
             return;
         }
 
-        if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
+        if (payload.newBpm && payload.newBpm !== this.settings.bpm && !this.targetBpm) {
             this.settings.bpm = payload.newBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
@@ -244,10 +264,8 @@ const Scheduler = {
         
         const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
         const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
-        
         const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
 
-        // #ЗАЧЕМ: Прозрачность работы Арбитра. Beauty Score (B) добавлен в основной лог такта.
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} ` +
             `%c${cognitiveStr}\n` +
@@ -265,7 +283,7 @@ const Scheduler = {
                 instrumentHints: h,
                 barDuration: (60 / this.settings.bpm) * 4,
                 barCount: this.barCount,
-                actualBpm: this.settings.bpm,
+                actualBpm: Math.round(this.settings.bpm),
                 lickId: payload.lickId,
                 beautyScore: payload.beautyScore,
                 seed: this.settings.seed
