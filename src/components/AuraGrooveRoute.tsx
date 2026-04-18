@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.5 — "The Sovereign Navigator".
- * #ЧТО: План №1225 — Бесконечные колеса, модальный микшер, управление таймером и сортировка маршрута.
+ * #ЗАЧЕМ: UI AuraGroove V4.6 — "Advanced Interactive Navigator".
+ * #ЧТО: План №1230 — Поддержка мыши, клавиатуры и свайпов. Увеличена высота колес.
  */
 'use client';
 
@@ -62,9 +62,8 @@ function VerticalSpinner({
     onChange: (id: string) => void 
 }) {
     const scrollRef = useRef<HTMLDivElement>(null);
-    const itemHeight = 36; // Меньшая высота для плавности
+    const itemHeight = 36;
     
-    // Бесконечный список (5 повторений)
     const infiniteItems = React.useMemo(() => [...items, ...items, ...items, ...items, ...items], [items]);
     const middleOffset = items.length * 2 * itemHeight;
 
@@ -80,14 +79,12 @@ function VerticalSpinner({
         const container = scrollRef.current;
         const scrollTop = container.scrollTop;
         
-        // Loop logic
         if (scrollTop < itemHeight * items.length) {
             container.scrollTop = scrollTop + (itemHeight * items.length * 2);
         } else if (scrollTop > itemHeight * items.length * 3) {
             container.scrollTop = scrollTop - (itemHeight * items.length * 2);
         }
 
-        const adjustedTop = container.scrollTop - (itemHeight * 1.5); // Offset for center
         const index = Math.round(container.scrollTop / itemHeight);
         const selected = infiniteItems[index % infiniteItems.length];
         
@@ -96,14 +93,37 @@ function VerticalSpinner({
         }
     }, [value, items, infiniteItems, onChange]);
 
+    // #ЗАЧЕМ: Поддержка колесика мыши.
+    const handleWheel = (e: React.WheelEvent) => {
+        if (!scrollRef.current) return;
+        scrollRef.current.scrollTop += e.deltaY;
+    };
+
+    // #ЗАЧЕМ: Поддержка клавиатуры.
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!scrollRef.current) return;
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            scrollRef.current.scrollTop -= itemHeight;
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            scrollRef.current.scrollTop += itemHeight;
+        }
+    };
+
     return (
-        <div className="relative h-44 w-full overflow-hidden group bg-background/20">
+        <div 
+            className="relative h-72 w-full overflow-hidden group bg-background/20 outline-none focus-visible:ring-1 focus-visible:ring-primary/50"
+            onWheel={handleWheel}
+            onKeyDown={handleKeyDown}
+            tabIndex={0}
+        >
             <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-card via-transparent to-card" />
             
             <div 
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto scroll-smooth snap-y snap-mandatory no-scrollbar py-[68px]"
+                className="h-full overflow-y-auto scroll-smooth snap-y snap-mandatory no-scrollbar py-[124px]"
                 style={{ scrollbarWidth: 'none' }}
             >
                 {infiniteItems.map((item, idx) => (
@@ -111,7 +131,7 @@ function VerticalSpinner({
                         key={`${item.id}-${idx}`}
                         className={cn(
                             "h-9 flex items-center justify-center snap-center transition-all duration-300",
-                            item.id === value ? "text-primary font-black text-xs scale-110" : "text-muted-foreground/30 text-[10px]"
+                            item.id === value ? "text-primary font-black text-xs scale-125" : "text-muted-foreground/20 text-[10px]"
                         )}
                     >
                         {item.label.toUpperCase()}
@@ -149,7 +169,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
                 </div>
                 
-                {/* Expert-style Control Row */}
                 <div className="flex items-center justify-center gap-2">
                     <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="w-[35%] h-10 font-black uppercase tracking-widest">
                         {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
@@ -170,7 +189,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </header>
 
-            {/* Wheels Section */}
+            {/* Wheels Section (Increased Height) */}
             <div className="grid grid-cols-2 gap-px bg-primary/10 border-b border-primary/10 shrink-0">
                 <div className="bg-card flex flex-col">
                     <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
@@ -226,7 +245,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         </div>
                                         <div className="truncate">
                                             <div className="text-[11px] font-black uppercase truncate">{item.genre} / {item.mood}</div>
-                                            <div className="text-[8px] font-bold opacity-40 uppercase">Ready for flight</div>
+                                            <div className="text-[8px] font-bold opacity-40 uppercase">
+                                                {idx === props.activeRouteIndex && props.isPlaying ? 'Now Flying' : 'Ready for flight'}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

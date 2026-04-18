@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.1 — "The Route Navigator".
- * #ЧТО: ПЛАН №1225 — Добавлена логика перемещения элементов маршрута.
+ * #ЗАЧЕМ: Хук управления музыкой V7.2 — "The Route Navigator".
+ * #ЧТО: ПЛАН №1230 — Исправлена остановка после такта 0. Переход по маршруту теперь ждет завершения пьесы.
  */
 'use client';
 
@@ -135,23 +135,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
 
+  const lastBarCountRef = useRef(-1);
+
   useEffect(() => { initialize(); }, [initialize]);
 
-  useEffect(() => {
-    const worker = getWorker();
-    if (!worker) return;
-    const handleMessage = (e: MessageEvent) => {
-        const { type, payload } = e.data;
-        if (type === 'SCORE_READY' && payload) {
-            setBpm(payload.actualBpm);
-            if (payload.barCount === 0 && isPlaying && activeRouteIndex >= 0) {
-                handleRouteTransition();
-            }
-        }
-    };
-    worker.addEventListener('message', handleMessage);
-    return () => worker.removeEventListener('message', handleMessage);
-  }, [isPlaying, activeRouteIndex, getWorker]);
+  const applyRouteItem = useCallback((item: RouteItem) => {
+    const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+    const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+    setGenre(g); 
+    setMood(m); 
+    setCurrentSeed(Date.now());
+    // We update the route status in a follow-up to keep visual sync
+  }, []);
 
   const handleRouteTransition = useCallback(() => {
       let nextIndex = activeRouteIndex + 1;
@@ -161,8 +156,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
           } else if (isShuffle) {
               const nextGenre = (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)];
               const nextMood = (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)];
-              addToRoute(nextGenre, nextMood);
-              return; 
+              const newItem: RouteItem = { id: `route-${Date.now()}`, genre: nextGenre, mood: nextMood, status: 'pending' };
+              setRoute(prev => [...prev, newItem]);
+              // Index will stay the same for now, effectively pointing to the new item
+              nextIndex = activeRouteIndex + 1;
           } else {
               setEngineIsPlaying(false);
               return;
@@ -170,14 +167,39 @@ export const useAuraGroove = (): AuraGrooveProps => {
       }
       setActiveRouteIndex(nextIndex);
       applyRouteItem(route[nextIndex]);
-  }, [activeRouteIndex, route, isRepeat, isShuffle, setEngineIsPlaying]);
+  }, [activeRouteIndex, route, isRepeat, isShuffle, setEngineIsPlaying, applyRouteItem]);
 
-  const applyRouteItem = useCallback((item: RouteItem) => {
-      const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
-      const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
-      setGenre(g); setMood(m); setCurrentSeed(Date.now());
-      setRoute(prev => prev.map((it, idx) => ({ ...it, status: idx === activeRouteIndex ? 'playing' : (idx < activeRouteIndex ? 'completed' : 'pending') })));
+  useEffect(() => {
+    const worker = getWorker();
+    if (!worker) return;
+    const handleMessage = (e: MessageEvent) => {
+        const { type, payload } = e.data;
+        if (type === 'SCORE_READY' && payload) {
+            setBpm(payload.actualBpm);
+            const currentBar = payload.barCount;
+            
+            // #ЗАЧЕМ: Детекция реального перехода.
+            // Если такт стал 0, а до этого был > 0 — значит пьеса закончилась и пошел мост/новый цикл.
+            if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
+                console.log(`%c[Navigator] Piece finished. Moving to next route item.`, 'color: #primary; font-weight: bold;');
+                handleRouteTransition();
+            }
+            lastBarCountRef.current = currentBar;
+        }
+    };
+    worker.addEventListener('message', handleMessage);
+    return () => worker.removeEventListener('message', handleMessage);
+  }, [isPlaying, activeRouteIndex, getWorker, handleRouteTransition]);
+
+  useEffect(() => {
+    if (activeRouteIndex >= 0 && activeRouteIndex < route.length) {
+        setRoute(prev => prev.map((it, idx) => ({ 
+            ...it, 
+            status: idx === activeRouteIndex ? 'playing' : (idx < activeRouteIndex ? 'completed' : 'pending') 
+        })));
+    }
   }, [activeRouteIndex]);
+
 
   const addToRoute = (g: Genre | 'random', m: Mood | 'random') => {
       const newItem: RouteItem = { id: `route-${Date.now()}`, genre: g, mood: m, status: 'pending' };
@@ -189,7 +211,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const removeFromRoute = (id: string) => {
-      setRoute(prev => prev.filter(it => it.id !== id));
+      setRoute(prev => {
+          const idx = prev.findIndex(it => it.id === id);
+          const next = prev.filter(it => it.id !== id);
+          if (idx === activeRouteIndex) {
+              setActiveRouteIndex(-1); // Stop or move? For now just stop logic.
+          } else if (idx < activeRouteIndex) {
+              setActiveRouteIndex(activeRouteIndex - 1);
+          }
+          return next;
+      });
   };
 
   const moveRouteItem = (id: string, direction: 'up' | 'down') => {
@@ -200,6 +231,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
           if (nextIdx < 0 || nextIdx >= prev.length) return prev;
           const n = [...prev];
           [n[idx], n[nextIdx]] = [n[nextIdx], n[idx]];
+          
+          // Keep active index pointed to the same physical item
+          if (activeRouteIndex === idx) setActiveRouteIndex(nextIdx);
+          else if (activeRouteIndex === nextIdx) setActiveRouteIndex(idx);
+          
           return n;
       });
   };
@@ -221,7 +257,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
       if (finalMix.sparkles !== undefined) { setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); }
       if (finalMix.sfx !== undefined) { setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); }
-  }, [isInitialized, genre, mood, setVolume]);
+  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled]);
 
   useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized]);
 
@@ -255,7 +291,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
     handlePlayPause: async () => {
         if (!isInitialized) return;
-        if (!isPlaying && activeRouteIndex === -1 && route.length > 0) { setActiveRouteIndex(0); applyRouteItem(route[0]); }
+        if (!isPlaying) {
+            // Если маршрут не пуст, но индекс -1 (первый запуск), стартуем с первого
+            if (activeRouteIndex === -1 && route.length > 0) {
+                setActiveRouteIndex(0);
+                applyRouteItem(route[0]);
+            }
+            // Сбрасываем счетчик тактов для корректной детекции следующего перехода
+            lastBarCountRef.current = -1;
+        }
         setEngineIsPlaying(!isPlaying);
     },
     handleRegenerate: () => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); },
