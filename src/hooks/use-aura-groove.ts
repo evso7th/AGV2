@@ -1,20 +1,20 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V7.5 — "Route Persistence Protocol".
- * #ЧТО: ПЛАН №1240 — Сохранение и загрузка маршрутов из Firestore.
+ * #ЗАЧЕМ: Хук управления музыкой V7.6 — "Firestore Optimization".
+ * #ЧТО: ПЛАН №1241 — 1. Исправление разрешений Firestore. 2. Переход на неблокирующие записи.
  */
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, serverTimestamp, query, where, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, serverTimestamp, query, where, orderBy, doc } from 'firebase/firestore';
 import type { 
     DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
     InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
     Mood, Genre, SoundMix, RouteItem, SavedRoute
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { saveMasterpiece } from "@/lib/firebase-service";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
@@ -61,7 +61,7 @@ export type AuraGrooveProps = {
   isEqModalOpen: boolean;
   setIsEqModalOpen: (isOpen: boolean) => void;
   eqSettings: number[];
-  handleEqChange: (bandIndex: number, gain: number) => void;
+  handleEqChange: (index: number, value: number) => void;
   isCalibrationModalOpen: boolean;
   setIsCalibrationModalOpen: (isOpen: boolean) => void;
   calibrationGains: Record<string, number>;
@@ -152,16 +152,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const saveRoute = async (name: string) => {
       if (!user) { toast({ title: "Auth Required", description: "Sign in to save routes." }); return; }
       if (route.length === 0) { toast({ title: "Route Empty", description: "Add some scenes first." }); return; }
-      try {
-          const items = route.map(it => ({ genre: it.genre, mood: it.mood }));
-          await addDoc(collection(db, 'routes'), {
-              userId: user.uid,
-              name,
-              items,
-              createdAt: serverTimestamp()
-          });
-          toast({ title: "Route Saved", description: `"${name}" added to Cloud.` });
-      } catch (e) { toast({ variant: "destructive", title: "Save Failed" }); }
+      
+      const items = route.map(it => ({ genre: it.genre, mood: it.mood }));
+      // #ЗАЧЕМ: Использование неблокирующего добавления документа.
+      addDocumentNonBlocking(collection(db, 'routes'), {
+          userId: user.uid,
+          name,
+          items,
+          createdAt: serverTimestamp()
+      });
+      toast({ title: "Route Saving...", description: `"${name}" will be added to Cloud.` });
   };
 
   const loadRoute = (saved: SavedRoute) => {
@@ -178,10 +178,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const deleteSavedRoute = async (id: string) => {
-      try {
-          await deleteDoc(doc(db, 'routes', id));
-          toast({ title: "Route Deleted" });
-      } catch (e) { toast({ variant: "destructive", title: "Delete Failed" }); }
+      // #ЗАЧЕМ: Использование неблокирующего удаления документа.
+      deleteDocumentNonBlocking(doc(db, 'routes', id));
+      toast({ title: "Deleting Route..." });
   };
 
   useEffect(() => { initialize(); }, [initialize]);

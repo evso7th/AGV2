@@ -15,19 +15,12 @@
     },
     "HeritageAxiom": {
       "title": "HeritageAxiom",
-      "description": "A musical fragment (lick) from the digitized human heritage. Roles can be specific (e.g., 'accomp piano') for multi-channel reconstruction.",
+      "description": "A musical fragment (lick) from the digitized human heritage.",
       "type": "object",
       "properties": {
-        "phrase": { "type": "array", "items": { "type": "number" }, "description": "Compressed MIDI data [t, d, deg, tech]" },
-        "role": { "type": "string", "description": "Role of the fragment: melody, bass, drums, or 'accomp [instrument_name]'" },
-        "preferredInstrument": { "type": "string", "description": "Override instrument name (e.g., 'guitar', 'telecaster', 'blackAcoustic')" },
-        "compositionId": { "type": "string", "description": "Original track name" },
-        "barOffset": { "type": "number", "description": "Offset in bars from start of original track" },
-        "bars": { "type": "number", "description": "Total duration in bars" },
-        "noteCount": { "type": "number", "description": "Number of notes in the phrase" },
-        "genre": { "type": "array", "items": { "type": "string" } },
-        "mood": { "type": "array", "items": { "type": "string" } },
-        "commonMood": { "type": "array", "items": { "type": "string" } },
+        "phrase": { "type": "array", "items": { "type": "number" } },
+        "role": { "type": "string" },
+        "compositionId": { "type": "string" },
         "vector": {
           "type": "object",
           "properties": {
@@ -37,42 +30,13 @@
             "h": { "type": "number" }
           }
         },
-        "narrative": { "type": "string" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "ignored": { "type": "boolean", "description": "Flag to exclude this axiom from generation." },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "userId": { "type": "string" }
       },
       "required": ["phrase", "role", "compositionId", "vector"]
     },
-    "ProjectDocument": {
-      "title": "ProjectDocument",
-      "description": "System specifications, protocols, and architectural documents stored in the cloud for AI context consistency.",
-      "type": "object",
-      "properties": {
-        "filename": { "type": "string" },
-        "content": { "type": "string" },
-        "category": { "type": "string", "enum": ["protocol", "spec", "backlog", "contract"] },
-        "version": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["filename", "content"]
-    },
-    "Masterpiece": {
-      "title": "Masterpiece",
-      "description": "A saved high-resonance musical configuration.",
-      "type": "object",
-      "properties": {
-        "seed": { "type": "number" },
-        "mood": { "type": "string" },
-        "genre": { "type": "string" },
-        "density": { "type": "number" },
-        "bpm": { "type": "number" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      }
-    },
     "SavedRoute": {
       "title": "SavedRoute",
-      "description": "A named sequence of musical scenes for playback.",
+      "description": "A named sequence of musical scenes.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
@@ -93,28 +57,20 @@
     }
   },
   "auth": {
-    "providers": ["anonymous", "password"]
+    "providers": ["anonymous"]
   },
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/User" },
-      "description": "User profiles and settings."
+      "description": "User profiles."
     },
     "/heritage_axioms/{axiomId}": {
       "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
-      "description": "Global shared library of musical fragments."
-    },
-    "/project_documents/{docId}": {
-      "schema": { "$ref": "#/backend/entities/ProjectDocument" },
-      "description": "System manifest and knowledge base."
-    },
-    "/masterpieces/{masterpieceId}": {
-      "schema": { "$ref": "#/backend/entities/Masterpiece" },
-      "description": "Saved musical snapshots with high resonance."
+      "description": "Shared musical fragments."
     },
     "/routes/{routeId}": {
       "schema": { "$ref": "#/backend/entities/SavedRoute" },
-      "description": "User-defined musical routes."
+      "description": "User created routes."
     }
   }
 }

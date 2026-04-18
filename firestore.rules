@@ -38,11 +38,11 @@ service cloud.firestore {
 
     // --- Saved Routes ---
     match /routes/{routeId} {
-      // #ЗАЧЕМ: Разрешение на чтение конкретного документа и листинг с фильтром.
-      allow get: if isSignedIn();
-      allow list: if isSignedIn() && request.auth.uid == resource.data.userId;
-      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId;
-      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
+      // #ЗАЧЕМ: Строгое ограничение доступа по userId владельца.
+      // #ЧТО: allow read охватывает get и list.
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }
