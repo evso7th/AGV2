@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V39.4 — "Resilient Pause Protocol".
- * #ЗАЧЕМ: Устранение нежелательной смены треков при выходе из паузы.
- * #ЧТО: ПЛАН №1098 — Удален форсированный fetch при каждом нажатии Play.
+ * @fileOverview Audio Engine Context V39.5 — "Dynamic Timbre Balancing".
+ * #ЗАЧЕМ: Реализация автоматического сведения (ПЛАН №1165).
+ * #ЧТО: Громкость мелодии теперь зависит от плотности выбранного инструмента.
  */
 'use client';
 
@@ -441,6 +441,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
+                    // #ЗАЧЕМ: ПЛАН №1165. Динамическая балансировка громкости мелодии на основе типа инструмента.
+                    const melodyInst = payload.instrumentHints?.melody;
+                    if (melodyInst && audioContextRef.current && gainNodesRef.current.melody) {
+                        const isHeavy = melodyInst.toLowerCase().includes('organ') || 
+                                        melodyInst === 'guitar_shineOn' || 
+                                        melodyInst === 'guitar_muffLead';
+                        const modifier = isHeavy ? 0.5 : 1.0;
+                        
+                        const baseVol = settingsRef.current?.instrumentSettings.melody.volume ?? 0.5;
+                        const balancedVol = baseVol * VOICE_BALANCE.melody * modifier;
+                        gainNodesRef.current.melody.gain.setTargetAtTime(balancedVol, audioContextRef.current.currentTime, 0.1);
+                    }
+
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                     if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
@@ -529,8 +542,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (!context || !workerRef.current) return;
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
-                // #ЗАЧЕМ: ПЛАН №1098. Удален синхронный fetch. Данные уже в воркере по подписке.
-                // Это предотвращает лишние пересбросы состояния при нажатии Play.
                 setIsPlayingState(true);
                 masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05);
                 stopAllSounds(); 
