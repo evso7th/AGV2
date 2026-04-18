@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V45.0 — "Grounded Groove Protocol".
- * #ЗАЧЕМ: Исправление "молотилки" в ударных.
- * #ЧТО: ПЛАН №1160 — Увеличение шага сетки (t += 1.5/3.0) и снижение вероятности перкуссии.
+ * @fileOverview Psybient Brain V46.0 — "Panoramic Groove Protocol".
+ * #ЗАЧЕМ: Разнообразие ударных согласно Плану №1195.
+ * #ЧТО: Панорамированные томы, редкие влажные райды и атмосферные "вздохи".
  */
 
 import type {
@@ -30,12 +30,7 @@ import {
     TICK_TO_BEAT
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
-
-const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
-  epic: 'light', joyful: 'light', enthusiastic: 'light',
-  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
-  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
-};
+import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 class SeededRNG {
   private state: number;
@@ -181,7 +176,7 @@ export class TranceBrain {
                     });
 
                     const baseBars = selected.bars || 4;
-                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
@@ -238,6 +233,11 @@ export class TranceBrain {
                 events.push(...this.renderNeuroDrums(epoch, tension));
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
+            
+            // #ЗАЧЕМ: Добавление панорамированных филлов на границах фраз.
+            if (epoch % 4 === 3 && tension > 0.4) {
+                events.push(...this.renderNeuroFills(epoch, tension));
+            }
         }
 
         // 2. BASS
@@ -335,12 +335,37 @@ export class TranceBrain {
             events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         
-        // #ЗАЧЕМ: Увеличение шага сетки хэтов. Больше никакого зуда 16-ми долями.
-        // #ЧТО: t += 3.0 (четверти) при низком напряжении, t += 1.5 (восьмые) при высоком.
         const hhStep = tension > 0.7 ? 1.5 : 3.0;
         for (let t = 0; t < TICKS_PER_BAR; t += hhStep) {
             events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         }
+
+        // #ЗАЧЕМ: Редкий Wettest Ride для воздуха.
+        if (this.rng.chance(15)) {
+            events.push({
+                type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.0, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.7
+            });
+        }
+
+        return events;
+    }
+
+    /**
+     * #ЗАЧЕМ: Панорамированные филлы томами.
+     */
+    private renderNeuroFills(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+        const fillTicks = [9, 10, 11];
+        
+        fillTicks.forEach((t, i) => {
+            const pan = -0.8 + (i * 0.8); // Плавная панорама слева направо
+            events.push({
+                type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
+                weight: 0.7 + (tension * 0.3), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
+            });
+        });
+
         return events;
     }
 
@@ -369,17 +394,16 @@ export class TranceBrain {
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
 
-        // #ЗАЧЕМ: Усмирение перкуссии. Ритм стал разреженным и осмысленным.
-        // #ЧТО: Шаг сетки увеличен до 3.0 (четверти). Снижена вероятность попадания.
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
             if (this.rng.chance(15 + tension * 5)) {
+                // #ЗАЧЕМ: Усиленная панорама перкуссии.
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
                     weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
             
-            if (this.rng.chance(3)) {
+            if (this.rng.chance(5)) {
                 events.push({
                     type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 2.5, 
                     weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.6) - 0.8
@@ -392,7 +416,6 @@ export class TranceBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote - 12;
-        // Psybient Rolling: обычно 8-е доли (шаг 1.5)
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             events.push({
                 type: 'bass', note: root, time: (t + 0.1) * TICK_TO_BEAT, 
@@ -504,9 +527,17 @@ export class TranceBrain {
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
         }
-        if (this.rng.chance(20)) {
-            const useVoice = this.rng.chance(30);
-            events.push({ type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: (this.rng.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre, rules: useVoice ? { categories: [{ name: 'voice', weight: 1.0 }] } : undefined } });
+        
+        // #ЗАЧЕМ: Атмосферные "вздохи" через систему SFX.
+        // #ЧТО: Повышенная вероятность при низком напряжении (дыхание системы).
+        const breathChance = tension < 0.3 ? 35 : 15;
+        if (this.rng.chance(breathChance)) {
+            events.push({ 
+                type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
+                weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
+                pan: (this.rng.next() * 1.6) - 0.8, 
+                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } } 
+            });
         }
         return events;
     }
