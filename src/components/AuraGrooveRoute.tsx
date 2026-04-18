@@ -1,16 +1,17 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.1 — "The Navigator".
- * #ЧТО: ПЛАН №1215 — Простой интерфейс с маршрутами и вертикальными колесами.
- * #ОБНОВЛЕНО: Исправлен импорт Label.
+ * #ЗАЧЕМ: UI AuraGroove V4.5 — "The Sovereign Navigator".
+ * #ЧТО: План №1225 — Бесконечные колеса, модальный микшер, управление таймером и сортировка маршрута.
  */
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
     Plus, X, Shuffle, Repeat, Music, Pause, Play, Settings2, 
-    ChevronUp, ChevronDown, Activity, Timer, ThumbsUp, Radio, TowerControl
+    ChevronUp, ChevronDown, Activity, Timer, ThumbsUp, Radio, TowerControl,
+    Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2, Speaker
 } from 'lucide-react';
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -61,38 +62,56 @@ function VerticalSpinner({
     onChange: (id: string) => void 
 }) {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const itemHeight = 36; // Меньшая высота для плавности
+    
+    // Бесконечный список (5 повторений)
+    const infiniteItems = React.useMemo(() => [...items, ...items, ...items, ...items, ...items], [items]);
+    const middleOffset = items.length * 2 * itemHeight;
 
-    const handleScroll = () => {
+    useEffect(() => {
+        if (scrollRef.current) {
+            const idx = items.findIndex(i => i.id === value);
+            scrollRef.current.scrollTop = middleOffset + (idx * itemHeight);
+        }
+    }, []);
+
+    const handleScroll = useCallback(() => {
         if (!scrollRef.current) return;
         const container = scrollRef.current;
-        const itemHeight = 40; 
         const scrollTop = container.scrollTop;
-        const index = Math.round(scrollTop / itemHeight);
-        const selected = items[index % items.length];
+        
+        // Loop logic
+        if (scrollTop < itemHeight * items.length) {
+            container.scrollTop = scrollTop + (itemHeight * items.length * 2);
+        } else if (scrollTop > itemHeight * items.length * 3) {
+            container.scrollTop = scrollTop - (itemHeight * items.length * 2);
+        }
+
+        const adjustedTop = container.scrollTop - (itemHeight * 1.5); // Offset for center
+        const index = Math.round(container.scrollTop / itemHeight);
+        const selected = infiniteItems[index % infiniteItems.length];
+        
         if (selected && selected.id !== value) {
             onChange(selected.id);
         }
-    };
+    }, [value, items, infiniteItems, onChange]);
 
     return (
-        <div className="relative h-40 w-full overflow-hidden group">
-            {/* Overlay gradient mask */}
-            <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-card via-transparent to-card opacity-90" />
-            <div className="absolute top-[40px] left-0 right-0 h-[40px] border-y border-primary/20 z-0 pointer-events-none" />
+        <div className="relative h-44 w-full overflow-hidden group bg-background/20">
+            <div className="absolute inset-0 z-10 pointer-events-none bg-gradient-to-b from-card via-transparent to-card" />
             
             <div 
                 ref={scrollRef}
                 onScroll={handleScroll}
-                className="h-full overflow-y-auto scroll-smooth snap-y snap-mandatory no-scrollbar py-[40px]"
+                className="h-full overflow-y-auto scroll-smooth snap-y snap-mandatory no-scrollbar py-[68px]"
                 style={{ scrollbarWidth: 'none' }}
             >
-                {/* Loop items for infinite feel */}
-                {[...items, ...items, ...items].map((item, idx) => (
+                {infiniteItems.map((item, idx) => (
                     <div 
                         key={`${item.id}-${idx}`}
                         className={cn(
-                            "h-10 flex items-center justify-center snap-center transition-all duration-300",
-                            item.id === value ? "text-primary font-black text-sm scale-110" : "text-muted-foreground/40 text-xs"
+                            "h-9 flex items-center justify-center snap-center transition-all duration-300",
+                            item.id === value ? "text-primary font-black text-xs scale-110" : "text-muted-foreground/30 text-[10px]"
                         )}
                     >
                         {item.label.toUpperCase()}
@@ -107,6 +126,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
     const [selectedMood, setSelectedMood] = useState<any>('melancholic');
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
+    const [isStudioOpen, setIsStudioOpen] = useState(false);
+    const [isSystemsOpen, setIsSystemsOpen] = useState(false);
 
     const handleAdd = () => {
         props.addToRoute(selectedGenre, selectedMood);
@@ -114,38 +135,55 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     return (
         <div className="w-full h-full flex flex-col bg-card overflow-hidden">
-            {/* Header: Core Status */}
-            <header className="p-4 border-b border-primary/10 flex items-center justify-between bg-background/20">
-                <div className="flex items-center gap-3">
-                    <TowerControl className={cn("h-6 w-6", props.isPlaying ? "text-primary animate-pulse" : "text-muted-foreground")} />
-                    <div>
-                        <h2 className="text-xs font-black uppercase tracking-tighter">Navigator Mode</h2>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase opacity-70">
-                            {props.isPlaying ? `Playing: ${props.genre} / ${props.mood}` : 'Ready for flight'}
-                        </p>
+            {/* Header (Expert Style Mirror) */}
+            <header className="p-3 border-b border-primary/10 bg-background/40">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-row items-center gap-2">
+                        <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
+                        <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => window.location.href = '/timbre-lab'}><Settings2 className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => props.setShowAdvancedUI(true)}><Activity className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={props.handleGoHome}><Home className="h-5 w-5" /></Button>
                     </div>
                 </div>
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => props.setShowAdvancedUI(true)} className="h-8 w-8">
-                        <Settings2 className="h-4 w-4" />
+                
+                {/* Expert-style Control Row */}
+                <div className="flex items-center justify-center gap-2">
+                    <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="w-[35%] h-10 font-black uppercase tracking-widest">
+                        {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
+                        {props.isPlaying ? "Pause" : "Play"}
+                    </Button>
+                    <Button variant={props.isBroadcastActive ? "destructive" : "outline"} onClick={props.handleToggleBroadcast} className="h-10 w-10 p-0">
+                        <TowerControl className={cn("h-5 w-5", props.isBroadcastActive && "animate-pulse text-primary")} />
+                    </Button>
+                    <Button variant={props.isRecording ? "destructive" : "outline"} onClick={props.handleToggleRecording} className="h-10 w-10 p-0">
+                        <Radio className={cn("h-5 w-5", props.isRecording && "animate-pulse")} />
+                    </Button>
+                    <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} className="h-10 w-10 p-0">
+                        <ThumbsUp className="h-5 w-5 text-primary" />
+                    </Button>
+                    <Button variant="outline" onClick={props.handleRegenerate} className="h-10 w-10 p-0">
+                        <RefreshCw className={cn("h-5 w-5", props.isRegenerating && "animate-spin")} />
                     </Button>
                 </div>
             </header>
 
             {/* Wheels Section */}
-            <div className="grid grid-cols-2 gap-px bg-primary/10 border-b border-primary/10">
+            <div className="grid grid-cols-2 gap-px bg-primary/10 border-b border-primary/10 shrink-0">
                 <div className="bg-card flex flex-col">
-                    <Label className="text-[9px] font-black uppercase text-center py-1 opacity-50 tracking-widest">Select Genre</Label>
+                    <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
                     <VerticalSpinner items={GENRES} value={selectedGenre} onChange={setSelectedGenre} />
                 </div>
                 <div className="bg-card flex flex-col">
-                    <Label className="text-[9px] font-black uppercase text-center py-1 opacity-50 tracking-widest">Select Mood</Label>
+                    <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Mood</Label>
                     <VerticalSpinner items={MOODS} value={selectedMood} onChange={setSelectedMood} />
                 </div>
             </div>
 
             {/* Interaction Bar */}
-            <div className="p-2 flex gap-2 bg-muted/20">
+            <div className="p-2 flex gap-2 bg-muted/20 shrink-0">
                 <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-9 shadow-lg">
                     <Plus className="h-3.5 w-3.5 mr-2" /> Add to Route
                 </Button>
@@ -156,14 +194,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     className={cn("h-9 w-9", props.isShuffle && "bg-primary/10 border-primary/40 text-primary")}
                 >
                     <Shuffle className="h-4 w-4" />
-                </Button>
-                <Button 
-                    variant="outline" 
-                    size="icon" 
-                    onClick={() => props.setRepeat(!props.isRepeat)}
-                    className={cn("h-9 w-9", props.isRepeat && "bg-primary/10 border-primary/40 text-primary")}
-                >
-                    <Repeat className="h-4 w-4" />
                 </Button>
             </div>
 
@@ -190,15 +220,18 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     )}
                                 >
                                     <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="w-4 text-[10px] font-mono opacity-30 font-black">{idx + 1}</div>
+                                        <div className="flex flex-col gap-0.5">
+                                            <Button variant="ghost" size="icon" className="h-4 w-4 p-0 text-muted-foreground hover:text-primary" onClick={() => props.moveRouteItem(item.id, 'up')} disabled={idx === 0}><ArrowUp className="h-3 w-3" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-4 w-4 p-0 text-muted-foreground hover:text-primary" onClick={() => props.moveRouteItem(item.id, 'down')} disabled={idx === props.route.length - 1}><ArrowDown className="h-3 w-3" /></Button>
+                                        </div>
                                         <div className="truncate">
                                             <div className="text-[11px] font-black uppercase truncate">{item.genre} / {item.mood}</div>
-                                            <div className="text-[8px] font-bold opacity-40 uppercase">Ready for restauration</div>
+                                            <div className="text-[8px] font-bold opacity-40 uppercase">Ready for flight</div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => props.removeFromRoute(item.id)}>
-                                            <X className="h-3.5 w-3.5" />
+                                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => props.removeFromRoute(item.id)}>
+                                            <X className="h-4 w-4" />
                                         </Button>
                                     </div>
                                     {idx === props.activeRouteIndex && props.isPlaying && (
@@ -211,49 +244,56 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </ScrollArea>
             </div>
 
-            {/* Compact Mixer */}
-            <div className="p-3 bg-muted/10 border-t border-primary/10">
-                <div className="flex justify-between items-end h-28 gap-1.5">
-                    {MIXER_CHANNELS.map(ch => {
-                        let vol = 0.5;
-                        if (ch.key === 'master') vol = props.calibrationGains.master;
-                        else if (ch.key === 'drums') vol = props.drumSettings.volume;
-                        else if (ch.key === 'sparkles' || ch.key === 'sfx') vol = (props.textureSettings as any)[ch.key].volume;
-                        else vol = (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5;
-
-                        return (
-                            <div key={ch.key} className="flex flex-col items-center gap-1 flex-1 h-full group">
-                                <Slider 
-                                    orientation="vertical"
-                                    value={[vol]}
-                                    max={ch.key === 'master' ? 1.5 : 1.0}
-                                    step={0.01}
-                                    onValueChange={(v) => {
-                                        if(ch.key === 'master') props.handleCalibrationChange('master', v[0]);
-                                        else props.handleVolumeChange(ch.key as any, v[0]);
-                                    }}
-                                    className="h-full"
-                                />
-                                <span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary group-hover:opacity-100 transition-all">{ch.label}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Main Controls */}
-            <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between gap-4">
+            {/* Main Controls (Systems & Studio) */}
+            <footer className="p-4 bg-background border-t border-primary/10 flex items-center justify-between gap-4 shrink-0">
                 <div className="flex gap-2">
-                    <Button variant="outline" size="icon" onClick={() => props.handleToggleBroadcast()} className={cn("h-10 w-10", props.isBroadcastActive && "text-primary border-primary/40")}>
-                        <Radio className="h-5 w-5" />
-                    </Button>
+                    <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="icon" className="h-10 w-10">
+                                <SlidersHorizontal className="h-5 w-5" />
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xl bg-card border-primary/20">
+                            <DialogHeader>
+                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle>
+                            </DialogHeader>
+                            <div className="flex justify-between items-end h-48 gap-2 py-4">
+                                {MIXER_CHANNELS.map(ch => {
+                                    let vol = 0.5;
+                                    if (ch.key === 'master') vol = props.calibrationGains.master;
+                                    else if (ch.key === 'drums') vol = props.drumSettings.volume;
+                                    else if (ch.key === 'sparkles' || ch.key === 'sfx') vol = (props.textureSettings as any)[ch.key].volume;
+                                    else vol = (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5;
+
+                                    return (
+                                        <div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group">
+                                            <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span>
+                                            <Slider 
+                                                orientation="vertical"
+                                                value={[vol]}
+                                                max={ch.key === 'master' ? 1.5 : 1.0}
+                                                step={0.01}
+                                                onValueChange={(v) => {
+                                                    if(ch.key === 'master') props.handleCalibrationChange('master', v[0]);
+                                                    else props.handleVolumeChange(ch.key as any, v[0]);
+                                                }}
+                                                className="h-full"
+                                            />
+                                            <span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary transition-all">{ch.label}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </DialogContent>
+                    </Dialog>
+
                     <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                         <DialogTrigger asChild>
                             <Button variant="outline" size="icon" className="h-10 w-10">
                                 <Activity className={cn("h-5 w-5", props.isPlaying && "text-primary animate-pulse")} />
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-xl bg-card border-primary/20">
+                        <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
                             <DialogHeader>
                                 <DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle>
                             </DialogHeader>
@@ -262,20 +302,41 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </Dialog>
                 </div>
 
-                <Button 
-                    onClick={props.handlePlayPause} 
-                    disabled={props.isInitializing}
-                    className="flex-grow h-12 text-sm font-black uppercase tracking-[0.2em] shadow-2xl active:scale-95 transition-transform"
-                >
-                    {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Play className="mr-2 h-5 w-5" />}
-                    {props.isPlaying ? "PAUSE MISSION" : "START VOYAGE"}
-                </Button>
-
-                <div className="flex flex-col items-end gap-1">
-                    <Button variant="ghost" size="icon" className="h-10 w-10" onClick={props.handleToggleTimer}>
-                        <Timer className={cn("h-5 w-5", props.timerSettings.isActive && "text-destructive animate-pulse")} />
-                    </Button>
-                    {props.timerSettings.isActive && <span className="text-[8px] font-mono font-black">{formatTime(props.timerSettings.timeLeft)}</span>}
+                <div className="flex items-center gap-3">
+                    <Dialog open={isSystemsOpen} onOpenChange={setIsSystemsOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className={cn("h-10 gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
+                                <Timer className="h-4 w-4" /> 
+                                {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md bg-card border-primary/20">
+                            <DialogHeader>
+                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Timer className="h-5 w-5"/> Sleep Station</DialogTitle>
+                            </DialogHeader>
+                            <div className="space-y-6 py-6 px-2">
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <Label className="text-xs font-black uppercase opacity-50">Minutes</Label>
+                                        <span className="text-xl font-black text-primary font-mono">{props.timerSettings.duration / 60}m</span>
+                                    </div>
+                                    <Slider 
+                                        value={[props.timerSettings.duration / 60]} 
+                                        min={0} max={30} step={5} 
+                                        onValueChange={(v) => props.handleTimerDurationChange(v[0])}
+                                        disabled={props.timerSettings.isActive}
+                                    />
+                                </div>
+                                <Button 
+                                    onClick={props.handleToggleTimer} 
+                                    className="w-full h-12 font-black uppercase tracking-widest"
+                                    variant={props.timerSettings.isActive ? 'destructive' : 'default'}
+                                >
+                                    {props.timerSettings.isActive ? "ABORT TIMER" : "ACTIVATE"}
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </footer>
         </div>
