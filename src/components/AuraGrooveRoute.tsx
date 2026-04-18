@@ -1,7 +1,8 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.0 — "The Navigator".
+ * #ЗАЧЕМ: UI AuraGroove V4.1 — "The Navigator".
  * #ЧТО: ПЛАН №1215 — Простой интерфейс с маршрутами и вертикальными колесами.
+ * #ОБНОВЛЕНО: Исправлен импорт Label.
  */
 'use client';
 

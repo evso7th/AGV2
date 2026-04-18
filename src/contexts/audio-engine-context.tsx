@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.0 — "Sonic Vision Integration".
- * #ЗАЧЕМ: Добавление спектроанализатора для визуального контроля частот.
+ * @fileOverview Audio Engine Context V40.1 — "Context Integrity Fix".
+ * #ЗАЧЕМ: Исправление ошибки "getWorker is not a function".
+ * #ЧТО: ПЛАН №1220 — Явный экспорт getWorker через контекст.
  */
 'use client';
 
@@ -94,7 +95,7 @@ interface AudioEngineContextType {
   startPreview: (preset: any, type: string, loop: boolean) => Promise<void>;
   stopPreview: () => void;
   updatePreviewPreset: (preset: any) => void;
-  togglePreviewLoop: () => void;
+  togglePreview_Loop: () => void;
   analyser: AnalyserNode | null;
 }
 
@@ -147,7 +148,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
   
-  // #ЗАЧЕМ: Спектроанализатор.
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
@@ -394,9 +394,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
             
-            // #ЗАЧЕМ: Инициализация анализатора.
             analyserNodeRef.current = context.createAnalyser();
-            analyserNodeRef.current.fftSize = 512; // 256 bars
+            analyserNodeRef.current.fftSize = 512; 
             
             samplersMasterGainRef.current.connect(masterGainNodeRef.current);
             masterGainNodeRef.current.connect(analyserNodeRef.current);
@@ -580,6 +579,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         },
         refreshCloudAxioms,
+        getWorker: () => workerRef.current,
         resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
         setVolume: setVolumeCallback, 
         setInstrument: async (part, name) => {
