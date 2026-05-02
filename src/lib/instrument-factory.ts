@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Центральная фабрика инструментов V6.0 — "Velvet Sound Standard".
  * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов и органов.
@@ -270,7 +269,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
-    const sat = ctx.createWaveShaper(); sat.curve = makeSoftSaturation(0.15); // Теплота
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.15); // Теплота
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
@@ -279,7 +278,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const delay = makeDelay(ctx, currentPreset.delay || {});
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.25;
 
-    comp.connect(sat).connect(filt);
+    comp.connect(satNode).connect(filt);
     
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
@@ -299,7 +298,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     chorus.output.connect(delay.input);
     delay.output.connect(expressionGain).connect(instrumentGain).connect(master);
     delay.output.connect(revSend).connect(reverb);
-    staticNodes.push(comp, sat, filt, filt2, chorus.input, delay.input, revSend);
+    staticNodes.push(comp, satNode, filt, filt2, chorus.input, delay.input, revSend);
 
     return {
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
@@ -352,6 +351,11 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             rebuild(p); 
             chorus.setMix(p.chorus?.on ? (p.chorus?.mix ?? 0.3) : 0); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.25; 
+        },
+        setParam: (key: string, value: any) => {
+            if (key === 'drive' && isFinite(value)) {
+                satNode.curve = makeSoftSaturation(value);
+            }
         }
     };
 };
@@ -360,7 +364,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
-    const sat = ctx.createWaveShaper(); sat.curve = makeSoftSaturation(0.2); // Теплый "клиппинг" Hammond
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.1); // #ЗАЧЕМ: ПЛАН №1551. Уменьшенная сатурация для органов (0.1).
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
     const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
     
@@ -370,13 +374,14 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const revSend = ctx.createGain(); revSend.gain.value = isFinite(currentPreset.reverbMix) ? currentPreset.reverbMix : 0.15;
     const activeVoiceRecords = new Set<any>();
 
-    organSum.connect(hpf).connect(sat).connect(filt).connect(leslie.input);
+    organSum.connect(hpf).connect(satNode).connect(filt).connect(leslie.input);
     leslie.output.connect(expressionGain).connect(instrumentGain).connect(master);
     leslie.output.connect(revSend).connect(reverb);
 
     const getWave = (drawbars: number[]) => {
         const real = new Float32Array(17), imag = new Float32Array(17);
         const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
+        // #ЗАЧЕМ: ПЛАН №1540. Нормализация отключена для сохранения динамики гармоник.
         drawbars.forEach((v, i) => { if (v > 0) real[indices[i]] = v / 8; });
         return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
     };
@@ -410,12 +415,18 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
-        disconnect: () => { leslie.stop(); try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){} activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); [organSum, hpf, sat, filt, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
+        disconnect: () => { leslie.stop(); try { vibLfo.stop(); vibLfo.disconnect(); } catch(e){} activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); [organSum, hpf, satNode, filt, leslie.input, revSend].forEach(n => { try { n.disconnect(); } catch(e){} }); },
         setPreset: (p: any) => { 
             currentPreset = p; 
             wave = getWave(p.drawbars || [8,0,8,0,0,0,0,0,0]); 
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.15; 
             if (isFinite(p.lpf)) filt.frequency.setTargetAtTime(p.lpf, ctx.currentTime, 0.05); 
+        },
+        setParam: (key: string, value: any) => {
+            if (key === 'drive' && isFinite(value)) {
+                // #ЗАЧЕМ: ПЛАН №1551. Органы всегда имеют на 30% меньше сатурации для прозрачности.
+                satNode.curve = makeSoftSaturation(value * 0.7);
+            }
         }
     };
 };
@@ -424,8 +435,9 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     let currentPreset = { ...preset };
     const bassSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 35;
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05);
     const activeVoiceRecords = new Set<any>();
-    bassSum.connect(hpf).connect(expressionGain).connect(instrumentGain).connect(master);
+    bassSum.connect(hpf).connect(satNode).connect(expressionGain).connect(instrumentGain).connect(master);
     return {
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
             if (!isFinite(midi)) return;
@@ -452,7 +464,12 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
         disconnect: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} },
-        setPreset: (p: any) => { currentPreset = p; }
+        setPreset: (p: any) => { currentPreset = p; },
+        setParam: (key: string, value: any) => {
+            if (key === 'drive' && isFinite(value)) {
+                satNode.curve = makeSoftSaturation(value);
+            }
+        }
     };
 };
 
@@ -491,6 +508,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const width = clamp(w, 0.1, 0.9);
         if (cachedWave && width === lastWidth) return cachedWave;
         const real = new Float32Array(32), imag = new Float32Array(32);
+        // #ЗАЧЕМ: ПЛАН №1540. Нормализация отключена для сохранения характера импульса.
         for (let n = 1; n < 32; n++) { real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width); }
         cachedWave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
         lastWidth = width;
