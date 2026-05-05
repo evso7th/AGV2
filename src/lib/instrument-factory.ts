@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.3 — "Pure Sound Standard".
- * #ЗАЧЕМ: Полное отключение сатурации для органов и гитар по запросу пользователя.
- * #ЧТО: ПЛАН №1600 — Сатурация во всех движках установлена в 0.
+ * @fileOverview Центральная фабрика инструментов V6.5 — "Crystal Clarity Standard".
+ * #ЗАЧЕМ: Полное устранение "песка" и цифровых искажений в органах.
+ * #ЧТО: ПЛАН №1601 — Внедрена нормализация волн и расширен Headroom.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -76,7 +76,7 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     } catch { return null; }
 };
 
-// ───── DISTORTION CURVES (WARMTH) ─────
+// ───── DISTORTION CURVES ─────
 
 const makeSoftSaturation = (amount = 0.2) => {
     const n = 8192;
@@ -84,7 +84,6 @@ const makeSoftSaturation = (amount = 0.2) => {
     const k = amount * 2;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Мягкая нелинейность для "аналогового" звука. При amount=0 дает чистый x (линейно).
         c[i] = (1 + k) * x / (1 + k * Math.abs(x));
     }
     return c;
@@ -94,16 +93,6 @@ const makeLinearCurve = (n = 8192) => {
     const c = new Float32Array(n);
     for (let i = 0; i < n; i++) {
         c[i] = (i / (n - 1)) * 2 - 1;
-    }
-    return c;
-};
-
-const makeSoftClip = (amount = 0.5, n = 8192) => {
-    const c = new Float32Array(n);
-    const k = clamp(amount, 0, 1) * 10 + 1;
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(k * x) / Math.tanh(k);
     }
     return c;
 };
@@ -248,7 +237,6 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
-    // Мягкая экспоненциальная атака вместо линейной
     gain.gain.exponentialRampToValueAtTime(velocity, now + attack);
     gain.gain.setTargetAtTime(sustain, now + attack, Math.max(decay / 3, 0.001));
     return { node: gain, startTime: now };
@@ -259,7 +247,6 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
     
     voiceState.node.gain.cancelScheduledValues(now);
-    // #ЗАЧЕМ: Aria Protocol - длинный, вокальный хвост.
     voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2.5, 0.001));
     return now + (release * 6.0); 
 };
@@ -270,8 +257,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
-    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0); 
+    // #ЗАЧЕМ: Полный байпас сатурации.
+    const satNode = ctx.createWaveShaper(); satNode.curve = null; 
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
@@ -284,16 +271,12 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     
     const rebuild = (p: any) => {
         try { filt.disconnect(); filt2.disconnect(); } catch(e){}
-        const cutoff = p.lpf?.cutoff ?? 1000; // GLOBAL SOFTENING
+        const cutoff = p.lpf?.cutoff ?? 1000;
         filt.frequency.value = cutoff;
         filt2.frequency.value = cutoff;
         filt.Q.value = p.lpf?.q ?? 1.0;
         filt2.Q.value = p.lpf?.q ?? 1.0;
-        
-        if (p.lpf?.mode === '24dB' || true) { // Навязываем 24дБ для мягкости
-            filt.connect(filt2); filt2.connect(chorus.input); 
-        }
-        else { filt.connect(chorus.input); }
+        filt.connect(filt2); filt2.connect(chorus.input); 
     };
     rebuild(currentPreset);
     
@@ -329,12 +312,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const safeDuration = duration && isFinite(duration) ? duration : 1.5;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
-            const totalLifeInSec = Math.max(0, when - ctx.currentTime) + safeDuration + (adsr.r * 10) + 5; 
-
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
                 deepCleanup(record);
-            }, totalLifeInSec * 1000);
+            }, (safeDuration + adsr.r * 10) * 1000);
 
             nodes.forEach(n => { if(n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
         },
@@ -355,9 +336,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             revSend.gain.value = isFinite(p.reverbMix) ? p.reverbMix : 0.25; 
         },
         setParam: (key: string, value: any) => {
-            if (key === 'drive' && isFinite(value)) {
-                // #ЗАЧЕМ: ПЛАН №1600. Сатурация заблокирована на 0.
-                satNode.curve = makeSoftSaturation(0);
+            if (key === 'drive') {
+                satNode.curve = null;
             }
         }
     };
@@ -365,10 +345,15 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
-    const organSum = ctx.createGain();
-    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
-    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0); 
+    
+    // #ЗАЧЕМ: Увеличение Headroom для предотвращения клиппинга.
+    const organSum = ctx.createGain(); organSum.gain.value = 0.35; 
+    
+    const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 60; 
+    
+    // #ЗАЧЕМ: Принудительный байпас сатурации.
+    const satNode = ctx.createWaveShaper(); satNode.curve = null; 
+    
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
     const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
     
@@ -385,9 +370,10 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const getWave = (drawbars: number[]) => {
         const real = new Float32Array(17), imag = new Float32Array(17);
         const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
-        // #ЗАЧЕМ: ПЛАН №1540. Нормализация отключена для сохранения динамики гармоник.
         drawbars.forEach((v, i) => { if (v > 0) real[indices[i]] = v / 8; });
-        return ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        // #ЗАЧЕМ: disableNormalization: false гарантирует, что амплитуда волны не превысит 1.0.
+        // Это убирает "песок" на уровне источника.
+        return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
     };
     let wave = getWave(currentPreset.drawbars || [8,0,8,0,0,0,0,0,0]);
 
@@ -401,7 +387,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
             
             const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(f / 2, when);
-            const subG = ctx.createGain(); subG.gain.value = 0.45; // Усиленный низ
+            const subG = ctx.createGain(); subG.gain.value = 0.25; // Снижена громкость суб-низа
             sub.connect(subG).connect(voiceGain); sub.start(when); 
             
             const nodes: AudioNode[] = [voiceGain, osc, sub, subG];
@@ -427,9 +413,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             if (isFinite(p.lpf)) filt.frequency.setTargetAtTime(p.lpf, ctx.currentTime, 0.05); 
         },
         setParam: (key: string, value: any) => {
-            if (key === 'drive' && isFinite(value)) {
-                // #ЗАЧЕМ: ПЛАН №1600. Сатурация заблокирована на 0.
-                satNode.curve = makeSoftSaturation(0);
+            if (key === 'drive') {
+                satNode.curve = null;
             }
         }
     };
@@ -439,7 +424,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     let currentPreset = { ...preset };
     const bassSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 35;
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0);
+    const satNode = ctx.createWaveShaper(); satNode.curve = null;
     const activeVoiceRecords = new Set<any>();
     bassSum.connect(hpf).connect(satNode).connect(expressionGain).connect(instrumentGain).connect(master);
     return {
@@ -470,8 +455,8 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         disconnect: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} },
         setPreset: (p: any) => { currentPreset = p; },
         setParam: (key: string, value: any) => {
-            if (key === 'drive' && isFinite(value)) {
-                satNode.curve = makeSoftSaturation(0);
+            if (key === 'drive') {
+                satNode.curve = null;
             }
         }
     };
@@ -482,13 +467,11 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const guitarIn = ctx.createGain();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
-    
-    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0);
+    const satNode = ctx.createWaveShaper(); satNode.curve = null;
 
     const updateShaperCurve = (amount: number, type?: string) => {
         if (amount < 0.05) {
-            shaper.curve = makeLinearCurve();
+            shaper.curve = null;
         } else {
             shaper.curve = type === 'muff' ? makeMuff(amount) : makeVintageDistortion(amount * 100);
         }
@@ -515,9 +498,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
         const width = clamp(w, 0.1, 0.9);
         if (cachedWave && width === lastWidth) return cachedWave;
         const real = new Float32Array(32), imag = new Float32Array(32);
-        // #ЗАЧЕМ: ПЛАН №1540. Нормализация отключена для сохранения характера импульса.
         for (let n = 1; n < 32; n++) { real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width); }
-        cachedWave = ctx.createPeriodicWave(real, imag, { disableNormalization: true });
+        cachedWave = ctx.createPeriodicWave(real, imag, { disableNormalization: false });
         lastWidth = width;
         return cachedWave;
     };
