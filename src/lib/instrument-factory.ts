@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Центральная фабрика инструментов V6.1 — "Velvet Sound Standard".
- * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов и органов.
- * #ЧТО: ПЛАН №1552 — Точечная калибровка сатурации органов до 0.05.
+ * @fileOverview Центральная фабрика инструментов V6.2 — "Velvet Sound Calibration".
+ * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов, органов и гитар.
+ * #ЧТО: ПЛАН №1599 — Сатурация гитар и органов приведена к единому стандарту 0.05.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -269,7 +270,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.15); // Теплота
+    // #ЗАЧЕМ: ПЛАН №1599. Сатурация синтезаторов установлена на 0.05 для мягкости.
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); 
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
@@ -364,7 +366,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); // #ЗАЧЕМ: ПЛАН №1552. Сатурация органов установлена на 0.05.
+    // #ЗАЧЕМ: ПЛАН №1551. Сатурация органов установлена на 0.05.
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); 
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
     const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
     
@@ -479,6 +482,9 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     
+    // #ЗАЧЕМ: ПЛАН №1599. Дополнительная "ламповая" сатурация для гитарного тракта.
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05);
+
     const updateShaperCurve = (amount: number, type?: string) => {
         if (amount < 0.05) {
             shaper.curve = makeLinearCurve();
@@ -497,7 +503,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     cabinetFilter.type = 'lowpass';
     cabinetFilter.frequency.value = currentPreset.post?.lpf ?? 2100;
     
-    guitarIn.connect(comp).connect(shaper).connect(phaser.input);
+    guitarIn.connect(comp).connect(shaper).connect(satNode).connect(phaser.input);
     phaser.output.connect(delay.input);
     delay.output.connect(cabinetFilter).connect(expressionGain).connect(instrumentGain).connect(master);
     cabinetFilter.connect(revSend).connect(reverb);
@@ -536,7 +542,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             osc.stop(finalTime + 0.5); 
         },
         allNotesOff: () => { activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); },
-        disconnect: () => { phaser.stop(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, phaser.input, delay.input, revSend, cabinetFilter].forEach(n => { try { n.disconnect(); } catch(e){} }); },
+        disconnect: () => { phaser.stop(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, satNode, phaser.input, delay.input, revSend, cabinetFilter].forEach(n => { try { n.disconnect(); } catch(e){} }); },
         setPreset: (p: any) => { 
             currentPreset = p; 
             updateShaperCurve(p.drive?.amount || 0, p.drive?.type);
