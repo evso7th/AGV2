@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.2 — "Velvet Sound Calibration".
- * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов, органов и гитар.
- * #ЧТО: ПЛАН №1599 — Сатурация гитар и органов приведена к единому стандарту 0.05.
+ * @fileOverview Центральная фабрика инструментов V6.3 — "Pure Sound Standard".
+ * #ЗАЧЕМ: Полное отключение сатурации для органов и гитар по запросу пользователя.
+ * #ЧТО: ПЛАН №1600 — Сатурация во всех движках установлена в 0.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -84,7 +84,7 @@ const makeSoftSaturation = (amount = 0.2) => {
     const k = amount * 2;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Мягкая нелинейность для "аналогового" звука
+        // Мягкая нелинейность для "аналогового" звука. При amount=0 дает чистый x (линейно).
         c[i] = (1 + k) * x / (1 + k * Math.abs(x));
     }
     return c;
@@ -270,8 +270,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
-    // #ЗАЧЕМ: ПЛАН №1599. Сатурация синтезаторов установлена на 0.05 для мягкости.
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); 
+    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0); 
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
@@ -356,7 +356,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         },
         setParam: (key: string, value: any) => {
             if (key === 'drive' && isFinite(value)) {
-                satNode.curve = makeSoftSaturation(value);
+                // #ЗАЧЕМ: ПЛАН №1600. Сатурация заблокирована на 0.
+                satNode.curve = makeSoftSaturation(0);
             }
         }
     };
@@ -366,8 +367,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
-    // #ЗАЧЕМ: ПЛАН №1551. Сатурация органов установлена на 0.05.
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); 
+    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0); 
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
     const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
     
@@ -427,8 +428,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         },
         setParam: (key: string, value: any) => {
             if (key === 'drive' && isFinite(value)) {
-                // #ЗАЧЕМ: ПЛАН №1551. Органы всегда имеют на 30% меньше сатурации для прозрачности.
-                satNode.curve = makeSoftSaturation(value * 0.7);
+                // #ЗАЧЕМ: ПЛАН №1600. Сатурация заблокирована на 0.
+                satNode.curve = makeSoftSaturation(0);
             }
         }
     };
@@ -438,7 +439,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
     let currentPreset = { ...preset };
     const bassSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 35;
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05);
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0);
     const activeVoiceRecords = new Set<any>();
     bassSum.connect(hpf).connect(satNode).connect(expressionGain).connect(instrumentGain).connect(master);
     return {
@@ -470,7 +471,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         setPreset: (p: any) => { currentPreset = p; },
         setParam: (key: string, value: any) => {
             if (key === 'drive' && isFinite(value)) {
-                satNode.curve = makeSoftSaturation(value);
+                satNode.curve = makeSoftSaturation(0);
             }
         }
     };
@@ -482,8 +483,8 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20;
     const shaper = ctx.createWaveShaper(); shaper.oversample = '4x';
     
-    // #ЗАЧЕМ: ПЛАН №1599. Дополнительная "ламповая" сатурация для гитарного тракта.
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05);
+    // #ЗАЧЕМ: ПЛАН №1600. Сатурация отключена (0).
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0);
 
     const updateShaperCurve = (amount: number, type?: string) => {
         if (amount < 0.05) {
