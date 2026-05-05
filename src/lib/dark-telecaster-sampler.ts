@@ -4,9 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.4 — "Transient Adjustment".
- * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
- * #ОБНОВЛЕНО (ПЛАН №1020): Длина транзиента увеличена до 22мс.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.5 — "Power Boosted".
+ * #ЧТО: ПЛАН №1598 — Системная громкость увеличена в 2 раза (4.4).
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -73,7 +72,7 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 2.2; 
+        this.preamp.gain.value = 4.4; // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 2.2.
 
         this.distortion = this.audioContext.createWaveShaper();
         this.distortion.curve = makeDistortionCurve(600); 
@@ -218,7 +217,6 @@ export class DarkTelecasterSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        // #ЗАЧЕМ: ПЛАН №1020. Длина транзиента 22мс.
         gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
         source.start(startTime);
         source.stop(startTime + 0.05);
@@ -261,9 +259,7 @@ export class DarkTelecasterSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => {
-            try { source.stop(0); } catch(e) {}
-        });
+        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
         this.activeSources.clear();
     }
 

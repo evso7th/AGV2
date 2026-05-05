@@ -36,9 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.5 — "Transient Adjustment".
- * #ЧТО: ПЛАН №901 — Длина транзиента увеличена до 18мс.
- * #ОБНОВЛЕНО (ПЛАН №1020): Длина транзиента увеличена до 22мс.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.6 — "Power Boosted".
+ * #ЧТО: ПЛАН №1598 — Системная громкость увеличена в 2 раза (0.30).
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -53,7 +52,7 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15;
+        this.preamp.gain.value = 0.30; // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 0.15.
         this.preamp.connect(this.destination);
     }
 
@@ -150,7 +149,6 @@ export class TelecasterGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №1020. Длина транзиента 22мс для бесшовного перехода.
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
             source.start(startTime);
             source.stop(startTime + 0.05);

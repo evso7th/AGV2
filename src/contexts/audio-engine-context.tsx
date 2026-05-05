@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.3 — "Mixer Integrity Fix".
- * #ЗАЧЕМ: Исправление неработающих регуляторов громкости в микшере.
- * #ЧТО: ПЛАН №1265 — Прямое управление GainNode без избыточных калибровок шин.
+ * @fileOverview Audio Engine Context V40.4 — "Telecaster Volume Boost".
+ * #ЗАЧЕМ: Системное усиление гитары Telecaster по запросу пользователя.
+ * #ЧТО: ПЛАН №1598 — Громкость увеличена в 2 раза.
  */
 'use client';
 
@@ -47,7 +47,7 @@ const VOICE_BALANCE: Record<string, number> = {
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0,
     acoustic: 0.15,
-    electric: 0.15,
+    electric: 0.30, // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 0.15.
     piano: 0.6,
     orchestral: 0.29,
     cs80: 0.1,
@@ -197,7 +197,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
-      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * gains.electric); 
+      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * gains.electric); // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 2.2.
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
       melodyManagerV2Ref.current?.setPreampGain(gains.electric); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
@@ -605,6 +605,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         },
         calibrationGains,
         startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {},
+        startRecording,
+        stopRecording,
         toggleBroadcast: () => {
             if (broadcastEngineRef.current && audioContextRef.current) {
                 const now = audioContextRef.current.currentTime;
@@ -626,8 +628,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         },
         stopAllSounds,
-        startRecording,
-        stopRecording,
         startPreview,
         stopPreview,
         updatePreviewPreset,
