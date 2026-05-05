@@ -347,7 +347,8 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     let currentPreset = { ...preset };
     
     // #ЗАЧЕМ: Увеличение Headroom для предотвращения клиппинга.
-    const organSum = ctx.createGain(); organSum.gain.value = 0.35; 
+    // #ОБНОВЛЕНО (ПЛАН №1602): Системная громкость органов уменьшена в 2 раза.
+    const organSum = ctx.createGain(); organSum.gain.value = 0.175; 
     
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 60; 
     
@@ -536,6 +537,23 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
     };
 };
 
+export interface InstrumentAPI {
+    connect: (dest?: AudioNode) => void;
+    disconnect: () => void;
+    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
+    noteOff: (midi: number, when?: number, velocity?: number, duration?: number) => void;
+    allNotesOff: () => void;
+    setPreset: (p: any) => void;
+    setParam: (k: string, v: any) => void;
+    setVolume: (level: number) => void;
+    setVolumeDb: (db: number) => void;
+    getVolume: () => number;
+    setExpression: (level: number) => void;
+    setPan: (level: number) => void;
+    preset: any;
+    type: string;
+}
+
 export async function buildMultiInstrument(ctx: AudioContext, {
     type = 'synth',
     preset = {} as any,
@@ -580,23 +598,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         setPan: (v) => { if(isFinite(v)) panner.pan.setTargetAtTime(clamp(v, -1, 1), ctx.currentTime, 0.05); },
         preset, type
     };
-}
-
-export interface InstrumentAPI {
-    connect: (dest?: AudioNode) => void;
-    disconnect: () => void;
-    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
-    noteOff: (midi: number, when?: number, velocity?: number, duration?: number) => void;
-    allNotesOff: () => void;
-    setPreset: (p: any) => void;
-    setParam: (k: string, v: any) => void;
-    setVolume: (level: number) => void;
-    setVolumeDb: (db: number) => void;
-    getVolume: () => number;
-    setExpression: (level: number) => void;
-    setPan: (level: number) => void;
-    preset: any;
-    type: string;
 }
 
 const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pick', 'hit', 'swell'];

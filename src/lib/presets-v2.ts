@@ -91,7 +91,8 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Depth',
-    volume: 0.8, 
+    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
+    volume: 0.4, 
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], // Убраны пронзительные высокие
     keyClick: 0.003,
     adsr: { a: 0.15, d: 0.2, s: 0.9, r: 2.0 },
@@ -103,7 +104,8 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Velvet Jazz B3',
-    volume: 0.8, 
+    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
+    volume: 0.4, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
     lpf: 1400, 
     hpf: 90,
@@ -117,7 +119,8 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Warm Jimmy smith',
-    volume: 0.8, 
+    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
+    volume: 0.4, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 2200, 
     hpf: 100,
@@ -130,7 +133,8 @@ export const V2_PRESETS = {
   organ_prog: {
     type: 'organ',
     name: 'Mellow Prog Organ',
-    volume: 0.8, 
+    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
+    volume: 0.4, 
     drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
     lpf: 2600, 
     adsr: { a: 0.006, d: 0.1, s: 0.95, r: 1.0 },
@@ -142,7 +146,8 @@ export const V2_PRESETS = {
   reggae_organ: {
     type: 'organ',
     name: 'Velvet Bubbler',
-    volume: 0.8,
+    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
+    volume: 0.4,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
     lpf: 1400, 
     adsr: { a: 0.008, d: 0.1, s: 0.0, r: 0.15 }, 
