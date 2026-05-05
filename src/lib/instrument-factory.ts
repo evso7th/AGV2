@@ -1,7 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V6.0 — "Velvet Sound Standard".
+ * @fileOverview Центральная фабрика инструментов V6.1 — "Velvet Sound Standard".
  * #ЗАЧЕМ: Глобальное внедрение мягкости и глубины для пэдов и органов.
- * #ЧТО: ПЛАН №1280 — Усиление фильтрации в ВЧ, добавление аналоговой теплоты и сложных огибающих.
+ * #ЧТО: ПЛАН №1552 — Точечная калибровка сатурации органов до 0.05.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -364,7 +364,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     let currentPreset = { ...preset };
     const organSum = ctx.createGain();
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 40; 
-    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.1); // #ЗАЧЕМ: ПЛАН №1551. Уменьшенная сатурация для органов (0.1).
+    const satNode = ctx.createWaveShaper(); satNode.curve = makeSoftSaturation(0.05); // #ЗАЧЕМ: ПЛАН №1552. Сатурация органов установлена на 0.05.
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
     const leslie = makeChorus(ctx, currentPreset.leslie || { rate: 0.6, depth: 0.006, mix: 0.7 });
     
