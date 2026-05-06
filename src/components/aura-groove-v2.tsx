@@ -640,7 +640,11 @@ export function AuraGrooveV2({
                                   <SelectContent><SelectItem value="none">None</SelectItem><SelectItem value="ambient_beat">Ambient</SelectItem><SelectItem value="composer">Composer</SelectItem></SelectContent>
                                </Select>
                           </div>
-                          <div className="flex items-center gap-2"><Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3"/> Vol</Label><Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, volume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/></div>
+                          <div className="flex items-center gap-2">
+                              <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3"/> Vol</Label>
+                              {/* #ЗАЧЕМ: ПЛАН №1605. Использование handleVolumeChange для физического управления громкостью барабанов. */}
+                              <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('drums', v[0])} disabled={isInitializing || drumSettings.pattern === 'none'}/>
+                          </div>
                            <div className="flex items-center gap-2 pt-2"><Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Kick</Label><Slider value={[drumSettings.kickVolume]} max={1.5} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, kickVolume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/></div>
                       </div>
                   </CardContent>
