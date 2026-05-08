@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.0 — "Melodic Materialization Protocol".
- * #ЗАЧЕМ: Исправление "пустых" тактов мелодии.
- * #ЧТО: ПЛАН №1112 — Реализация renderGapFiller, смягчение soloistResting и фиксация иерархии.
- * #ОБНОВЛЕНО (ПЛАН №1115): Внедрение Aria Protocol — певучие гитары через нахлест и вибрато.
+ * @fileOverview Blues Brain V76.1 — "Diagnostic Logging Update".
+ * #ЗАЧЕМ: Улучшение телеметрии баса.
+ * #ЧТО: ПЛАН №1608 — В логи добавлена текущая техника баса.
  */
 
 import {
@@ -235,8 +234,8 @@ export class BluesBrain {
 
           if (basePool.length > 0) {
               if (!effectiveAnchor) {
-                  const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                  this.sessionAnchorId = normalizeStr(first.compositionId);
+                  const firstChoice = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                  this.sessionAnchorId = normalizeStr(firstChoice.compositionId);
                   effectiveAnchor = this.sessionAnchorId;
                   filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
                   basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
@@ -326,7 +325,6 @@ export class BluesBrain {
         const restRoll = this.random.next();
         if (restRoll < 0.08 || tension < 0.1) {
             this.soloistRestingUntilBar = epoch + 1; 
-            console.log(`%c[Ensemble] Soft Soloist Breath Activated at Bar ${epoch}`, 'color: #ADD8E6;');
         }
     }
 
@@ -355,7 +353,11 @@ export class BluesBrain {
         events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
     }
 
+    let bassStatus = 'none';
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
+    if (bassEvents.length > 0) {
+        bassStatus = this.currentBassAxiom.length > 0 ? 'Sibling DNA' : (tension > 0.7 ? 'Walking Bass' : 'Riff Bass');
+    }
     events.push(...bassEvents);
 
     const usedTargetLayers = new Set<string>();
@@ -432,16 +434,13 @@ export class BluesBrain {
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
-            bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Rhythmic Pattern',
+            bass: bassStatus,
             drums: isSoloistResting ? 'SOLO FILL' : 'Imperial Pulse'
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: ${isSoloistResting ? 'BREATHING' : 'PLAYING'}]`
     };
   }
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №1115. Материализация Gap-Filler с нахлестом и вибрато (Aria Protocol).
-   */
   private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 12;
@@ -458,10 +457,8 @@ export class BluesBrain {
               type: 'melody',
               note: Math.min(note, this.MELODY_CEILING),
               time: t * TICK_TO_BEAT,
-              // #ЗАЧЕМ: Увеличение длительности для Aria Protocol (нахлест).
               duration: (1.5 * TICK_TO_BEAT) * 1.25,
               weight: 0.65 + (tension * 0.15),
-              // #ЗАЧЕМ: Адаптивное вибрато.
               technique: tension > 0.4 ? 'vb' : 'pick',
               dynamics: 'p',
               phrasing: 'legato'
@@ -548,14 +545,12 @@ export class BluesBrain {
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     return phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
-        // #ЗАЧЕМ: Aria Protocol - автоматическое вибрато на длинные ноты.
         const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
         
         return {
             type: type as any,
             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
-            // #ЗАЧЕМ: Увеличение длительности для нахлеста (Singing).
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
             weight: 0.75, 
             technique: useVibrato ? 'vb' as Technique : (n.tech as any || 'pick'), 

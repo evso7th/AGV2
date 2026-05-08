@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1118 — Глобальное закрепление Aria Protocol (нахлест нот).
+ * #ЧТО: ПЛАН №1608 — Внедрение Aria Lite для баса (0.15с нахлеста).
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,8 +104,9 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: Aria Protocol - обязательный нахлест для всех жанров.
-            const extraDuration = this.partName === 'melody' ? 0.45 : 0;
+            // #ЗАЧЕМ: ПЛАН №1608. Aria Lite для баса. 
+            // 0.15с достаточно для сохранения релиза без создания гула.
+            const extraDuration = this.partName === 'melody' ? 0.45 : 0.15;
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 

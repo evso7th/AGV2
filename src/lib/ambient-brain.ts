@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V75.0 — "Global Aria Protocol".
- * #ЗАЧЕМ: Внедрение певучести (Singing Guitars) для всех амбиентных мелодий.
- * #ЧТО: ПЛАН №1118 — Нахлест нот и авто-вибрато для лирических линий.
+ * @fileOverview Ambient Brain V75.1 — "Diagnostic Logging Update".
+ * #ЗАЧЕМ: Улучшение телеметрии баса.
+ * #ЧТО: ПЛАН №1608 — В логи добавлена текущая техника баса.
  */
 
 import type {
@@ -386,15 +386,19 @@ export class AmbientBrain {
             }
         }
 
+        let bassStatus = 'none';
         if (hints.bass && this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
             const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna);
             if (themeBass.length > 0) {
                 events.push(...this.constrainBass(themeBass));
+                bassStatus = 'Sibling DNA';
             } else {
                 events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
+                bassStatus = 'Walking Drone (drone)';
             }
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
+            bassStatus = 'Walking Drone (drone)';
         }
 
         let melodyEvents: FractalEvent[] = [];
@@ -450,10 +454,11 @@ export class AmbientBrain {
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone',
+                bass: bassStatus,
                 drums: 'Sonic Landscape', 
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
-                piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none'
+                piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
+                harmony: usedTargetLayers.has('harmony') ? 'Generative Flow' : 'none'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Landscape: Pumping Textures]`
         };
@@ -484,7 +489,7 @@ export class AmbientBrain {
         if (tension > 0.6 && this.random.next() < 0.2) {
             const t = this.random.next() * TICKS_PER_BAR;
             events.push({
-                type: 'drum_closed_hi_hat_ghost', note: 42,
+                type: 'drum_25693__walter_odington__hackney-hat-1', note: 42,
                 time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2 + (this.random.next() * 0.15),
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
             });
@@ -568,14 +573,12 @@ export class AmbientBrain {
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         const rawEvents = barNotes.map(n => {
-            // #ЗАЧЕМ: Aria Protocol - нахлест и авто-вибрато для пения.
             const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb';
             
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-                // ARIA Overlap
                 duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
                 weight: 0.7,
                 technique: useVibrato ? ('vb' as Technique) : ('pick' as Technique), 
@@ -636,7 +639,6 @@ export class AmbientBrain {
         const e: FractalEvent = {
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, 
-            // #ЗАЧЕМ: Aria Overlap для процедурных пэдов.
             duration: 4.5, 
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
@@ -731,7 +733,7 @@ export class AmbientBrain {
             type: 'accompaniment', 
             note: this.constrainAccompanimentOctave(root + 12), 
             time: 0, 
-            duration: 4.25, // Aria Overlap
+            duration: 4.25, 
             weight: 0.3, 
             technique: 'swell', 
             dynamics: 'p', 
@@ -745,7 +747,7 @@ export class AmbientBrain {
                 type: 'melody', 
                 note: root + 24, 
                 time: 1.5, 
-                duration: 3.125, // Aria Overlap
+                duration: 3.125, 
                 weight: 0.5, 
                 technique: 'swell', 
                 dynamics: 'p', 
