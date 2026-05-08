@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V5.9 — "Route Progress Visualization".
- * #ЧТО: ПЛАН №1628 — Добавлен тонкий прогресс-бар для активного элемента маршрута.
+ * #ЗАЧЕМ: UI AuraGroove V6.0 — "Header Ergonomics Update".
+ * #ЧТО: ПЛАН №1635 — Активный заголовок, перегруппировка кнопок управления.
  */
 'use client';
 
@@ -255,9 +255,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {/* TOP 50%: Header + Selectors */}
             <div className="h-1/2 flex flex-col shrink-0 overflow-hidden border-b border-primary/20">
                 <header className="p-3 bg-background/40 shrink-0">
-                    {/* Row 1: AuraGroove | Play */}
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex flex-row items-center gap-2">
+                    {/* Row 1: AuraGroove (Active) | Play */}
+                    <div className="flex items-center justify-between mb-2">
+                        {/* #ЗАЧЕМ: ПЛАН №1635. Активный заголовок ведет на Home. */}
+                        <div 
+                            onClick={props.handleGoHome}
+                            className="flex flex-row items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
+                        >
                             <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
                             <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                         </div>
@@ -267,14 +271,11 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
                     
-                    {/* Row 2: Secondary Buttons */}
+                    {/* Row 2: Secondary Controls */}
                     <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
+                        {/* Left Side: Home, Broadcast, Record, Regenerate */}
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
-                            <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" onClick={props.handleGoHome} className="h-8 w-8 shrink-0"><Home className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="flex items-center gap-1">
                             <Button variant={props.isBroadcastActive ? "destructive" : "outline"} onClick={props.handleToggleBroadcast} className="h-8 w-8 p-0 shrink-0">
                                 <TowerControl className={cn("h-4 w-4", props.isBroadcastActive && "animate-pulse text-primary")} />
                             </Button>
@@ -282,6 +283,11 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
+                        </div>
+                        {/* Right Side: EQ, Mixer (Under Play) */}
+                        <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
+                            <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
                         </div>
                     </div>
                 </header>
