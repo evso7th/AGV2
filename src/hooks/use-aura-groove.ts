@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.3 — "Route Progress Protocol".
- * #ЧТО: ПЛАН №1628 — Добавлена передача текущего такта и общего количества тактов для прогресс-бара.
+ * #ЗАЧЕМ: Хук управления музыкой V8.5 — "Strict Navigator Algorithm".
+ * #ЧТО: ПЛАН №1640 — Приоритет маршрута, сброс на старт при нажатии Play, бесконечная ротация.
  */
 'use client';
 
@@ -164,7 +164,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const lastBarCountRef = useRef(-1);
 
-  // --- Initial Load from LocalStorage ---
+  // --- Initial Load ---
   useEffect(() => {
       if (typeof window === 'undefined') return;
       
@@ -176,7 +176,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
           try { 
               const parsed = JSON.parse(lastRoute);
               setRoute(parsed);
-              if (parsed.length > 0) setActiveRouteIndex(0);
           } catch (e) {}
       }
 
@@ -290,6 +289,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
       toast({ title: "Journey Saved", description: name });
   };
 
+  const applyRouteItem = useCallback((item: RouteItem) => {
+    const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+    const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+    setGenreState(g); 
+    setMoodState(m); 
+    setCurrentSeed(Date.now());
+  }, []);
+
   const loadRoute = (saved: SavedRoute) => {
       const items: RouteItem[] = saved.items.map((it, idx) => ({
           id: `route-${Date.now()}-${idx}`,
@@ -299,7 +306,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       }));
       setRoute(items);
       setActiveRouteIndex(0);
-      if (items.length > 0) applyRouteItem(items[0]);
+      applyRouteItem(items[0]);
       toast({ title: "Journey Loaded", description: saved.name });
   };
 
@@ -311,16 +318,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => { initialize(); }, [initialize]);
 
-  const applyRouteItem = useCallback((item: RouteItem) => {
-    const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
-    const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
-    setGenreState(g); 
-    setMoodState(m); 
-    setCurrentSeed(Date.now());
-  }, []);
-
   /**
-   * #ЗАЧЕМ: Реализация Navigator Routing V2.0 (ПЛАН №1611).
+   * #ЗАЧЕМ: Реализация Navigator Routing V2.5 (ПЛАН №1640).
    * #ЧТО: Бесконечная циклическая ротация или Shuffle.
    */
   const handleRouteTransition = useCallback(() => {
@@ -328,7 +327,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
       let nextIndex = 0;
       if (isShuffle) {
-          // Выбираем любой случайный индекс, отличный от текущего (если в списке больше 1 элемента)
           if (route.length > 1) {
               let newIdx;
               do {
@@ -339,7 +337,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
               nextIndex = 0;
           }
       } else {
-          // Обычная бесконечная ротация по кругу
           nextIndex = (activeRouteIndex + 1) % route.length;
       }
 
@@ -363,9 +360,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (payload.totalBars) setTotalBars(payload.totalBars);
             
             const currentBarNum = payload.barCount;
-            
-            // #ЗАЧЕМ: Детекция конца сюиты для перехода по маршруту.
-            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
+            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0) {
                 handleRouteTransition();
             }
             lastBarCountRef.current = currentBarNum;
@@ -373,7 +368,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
     worker.addEventListener('message', handleMessage);
     return () => worker.removeEventListener('message', handleMessage);
-  }, [isPlaying, activeRouteIndex, getWorker, handleRouteTransition]);
+  }, [isPlaying, activeRouteIndex, route.length, getWorker, handleRouteTransition]);
 
   useEffect(() => {
     if (activeRouteIndex >= 0 && activeRouteIndex < route.length) {
@@ -384,14 +379,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteIndex]);
 
-
   const addToRoute = (g: Genre | 'random', m: Mood | 'random') => {
       const newItem: RouteItem = { id: `route-${Date.now()}`, genre: g, mood: m, status: 'pending' };
       setRoute(prev => [...prev, newItem]);
-      if (activeRouteIndex === -1) {
-          setActiveRouteIndex(0);
-          if (isPlaying) applyRouteItem(newItem);
-      }
   };
 
   const removeFromRoute = (id: string) => {
@@ -508,14 +498,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            // #ЗАЧЕМ: ПЛАН №1611. Если есть маршрут, но индекс не задан — стартуем с начала.
-            if (activeRouteIndex === -1 && route.length > 0) { 
-                setActiveRouteIndex(0); 
-                applyRouteItem(route[0]); 
+            // #ЗАЧЕМ: ПЛАН №1640. Строгий алгоритм Навигатора.
+            // Если выбран хоть один элемент маршрута - играем ТОЛЬКО маршрут и именно с ПЕРВОГО элемента.
+            if (route.length > 0) {
+                setActiveRouteIndex(0);
+                applyRouteItem(route[0]);
             }
             lastBarCountRef.current = -1;
+            setEngineIsPlaying(true);
+        } else {
+            setEngineIsPlaying(false);
         }
-        setEngineIsPlaying(!isPlaying);
     },
     handleRegenerate: () => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
