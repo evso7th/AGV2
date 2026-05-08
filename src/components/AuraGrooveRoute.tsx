@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.0 — "Header Ergonomics Update".
- * #ЧТО: ПЛАН №1635 — Активный заголовок, перегруппировка кнопок управления.
+ * #ЗАЧЕМ: UI AuraGroove V6.1 — "Like Button Restoration".
+ * #ЧТО: ПЛАН №1650 — Кнопка ThumbsUp возвращена в хедер Навигатора.
  */
 'use client';
 
@@ -246,7 +246,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            props.reorderRoute(active.id as string, over.id as string);
+            props.reorderRoute(active.id as string, overId as string);
         }
     };
 
@@ -273,7 +273,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     
                     {/* Row 2: Secondary Controls */}
                     <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
-                        {/* Left Side: Home, Broadcast, Record, Regenerate */}
+                        {/* Left Side: Home, Broadcast, Record, Regenerate, Like */}
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={props.handleGoHome} className="h-8 w-8 shrink-0"><Home className="h-4 w-4" /></Button>
                             <Button variant={props.isBroadcastActive ? "destructive" : "outline"} onClick={props.handleToggleBroadcast} className="h-8 w-8 p-0 shrink-0">
@@ -283,6 +283,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
+                            {/* #ЗАЧЕМ: Кнопка Лайк возвращена в строй (ПЛАН №1650). */}
+                            <Button 
+                                variant="outline" 
+                                onClick={props.handleSaveMasterpiece} 
+                                disabled={props.isInitializing || !props.isPlaying} 
+                                className="h-8 w-8 p-0 shrink-0"
+                                title="Like"
+                            >
+                                <ThumbsUp className="h-4 w-4 text-primary" />
+                            </Button>
                         </div>
                         {/* Right Side: EQ, Mixer (Under Play) */}
                         <div className="flex items-center gap-1">
