@@ -1,7 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.0 — "The Route Engine".
- * #ОБНОВЛЕНО (ПЛАН №1215): Реализация BPM Morphing во время мостов.
+ * @file AuraGroove Music Worker V5.1 — "Infinite Heritage Stream".
+ * #ЗАЧЕМ: Реализация сценариев бесконечной игры для Эксперт-интерфейса.
+ * #ЧТО: ПЛАН №1610 — Автоматическая ротация ДНК при смене жанра и завершении сюиты.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -74,12 +75,16 @@ const Scheduler = {
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
+        // Режим 1: Ручной выбор (DNA Locked)
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
-        } else if (this.cloudAxiomPool.length > 0) {
+        } 
+        // Режим 2: Автоматический выбор (Infinite DNA Random)
+        else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
+            
             const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
@@ -93,6 +98,7 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
+                // Исключаем недавно проигранные треки (Blacklist)
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
                 pickedId = pool[Math.floor(Math.random() * pool.length)];
@@ -139,10 +145,9 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        // Setup morphing if requested
         if (settings.targetBpm) {
             this.targetBpm = settings.targetBpm;
-            this.bpmStep = (this.targetBpm - this.settings.bpm) / 4; // Over 4 bars of bridge
+            this.bpmStep = (this.targetBpm - this.settings.bpm) / 4; 
         } else {
             const inheritedBpm = fractalMusicEngine.config.tempo;
             if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
@@ -236,10 +241,12 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
         }
 
+        // --- INFINITE DNA ROTATION ---
+        // Если сюита закончилась, переключаемся на следующий трек
         if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
-             this.settings.seed = generateTrueSeed(); 
+             this.settings.seed = generateTrueSeed(); // Новый сид для новой рандомизации
              this.initializeEngine(this.settings);
              this.barCount = 0;
         }

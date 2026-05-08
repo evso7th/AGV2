@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.0 — "Drag & Drop Support".
- * #ЧТО: ПЛАН №1270 — Добавлена функция reorderRoute для поддержки перетаскивания.
+ * #ЗАЧЕМ: Хук управления музыкой V8.1 — "Expert Scenario Protocol".
+ * #ЧТО: ПЛАН №1610 — Реализация бесконечной игры и сброса фильтров при смене жанра.
  */
 'use client';
 
@@ -134,11 +134,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
   
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
-  const [genre, setGenre] = useState<Genre>('ambient');
+  const [genre, setGenreState] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [useHeritage, setUseHeritage] = useState(true); 
-  const [mood, setMood] = useState<Mood>('melancholic');
+  const [mood, setMoodState] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(8); 
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
@@ -310,8 +310,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const applyRouteItem = useCallback((item: RouteItem) => {
     const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
     const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
-    setGenre(g); 
-    setMood(m); 
+    setGenreState(g); 
+    setMoodState(m); 
     setCurrentSeed(Date.now());
   }, []);
 
@@ -459,6 +459,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
     else if (part === 'drums') { setDrumSettings(prev => ({ ...prev, volume: value })); }
     else if (part === 'sparkles' || part === 'sfx') { setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); }
+  };
+
+  // #ЗАЧЕМ: Реализация сценария бесконечной игры в Эксперте.
+  // #ЧТО: Очистка ручного фильтра при смене Жанра/Настроения для перехода в режим Random.
+  const setGenre = (g: Genre) => {
+      if (g !== genre) {
+          setGenreState(g);
+          setSelectedCompositionIds([]); // Сброс лочки для перехода в режим Infinite Random
+      }
+  };
+
+  const setMood = (m: Mood) => {
+      if (m !== mood) {
+          setMoodState(m);
+          setSelectedCompositionIds([]); // Сброс лочки для перехода в режим Infinite Random
+      }
   };
 
   return {
