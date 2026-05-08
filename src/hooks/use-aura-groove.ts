@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.2 — "Navigator Routing Protocol".
- * #ЧТО: ПЛАН №1611 — Реализация бесконечной циклической и случайной ротации маршрута.
+ * #ЗАЧЕМ: Хук управления музыкой V8.3 — "Route Progress Protocol".
+ * #ЧТО: ПЛАН №1628 — Добавлена передача текущего такта и общего количества тактов для прогресс-бара.
  */
 'use client';
 
@@ -98,6 +98,8 @@ export type AuraGrooveProps = {
   activeRouteIndex: number;
   showAdvancedUI: boolean;
   setShowAdvancedUI: (val: boolean) => void;
+  currentBar: number;
+  totalBars: number;
   // --- Preset Specific ---
   eqPresets: PresetItem[];
   saveEqPreset: (name: string) => void;
@@ -157,6 +159,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
+  const [currentBar, setCurrentBar] = useState(0);
+  const [totalBars, setTotalBars] = useState(144);
 
   const lastBarCountRef = useRef(-1);
 
@@ -355,14 +359,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const { type, payload } = e.data;
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm);
-            const currentBar = payload.barCount;
+            setCurrentBar(payload.barCount);
+            if (payload.totalBars) setTotalBars(payload.totalBars);
+            
+            const currentBarNum = payload.barCount;
             
             // #ЗАЧЕМ: Детекция конца сюиты для перехода по маршруту.
-            // Если мы в Навигаторе (isPlaying) и есть маршрут (activeRouteIndex >= 0)
-            if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
+            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
                 handleRouteTransition();
             }
-            lastBarCountRef.current = currentBar;
+            lastBarCountRef.current = currentBarNum;
         }
     };
     worker.addEventListener('message', handleMessage);
@@ -537,6 +543,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     route, addToRoute, removeFromRoute, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
+    currentBar, totalBars,
     eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
   };

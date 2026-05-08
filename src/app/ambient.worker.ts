@@ -243,7 +243,8 @@ const Scheduler = {
 
         // --- INFINITE DNA ROTATION ---
         // Если сюита закончилась, переключаемся на следующий трек
-        if (this.barCount >= (fractalMusicEngine.navigator?.totalBars || 144)) {
+        const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
+        if (this.barCount >= totalBars) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); // Новый сид для новой рандомизации
@@ -290,6 +291,7 @@ const Scheduler = {
                 instrumentHints: h,
                 barDuration: (60 / this.settings.bpm) * 4,
                 barCount: this.barCount,
+                totalBars: totalBars,
                 actualBpm: Math.round(this.settings.bpm),
                 lickId: payload.lickId,
                 beautyScore: payload.beautyScore,

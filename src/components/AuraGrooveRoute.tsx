@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V5.8 — "Navigator Routing Protocol".
- * #ЧТО: ПЛАН №1626 — Добавлено модальное окно Sleep Timer в нижний тулбар.
+ * #ЗАЧЕМ: UI AuraGroove V5.9 — "Route Progress Visualization".
+ * #ЧТО: ПЛАН №1628 — Добавлен тонкий прогресс-бар для активного элемента маршрута.
  */
 'use client';
 
@@ -154,10 +154,12 @@ function PresetManager({
 function SortableRouteItem({ 
     item, 
     isActive, 
+    progress,
     onRemove 
 }: { 
     item: RouteItem, 
     isActive: boolean, 
+    progress?: number,
     onRemove: (id: string) => void 
 }) {
     const {
@@ -179,12 +181,22 @@ function SortableRouteItem({
             ref={setNodeRef} 
             style={style} 
             className={cn(
-                "flex items-center justify-between p-2 rounded-lg border transition-all group",
+                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden",
                 isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent",
                 isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
             )}
         >
-            <div className="flex items-center gap-3 overflow-hidden">
+            {/* #ЗАЧЕМ: Тонкий прогресс-бар для активного элемента. */}
+            {isActive && progress !== undefined && (
+                <div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20">
+                    <div 
+                        className="h-full bg-primary transition-all duration-1000 ease-linear" 
+                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+                    />
+                </div>
+            )}
+
+            <div className="flex items-center gap-3 overflow-hidden z-10">
                 <div 
                     {...attributes} 
                     {...listeners} 
@@ -201,7 +213,7 @@ function SortableRouteItem({
             <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
+                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
                 onClick={() => onRemove(item.id)}
             >
                 <X className="h-4 w-4" />
@@ -309,14 +321,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <div className="space-y-1.5 pb-24">
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                 <SortableContext items={props.route.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                                    {props.route.map((item, idx) => (
-                                        <SortableRouteItem 
-                                            key={item.id} 
-                                            item={item} 
-                                            isActive={idx === props.activeRouteIndex && props.isPlaying}
-                                            onRemove={props.removeFromRoute}
-                                        />
-                                    ))}
+                                    {props.route.map((item, idx) => {
+                                        const isActive = idx === props.activeRouteIndex && props.isPlaying;
+                                        const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
+                                        return (
+                                            <SortableRouteItem 
+                                                key={item.id} 
+                                                item={item} 
+                                                isActive={isActive}
+                                                progress={progress}
+                                                onRemove={props.removeFromRoute}
+                                            />
+                                        );
+                                    })}
                                 </SortableContext>
                             </DndContext>
                             {props.route.length === 0 && (
