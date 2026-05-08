@@ -123,7 +123,7 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.55; // #ЗАЧЕМ: Значительное усиление для слышимости голосов.
+        this.preamp.gain.value = 0.55; 
         this.preamp.connect(destination);
     }
 
@@ -190,7 +190,7 @@ export class SfxSynthManager {
         }
         const rand = Math.random();
         if (genre === 'psybient') {
-            if (rand < 0.35) return 'voice'; // #ЗАЧЕМ: Повышенная вероятность голосов для Psybient.
+            if (rand < 0.35) return 'voice'; 
             if (rand < 0.7) return 'laser';
             return 'common';
         }
@@ -206,5 +206,10 @@ export class SfxSynthManager {
     public allNotesOff() {
        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
        this.activeSources.clear();
+    }
+
+    public dispose() {
+        this.allNotesOff();
+        try { this.preamp.disconnect(); } catch(e) {}
     }
 }

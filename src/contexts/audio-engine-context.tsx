@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.4 — "Telecaster Volume Boost".
- * #ЗАЧЕМ: Системное усиление гитары Telecaster по запросу пользователя.
- * #ЧТО: ПЛАН №1598 — Громкость увеличена в 2 раза.
+ * @fileOverview Audio Engine Context V41.0 — "Total Disposal Protocol".
+ * #ЗАЧЕМ: Ликвидация утечек ресурсов и зомби-воркеров.
+ * #ЧТО: ПЛАН №1660 — Внедрена функция глобальной утилизации ресурсов.
  */
 'use client';
 
@@ -47,7 +47,7 @@ const VOICE_BALANCE: Record<string, number> = {
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0,
     acoustic: 0.15,
-    electric: 0.30, // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 0.15.
+    electric: 0.30, 
     piano: 0.6,
     orchestral: 0.29,
     cs80: 0.1,
@@ -180,7 +180,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
-        // #ЗАЧЕМ: Усиление отклика. Использование setValueAtTime перед Target.
         const now = audioContextRef.current.currentTime;
         gainNode.gain.setValueAtTime(gainNode.gain.value, now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
@@ -192,19 +191,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const now = audioContextRef.current.currentTime;
       const m = gains.master ?? 1.0;
       
-      // #ЗАЧЕМ: Устранение конфликтов. Модулируется только Master Gain.
       masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
       
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
-      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * gains.electric); // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 2.2.
+      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * gains.electric); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
       melodyManagerV2Ref.current?.setPreampGain(gains.electric); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
       
-      accompanimentManagerV2Ref.current?.setPreampGain(1.0); // Reset local preamp to unity
+      accompanimentManagerV2Ref.current?.setPreampGain(1.0); 
 
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
@@ -214,33 +212,74 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (isInitialized) applyCalibration(calibrationGains);
   }, [isInitialized, calibrationGains, applyCalibration]);
 
+  /**
+   * #ЗАЧЕМ: Протокол Тотальной Утилизации.
+   * #ЧТО: Очистка всех ресурсов перед ре-инициализацией.
+   */
+  const disposeAllResources = useCallback(() => {
+      console.log('%c[TDP] Commencing Total Disposal Protocol...', 'color: #f87171; font-weight: bold;');
+      
+      if (workerRef.current) {
+          workerRef.current.terminate();
+          workerRef.current = null;
+      }
+
+      [
+          drumMachineRef.current,
+          melodyManagerV2Ref.current,
+          bassManagerV2Ref.current,
+          accompanimentManagerV2Ref.current,
+          harmonyManagerRef.current,
+          pianoAccompanimentManagerRef.current,
+          sparklePlayerRef.current,
+          sfxSynthManagerRef.current,
+          blackGuitarSamplerRef.current,
+          telecasterSamplerRef.current,
+          darkTelecasterSamplerRef.current,
+          cs80SamplerRef.current
+      ].forEach(m => {
+          if (m && typeof (m as any).dispose === 'function') (m as any).dispose();
+      });
+
+      Object.values(gainNodesRef.current).forEach(g => {
+          if (g) try { g.disconnect(); } catch(e) {}
+      });
+      gainNodesRef.current = {};
+
+      [masterGainNodeRef, samplersMasterGainRef, speakerGainNodeRef, analyserNodeRef].forEach(ref => {
+          if (ref.current) {
+              try { ref.current.disconnect(); } catch(e) {}
+              ref.current = null;
+          }
+      });
+
+      globalAllNotesOff();
+      setIsInitialized(false);
+  }, []);
+
   useEffect(() => {
       const load = () => {
           const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
           const parsed = saved ? JSON.parse(saved) : {};
           
-          setTimeout(() => {
-              timbreOverridesRef.current = parsed;
-              if (isInitialized) {
-                  const managers = [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef];
-                  managers.forEach(m => {
-                      const name = (m.current as any)?.activePresetName;
-                      if (name && name !== 'none') {
-                          const preset = getEffectivePreset(name);
-                          if (preset) m.current?.setInstrument(preset);
-                      }
-                  });
-              }
-          }, 0);
+          timbreOverridesRef.current = parsed;
+          if (isInitialized) {
+              const managers = [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef];
+              managers.forEach(m => {
+                  const name = (m.current as any)?.activePresetName;
+                  if (name && name !== 'none') {
+                      const preset = getEffectivePreset(name);
+                      if (preset) m.current?.setInstrument(preset);
+                  }
+              });
+          }
       };
       window.addEventListener('AG_TIMBRE_UPDATE', load);
-      load();
       return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
   }, [isInitialized, getEffectivePreset]);
 
   useEffect(() => {
       if (!db || !auth) return;
-
       let unsubscribe: (() => void) | null = null;
 
       const setupListener = () => {
@@ -271,24 +310,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               })).sort((a,b) => a.id.localeCompare(b.id));
               setAvailableCompositions(meta);
               if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-          }, async (serverError) => {
-              const permissionError = new FirestorePermissionError({
-                  path: 'heritage_axioms',
-                  operation: 'list'
-              });
-              errorEmitter.emit('permission-error', permissionError);
+          }, (serverError) => {
+              errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'heritage_axioms', operation: 'list' }));
           });
       };
 
       const authUnsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) {
-              setupListener();
-          } else {
-              if (unsubscribe) {
-                  unsubscribe();
-                  unsubscribe = null;
-              }
-          }
+          if (user) setupListener();
+          else if (unsubscribe) { unsubscribe(); unsubscribe = null; }
       });
 
       return () => {
@@ -315,7 +344,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           });
       }
       workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-    } catch (e) { console.error('[Sync] Contextual fetch failed:', e); }
+    } catch (e) {}
   }, [db]);
 
   const refreshCloudAxioms = useCallback(async () => {
@@ -338,13 +367,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
       });
       const meta = Object.entries(compMeta).map(([id, info]) => ({ 
-          id, 
-          count: info.count,
-          genres: Array.from(info.genres),
-          moods: Array.from(info.moods)
+          id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods)
       })).sort((a,b) => a.id.localeCompare(b.id));
       setAvailableCompositions(meta);
-    } catch (e) { console.error('[CloudSync] Metadata failed:', e); }
+    } catch (e) {}
   }, [db]);
 
   const stopAllSounds = useCallback(() => {
@@ -374,10 +400,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     
     if (sparklePlayerRef.current) {
-        const sparkles = events.filter(e => e.type === 'sparkle');
-        sparkles.forEach(s => {
-            const playTime = barStartTime + (s.time * beatDuration);
-            sparklePlayerRef.current!.playRandomSparkle(playTime, s.params?.genre, s.params?.mood, s.params?.category);
+        events.filter(e => e.type === 'sparkle').forEach(s => {
+            sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * beatDuration), s.params?.genre, s.params?.mood, s.params?.category);
         });
     }
 
@@ -388,38 +412,35 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (isInitialized || initializationInFlightRef.current) return true;
     initializationInFlightRef.current = true;
     setIsInitializing(true);
+    
+    // #ЗАЧЕМ: Принудительный сброс перед стартом новой сессии.
+    disposeAllResources();
+
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         
-        if (!masterGainNodeRef.current) {
-            masterGainNodeRef.current = context.createGain();
-            samplersMasterGainRef.current = context.createGain(); 
-            speakerGainNodeRef.current = context.createGain();
-            
-            analyserNodeRef.current = context.createAnalyser();
-            analyserNodeRef.current.fftSize = 512; 
-            
-            samplersMasterGainRef.current.connect(masterGainNodeRef.current);
-            masterGainNodeRef.current.connect(analyserNodeRef.current);
-            analyserNodeRef.current.connect(speakerGainNodeRef.current);
-            speakerGainNodeRef.current.connect(context.destination);
-            
-            const recDest = context.createMediaStreamDestination();
-            masterGainNodeRef.current.connect(recDest);
-            recDestRef.current = recDest;
-            broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
-        }
+        masterGainNodeRef.current = context.createGain();
+        samplersMasterGainRef.current = context.createGain(); 
+        speakerGainNodeRef.current = context.createGain();
+        analyserNodeRef.current = context.createAnalyser();
+        analyserNodeRef.current.fftSize = 512; 
         
-        const parts = ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'];
-        parts.forEach(p => {
-            if (!gainNodesRef.current[p]) {
-                gainNodesRef.current[p] = context.createGain();
-                const isSamplerPart = ['melody', 'harmony'].includes(p);
-                gainNodesRef.current[p].connect(isSamplerPart ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
-            }
+        samplersMasterGainRef.current.connect(masterGainNodeRef.current);
+        masterGainNodeRef.current.connect(analyserNodeRef.current);
+        analyserNodeRef.current.connect(speakerGainNodeRef.current);
+        speakerGainNodeRef.current.connect(context.destination);
+        
+        const recDest = context.createMediaStreamDestination();
+        masterGainNodeRef.current.connect(recDest);
+        recDestRef.current = recDest;
+        broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
+        
+        ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
+            gainNodesRef.current[p] = context.createGain();
+            gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
         });
         
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
@@ -436,53 +457,32 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
         await Promise.all([
-            drumMachineRef.current.init(true), 
-            blackGuitarSamplerRef.current.init(true),
-            telecasterSamplerRef.current.init(), 
-            accompanimentManagerV2Ref.current.init(), 
-            melodyManagerV2Ref.current.init(), 
-            bassManagerV2Ref.current.init(), 
-            pianoAccompanimentManagerRef.current.init(),
-            harmonyManagerRef.current.init(true),
-            sparklePlayerRef.current.init(5),
-            sfxSynthManagerRef.current.init(5)
+            drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true),
+            telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
+            melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), 
+            pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(true),
+            sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
         ]);
         
-        if (!workerRef.current) {
-            workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
-            workerRef.current.onmessage = (e) => {
-                const { type, payload, error } = e.data;
-                if (type === 'SCORE_READY' && payload) {
-                    scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
-                    nextBarTimeRef.current += payload.barDuration;
-
-                    if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                        saveMasterpiece(db, { 
-                            seed: payload.seed, 
-                            mood: settingsRef.current.mood, 
-                            genre: settingsRef.current.genre, 
-                            density: settingsRef.current.density, 
-                            bpm: payload.actualBpm || settingsRef.current.bpm, 
-                            instrumentSettings: settingsRef.current.instrumentSettings, 
-                            isArbiterFind: true 
-                        });
-                        lastSavedArbiterSeedRef.current = payload.seed;
-                    }
-                } else if (type === 'HISTORY_UPDATE' && payload) {
-                    localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
-                } else if (type === 'BPM_SYNC' && payload) {
-                    window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
-                } else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
-            };
-        }
+        workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
+        workerRef.current.onmessage = (e) => {
+            const { type, payload } = e.data;
+            if (type === 'SCORE_READY' && payload) {
+                scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
+                nextBarTimeRef.current += payload.barDuration;
+                
+                // #ЗАЧЕМ: AI Arbiter - ПЛАН №1655.
+                if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
+                    console.log(`%c[AI Arbiter] Resonance detected: ${payload.beautyScore.toFixed(2)}! Recording masterpiece...`, 'color: #FFD700; font-weight: bold;');
+                    saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
+                    lastSavedArbiterSeedRef.current = payload.seed;
+                }
+            } else if (type === 'HISTORY_UPDATE' && payload) localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
+            else if (type === 'BPM_SYNC' && payload) window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
+        };
 
         const savedHistory = localStorage.getItem('AuraGroove_TrackHistory');
-        if (savedHistory && workerRef.current) {
-            try {
-                const history = JSON.parse(savedHistory);
-                workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: history } });
-            } catch (e) {}
-        }
+        if (savedHistory) try { workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: JSON.parse(savedHistory) } }); } catch (e) {}
 
         await refreshCloudAxioms();
         setIsInitialized(true);
@@ -490,10 +490,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         initializationInFlightRef.current = false;
         return true;
     } catch (e) {
-        toast({ variant: "destructive", title: "Audio Error" });
+        setIsInitializing(false);
+        initializationInFlightRef.current = false;
         return false;
     }
-  }, [toast, scheduleEvents, auth, refreshCloudAxioms, db]);
+  }, [auth, refreshCloudAxioms, db, disposeAllResources, scheduleEvents]);
 
   const stopPreview = useCallback(() => {
       if (previewTimeoutRef.current) { clearTimeout(previewTimeoutRef.current); previewTimeoutRef.current = null; }
@@ -514,8 +515,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           const now = ctx.currentTime + 0.1;
           EPIC_TEST_SEQUENCE.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); });
           const totalDuration = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0;
-          if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000); }
-          else { previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000); }
+          if (loopingRef.current) previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000);
+          else previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000);
       };
       scheduleSequence();
   }, [isInitialized, initialize, stopPreview]);
@@ -539,8 +540,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
     mediaRecorder.onstop = () => {
       const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click();
     };
     mediaRecorder.start();
     mediaRecorderRef.current = mediaRecorder;
