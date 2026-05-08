@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Reggae Brain V4.0 — "Full Ensemble & Aria Standard".
- * #ЗАЧЕМ: Исправление тишины в каналах Harmony и Piano.
- * #ЧТО: ПЛАН №1145 — Реализованы генеративные fallbacks (Skank & Bubbling) и расширено логирование.
+ * @fileOverview Reggae Brain V4.1 — "Hierarchy Sovereignty Restore".
+ * #ЗАЧЕМ: Исправление игнорирования Блюпринтов в Регги.
+ * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения. Внедрена поддержка Axiom preferredInstrument.
  */
 
 import type {
@@ -199,6 +200,11 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
+        // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
+        if (this.currentPreferredInstrument && hints.melody) {
+            instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
+        }
+
         // 1. DRUMS
         if (hints.drums) {
             if (this.currentDrumAxioms.length > 0) {
@@ -268,10 +274,6 @@ export class ReggaeBrain {
                 if (heritageMelody.length > 0) {
                     events.push(...heritageMelody);
                     activeMelLick = this.currentTheme.id;
-                    
-                    if (this.currentPreferredInstrument) {
-                        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
-                    }
                 }
             }
             
@@ -280,13 +282,6 @@ export class ReggaeBrain {
                 activeMelLick = 'Gap-Filler';
             }
         }
-
-        // Bluesified Defaults
-        if (!instrumentOverrides.melody && hints.melody) instrumentOverrides.melody = 'telecaster';
-        if (!instrumentOverrides.bass && hints.bass) instrumentOverrides.bass = 'bass_jazz_warm';
-        if (!instrumentOverrides.accompaniment && hints.accompaniment) instrumentOverrides.accompaniment = 'organ_prog';
-        if (!instrumentOverrides.harmony && hints.harmony) instrumentOverrides.harmony = 'guitarChords';
-        if (!instrumentOverrides.pianoAccompaniment && hints.pianoAccompaniment) instrumentOverrides.pianoAccompaniment = 'ep_rhodes_warm';
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
@@ -450,7 +445,6 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
 
         if (melodyEvents.length > 0) {
-            // Shadow Mode: дублирование мелодии терциями (Rhodes Bubbling)
             melodyEvents.forEach((m, i) => {
                 if (i % 2 === 0) {
                     events.push({
@@ -465,7 +459,6 @@ export class ReggaeBrain {
             });
             return { events, style: 'Melodic Shadow' };
         } else {
-            // Bubbling Mode: синкопированные аккорды (Rhodes)
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
                 if (this.random.next() < 0.6) {
                     intervals.forEach(interval => {

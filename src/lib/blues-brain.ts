@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.1 — "Diagnostic Logging Update".
- * #ЗАЧЕМ: Улучшение телеметрии баса.
- * #ЧТО: ПЛАН №1608 — В логи добавлена текущая техника баса.
+ * @fileOverview Blues Brain V76.2 — "Hierarchy Sovereignty Restore".
+ * #ЗАЧЕМ: Исправление игнорирования Блюпринтов (CS80/BlackAcoustic).
+ * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения в пользу иерархии hints.
  */
 
 import {
@@ -362,6 +362,11 @@ export class BluesBrain {
 
     const usedTargetLayers = new Set<string>();
     const instrumentOverrides: Partial<InstrumentHints> = {};
+
+    // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
+    if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
+        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
+    }
 
     if (!isSoloistResting) {
         this.currentAccompAxioms.forEach((ax) => {
