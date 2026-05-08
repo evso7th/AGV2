@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.1 — "Expert Scenario Protocol".
- * #ЧТО: ПЛАН №1610 — Реализация бесконечной игры и сброса фильтров при смене жанра.
+ * #ЗАЧЕМ: Хук управления музыкой V8.2 — "Navigator Routing Protocol".
+ * #ЧТО: ПЛАН №1611 — Реализация бесконечной циклической и случайной ротации маршрута.
  */
 'use client';
 
@@ -315,25 +315,38 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setCurrentSeed(Date.now());
   }, []);
 
+  /**
+   * #ЗАЧЕМ: Реализация Navigator Routing V2.0 (ПЛАН №1611).
+   * #ЧТО: Бесконечная циклическая ротация или Shuffle.
+   */
   const handleRouteTransition = useCallback(() => {
-      let nextIndex = activeRouteIndex + 1;
-      if (nextIndex >= route.length) {
-          if (isRepeat) {
-              nextIndex = 0;
-          } else if (isShuffle) {
-              const nextGenre = (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)];
-              const nextMood = (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)];
-              const newItem: RouteItem = { id: `route-${Date.now()}`, genre: nextGenre, mood: nextMood, status: 'pending' };
-              setRoute(prev => [...prev, newItem]);
-              nextIndex = activeRouteIndex + 1;
+      if (route.length === 0) return;
+
+      let nextIndex = 0;
+      if (isShuffle) {
+          // Выбираем любой случайный индекс, отличный от текущего (если в списке больше 1 элемента)
+          if (route.length > 1) {
+              let newIdx;
+              do {
+                  newIdx = Math.floor(Math.random() * route.length);
+              } while (newIdx === activeRouteIndex);
+              nextIndex = newIdx;
           } else {
-              setEngineIsPlaying(false);
-              return;
+              nextIndex = 0;
           }
+      } else {
+          // Обычная бесконечная ротация по кругу
+          nextIndex = (activeRouteIndex + 1) % route.length;
       }
+
       setActiveRouteIndex(nextIndex);
       applyRouteItem(route[nextIndex]);
-  }, [activeRouteIndex, route, isRepeat, isShuffle, setEngineIsPlaying, applyRouteItem]);
+      
+      toast({
+          title: "Navigator: Next Station",
+          description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}`
+      });
+  }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
 
   useEffect(() => {
     const worker = getWorker();
@@ -343,6 +356,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm);
             const currentBar = payload.barCount;
+            
+            // #ЗАЧЕМ: Детекция конца сюиты для перехода по маршруту.
+            // Если мы в Навигаторе (isPlaying) и есть маршрут (activeRouteIndex >= 0)
             if (currentBar === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0) {
                 handleRouteTransition();
             }
@@ -376,8 +392,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => {
           const idx = prev.findIndex(it => it.id === id);
           const next = prev.filter(it => it.id !== id);
-          if (idx === activeRouteIndex) setActiveRouteIndex(-1);
-          else if (idx < activeRouteIndex) setActiveRouteIndex(activeRouteIndex - 1);
+          if (idx === activeRouteIndex) {
+              setActiveRouteIndex(-1);
+          } else if (idx < activeRouteIndex) {
+              setActiveRouteIndex(activeRouteIndex - 1);
+          }
           return next;
       });
   };
@@ -403,7 +422,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
           const newIndex = prev.findIndex(item => item.id === overId);
           const next = arrayMove(prev, oldIndex, newIndex);
           
-          // Update active index if it moved
           if (activeRouteIndex === oldIndex) {
               setActiveRouteIndex(newIndex);
           } else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) {
@@ -461,19 +479,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     else if (part === 'sparkles' || part === 'sfx') { setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); }
   };
 
-  // #ЗАЧЕМ: Реализация сценария бесконечной игры в Эксперте.
-  // #ЧТО: Очистка ручного фильтра при смене Жанра/Настроения для перехода в режим Random.
   const setGenre = (g: Genre) => {
       if (g !== genre) {
           setGenreState(g);
-          setSelectedCompositionIds([]); // Сброс лочки для перехода в режим Infinite Random
+          setSelectedCompositionIds([]); 
       }
   };
 
   const setMood = (m: Mood) => {
       if (m !== mood) {
           setMoodState(m);
-          setSelectedCompositionIds([]); // Сброс лочки для перехода в режим Infinite Random
+          setSelectedCompositionIds([]); 
       }
   };
 
@@ -486,7 +502,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            if (activeRouteIndex === -1 && route.length > 0) { setActiveRouteIndex(0); applyRouteItem(route[0]); }
+            // #ЗАЧЕМ: ПЛАН №1611. Если есть маршрут, но индекс не задан — стартуем с начала.
+            if (activeRouteIndex === -1 && route.length > 0) { 
+                setActiveRouteIndex(0); 
+                applyRouteItem(route[0]); 
+            }
             lastBarCountRef.current = -1;
         }
         setEngineIsPlaying(!isPlaying);
