@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V75.1 — "Diagnostic Logging Update".
- * #ЗАЧЕМ: Улучшение телеметрии баса.
- * #ЧТО: ПЛАН №1608 — В логи добавлена текущая техника баса.
+ * @fileOverview Ambient Brain V76.0 — "Harmonic Ripple Protocol".
+ * #ЗАЧЕМ: Устранение застоя в звуке. Длинные ноты больше не тянутся статично.
+ * #ЧТО: ПЛАН №1615 — Автоматическое дробление длинных нот на переливы в терции/квинты.
  */
 
 import type {
@@ -232,29 +232,39 @@ export class AmbientBrain {
         return undefined;
     }
 
+    /**
+     * #ЗАЧЕМ: Протокол "Harmonic Ripple" (ПЛАН №1615).
+     * #ЧТО: Оживление длинных нот (> 1 такта) переливами в терцию, квинту и сексту.
+     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.9) return [e]; 
 
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
-        const chordTones = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 9];
         
-        const numChunks = Math.ceil(e.duration / 2.0);
+        // #ЗАЧЕМ: Выбор интервалов согласно запросу: терция, квинта, секста (и малая септима для красок).
+        const ripplePool = isMinor ? [3, 7, 8, 10] : [4, 7, 9, 11]; 
+        
+        // Разбиваем длинную ноту на чанки по 1.5 доли для создания ритмического дыхания.
+        const numChunks = Math.ceil(e.duration / 1.5); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
         for (let i = 0; i < numChunks; i++) {
             let note: number;
             if (i === 0) {
-                note = e.note;
+                note = e.note; // Первая доля всегда сохраняет оригинал
             } else {
-                const degreeIdx = calculateMusiNum(Math.floor(e.time * 3) + i, 11, this.seed, chordTones.length);
-                const degree = chordTones[degreeIdx];
-                note = baseOctaveMidi + degree;
+                // Оживляем последующие доли через детерминированный выбор гармоник
+                const seedOffset = Math.floor(e.time * 12);
+                const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
+                note = baseOctaveMidi + ripplePool[idx];
             }
 
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             let finalNote = note;
+            
+            // Применяем стандартные ограничения регистра
             if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
             else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
             else finalNote = this.constrainAccompanimentOctave(note);
@@ -266,6 +276,7 @@ export class AmbientBrain {
                 duration: chunkDur,
                 params: { 
                     ...e.params, 
+                    // #ЗАЧЕМ: Смягчение атаки для переливов (кроме первой ноты).
                     attack: i === 0 ? (e.params?.attack || 1.5) : 0.8,
                     release: 2.5 
                 }
