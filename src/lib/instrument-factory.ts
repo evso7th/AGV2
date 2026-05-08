@@ -1,14 +1,14 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.6 — "Total Disposal Optimized".
- * #ЗАЧЕМ: Полное устранение утечек памяти в глобальном реестре.
- * #ЧТО: ПЛАН №1660 — deepCleanup теперь гарантированно освобождает ссылки.
+ * @fileOverview Центральная фабрика инструментов V6.7 — "Soft Purge Protocol".
+ * #ЗАЧЕМ: Устранение цифровых щелчков при Voice Stealing.
+ * #ЧТО: ПЛАН №1665 — deepCleanup теперь выполняет быстрый fade-out (50мс) перед отключением.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-const GLOBAL_VOICE_LIMIT = 300; // Оптимизированный лимит
+const GLOBAL_VOICE_LIMIT = 300; 
 
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
@@ -19,21 +19,41 @@ const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
     
+    // #ЗАЧЕМ: Soft Purge Protocol. 
+    // #ЧТО: Плавное затухание (50мс) всех GainNodes перед физическим дисконнектом.
     if (voiceRecord.nodes) {
-        voiceRecord.nodes.forEach((n: any) => {
-            try {
-                if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                    n.stop();
-                    n.onended = null;
+        const firstNode = voiceRecord.nodes[0];
+        if (firstNode && firstNode.context) {
+            const ctx = firstNode.context;
+            const now = ctx.currentTime;
+            
+            voiceRecord.nodes.forEach((n: any) => {
+                if (n instanceof GainNode) {
+                    n.gain.cancelScheduledValues(now);
+                    n.gain.setValueAtTime(n.gain.value, now);
+                    // Экспоненциальное затухание до почти нуля за ~50мс
+                    n.gain.setTargetAtTime(0.0001, now, 0.015);
                 }
-                n.disconnect();
-            } catch (e) {}
-        });
+            });
+
+            // Ждем 70мс (запас после fade-out) перед полной утилизацией
+            setTimeout(() => {
+                if (voiceRecord.nodes) {
+                    voiceRecord.nodes.forEach((n: any) => {
+                        try {
+                            if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                                n.stop();
+                                n.onended = null;
+                            }
+                            n.disconnect();
+                        } catch (e) {}
+                    });
+                }
+                voiceRecord.nodes = null;
+                voiceRecord.voiceState = null;
+            }, 70);
+        }
     }
-    
-    // #ЗАЧЕМ: Принудительное обнуление для помощи Garbage Collector.
-    voiceRecord.nodes = null;
-    voiceRecord.voiceState = null;
     
     const idx = globalActiveVoices.indexOf(voiceRecord);
     if (idx !== -1) globalActiveVoices.splice(idx, 1);
@@ -389,6 +409,29 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
         disconnect: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} },
         setPreset: (p: any) => { currentPreset = p; }
     };
+};
+
+const makeVintageDistortion = (amount: number) => {
+    const k = amount;
+    const n_samples = 44100;
+    const curve = new Float32Array(n_samples);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n_samples; ++i ) {
+        const x = i * 2 / n_samples - 1;
+        curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+    }
+    return curve;
+};
+
+const makeMuff = (gain: number) => {
+    const n_samples = 44100;
+    const curve = new Float32Array(n_samples);
+    for (let i = 0; i < n_samples; ++i ) {
+        let x = i * 2 / n_samples - 1;
+        x = x * (1 + gain * 10);
+        curve[i] = Math.tanh(x);
+    }
+    return curve;
 };
 
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {

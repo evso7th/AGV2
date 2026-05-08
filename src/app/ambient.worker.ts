@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.2 — "Strict Heritage Uniqueness".
- * #ЗАЧЕМ: Гарантия уникальности треков при ротации маршрута.
- * #ЧТО: ПЛАН №1630 — Увеличен буфер истории до 100 треков, внедрен строгий фильтр кандидатов.
+ * @file AuraGroove Music Worker V5.3 — "Deterministic Timing".
+ * #ЗАЧЕМ: Устранение дрейфа времени и заиканий.
+ * #ЧТО: ПЛАН №1665 — Внедрен цикл на базе performance.now() для компенсации времени вычислений.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -34,6 +34,7 @@ const Scheduler = {
     cloudAxiomPool: [] as any[], 
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
+    expectedNextTick: 0,
     
     // Morphing State
     targetBpm: null as number | null,
@@ -69,22 +70,16 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Строгий выбор уникального Якоря.
-     * #ЧТО: ПЛАН №1630. Исключение повторов треков-доноров.
-     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
-        // Режим 1: Ручной выбор (DNA Locked)
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
         } 
-        // Режим 2: Автоматический выбор (Infinite DNA Random with strict uniqueness)
         else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
@@ -102,13 +97,9 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                
-                // #ЗАЧЕМ: Исключаем проигранные треки (Буфер увеличен до 100 для 5-цикловой гарантии).
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
-                
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
                 
-                // Если пул был пуст и мы сбросили фильтр — очищаем старую историю для этой категории
                 if (freshCandidates.length === 0) {
                     this.playedTrackHistory = this.playedTrackHistory.filter(id => !uniqueIds.includes(id));
                 }
@@ -120,7 +111,6 @@ const Scheduler = {
         if (pickedId) {
             if (!this.playedTrackHistory.includes(pickedId)) {
                 this.playedTrackHistory.push(pickedId);
-                // #ЗАЧЕМ: Лимит 100 треков обеспечивает уникальность на протяжении как минимум 5 циклов маршрута.
                 if (this.playedTrackHistory.length > 100) this.playedTrackHistory.shift();
                 self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
             }
@@ -176,20 +166,23 @@ const Scheduler = {
         
         if (!fractalMusicEngine) {
             this.initializeEngine(this.settings);
-        } else {
-            const isUsingHeritage = this.settings.useHeritage;
-            const engineIsAlgorithmic = !fractalMusicEngine.config.activeAnchorId;
-            const heritageDataAvailable = this.cloudAxiomPool.length > 0;
-            
-            if (isUsingHeritage && engineIsAlgorithmic && heritageDataAvailable) {
-                this.initializeEngine(this.settings);
-            }
         }
 
+        // #ЗАЧЕМ: Инициализация детерминированного таймера.
+        this.expectedNextTick = performance.now();
         const loop = () => {
             if (!this.isRunning) return;
+            
             this.tick();
-            this.loopId = setTimeout(loop, this.barDuration * 1000);
+            
+            const durationMs = this.barDuration * 1000;
+            this.expectedNextTick += durationMs;
+            
+            // Расчет задержки с учетом времени исполнения tick()
+            const drift = performance.now() - (this.expectedNextTick - durationMs);
+            const nextInterval = Math.max(0, durationMs - drift);
+            
+            this.loopId = setTimeout(loop, nextInterval);
         };
         loop();
     },
@@ -254,13 +247,10 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
         }
 
-        // --- INFINITE DNA ROTATION ---
-        // Если сюита закончилась, переключаемся на следующий трек
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         if (this.barCount >= totalBars) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
-             // #ЗАЧЕМ: ПЛАН №1630. Новый сид гарантирует свежую рандомизацию при выборе следующего трека.
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
