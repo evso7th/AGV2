@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1670 — Оптимизация Aria Overlap для разгрузки CPU.
+ * #ЧТО: ПЛАН №1695 — Оптимизация нахлеста для поддержки длинных релизов.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,9 +104,9 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1670. Минимизация Aria Overlap. 
-            // 0.2с для мелодии и 0.02с для баса достаточно для плавности, но не захламляет контекст.
-            const extraDuration = this.partName === 'melody' ? 0.20 : 0.02;
+            // #ЗАЧЕМ: ПЛАН №1695. Увеличенный нахлест (0.4с) для мелодии.
+            // Это предотвращает обрезание "тела" звука при интенсивных рипплах.
+            const extraDuration = this.partName === 'melody' ? 0.40 : 0.05;
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 

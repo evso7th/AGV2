@@ -36,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.6 — "Power Boosted".
- * #ЧТО: ПЛАН №1598 — Системная громкость увеличена в 2 раза (0.30).
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.7 — "Sharp Pick".
+ * #ЧТО: ПЛАН №1695 — Ускорена атака транзиента (5мс) для чистого разделения слоев.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -52,7 +52,7 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.30; // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 0.15.
+        this.preamp.gain.value = 0.30; 
         this.preamp.connect(this.destination);
     }
 
@@ -146,19 +146,20 @@ export class TelecasterGuitarSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+            // #ЗАЧЕМ: Быстрая атака (5мс) для четкого Pick Strike, не маскирующая синтезатор.
+            gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.005, 0.01);
             source.start(startTime);
-            source.stop(startTime + 0.05);
+            source.stop(startTime + 0.06);
         } else {
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
         }
         
         this.activeSources.add(source);
-        
         source.onended = () => {
             this.activeSources.delete(source);
             try { gainNode.disconnect(); } catch(e){}

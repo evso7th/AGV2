@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1280): Velvet Sound Standard. Глубина и мягкость.
+// #ОБНОВЛЕНО (ПЛАН №1695): Корректировка громкости гитар для баланса с транзиентами.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -16,11 +16,11 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 } // Усиленный низ
+      { type: 'sine', detune: 0, octave: -1, gain: 0.8 } 
     ],
     noise: { on: true, gain: 0.015 },
-    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 3.5 }, // Смягченные огибающие
-    lpf: { cutoff: 850, q: 1.2, mode: '24dB' }, // Более закрытый фильтр
+    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 3.5 }, 
+    lpf: { cutoff: 850, q: 1.2, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.12, amount: 300, target: 'filter' },
     chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 1800, mix: 0.2 },
@@ -33,12 +33,12 @@ export const V2_PRESETS = {
     volume: 0.6,
     comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     osc: [
-      { type: 'sine', detune: -4, octave: 0, gain: 0.6 }, // Синусы для мягкости
+      { type: 'sine', detune: -4, octave: 0, gain: 0.6 }, 
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
     ],
     noise: { on: true, gain: 0.02 },
-    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 4.5 }, // Очень медленный вход
+    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 4.5 }, 
     lpf: { cutoff: 750, q: 0.8, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.08, amount: 350, target: 'filter' },
     chorus: { on: true, rate: 0.15, depth: 0.01, mix: 0.5 },
@@ -85,15 +85,63 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ORGAN (Integrated Hammond architecture)
+  // GUITAR
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  guitar_clean: {
+    type: 'guitar',
+    name: 'Clean Velvet Guitar',
+    volume: 0.7,
+    osc: { width: 0.42, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
+    pickup: { cutoff: 4500 },
+    drive: { type: 'soft', amount: 0.1 },
+    comp: { threshold: -16, ratio: 2.5, makeup: 2 },
+    post: { lpf: 6000 },
+    chorus: { on: true, mix: 0.25 },
+    delay: { on: true, time: 0.25, fb: 0.2, mix: 0.15 },
+    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 1.2 },
+    reverbMix: 0.2
+  },
+
+  guitar_shineOn: {
+    type: 'guitar',
+    name: 'Shine On Lead',
+    volume: 0.7, // #ЗАЧЕМ: Восстановлено до 0.7.
+    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
+    pickup: { cutoff: 3600 },
+    drive: { type: 'soft', amount: 0.25 },
+    comp: { threshold: -18, ratio: 3, makeup: 3 },
+    post: { lpf: 5200 },
+    chorus: { on: true, mix: 0.35 },
+    delay: { on: true, time: 0.4, fb: 0.35, mix: 0.28 },
+    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.8 },
+    reverbMix: 0.22
+  },
+
+  guitar_muffLead: {
+    type: 'guitar',
+    name: 'Muff Lead',
+    volume: 0.7, // #ЗАЧЕМ: Восстановлено до 0.7.
+    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    pickup: { cutoff: 3200 },
+    drive: { type: 'muff', amount: 0.6 },
+    comp: { threshold: -20, ratio: 4, makeup: 4 },
+    post: { lpf: 4500 },
+    chorus: { on: true, mix: 0.2 },
+    delay: { on: true, time: 0.38, fb: 0.3, mix: 0.2 },
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 2.0 },
+    reverbMix: 0.18
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ORGAN
   // ═══════════════════════════════════════════════════════════════════════════
 
   organ: {
     type: 'organ',
     name: 'Cathedral Depth',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
-    drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], // Убраны пронзительные высокие
+    drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], 
     keyClick: 0.003,
     adsr: { a: 0.15, d: 0.2, s: 0.9, r: 2.0 },
     lpf: 1600, 
@@ -104,7 +152,6 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Velvet Jazz B3',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
     lpf: 1400, 
@@ -119,7 +166,6 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Warm Jimmy smith',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 2200, 
@@ -133,7 +179,6 @@ export const V2_PRESETS = {
   organ_prog: {
     type: 'organ',
     name: 'Mellow Prog Organ',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
     lpf: 2600, 
@@ -146,7 +191,6 @@ export const V2_PRESETS = {
   reggae_organ: {
     type: 'organ',
     name: 'Velvet Bubbler',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
     lpf: 1400, 

@@ -212,14 +212,15 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №1020. Синхронизация с атакой синтезатора (22мс).
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+            // #ЗАЧЕМ: ПЛАН №1695. Острая атака транзиента (5мс) для отделения от синтезатора.
+            gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.005, 0.01);
             source.start(startTime);
-            source.stop(startTime + 0.05);
+            source.stop(startTime + 0.06);
         } else {
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
         }

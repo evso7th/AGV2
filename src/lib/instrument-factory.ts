@@ -1,15 +1,15 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.8 — "Titanium Limits".
- * #ЗАЧЕМ: Ликвидация перегрузки CPU.
- * #ЧТО: ПЛАН №1670 — Лимит голосов снижен до 150 для обеспечения стабильности на мобильных устройствах.
+ * @fileOverview Центральная фабрика инструментов V6.9 — "Accurate Life-Cycle".
+ * #ЗАЧЕМ: Ликвидация эффекта "пиццикато" и восстановление тела звука.
+ * #ЧТО: ПЛАН №1695 — Точный расчет времени жизни голоса и увеличение лимитов.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-// #ЗАЧЕМ: Снижение лимита со 300 до 150 для предотвращения перегрузки Node Graph.
-const GLOBAL_VOICE_LIMIT = 150; 
+// #ЗАЧЕМ: Лимит поднят до 250, так как очистка теперь работает математически точно.
+const GLOBAL_VOICE_LIMIT = 250; 
 
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
@@ -28,9 +28,11 @@ const deepCleanup = (voiceRecord: any) => {
             
             voiceRecord.nodes.forEach((n: any) => {
                 if (n instanceof GainNode) {
-                    n.gain.cancelScheduledValues(now);
-                    n.gain.setValueAtTime(n.gain.value, now);
-                    n.gain.setTargetAtTime(0.0001, now, 0.015);
+                    try {
+                        n.gain.cancelScheduledValues(now);
+                        n.gain.setValueAtTime(n.gain.value, now);
+                        n.gain.setTargetAtTime(0.0001, now, 0.015);
+                    } catch(e) {}
                 }
             });
 
@@ -48,7 +50,7 @@ const deepCleanup = (voiceRecord: any) => {
                 }
                 voiceRecord.nodes = null;
                 voiceRecord.voiceState = null;
-            }, 70);
+            }, 80);
         }
     }
     
@@ -57,7 +59,8 @@ const deepCleanup = (voiceRecord: any) => {
 };
 
 const enforceVoiceLimit = () => {
-    while (globalActiveVoices.length > GLOBAL_VOICE_LIMIT) {
+    if (globalActiveVoices.length > GLOBAL_VOICE_LIMIT) {
+        // Убиваем самый старый голос
         const oldest = globalActiveVoices.shift();
         if (oldest) deepCleanup(oldest);
     }
@@ -126,8 +129,9 @@ const makeChorus = (ctx: AudioContext, opt: any = {}): SimpleFX => {
         setMix: (m) => {
             const v = clamp(m, 0, 1);
             if(isFinite(v)) {
-                wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-                dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
+                const now = ctx.currentTime;
+                wet.gain.setTargetAtTime(v, now, 0.02);
+                dry.gain.setTargetAtTime(1 - v, now, 0.02);
             }
         },
         disconnect: () => { try { lfo.stop(); lfo.disconnect(); input.disconnect(); output.disconnect(); } catch(e){} }
@@ -154,8 +158,9 @@ const makeDelay = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     return { input, output, stop: () => {}, setMix: (m) => {
         const v = clamp(m, 0, 1);
         if (isFinite(v)) {
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
+            const now = ctx.currentTime;
+            wet.gain.setTargetAtTime(v, now, 0.02);
+            dry.gain.setTargetAtTime(1 - v, now, 0.02);
         }
     }, disconnect: () => { input.disconnect(); output.disconnect(); d.disconnect(); } };
 };
@@ -192,8 +197,9 @@ const makePhaser = (ctx: AudioContext, opt: any = {}): SimpleFX => {
     return { input, output, stop: () => { try { lfo.stop(); } catch(e){} }, setMix: (m) => {
         const v = clamp(m, 0, 1);
         if(isFinite(v)) {
-            wet.gain.setTargetAtTime(v, ctx.currentTime, 0.02);
-            dry.gain.setTargetAtTime(1 - v, ctx.currentTime, 0.02);
+            const now = ctx.currentTime;
+            wet.gain.setTargetAtTime(v, now, 0.02);
+            dry.gain.setTargetAtTime(1 - v, now, 0.02);
         }
     }, disconnect: () => { lfo.stop(); lfo.disconnect(); input.disconnect(); output.disconnect(); } };
 };
@@ -208,7 +214,8 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(velocity, now + attack);
+    // #ЗАЧЕМ: Линейная рампа для более четкой атаки гитарных щипков.
+    gain.gain.linearRampToValueAtTime(velocity, now + attack);
     gain.gain.setTargetAtTime(sustain, now + attack, Math.max(decay / 3, 0.001));
     return { node: gain, startTime: now };
 };
@@ -219,7 +226,8 @@ const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number,
     
     voiceState.node.gain.cancelScheduledValues(now);
     voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2.5, 0.001));
-    return now + (release * 6.0); 
+    // Предиктивное время завершения (6 тау достаточно для затухания до -60дБ)
+    return now + (release * 5.0); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -229,7 +237,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 
     const comp = ctx.createDynamicsCompressor();
     const satNode = ctx.createWaveShaper(); satNode.curve = null; 
-    
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
     const filt2 = ctx.createBiquadFilter(); filt2.type = 'lowpass';
     
@@ -282,12 +289,14 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const safeDuration = duration && isFinite(duration) ? duration : 1.5;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
             
+            // #ЗАЧЕМ: Использование точного finalTime для очистки вместо магических множителей.
+            const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
                 deepCleanup(record);
-            }, (safeDuration + adsr.r * 10) * 1000);
+            }, Math.max(100, timeoutMs));
 
-            nodes.forEach(n => { if(n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
+            nodes.forEach(n => { if(n instanceof OscillatorNode) { n.stop(finalTime + 0.2); } });
         },
         allNotesOff: () => { 
             activeVoiceRecords.forEach(v => deepCleanup(v)); 
@@ -352,8 +361,9 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.2;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 12) * 1000);
-            nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.5); });
+            const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
+            nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.2); });
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
         disconnect: () => { 
@@ -399,36 +409,14 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 8) * 1000);
-            nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.5); } });
+            const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
+            nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.2); } });
         },
         allNotesOff: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); },
         disconnect: () => { activeVoiceRecords.forEach(v => deepCleanup(v)); activeVoiceRecords.clear(); try { bassSum.disconnect(); hpf.disconnect(); } catch(e){} },
         setPreset: (p: any) => { currentPreset = p; }
     };
-};
-
-const makeVintageDistortion = (amount: number) => {
-    const k = amount;
-    const n_samples = 44100;
-    const curve = new Float32Array(n_samples);
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i ) {
-        const x = i * 2 / n_samples - 1;
-        curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
-    }
-    return curve;
-};
-
-const makeMuff = (gain: number) => {
-    const n_samples = 44100;
-    const curve = new Float32Array(n_samples);
-    for (let i = 0; i < n_samples; ++i ) {
-        let x = i * 2 / n_samples - 1;
-        x = x * (1 + gain * 10);
-        curve[i] = Math.tanh(x);
-    }
-    return curve;
 };
 
 const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -485,8 +473,9 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             activeVoiceRecords.add(record);
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
             const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
-            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, (safeDuration + adsr.r * 12) * 1000);
-            osc.stop(finalTime + 0.5); 
+            const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
+            setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
+            osc.stop(finalTime + 0.2); 
         },
         allNotesOff: () => { activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); },
         disconnect: () => { phaser.disconnect(); delay.disconnect(); activeVoiceRecords.forEach((v) => deepCleanup(v)); activeVoiceRecords.clear(); [guitarIn, comp, shaper, satNode, revSend, cabinetFilter].forEach(n => { try { n.disconnect(); } catch(e){} }); },
