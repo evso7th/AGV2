@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.8 — "Mode Sovereignty".
- * #ЧТО: ПЛАН №1675 — Синхронизация Play и разделение логики Маршрут/Эксперт.
+ * #ЗАЧЕМ: Хук управления музыкой V8.9 — "Bugfix & Integrity".
+ * #ЧТО: ПЛАН №1680 — Реализована отсутствующая функция moveRouteItem.
  */
 'use client';
 
@@ -394,6 +394,28 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
           } else if (idx < activeRouteIndex) {
               setActiveRouteIndex(activeRouteIndex - 1);
           }
+          return next;
+      });
+  };
+
+  /**
+   * #ЗАЧЕМ: Реализация отсутствующей функции перемещения (ПЛАН №1680).
+   */
+  const moveRouteItem = (id: string, direction: 'up' | 'down') => {
+      setRoute(prev => {
+          const index = prev.findIndex(item => item.id === id);
+          if (index === -1) return prev;
+          const newIndex = direction === 'up' ? index - 1 : index + 1;
+          if (newIndex < 0 || newIndex >= prev.length) return prev;
+          
+          const next = arrayMove(prev, index, newIndex);
+          
+          if (activeRouteIndex === index) {
+              setActiveRouteIndex(newIndex);
+          } else if (activeRouteIndex === newIndex) {
+              setActiveRouteIndex(index);
+          }
+          
           return next;
       });
   };

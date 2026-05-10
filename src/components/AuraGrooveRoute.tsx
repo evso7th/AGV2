@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.1 — "Like Button Restoration".
- * #ЧТО: ПЛАН №1650 — Кнопка ThumbsUp возвращена в хедер Навигатора.
+ * #ЗАЧЕМ: UI AuraGroove V6.2 — "Drag & Drop Integrity Fix".
+ * #ЧТО: ПЛАН №1680 — Исправлена опечатка overId -> over.id.
  */
 'use client';
 
@@ -246,7 +246,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            props.reorderRoute(active.id as string, overId as string);
+            props.reorderRoute(active.id as string, over.id as string);
         }
     };
 
