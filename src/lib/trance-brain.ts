@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V49.0 — "Melodic Pad Sync".
- * #ЗАЧЕМ: Синхронизация техники исполнения лида с пэдами.
- * #ЧТО: ПЛАН №1690 — Ведущий голос теперь использует swell и ripple.
+ * @fileOverview Psybient Brain V49.1 — "Traditional Drum Focus".
+ * #ЗАЧЕМ: Устранение избыточной перкуссии в Псайбиенте.
+ * #ЧТО: ПЛАН №1710 — Снижена вероятность "кухни", усилены кик, снейр и томы.
  */
 
 import type {
@@ -364,7 +364,7 @@ export class TranceBrain {
             events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         [3, 9].forEach(t => {
-            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         return events;
     }
@@ -372,10 +372,10 @@ export class TranceBrain {
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         [0, 3, 6, 9].forEach(t => {
-            events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+            events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         });
         [3, 9].forEach(t => {
-            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+            events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         if (tension > 0.3) {
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
@@ -392,14 +392,14 @@ export class TranceBrain {
                 events.push({ 
                     type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
                     time: t * TICK_TO_BEAT, duration: 0.1, 
-                    weight: isStrong ? 0.55 : 0.35, 
+                    weight: isStrong ? 0.6 : 0.4, 
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
                 });
             }
         }
-        if (this.rng.chance(12)) {
+        if (this.rng.chance(15)) {
             events.push({
-                type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.5, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.6
+                type: 'drum_ride_wetter', note: 51, time: 1.5 * TICK_TO_BEAT, duration: 4.5, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.6
             });
         }
         return events;
@@ -413,7 +413,7 @@ export class TranceBrain {
             const pan = -0.8 + (i * 0.8); 
             events.push({
                 type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.6,
-                weight: 0.75 + (tension * 0.25), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
+                weight: 0.85 + (tension * 0.2), technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan
             });
         });
         return events;
@@ -431,28 +431,35 @@ export class TranceBrain {
             barNotes.forEach(n => {
                 events.push({
                     type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+                    duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
         });
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1710. Резкое сокращение экзотической перкуссии.
+     */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            if (this.rng.chance(20 + tension * 10)) {
+            // Шанс значительно снижен (был 20+tension*10)
+            if (this.rng.chance(5 + tension * 5)) { 
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                    weight: 0.3, // Тише
+                    technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
-            if (this.rng.chance(8)) {
+            // Шанс колокольчиков снижен (был 8)
+            if (this.rng.chance(3)) { 
                 events.push({
                     type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 2.5, 
-                    weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.4) - 0.7
+                    weight: 0.25, // Тише
+                    technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.4) - 0.7
                 });
             }
         }
@@ -471,10 +478,6 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация "Melodic Pad Sync".
-     * #ЧТО: ПЛАН №1690 — Мелодия Heritage теперь полностью имитирует технику аккомпанемента.
-     */
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
@@ -526,9 +529,6 @@ export class TranceBrain {
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация "Melodic Pad Sync" для Legacy Solo.
-     */
     private renderLegacySolo(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const lickKeys = Object.keys(BLUES_SOLO_LICKS).filter(k => k.startsWith('LN_'));
         const key = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
