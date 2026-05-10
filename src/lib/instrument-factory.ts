@@ -1,14 +1,15 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.7 — "Soft Purge Protocol".
- * #ЗАЧЕМ: Устранение цифровых щелчков при Voice Stealing.
- * #ЧТО: ПЛАН №1665 — deepCleanup теперь выполняет быстрый fade-out (50мс) перед отключением.
+ * @fileOverview Центральная фабрика инструментов V6.8 — "Titanium Limits".
+ * #ЗАЧЕМ: Ликвидация перегрузки CPU.
+ * #ЧТО: ПЛАН №1670 — Лимит голосов снижен до 150 для обеспечения стабильности на мобильных устройствах.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-const GLOBAL_VOICE_LIMIT = 300; 
+// #ЗАЧЕМ: Снижение лимита со 300 до 150 для предотвращения перегрузки Node Graph.
+const GLOBAL_VOICE_LIMIT = 150; 
 
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
@@ -19,8 +20,6 @@ const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
     
-    // #ЗАЧЕМ: Soft Purge Protocol. 
-    // #ЧТО: Плавное затухание (50мс) всех GainNodes перед физическим дисконнектом.
     if (voiceRecord.nodes) {
         const firstNode = voiceRecord.nodes[0];
         if (firstNode && firstNode.context) {
@@ -31,12 +30,10 @@ const deepCleanup = (voiceRecord: any) => {
                 if (n instanceof GainNode) {
                     n.gain.cancelScheduledValues(now);
                     n.gain.setValueAtTime(n.gain.value, now);
-                    // Экспоненциальное затухание до почти нуля за ~50мс
                     n.gain.setTargetAtTime(0.0001, now, 0.015);
                 }
             });
 
-            // Ждем 70мс (запас после fade-out) перед полной утилизацией
             setTimeout(() => {
                 if (voiceRecord.nodes) {
                     voiceRecord.nodes.forEach((n: any) => {

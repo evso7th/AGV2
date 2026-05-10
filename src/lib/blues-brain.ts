@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.2 — "Hierarchy Sovereignty Restore".
- * #ЗАЧЕМ: Исправление игнорирования Блюпринтов (CS80/BlackAcoustic).
- * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения в пользу иерархии hints.
+ * @fileOverview Blues Brain V76.3 — "Titanium Density Tuning".
+ * #ЗАЧЕМ: Ликвидация заиканий в блюзе.
+ * #ЧТО: ПЛАН №1670 — Интервал Harmonic Ripple увеличен с 1.5с до 2.6с.
  */
 
 import {
@@ -288,6 +288,54 @@ export class BluesBrain {
       return undefined;
   }
 
+  /**
+   * #ЗАЧЕМ: Протокол "Harmonic Ripple" (Оптимизация План №1670).
+   * #ЧТО: Интервал дробления увеличен до 2.6с для снижения плотности голосов.
+   */
+  private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+      if (e.duration < 3.9) return [e]; 
+
+      const rippled: FractalEvent[] = [];
+      const isMinor = chord.chordType === 'minor';
+      const ripplePool = isMinor ? [3, 7, 8, 10] : [4, 7, 9, 11]; 
+      
+      // #ЗАЧЕМ: Снижение частоты дробления для разгрузки CPU.
+      const numChunks = Math.ceil(e.duration / 2.6); 
+      const chunkDur = e.duration / numChunks;
+      const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+
+      for (let i = 0; i < numChunks; i++) {
+          let note: number;
+          if (i === 0) {
+              note = e.note; 
+          } else {
+              const seedOffset = Math.floor(e.time * 12);
+              const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
+              note = baseOctaveMidi + ripplePool[idx];
+          }
+
+          const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+          let finalNote = note;
+          
+          if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
+          else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
+          else finalNote = this.constrainAccompanimentOctave(note);
+
+          rippled.push({
+              ...e,
+              note: finalNote,
+              time: e.time + (i * chunkDur),
+              duration: chunkDur,
+              params: { 
+                  ...e.params, 
+                  attack: i === 0 ? (e.params?.attack || 1.5) : 0.8,
+                  release: 2.5 
+              }
+          });
+      }
+      return rippled;
+  }
+
   public generateBar(
     epoch: number,
     currentChord: GhostChord,
@@ -363,7 +411,6 @@ export class BluesBrain {
     const usedTargetLayers = new Set<string>();
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
-    // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
@@ -549,7 +596,7 @@ export class BluesBrain {
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
-    return phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
+    const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
         const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
         
         return {
@@ -563,6 +610,7 @@ export class BluesBrain {
             phrasing: 'legato'
         };
     });
+    return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
@@ -572,7 +620,10 @@ export class BluesBrain {
           const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
           const barOffset = mosaicBar * TICKS_PER_BAR;
           const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-          if (barNotes.length > 0) return barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+          if (barNotes.length > 0) {
+              const rawEvents = barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+              return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
+          }
       }
       return tension > 0.7 ? this.renderWalkingBass(chord, epoch) : this.renderRiffBass(chord, epoch);
   }
@@ -581,12 +632,14 @@ export class BluesBrain {
     const root = chord.rootNote - 12 + this.currentTransposition + this.microTransposition;
     const barInRiff = epoch % 4;
     const riff = [ [{ t: 0, n: root }, { t: 4, n: root }, { t: 8, n: root + 7 }], [{ t: 0, n: root }, { t: 6, n: root + 7 }, { t: 9, n: root + 10 }], [{ t: 0, n: root + 7 }, { t: 4, n: root + 5 }, { t: 8, n: root }], [{ t: 0, n: root }, { t: 4, n: root + 3 }, { t: 8, n: root + 4 }] ];
-    return riff[barInRiff].map(p => ({ type: 'bass', note: this.constrainBassOctave(p.n), time: p.t * TICK_TO_BEAT, duration: 4 * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+    const rawEvents = riff[barInRiff].map(p => ({ type: 'bass', note: this.constrainBassOctave(p.n), time: p.t * TICK_TO_BEAT, duration: 4 * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+    return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
   }
 
   private renderWalkingBass(chord: GhostChord, epoch: number): FractalEvent[] {
     const root = chord.rootNote - 12 + this.currentTransposition + this.microTransposition;
-    return [root, root + 4, root + 7, root + 11].map((p, i) => ({ type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, weight: 0.75, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+    const rawEvents = [root, root + 4, root + 7, root + 11].map((p, i) => ({ type: 'bass', note: this.constrainBassOctave(p), time: (i * 3) * TICK_TO_BEAT, duration: 3 * TICK_TO_BEAT, weight: 0.75, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+    return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
   }
 
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
@@ -594,16 +647,18 @@ export class BluesBrain {
       const startEpoch = this.soloistBusyUntilBar - totalBars;
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
       const barOffset = mosaicBar * TICKS_PER_BAR;
-      return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+      const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
           type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
           time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
           technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
       }));
+      return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
   }
 
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition + this.microTransposition);
-    return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+    const e: FractalEvent = { type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
+    return this.rippleLongNote(e, chord);
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
@@ -625,8 +680,14 @@ export class BluesBrain {
       [0, 3, 6, 9].forEach((t, i) => { 
           events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
       });
-      events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
-      if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
+      const padE: FractalEvent = { type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
+      events.push(...this.rippleLongNote(padE, chord));
+      
+      if (hints.melody) {
+          const melE: FractalEvent = { type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
+          events.push(...this.rippleLongNote(melE, chord));
+      }
+      
       events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       return events;
@@ -637,8 +698,12 @@ export class BluesBrain {
       const rootName = MIDI_NOTE_NAMES[rootMidi % 12] || 'C';
       const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : '');
       const note = this.constrainAccompanimentOctave(rootMidi + 12);
-      if (timbre === 'guitarChords') return [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName }];
-      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+      if (timbre === 'guitarChords') {
+          const e: FractalEvent = { type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName };
+          return this.rippleLongNote(e, currentChord);
+      }
+      const e2: FractalEvent = { type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
+      return this.rippleLongNote(e2, currentChord);
   }
 
   private constrainBassOctave(note: number): number {

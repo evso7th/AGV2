@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1608 — Внедрение Aria Lite для баса (0.15с нахлеста).
+ * #ЧТО: ПЛАН №1670 — Оптимизация Aria Overlap для разгрузки CPU.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,9 +104,9 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1608. Aria Lite для баса. 
-            // 0.15с достаточно для сохранения релиза без создания гула.
-            const extraDuration = this.partName === 'melody' ? 0.45 : 0.15;
+            // #ЗАЧЕМ: ПЛАН №1670. Минимизация Aria Overlap. 
+            // 0.2с для мелодии и 0.02с для баса достаточно для плавности, но не захламляет контекст.
+            const extraDuration = this.partName === 'melody' ? 0.20 : 0.02;
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
