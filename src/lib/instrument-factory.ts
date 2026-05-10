@@ -1,14 +1,13 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.9 — "Accurate Life-Cycle".
- * #ЗАЧЕМ: Ликвидация эффекта "пиццикато" и восстановление тела звука.
- * #ЧТО: ПЛАН №1695 — Точный расчет времени жизни голоса и увеличение лимитов.
+ * @fileOverview Центральная фабрика инструментов V7.0 — "Sustain Restoration".
+ * #ЗАЧЕМ: Ликвидация эффекта "пиццикато" во всех инструментах.
+ * #ЧТО: ПЛАН №1715 — Исправлено планирование релиза. Теперь затухание начинается ПОСЛЕ длительности ноты.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-// #ЗАЧЕМ: Лимит поднят до 250, так как очистка теперь работает математически точно.
 const GLOBAL_VOICE_LIMIT = 250; 
 
 export const globalAllNotesOff = () => {
@@ -60,7 +59,6 @@ const deepCleanup = (voiceRecord: any) => {
 
 const enforceVoiceLimit = () => {
     if (globalActiveVoices.length > GLOBAL_VOICE_LIMIT) {
-        // Убиваем самый старый голос
         const oldest = globalActiveVoices.shift();
         if (oldest) deepCleanup(oldest);
     }
@@ -99,7 +97,7 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
 
 // ───── DISTORTION CURVES ─────
 
-const makeVintageDistortion = (amount: number) => {
+export const makeVintageDistortion = (amount: number) => {
     const k = isFinite(amount) ? amount : 50;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
@@ -111,13 +109,12 @@ const makeVintageDistortion = (amount: number) => {
     return curve;
 };
 
-const makeMuff = (amount: number) => {
+export const makeMuff = (amount: number) => {
     const k = isFinite(amount) ? amount * 10 : 5;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
     for (let i = 0; i < n_samples; ++i) {
         const x = i * 2 / n_samples - 1;
-        // Hyperbolic tangent for rich fuzz
         curve[i] = Math.tanh(x * k);
     }
     return curve;
@@ -240,20 +237,24 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     
     gain.gain.cancelScheduledValues(now);
     gain.gain.setValueAtTime(0.0001, now);
-    // #ЗАЧЕМ: Линейная рампа для более четкой атаки гитарных щипков.
     gain.gain.linearRampToValueAtTime(velocity, now + attack);
     gain.gain.setTargetAtTime(sustain, now + attack, Math.max(decay / 3, 0.001));
     return { node: gain, startTime: now };
 };
 
-const triggerRelease = (ctx: AudioContext, voiceState: VoiceState, when: number, r: number): number => {
+/**
+ * #ЗАЧЕМ: Исправленное планирование релиза (План №1715).
+ * #ЧТО: Теперь затухание начинается ровно в startTime + duration.
+ */
+const scheduleRelease = (ctx: AudioContext, voiceState: VoiceState, startTime: number, duration: number, r: number): number => {
     const release = isFinite(r) ? Math.max(r, 0.05) : 0.5;
-    const now = Math.max(isFinite(when) ? when : ctx.currentTime, ctx.currentTime);
+    const releaseStartTime = startTime + (isFinite(duration) ? duration : 1.0);
     
-    voiceState.node.gain.cancelScheduledValues(now);
-    voiceState.node.gain.setTargetAtTime(0.0001, now, Math.max(release / 2.5, 0.001));
-    // Предиктивное время завершения (6 тау достаточно для затухания до -60дБ)
-    return now + (release * 5.0); 
+    // Планируем начало затухания в будущем
+    voiceState.node.gain.setTargetAtTime(0.0001, releaseStartTime, Math.max(release / 2.5, 0.001));
+    
+    // Возвращаем время, когда звук гарантированно стихнет (6 констант времени)
+    return releaseStartTime + (release * 6.0); 
 };
 
 const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
@@ -313,9 +314,8 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             activeVoiceRecords.add(record);
 
             const safeDuration = duration && isFinite(duration) ? duration : 1.5;
-            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            const finalTime = scheduleRelease(ctx, voiceState, when, safeDuration, adsr.r);
             
-            // #ЗАЧЕМ: Использование точного finalTime для очистки вместо магических множителей.
             const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
             setTimeout(() => {
                 activeVoiceRecords.delete(record);
@@ -386,7 +386,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.2;
-            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            const finalTime = scheduleRelease(ctx, voiceState, when, safeDuration, adsr.r);
             const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
             nodes.forEach(n => { if(n instanceof OscillatorNode) n.stop(finalTime + 0.2); });
@@ -434,7 +434,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
-            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            const finalTime = scheduleRelease(ctx, voiceState, when, safeDuration, adsr.r);
             const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
             nodes.forEach(n => { if (n instanceof OscillatorNode) { n.stop(finalTime + 0.2); } });
@@ -498,7 +498,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
-            const finalTime = triggerRelease(ctx, voiceState, when + safeDuration, adsr.r);
+            const finalTime = scheduleRelease(ctx, voiceState, when, safeDuration, adsr.r);
             const timeoutMs = (finalTime - ctx.currentTime) * 1000 + 100;
             setTimeout(() => { activeVoiceRecords.delete(record); deepCleanup(record); }, Math.max(100, timeoutMs));
             osc.stop(finalTime + 0.2); 
