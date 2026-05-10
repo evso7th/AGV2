@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V76.1 — "Titanium Density Tuning".
- * #ЗАЧЕМ: Ослабление нагрузки на CPU.
- * #ЧТО: ПЛАН №1670 — Увеличен интервал Harmonic Ripple (1.5с -> 2.6с) для сокращения количества голосов.
+ * @fileOverview Ambient Brain V77.0 — "Seamless Melodic Tie".
+ * #ЗАЧЕМ: Реализация бесшовного перетекания нот в эмбиенте.
+ * #ЧТО: ПЛАН №1685 — Внедрен алгоритм заполнения пауз и интеграция с Harmonic Ripple для повторов.
  */
 
 import type {
@@ -232,10 +232,6 @@ export class AmbientBrain {
         return undefined;
     }
 
-    /**
-     * #ЗАЧЕМ: Протокол "Harmonic Ripple" (Оптимизация План №1670).
-     * #ЧТО: Интервал дробления увеличен до 2.6с для снижения плотности голосов.
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.9) return [e]; 
 
@@ -244,7 +240,6 @@ export class AmbientBrain {
         
         const ripplePool = isMinor ? [3, 7, 8, 10] : [4, 7, 9, 11]; 
         
-        // #ЗАЧЕМ: Снижение частоты дробления для разгрузки CPU.
         const numChunks = Math.ceil(e.duration / 2.6); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
@@ -279,6 +274,40 @@ export class AmbientBrain {
             });
         }
         return rippled;
+    }
+
+    /**
+     * #ЗАЧЕМ: Реализация протокола "Melodic Tie" (ПЛАН №1685).
+     * #ЧТО: Слияние пауз и интеграция Ripple для идентичных нот.
+     */
+    private applyMelodicTie(events: FractalEvent[], chord: GhostChord): FractalEvent[] {
+        if (events.length === 0) return [];
+        
+        const sorted = [...events].sort((a, b) => a.time - b.time);
+        const processed: FractalEvent[] = [];
+
+        for (let i = 0; i < sorted.length; i++) {
+            const current = sorted[i];
+            const next = sorted[i+1];
+            
+            // 1. Gap Filling & Overlap
+            const nextStartTime = next ? next.time : 4.0; // Extend to bar end if last
+            const gap = nextStartTime - current.time;
+            
+            // Увеличиваем длительность до начала следующей ноты + нахлест
+            current.duration = Math.max(current.duration, gap + 0.15);
+
+            // 2. Harmonic Ripple for Identical Consecutive Notes
+            if (next && current.note === next.note) {
+                // Если ноты одинаковые - это триггер для текстурного перелива
+                const rippled = this.rippleLongNote(current, chord);
+                processed.push(...rippled);
+            } else {
+                processed.push(current);
+            }
+        }
+
+        return processed;
     }
 
     public generateBar(
@@ -416,6 +445,9 @@ export class AmbientBrain {
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
             }
+            
+            // #ЗАЧЕМ: Применение Melodic Tie к мелодии.
+            melodyEvents = this.applyMelodicTie(melodyEvents, resChord);
         }
         melodyEvents.forEach(e => e.pan = -0.15); 
         events.push(...melodyEvents);
@@ -595,7 +627,7 @@ export class AmbientBrain {
             };
         });
 
-        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
+        return rawEvents;
     }
 
     private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA): FractalEvent[] {
@@ -650,7 +682,7 @@ export class AmbientBrain {
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        return this.rippleLongNote(e, resChord);
+        return [e]; // Will be processed by applyMelodicTie later
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
