@@ -1,3 +1,4 @@
+
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 
@@ -22,7 +23,7 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2;
+        this.preamp.gain.value = 0.6; // #ЗАЧЕМ: Снижено в 2 раза с 1.2 по запросу пользователя.
         this.preamp.connect(this.output);
         
         this.output.connect(destination);

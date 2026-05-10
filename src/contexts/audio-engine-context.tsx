@@ -51,7 +51,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     piano: 0.6,
     orchestral: 0.29,
     cs80: 0.1,
-    chords: 1.2,
+    chords: 0.6, // #ЗАЧЕМ: Снижено в 2 раза с 1.2 по запросу пользователя.
     bass: 1.0
 };
 
