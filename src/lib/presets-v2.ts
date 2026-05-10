@@ -106,7 +106,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.7, // #ЗАЧЕМ: Восстановлено до 0.7.
+    volume: 0.175, // #ЗАЧЕМ: ПЛАН №1725. Снижено в 4 раза (с 0.7).
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600 },
     drive: { type: 'soft', amount: 0.25 },
@@ -121,7 +121,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    volume: 0.7, // #ЗАЧЕМ: Восстановлено до 0.7.
+    volume: 0.175, // #ЗАЧЕМ: ПЛАН №1725. Снижено в 4 раза (с 0.7).
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.6 },
