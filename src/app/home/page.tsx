@@ -6,10 +6,10 @@ import { useAuraGroove } from '@/hooks/use-aura-groove';
 
 /**
  * #ЗАЧЕМ: Главная страница для простых пользователей (Navigator).
- * #ЧТО: ПЛАН №1235 — Выделенный роут для простого интерфейса.
+ * #ЧТО: ПЛАН №1675 — Хук инициализируется в режиме Навигатора.
  */
 export default function NavigatorPage() {
-  const auraGrooveProps = useAuraGroove();
+  const auraGrooveProps = useAuraGroove({ isNavigatorMode: true });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-0 sm:p-6 bg-background">

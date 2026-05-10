@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.6 — "Masterpiece Logic Restore".
- * #ЧТО: ПЛАН №1650 — Реализована функция handleSaveMasterpiece для сохранения в облако.
+ * #ЗАЧЕМ: Хук управления музыкой V8.8 — "Mode Sovereignty".
+ * #ЧТО: ПЛАН №1675 — Синхронизация Play и разделение логики Маршрут/Эксперт.
  */
 'use client';
 
@@ -113,7 +113,7 @@ export type AuraGrooveProps = {
   deleteMixerPreset: (id: string) => void;
 };
 
-export const useAuraGroove = (): AuraGrooveProps => {
+export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNavigatorMode: false }): AuraGrooveProps => {
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
@@ -359,7 +359,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (payload.totalBars) setTotalBars(payload.totalBars);
             
             const currentBarNum = payload.barCount;
-            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0) {
+            
+            // #ЗАЧЕМ: Строгое ограничение логики маршрута режимом Навигатора.
+            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0 && options.isNavigatorMode) {
                 handleRouteTransition();
             }
             lastBarCountRef.current = currentBarNum;
@@ -367,7 +369,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
     worker.addEventListener('message', handleMessage);
     return () => worker.removeEventListener('message', handleMessage);
-  }, [isPlaying, activeRouteIndex, route.length, getWorker, handleRouteTransition]);
+  }, [isPlaying, activeRouteIndex, route.length, getWorker, handleRouteTransition, options.isNavigatorMode]);
 
   useEffect(() => {
     if (activeRouteIndex >= 0 && activeRouteIndex < route.length) {
@@ -393,20 +395,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
               setActiveRouteIndex(activeRouteIndex - 1);
           }
           return next;
-      });
-  };
-
-  const moveRouteItem = (id: string, direction: 'up' | 'down') => {
-      setRoute(prev => {
-          const idx = prev.findIndex(it => it.id === id);
-          if (idx === -1) return prev;
-          const nextIdx = direction === 'up' ? idx - 1 : idx + 1;
-          if (nextIdx < 0 || nextIdx >= prev.length) return prev;
-          const n = [...prev];
-          [n[idx], n[nextIdx]] = [n[nextIdx], n[idx]];
-          if (activeRouteIndex === idx) setActiveRouteIndex(nextIdx);
-          else if (activeRouteIndex === nextIdx) setActiveRouteIndex(idx);
-          return n;
       });
   };
 
@@ -509,7 +497,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            if (route.length > 0) {
+            // #ЗАЧЕМ: Если в Навигаторе есть путь, всегда стартуем с 1-го элемента.
+            if (options.isNavigatorMode && route.length > 0) {
                 setActiveRouteIndex(0);
                 applyRouteItem(route[0]);
             }

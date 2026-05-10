@@ -6,10 +6,10 @@ import { useAuraGroove } from '@/hooks/use-aura-groove';
 
 /**
  * #ЗАЧЕМ: Страница профессионального интерфейса.
- * #ЧТО: ПЛАН №1235 — Закреплена за Expert Mode.
+ * #ЧТО: ПЛАН №1675 — Хук инициализируется в режиме Эксперта (плейлист игнорируется).
  */
 export default function ExpertUIPage() {
-  const auraGrooveProps = useAuraGroove();
+  const auraGrooveProps = useAuraGroove({ isNavigatorMode: false });
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-0 sm:p-6 bg-background">
