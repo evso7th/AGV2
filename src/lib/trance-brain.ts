@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V48.0 — "Seamless Melodic Tie".
- * #ЗАЧЕМ: Реализация бесшовного перетекания нот в псайбиенте.
- * #ЧТО: ПЛАН №1685 — Внедрен алгоритм заполнения пауз и интеграция с Harmonic Ripple для повторов.
+ * @fileOverview Psybient Brain V49.0 — "Melodic Pad Sync".
+ * #ЗАЧЕМ: Синхронизация техники исполнения лида с пэдами.
+ * #ЧТО: ПЛАН №1690 — Ведущий голос теперь использует swell и ripple.
  */
 
 import type {
@@ -221,10 +221,6 @@ export class TranceBrain {
         return rippled;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация протокола "Melodic Tie" (ПЛАН №1685).
-     * #ЧТО: Слияние пауз и интеграция Ripple для идентичных нот.
-     */
     private applyMelodicTie(events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return [];
         const sorted = [...events].sort((a, b) => a.time - b.time);
@@ -307,7 +303,6 @@ export class TranceBrain {
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
             }
-            // #ЗАЧЕМ: Применение Melodic Tie к мелодии.
             melodyEvents = this.applyMelodicTie(melodyEvents, resChord);
             events.push(...melodyEvents);
         }
@@ -476,20 +471,33 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация "Melodic Pad Sync".
+     * #ЧТО: ПЛАН №1690 — Мелодия Heritage теперь полностью имитирует технику аккомпанемента.
+     */
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
-            const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
+        
+        const rawEvents = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
             return {
-                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-                time: (n.t - barOffset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 1.0,
-                technique: useVibrato ? 'vb' as Technique : ('pick' as Technique), dynamics: 'mf', phrasing: 'legato'
+                type: 'melody' as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: (n.t - barOffset) * TICK_TO_BEAT, 
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
+                weight: 1.0,
+                technique: tension > 0.8 ? ('hit' as Technique) : ('swell' as Technique), 
+                dynamics: 'mf', phrasing: 'legato',
+                params: {
+                    attack: 1.5,
+                    release: 3.0
+                }
             };
         });
+        
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -510,23 +518,35 @@ export class TranceBrain {
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
         }));
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация "Melodic Pad Sync" для Legacy Solo.
+     */
     private renderLegacySolo(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const lickKeys = Object.keys(BLUES_SOLO_LICKS).filter(k => k.startsWith('LN_'));
         const key = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
         const lick = BLUES_SOLO_LICKS[key];
         if (!lick) return [];
-        return decompressCompactPhrase(lick.phrase as any).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+        
+        const rawEvents = decompressCompactPhrase(lick.phrase as any).map(n => ({
+            type: 'melody' as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 0.9, 
-            technique: (tension > 0.4 && n.d >= 3) ? 'vb' as Technique : 'pick', dynamics: 'mf', phrasing: 'legato'
+            technique: tension > 0.8 ? ('hit' as Technique) : ('swell' as Technique), 
+            dynamics: 'mf', phrasing: 'legato',
+            params: {
+                attack: 1.2,
+                release: 2.8
+            }
         }));
+        
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
@@ -546,7 +566,8 @@ export class TranceBrain {
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+        const e: FractalEvent = { type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5 } };
+        return this.rippleLongNote(e, currentChord);
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {

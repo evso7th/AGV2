@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V77.0 — "Seamless Melodic Tie".
- * #ЗАЧЕМ: Реализация бесшовного перетекания нот в эмбиенте.
- * #ЧТО: ПЛАН №1685 — Внедрен алгоритм заполнения пауз и интеграция с Harmonic Ripple для повторов.
+ * @fileOverview Ambient Brain V78.0 — "Melodic Pad Sync".
+ * #ЗАЧЕМ: Мелодия в Амбиенте теперь играет в технике Аккомпанемента.
+ * #ЧТО: ПЛАН №1690 — Мелодия принудительно использует swell, ripple и длинные огибающие.
  */
 
 import type {
@@ -276,10 +276,6 @@ export class AmbientBrain {
         return rippled;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация протокола "Melodic Tie" (ПЛАН №1685).
-     * #ЧТО: Слияние пауз и интеграция Ripple для идентичных нот.
-     */
     private applyMelodicTie(events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return [];
         
@@ -290,16 +286,12 @@ export class AmbientBrain {
             const current = sorted[i];
             const next = sorted[i+1];
             
-            // 1. Gap Filling & Overlap
-            const nextStartTime = next ? next.time : 4.0; // Extend to bar end if last
+            const nextStartTime = next ? next.time : 4.0;
             const gap = nextStartTime - current.time;
             
-            // Увеличиваем длительность до начала следующей ноты + нахлест
             current.duration = Math.max(current.duration, gap + 0.15);
 
-            // 2. Harmonic Ripple for Identical Consecutive Notes
             if (next && current.note === next.note) {
-                // Если ноты одинаковые - это триггер для текстурного перелива
                 const rippled = this.rippleLongNote(current, chord);
                 processed.push(...rippled);
             } else {
@@ -446,7 +438,6 @@ export class AmbientBrain {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
             }
             
-            // #ЗАЧЕМ: Применение Melodic Tie к мелодии.
             melodyEvents = this.applyMelodicTie(melodyEvents, resChord);
         }
         melodyEvents.forEach(e => e.pan = -0.15); 
@@ -605,29 +596,39 @@ export class AmbientBrain {
         return this.rippleLongNote(e, chord);
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация "Melodic Pad Sync".
+     * #ЧТО: ПЛАН №1690 — Мелодия теперь полностью имитирует технику аккомпанемента.
+     */
     private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, localTension);
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
+        
         const rawEvents = barNotes.map(n => {
-            const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb';
-            
+            // #ЗАЧЕМ: Техника и огибающие как у пэдов аккомпанемента.
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
                 duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
                 weight: 0.7,
-                technique: useVibrato ? ('vb' as Technique) : ('pick' as Technique), 
+                technique: localTension > 0.85 ? ('hit' as Technique) : ('swell' as Technique), 
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
-                params: { attack: 0.3, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
+                params: { 
+                    attack: 1.5, // Pad-like attack
+                    release: 3.5, // Pad-like release
+                    filterCutoff: 1600 + (localTension * 1200), 
+                    mood: this.mood 
+                }
             };
         });
 
-        return rawEvents;
+        // #ЗАЧЕМ: Дробление через Ripple для текстурной связности.
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA): FractalEvent[] {
@@ -682,7 +683,8 @@ export class AmbientBrain {
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        return [e]; // Will be processed by applyMelodicTie later
+        // #ЗАЧЕМ: Применяем Ripple даже к базовой мелодической подложке.
+        return this.rippleLongNote(e, resChord);
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
