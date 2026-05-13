@@ -161,7 +161,8 @@ export class MelodySynthManagerV2 {
         }
         
         // Aria Transient Logic
-        if (currentActive === 'guitar_shineOn' || currentActive === 'synth' || currentActive === 'organ') {
+        // #ЗАЧЕМ: ПЛАН №1720. Транзиенты ограничены только Shine On и Muff Lead.
+        if (currentActive === 'guitar_shineOn') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
