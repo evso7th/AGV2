@@ -1,0 +1,22 @@
+{
+  "name": "AuraGroove",
+  "short_name": "AuraGroove",
+  "description": "AI-Powered Generative Music Engine",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#a855f7",
+  "icons": [
+    {
+      "src": "/assets/icon8.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon8.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
