@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.1 — "State Naming Fix".
- * #ЧТО: ПЛАН №1755 — Исправлена ошибка ReferenceError: setMood/setGenre is not defined.
+ * #ЗАЧЕМ: Хук управления музыкой V9.2 — "Navigator Integrity Fix".
+ * #ЧТО: ПЛАН №1770 — Исправлена логика перескока: переход теперь только при реальном завершении круга (lastBar >= totalBars - 1).
  */
 'use client';
 
@@ -267,8 +267,8 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
         if (type === 'SCORE_READY' && payload) {
             setBpm(payload.actualBpm); setCurrentBar(payload.barCount); if (payload.totalBars) setTotalBars(payload.totalBars);
             const currentBarNum = payload.barCount;
-            // #ЗАЧЕМ: СТРОГИЙ СБРОС (ПЛАН №1750). lastBarCountRef.current > 0 гарантирует, что переход не сработает на стартовом такте 0.
-            if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0 && options.isNavigatorMode) {
+            // #ЗАЧЕМ: СТРОГИЙ ПЕРЕХОД. Переключение происходит ТОЛЬКО если старый такт был последним в последовательности.
+            if (currentBarNum === 0 && lastBarCountRef.current >= (payload.totalBars - 1) && isPlaying && activeRouteIndex >= 0 && route.length > 0 && options.isNavigatorMode) {
                 handleRouteTransition();
             }
             lastBarCountRef.current = currentBarNum;

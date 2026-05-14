@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1695): Корректировка громкости гитар для баланса с транзиентами.
+// #ОБНОВЛЕНО (ПЛАН №1770): Громкость лид-гитар снижена в 2 раза для идеального баланса.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -106,7 +106,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.175, // #ЗАЧЕМ: Уменьшено в 4 раза с 0.7 для баланса микса.
+    volume: 0.085, // #ЗАЧЕМ: Снижено еще в 2 раза с 0.175 (ПЛАН №1770).
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600 },
     drive: { type: 'soft', amount: 0.25 },
@@ -121,7 +121,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    volume: 0.175, // #ЗАЧЕМ: Уменьшено в 4 раза с 0.7 для баланса микса.
+    volume: 0.085, // #ЗАЧЕМ: Снижено еще в 2 раза с 0.175 (ПЛАН №1770).
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.6 },
