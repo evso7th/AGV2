@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Master Mix Registry V1.5 — "Drum Normalization".
- * #ЗАЧЕМ: Унификация дефолтных громкостей по запросу пользователя.
- * #ЧТО: Громкость ударных установлена на 0.5 (50) для всех жанров.
+ * @fileOverview Master Mix Registry V1.6 — "Blues Melody Calibration".
+ * #ЗАЧЕМ: Уточнение баланса для блюза по запросу пользователя.
+ * #ЧТО: Громкость мелодии для блюза снижена до 0.20.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -30,7 +30,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     blues: {
         bass: 0.70,
-        melody: 0.65,
+        melody: 0.20, // #ЗАЧЕМ: ПЛАН №1775. Снижено до 20% для идеального старта.
         accompaniment: 0.30, 
         harmony: 0.30,
         pianoAccompaniment: 0.30,

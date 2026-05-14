@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V42.1 — "Recording & Broadcast Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: startRecording is not defined.
- * #ЧТО: Реализованы методы записи и управления бродкастом.
+ * @fileOverview Audio Engine Context V42.2 — "Auto-Broadcast Optimization".
+ * #ЗАЧЕМ: Исправление активации бродкаста на мобильных устройствах.
  */
 'use client';
 
@@ -210,7 +210,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const toggleBroadcast = useCallback(async () => {
     if (broadcastEngineRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
-        if (isBroadcastActive) {
+        // Check current state in ref to avoid closure issues
+        const active = broadcastEngineRef.current.isActive();
+        if (active) {
             broadcastEngineRef.current.stop();
             speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.5);
             setIsBroadcastActive(false);
@@ -223,7 +225,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             setIsBroadcastActive(true);
         }
     }
-  }, [isBroadcastActive]);
+  }, []);
 
   const startRecording = useCallback(() => {
     if (!recDestRef.current) return;
@@ -448,8 +450,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (context.state === 'suspended') await context.resume();
                 
                 const isMobileAuto = sessionStorage.getItem('AG_Mobile_AutoBroadcast') === 'true';
-                if (isMobileAuto && !isBroadcastActive) {
-                    await toggleBroadcast();
+                if (isMobileAuto) {
+                    // #ЗАЧЕМ: Ускоренная активация бродкаста для мобильных устройств.
+                    if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
+                        await toggleBroadcast();
+                    }
                     sessionStorage.removeItem('AG_Mobile_AutoBroadcast');
                 }
 
