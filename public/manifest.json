@@ -1,12 +1,11 @@
 {
-  "name": "AuraGroove",
+  "name": "AuraGroove V2",
   "short_name": "AuraGroove",
-  "description": "AI-powered digital neuro music generator",
+  "description": "AI-powered generative music engine for pure digital neuro soundscapes.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#a855f7",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/assets/icon8.jpeg",
@@ -17,8 +16,7 @@
     {
       "src": "/assets/icon8.jpeg",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/jpeg"
     }
   ]
 }
