@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.3 — "Deterministic Timing".
- * #ЗАЧЕМ: Устранение дрейфа времени и заиканий.
- * #ЧТО: ПЛАН №1665 — Внедрен цикл на базе performance.now() для компенсации времени вычислений.
+ * @file AuraGroove Music Worker V5.4 — "Burst Start Protocol".
+ * #ЗАЧЕМ: Устранение заиканий при старте на мобильных устройствах.
+ * #ЧТО: ПЛАН №1750 (Пункт 3) — Реализована мгновенная генерация 3-х тактов ("Упреждающий удар").
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -166,6 +166,12 @@ const Scheduler = {
         
         if (!fractalMusicEngine) {
             this.initializeEngine(this.settings);
+        }
+
+        // #ЗАЧЕМ: Burst Generation (План №1750, п.3).
+        // Мгновенная выдача 3-х тактов для создания буфера.
+        for (let i = 0; i < 3; i++) {
+            this.tick();
         }
 
         // #ЗАЧЕМ: Инициализация детерминированного таймера.
