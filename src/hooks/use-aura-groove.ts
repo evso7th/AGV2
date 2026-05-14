@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.0 — "Start Integrity Protocol".
- * #ЧТО: ПЛАН №1750 — Исправлен баг перескакивания маршрута на старте.
+ * #ЗАЧЕМ: Хук управления музыкой V9.1 — "State Naming Fix".
+ * #ЧТО: ПЛАН №1755 — Исправлена ошибка ReferenceError: setMood/setGenre is not defined.
  */
 'use client';
 
@@ -135,11 +135,11 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   
   const [bpm, setBpm] = useState(75);
   const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
-  const [genre, setGenreState] = useState<Genre>('ambient');
+  const [genre, setGenre] = useState<Genre>('ambient');
   const [density, setDensity] = useState(0.5);
   const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
   const [useHeritage, setUseHeritage] = useState(true); 
-  const [mood, setMoodState] = useState<Mood>('melancholic');
+  const [mood, setMood] = useState<Mood>('melancholic');
   const [introBars, setIntroBars] = useState(8); 
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
@@ -236,7 +236,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   const applyRouteItem = useCallback((item: RouteItem) => {
     const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
     const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
-    setGenreState(g); setMoodState(m); setCurrentSeed(Date.now());
+    setGenre(g); setMood(m); setCurrentSeed(Date.now());
   }, []);
 
   const loadRoute = (saved: SavedRoute) => {
