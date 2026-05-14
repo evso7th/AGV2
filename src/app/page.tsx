@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -9,8 +8,8 @@ import { Music } from 'lucide-react';
 import Image from 'next/image';
 
 /**
- * #ЗАЧЕМ: Корневая страница.
- * #ЧТО: ПЛАН №1235 — Теперь ведет в /home по умолчанию.
+ * #ЗАЧЕМ: Корневая страница входа.
+ * #ЧТО: ПЛАН №1750 (Пункт 4) — Детекция мобильных устройств для авто-активации бродкаста.
  */
 export default function Home() {
   const router = useRouter();
@@ -21,6 +20,14 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
+    // #ЗАЧЕМ: Легальная активация аудио-контекста для фона на смартфонах.
+    // Флаг будет считан в AudioEngineContext при первом нажатии Play.
+    if (typeof window !== 'undefined') {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile) {
+            sessionStorage.setItem('AG_Mobile_AutoBroadcast', 'true');
+        }
+    }
     router.push('/home');
   };
 
