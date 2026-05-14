@@ -5,7 +5,7 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №1750 (Часть 1) — Интеграция PWA и разделение Metadata/Viewport согласно Next.js 15.
+ * #ЧТО: ПЛАН №1760 — Полноценная поддержка PWA и метаданных для iOS/Android.
  */
 
 export const metadata: Metadata = {
@@ -41,6 +41,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+        <link rel="apple-touch-icon" href="/assets/icon8.jpeg" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <Providers>
