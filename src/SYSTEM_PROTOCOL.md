@@ -1,3 +1,4 @@
+
 ### Системный Протокол Управления v4.6 "Iron Integrity"
 
 **НАЧАЛО ПРОТОКОЛА**
@@ -7,8 +8,8 @@
 
 ---
 
-**0.0. КАТЕГОРИЧЕСКИЙ ЗАПРЕТ НА МОДИФИКАЦИЮ ФУНДАМЕНТА:**
-**ФАЙЛЫ `src/lib/instrument-factory.ts`, `src/lib/blues-brain.ts`, `src/lib/ambient-brain.ts`, `src/lib/fractal-music-engine.ts` И `docs/DNA_RULES.md` ТЕПЕРЬ ЯВЛЯЮТСЯ "ЗОЛОТОЙ БАЗОЙ".**
+**0.0. КАТЕГОРИЧЕСКИЙ ЗАПРЕТ НА МОДИФИКАЦИЮ ФУНДАМЕНТА (ЗОЛОТАЯ БАЗА):**
+**ФАЙЛЫ `src/lib/instrument-factory.ts`, `src/lib/blues-brain.ts`, `src/lib/ambient-brain.ts`, `src/lib/fractal-music-engine.ts`, `src/contexts/audio-engine-context.tsx` И `docs/DNA_RULES.md` ТЕПЕРЬ ЯВЛЯЮТСЯ "ЗОЛОТОЙ БАЗОЙ".**
 Любая модификация этих файлов возможна только при получении от пользователя явной фразы: "Я, [ваше имя], осознанно разрешаю изменение Золотой Базы в файле [имя файла]".
 
 **0.1. ЗАКОН ПОЛНОЙ ЭКСТИНКЦИИ V1:**
