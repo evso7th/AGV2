@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V78.0 — "Melodic Pad Sync".
- * #ЗАЧЕМ: Мелодия в Амбиенте теперь играет в технике Аккомпанемента.
- * #ЧТО: ПЛАН №1690 — Мелодия принудительно использует swell, ripple и длинные огибающие.
+ * @fileOverview Ambient Brain V78.1 — "Log Integration".
+ * #ЗАЧЕМ: Добавлен возврат параметра яркости (brightness) для когнитивных логов.
  */
 
 import type {
@@ -117,6 +116,7 @@ export class AmbientBrain {
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        if (totalBars <= 0) return 0;
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
@@ -191,7 +191,7 @@ export class AmbientBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ 
                             phrase: decompressCompactPhrase(ax.phrase), 
@@ -308,7 +308,7 @@ export class AmbientBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, trackName?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
+    ): { events: FractalEvent[], tension: number, brightness: number, beautyScore: number, mutationType?: string, activeAxioms?: any, narrative?: string, trackName?: string, newBpm?: number, instrumentOverrides?: Partial<InstrumentHints> } {
 
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const localTension = tension;
@@ -336,7 +336,7 @@ export class AmbientBrain {
             });
             events.push(...bridgeEvents);
             return {
-                events, tension: localTension, beautyScore: 0.5,
+                events, tension: localTension, brightness: this.bright, beautyScore: 0.5,
                 trackName: this.currentTrackName,
                 activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
                 narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
@@ -477,7 +477,7 @@ export class AmbientBrain {
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
         return {
-            events, tension: localTension, beautyScore: 0.5,
+            events, tension: localTension, brightness: this.bright, beautyScore: 0.5,
             mutationType: this.currentMutationType, newBpm,
             trackName: this.currentTrackName,
             instrumentOverrides,
@@ -596,10 +596,6 @@ export class AmbientBrain {
         return this.rippleLongNote(e, chord);
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация "Melodic Pad Sync".
-     * #ЧТО: ПЛАН №1690 — Мелодия теперь полностью имитирует технику аккомпанемента.
-     */
     private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
@@ -608,7 +604,6 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         
         const rawEvents = barNotes.map(n => {
-            // #ЗАЧЕМ: Техника и огибающие как у пэдов аккомпанемента.
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
@@ -619,15 +614,14 @@ export class AmbientBrain {
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
                 params: { 
-                    attack: 1.5, // Pad-like attack
-                    release: 3.5, // Pad-like release
+                    attack: 1.5, 
+                    release: 3.5, 
                     filterCutoff: 1600 + (localTension * 1200), 
                     mood: this.mood 
                 }
             };
         });
 
-        // #ЗАЧЕМ: Дробление через Ripple для текстурной связности.
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -683,7 +677,6 @@ export class AmbientBrain {
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        // #ЗАЧЕМ: Применяем Ripple даже к базовой мелодической подложке.
         return this.rippleLongNote(e, resChord);
     }
 

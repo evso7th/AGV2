@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Blues Brain V77.0 — "Heritage Integrity Restore".
+ * @fileOverview Blues Brain V77.1 — "Log Integration".
  */
 
 import {
@@ -187,7 +187,17 @@ export class BluesBrain {
         }
     });
 
-    return { events, tension, beautyScore: 0.8, trackName: this.currentTrackName, newBpm, instrumentOverrides, activeAxioms: { melody: this.currentLickId } };
+    // #ЗАЧЕМ: Возвращаем яркость на основе напряжения.
+    return { 
+        events, 
+        tension, 
+        brightness: tension * 0.8,
+        beautyScore: 0.8, 
+        trackName: this.currentTrackName, 
+        newBpm, 
+        instrumentOverrides, 
+        activeAxioms: { melody: this.currentLickId, bass: this.currentBassAxiom.length > 0 ? 'Heritage' : 'none' } 
+    };
   }
 
   private renderStandardDrums(epoch: number, tension: number): FractalEvent[] {

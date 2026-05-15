@@ -1,6 +1,7 @@
 
 /**
- * @fileOverview Fractal Music Engine V45.0 — "Intellectual Connectivity".
+ * @fileOverview Fractal Music Engine V45.1 — "Log Integration".
+ * #ЗАЧЕМ: Проброс параметра яркости (brightness) для когнитивного логирования.
  */
 
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
@@ -265,6 +266,7 @@ export class FractalMusicEngine {
         instrumentHints,
         beautyScore: this.calculateBeautyScore(result.events),
         tension,
+        brightness: result.brightness ?? 0.5,
         navInfo,
         trackName: result.trackName || this.config.activeAnchorId || 'Generative',
         dynasty: this.suiteDNA.dynasty

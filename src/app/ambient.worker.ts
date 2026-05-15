@@ -1,7 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker V5.5 — "Heritage Recovery".
- * #ЗАЧЕМ: Исправление связи с ДНК в устойчивой версии А.
+ * @file AuraGroove Music Worker V5.6 — "Cognitive Diagnostics".
+ * #ЗАЧЕМ: Восстановление подробного когнитивного логирования.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -230,6 +230,20 @@ const Scheduler = {
             console.error('[Worker] Evolution Error:', e);
             return;
         }
+
+        // --- ENSEMBLE COGNITIVE DIAGNOSTICS ---
+        const ts = getTimestamp();
+        const nav = payload.navInfo;
+        const ax = payload.activeAxioms || {};
+        const hints = payload.instrumentHints || {};
+        
+        const logMsg = `${ts} [Bar ${this.barCount}] [${nav.currentPart.name}] [DNA: ${payload.trackName}] ` +
+                       `T:${payload.tension.toFixed(2)} B:${(payload.brightness || 0.5).toFixed(2)} ` +
+                       `Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}] ` +
+                       `↳ Narrative: ${payload.narrative || '...'} | ` +
+                       `Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`;
+        
+        console.log(`%c${logMsg}`, 'color: #a855f7; font-weight: bold;');
 
         if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
             this.settings.bpm = payload.newBpm;
