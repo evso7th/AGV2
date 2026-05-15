@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.8 — "Psybient Standard".
+ * @fileOverview Universal Music Theory Utilities V4.9 — "Heritage Normalization Standard".
  */
 
 import type { 
@@ -46,6 +46,14 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
+ * #ЗАЧЕМ: Универсальная нормализация строк для безошибочного сравнения ID.
+ */
+export function normalizeStr(s: string | null | undefined): string {
+    if (!s) return '';
+    return String(s).toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+}
+
+/**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
@@ -61,10 +69,8 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
     if (!targetHint || targetHint === 'none') return 'none';
     
-    const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
+    const clean = normalizeStr(targetHint);
 
-    // #ЗАЧЕМ: ПЛАН №1150. Принудительное разрешение рояля для канала Piano.
-    // Это предотвращает глобальное мапирование 'piano' -> 'ep_rhodes_warm' для этого канала.
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
         if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
@@ -82,11 +88,11 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
 
     const v2Keys = Object.keys(V2_PRESETS);
-    const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
+    const matchedV2 = v2Keys.find(k => normalizeStr(k) === clean);
     if (matchedV2) return matchedV2;
     
     const bassKeys = Object.keys(BASS_PRESETS);
-    const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
+    const matchedBass = bassKeys.find(k => normalizeStr(k) === clean);
     if (matchedBass) return matchedBass;
 
     if (part === 'melody') {
@@ -115,10 +121,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
 
     return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
-}
-
-export function normalizeStr(s: string): string {
-    return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 export function keyToMidiRoot(key: string | null | undefined): number | null {
@@ -340,7 +342,6 @@ export function generateSuiteDNA(
 
     let inheritedBpm: number | null = null;
     if (cloudAxioms && cloudAxioms.length > 0) {
-        const normalizeStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (activeAnchorId) {
             const target = normalizeStr(activeAnchorId);
             const anchorAxiom = cloudAxioms.find(ax => normalizeStr(ax.compositionId) === target && ax.nativeBpm);

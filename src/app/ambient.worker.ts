@@ -1,14 +1,12 @@
 
 /**
- * @file AuraGroove Music Worker V5.4 — "Burst Start Protocol".
- * #ЗАЧЕМ: Устранение заиканий при старте на мобильных устройствах.
- * #ЧТО: ПЛАН №1750 (Пункт 3) — Реализована мгновенная генерация 3-х тактов ("Упреждающий удар").
+ * @file AuraGroove Music Worker V5.5 — "Heritage Recovery".
+ * #ЗАЧЕМ: Исправление связи с ДНК в устойчивой версии А.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
-import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
-import { normalizeStr } from '@/lib/music-theory';
+import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -36,10 +34,6 @@ const Scheduler = {
     playedTrackHistory: [] as string[], 
     expectedNextTick: 0,
     
-    // Morphing State
-    targetBpm: null as number | null,
-    bpmStep: 0,
-
     settings: {
         bpm: 75,
         score: 'neuro_f_matrix', 
@@ -61,7 +55,6 @@ const Scheduler = {
         useHeritage: true, 
         mood: 'melancholic' as Mood,
         introBars: 8, 
-        sessionLickHistory: [],
         selectedCompositionIds: [],
         seed: generateTrueSeed()
     } as WorkerSettings,
@@ -101,7 +94,7 @@ const Scheduler = {
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
                 
                 if (freshCandidates.length === 0) {
-                    this.playedTrackHistory = this.playedTrackHistory.filter(id => !uniqueIds.includes(id));
+                    this.playedTrackHistory = []; // Reset if exhausted
                 }
 
                 pickedId = pool[Math.floor(Math.random() * pool.length)];
@@ -115,8 +108,9 @@ const Scheduler = {
                 self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
             }
 
+            const target = normalizeStr(pickedId);
             const anchorAxiom = this.cloudAxiomPool.find(ax => 
-                ax.compositionId && normalizeStr(ax.compositionId) === normalizeStr(pickedId!) && ax.nativeKey
+                ax.compositionId && normalizeStr(ax.compositionId) === target && ax.nativeKey
             );
             
             if (anchorAxiom) {
@@ -148,15 +142,10 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        if (settings.targetBpm) {
-            this.targetBpm = settings.targetBpm;
-            this.bpmStep = (this.targetBpm - this.settings.bpm) / 4; 
-        } else {
-            const inheritedBpm = fractalMusicEngine.config.tempo;
-            if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
-                this.settings.bpm = inheritedBpm;
-                self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
-            }
+        const inheritedBpm = fractalMusicEngine.config.tempo;
+        if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
+            this.settings.bpm = inheritedBpm;
+            self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
         }
     },
 
@@ -168,26 +157,14 @@ const Scheduler = {
             this.initializeEngine(this.settings);
         }
 
-        // #ЗАЧЕМ: Burst Generation (План №1750, п.3).
-        // Мгновенная выдача 3-х тактов для создания буфера.
-        for (let i = 0; i < 3; i++) {
-            this.tick();
-        }
-
-        // #ЗАЧЕМ: Инициализация детерминированного таймера.
         this.expectedNextTick = performance.now();
         const loop = () => {
             if (!this.isRunning) return;
-            
             this.tick();
-            
             const durationMs = this.barDuration * 1000;
             this.expectedNextTick += durationMs;
-            
-            // Расчет задержки с учетом времени исполнения tick()
             const drift = performance.now() - (this.expectedNextTick - durationMs);
             const nextInterval = Math.max(0, durationMs - drift);
-            
             this.loopId = setTimeout(loop, nextInterval);
         };
         loop();
@@ -217,12 +194,6 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           if (filterChanged || genreOrMoodChanged) {
-               this.filterRotationIndex = 0;
-           } else if (seedChanged) {
-               this.filterRotationIndex++;
-           }
-
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -233,25 +204,15 @@ const Scheduler = {
 
     updateCloudAxioms(axioms: any[]) {
         this.cloudAxiomPool = axioms || [];
-        if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxiomPool.length > 0) {
-            this.initializeEngine(this.settings);
-        } else if (fractalMusicEngine) {
+        if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
+        } else if (this.cloudAxiomPool.length > 0) {
+            this.initializeEngine(this.settings);
         }
     },
 
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
-
-        // BPM Morphing Logic
-        if (this.targetBpm !== null) {
-            this.settings.bpm += this.bpmStep;
-            if (Math.abs(this.settings.bpm - this.targetBpm) < 0.5) {
-                this.settings.bpm = this.targetBpm;
-                this.targetBpm = null;
-            }
-            self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
-        }
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         if (this.barCount >= totalBars) {
@@ -270,35 +231,16 @@ const Scheduler = {
             return;
         }
 
-        if (payload.newBpm && payload.newBpm !== this.settings.bpm && !this.targetBpm) {
+        if (payload.newBpm && payload.newBpm !== this.settings.bpm) {
             this.settings.bpm = payload.newBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
-
-        const h = payload.instrumentHints || {};
-        const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-        const axioms = payload.activeAxioms || {};
-        const trackName = payload.trackName || 'Generative';
-        
-        const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
-        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
-        const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
-
-        console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} ` +
-            `%c${cognitiveStr}\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'} | %c${ensembleStr}`,
-            'color: #888;', 
-            'color: #4ade80; font-weight: bold;',
-            'color: #ADD8E6; font-style: italic;',
-            'color: #DA70D6; font-size: 10px; font-weight: bold;'
-        );
 
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
                 events: payload.events,
-                instrumentHints: h,
+                instrumentHints: payload.instrumentHints,
                 barDuration: (60 / this.settings.bpm) * 4,
                 barCount: this.barCount,
                 totalBars: totalBars,
@@ -333,10 +275,3 @@ self.onmessage = (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: String(e) });
     }
 };
-
-function keyToMidiRoot(key: string | null | undefined): number | null {
-    if (!key) return null;
-    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
-    const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
-    return 48 + (noteMap[rootName] || 0);
-}

@@ -1,3 +1,8 @@
+
+/**
+ * @fileOverview Fractal Music Engine V45.0 — "Intellectual Connectivity".
+ */
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -54,11 +59,6 @@ interface EngineConfig {
   isImprovising?: boolean;
 }
 
-/**
- * @fileOverview Fractal Music Engine V44.3 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление отсутствия звука в Регги.
- * #ЧТО: ПЛАН №1138 — Добавлена передача cloudAxioms в ReggaeBrain.
- */
 export class FractalMusicEngine {
   public config: EngineConfig;
   public blueprint: MusicBlueprint;
@@ -73,7 +73,6 @@ export class FractalMusicEngine {
   private tranceBrain: TranceBrain | null = null;
   private reggaeBrain: ReggaeBrain | null = null;
   private previousChord: GhostChord | null = null;
-  private lastEvents: FractalEvent[] = [];
 
   private activatedParts: Set<InstrumentPart> = new Set();
   private activeTimbres: Partial<Record<InstrumentPart, string>> = {};
@@ -86,27 +85,25 @@ export class FractalMusicEngine {
   }
 
   public updateConfig(newConfig: Partial<EngineConfig>) {
-      const moodOrGenreChanged = newConfig.mood !== this.config.mood || newConfig.genre !== this.config.genre;
+      const moodOrGenreChanged = (newConfig.mood && newConfig.mood !== this.config.mood) || (newConfig.genre && newConfig.genre !== this.config.genre);
       const seedChanged = newConfig.seed !== undefined && newConfig.seed !== this.config.seed;
       const heritageChanged = newConfig.useHeritage !== undefined && newConfig.useHeritage !== this.config.useHeritage;
 
-      this.config = { ...this.config, ...newConfig };
+      Object.assign(this.config, newConfig);
 
       if (seedChanged) this.random = seededRandom(this.config.seed);
 
-      if (newConfig.cloudAxioms || newConfig.selectedCompositionIds || newConfig.activeAnchorId !== undefined || heritageChanged) {
-          const impro = (this.config.selectedCompositionIds || []).length === 0;
-          this.config.isImprovising = impro;
+      const impro = (this.config.selectedCompositionIds || []).length === 0;
+      this.config.isImprovising = impro;
 
-          const axioms = this.config.cloudAxioms || [];
-          const anchor = this.config.activeAnchorId;
-          const useH = this.config.useHeritage;
+      const axioms = this.config.cloudAxioms || [];
+      const anchor = this.config.activeAnchorId;
+      const useH = this.config.useHeritage;
 
-          if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
-          if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-          if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-          if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-      }
+      if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
+      if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+      if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
+      if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
 
       if(moodOrGenreChanged || seedChanged || heritageChanged) this.initialize(true);
   }
@@ -146,29 +143,22 @@ export class FractalMusicEngine {
 
     this.navigator = new BlueprintNavigator(this.blueprint, this.config.seed, this.config.genre, this.config.mood, this.config.introBars, this.suiteDNA.soloPlanMap);
 
-    const impro = (this.config.selectedCompositionIds || []).length === 0;
-    this.config.isImprovising = impro;
-
     const axioms = this.config.cloudAxioms || [];
     const anchor = this.config.activeAnchorId;
     const useH = this.config.useHeritage;
+    const impro = (this.config.selectedCompositionIds || []).length === 0;
 
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
-        this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'psybient') {
         this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        // #ЗАЧЕМ: Восстановление связи Reggae с Облаком (ПЛАН №1138)
         this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
@@ -179,41 +169,25 @@ export class FractalMusicEngine {
       if (events.length < 2) return 0.5;
       let totalResonance = 0;
       let comparisons = 0;
-      const tonalEvents = events.filter(e => ['melody', 'bass', 'accompaniment'].includes(e.type as string));
+      const tonalEvents = events.filter(e => ['melody', 'bass', 'accompaniment'].includes(String(e.type)));
       if (tonalEvents.length < 2) return 0.6;
       for (let i = 0; i < tonalEvents.length; i++) {
           for (let j = i + 1; j < tonalEvents.length; j++) {
-              const res = MelancholicMinorK(tonalEvents[i], tonalEvents[j], {
+              totalResonance += MelancholicMinorK(tonalEvents[i], tonalEvents[j], {
                   mood: this.config.mood,
                   tempo: this.config.tempo,
                   delta: 1.0,
                   genre: this.config.genre
               });
-              totalResonance += res;
               comparisons++;
           }
       }
       return comparisons > 0 ? (totalResonance / comparisons) : 0.5;
   }
 
-  public evolve(barDuration: number, barCount: number): {
-      events: FractalEvent[],
-      instrumentHints: InstrumentHints,
-      beautyScore: number,
-      tension: number,
-      navInfo?: NavigationInfo,
-      lickId?: string,
-      mutationType?: string,
-      activeAxioms?: any,
-      narrative?: string,
-      trackName?: string,
-      dynasty?: string,
-      newBpm?: number
-  } {
+  public evolve(barDuration: number, barCount: number) {
     if (!this.navigator || !this.suiteDNA) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
     this.epoch = barCount;
-
-    if (this.epoch >= this.navigator.totalBars) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
 
     const navInfo = this.navigator.tick(this.epoch);
     if (!navInfo) return { events: [], instrumentHints: {}, beautyScore: 0, tension: 0.5 };
@@ -243,49 +217,19 @@ export class FractalMusicEngine {
         const part = layer as InstrumentPart;
         if (activeLayers[part] && !this.activatedParts.has(part)) {
             let shouldActivate = false;
-
             if (isIntro && this.lotterySchedule.has(part)) {
-                if (this.epoch >= this.lotterySchedule.get(part)!) {
-                    shouldActivate = true;
-                }
+                if (this.epoch >= this.lotterySchedule.get(part)!) shouldActivate = true;
             } else if (!isIntro) {
                 const rule = currentInstructions ? currentInstructions[part] : null;
-                if (this.random.next() < (rule ? (rule.activationChance ?? 1.0) : 1.0)) {
-                    shouldActivate = true;
-                }
+                if (this.random.next() < (rule ? (rule.activationChance ?? 1.0) : 1.0)) shouldActivate = true;
             }
 
             if (shouldActivate) {
                 this.activatedParts.add(part);
                 const rule = currentInstructions ? currentInstructions[part] : null;
                 const options = rule ? (rule.instrumentOptions || rule.v2Options || rule.options || []) : [];
-
-                let defaultInst = 'synth';
-                if (part === 'bass') {
-                    if (this.config.genre === 'psybient') defaultInst = 'bass_house';
-                    else if (this.config.genre === 'reggae') defaultInst = 'bass_jazz_warm';
-                    else defaultInst = 'bass_jazz_warm';
-                }
-                else if (part === 'melody') {
-                    if (this.config.genre === 'psybient') defaultInst = 'synth';
-                    else if (this.config.genre === 'reggae') defaultInst = 'telecaster';
-                    else defaultInst = 'organ_soft_jazz';
-                }
-                else if (part === 'accompaniment') {
-                    if (this.config.genre === 'reggae') defaultInst = 'organ_prog';
-                    else defaultInst = 'synth_ambient_pad_lush';
-                }
-                else if (part === 'harmony') {
-                    if (this.config.genre === 'reggae') defaultInst = 'guitarChords';
-                    else if (this.config.genre === 'blues') defaultInst = 'guitarChords';
-                    else defaultInst = 'violin';
-                }
-                else if (part === 'pianoAccompaniment') {
-                    defaultInst = 'ep_rhodes_warm';
-                }
-
-                const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
-                this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part);
+                const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || 'synth';
+                this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part, this.config.genre);
             }
         }
     });
@@ -306,36 +250,24 @@ export class FractalMusicEngine {
         result = this.tranceBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre === 'reggae' && this.reggaeBrain) {
         result = this.reggaeBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
-    } else if (this.config.genre !== 'blues' && this.ambientBrain) {
-        result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
-    } else if (this.bluesBrain) {
+    } else if (this.config.genre === 'blues' && this.bluesBrain) {
         result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
+    } else if (this.ambientBrain) {
+        result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else {
         result = { events: createHarmonyAxiom(currentChord, this.config.mood, this.config.genre, this.random, this.epoch) };
     }
 
-    if (result.instrumentOverrides) {
-        Object.assign(instrumentHints, result.instrumentOverrides);
-    }
-
-    this.lastEvents = [...result.events];
-    const barBeauty = this.calculateBeautyScore(result.events);
+    if (result.instrumentOverrides) Object.assign(instrumentHints, result.instrumentOverrides);
 
     return {
         ...result,
         instrumentHints,
-        beautyScore: barBeauty,
+        beautyScore: this.calculateBeautyScore(result.events),
         tension,
         navInfo,
-        trackName: result.trackName, 
-        dynasty: this.suiteDNA.dynasty,
-        lickId: result.lickId,
-        mutationType: result.mutationType,
-        activeAxioms: result.activeAxioms,
-        narrative: result.narrative,
-        newBpm: result.newBpm
+        trackName: result.trackName || this.config.activeAnchorId || 'Generative',
+        dynasty: this.suiteDNA.dynasty
     };
   }
-
-  public generateExternalImpulse() {}
 }
