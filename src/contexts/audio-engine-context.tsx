@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V42.2 — "Auto-Broadcast Optimization".
- * #ЗАЧЕМ: Исправление активации бродкаста на мобильных устройствах.
+ * @fileOverview Audio Engine Context V43.0 — "Legacy Synchronization Fix".
+ * #ЗАЧЕМ: Устранение Race Condition при передаче ДНК в Воркер.
+ * #ЧТО: ПЛАН №1780 — Использование рефа для мгновенного впрыска аксиом в новый Воркер.
  */
 'use client';
 
@@ -23,7 +24,7 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, getDocs, query, where, limit, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, onSnapshot } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { globalAllNotesOff } from '@/lib/instrument-factory';
@@ -121,6 +122,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
+  
+  // #ЗАЧЕМ: Реф для хранения последнего состояния аксиом для мгновенного впрыска в Воркер.
+  const latestCloudAxiomsRef = useRef<any[]>([]);
+
   const lastSavedArbiterSeedRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -210,7 +215,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const toggleBroadcast = useCallback(async () => {
     if (broadcastEngineRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
-        // Check current state in ref to avoid closure issues
         const active = broadcastEngineRef.current.isActive();
         if (active) {
             broadcastEngineRef.current.stop();
@@ -308,6 +312,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                       moods.forEach(m => compMeta[compId].moods.add(m));
                   }
               });
+              
+              // #ЗАЧЕМ: Сохраняем последнее состояние для новых воркеров.
+              latestCloudAxiomsRef.current = axioms;
+
               const meta = Object.entries(compMeta).map(([id, info]) => ({ 
                   id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods)
               })).sort((a,b) => a.id.localeCompare(b.id));
@@ -402,6 +410,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         ]);
         
         workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
+        
+        // #ЗАЧЕМ: Мгновенная отправка закэшированных аксиом в новый воркер.
+        if (latestCloudAxiomsRef.current.length > 0) {
+            workerRef.current.postMessage({ command: 'update_cloud_axioms', data: latestCloudAxiomsRef.current });
+        }
+
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
@@ -424,8 +438,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     try {
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
       const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
+      const axioms: any[] = [];
       snapshot.docs.forEach(d => {
-          const data = d.data(); const compId = data.compositionId;
+          const data = d.data(); 
+          axioms.push({ id: d.id, ...data });
+          const compId = data.compositionId;
           if (compId) {
               if (!compMeta[compId]) compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
               compMeta[compId].count++;
@@ -435,6 +452,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               moods.forEach(m => compMeta[compId].moods.add(m));
           }
       });
+      latestCloudAxiomsRef.current = axioms;
+      if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
       setAvailableCompositions(Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id)));
     } catch (e) {}
   }, [db]);
@@ -451,7 +470,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 const isMobileAuto = sessionStorage.getItem('AG_Mobile_AutoBroadcast') === 'true';
                 if (isMobileAuto) {
-                    // #ЗАЧЕМ: Ускоренная активация бродкаста для мобильных устройств.
                     if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
                         await toggleBroadcast();
                     }

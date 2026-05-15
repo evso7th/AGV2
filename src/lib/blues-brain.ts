@@ -1,6 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V77.1 — "Log Integration".
+ * @fileOverview Blues Brain V78.0 — "Generative Imperative".
+ * #ЗАЧЕМ: Устранение "DNA: Generative" при наличии данных и восстановление fallbacks.
+ * #ЧТО: ПЛАН №1782 — 1. Исправлен статус Restored/Improvisation. 2. Добавлен обязательный fallback.
  */
 
 import {
@@ -51,15 +53,13 @@ export class BluesBrain {
   private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
   
   private currentLickId: string = '';
-  private currentTrackName: string = 'Generative';
+  private currentTrackName: string = 'Algorithmic';
   private sessionAnchorId: string | null = null; 
   private currentNativeRoot: number | null = null;
   private currentPreferredInstrument: string | null = null;
 
   private soloistBusyUntilBar: number = -1;
   private readonly MELODY_CEILING = 72;
-  private currentTransposition: number = 0;
-  private microTransposition: number = 0;
 
   constructor(seed: number, mood: Mood, history: string[], axioms: any[], selectedIds: string[], anchorId: string | null, genre: string, useH: boolean) {
     this.seed = seed; this.mood = mood;
@@ -79,10 +79,15 @@ export class BluesBrain {
       if (anchorId !== undefined) this.config.activeAnchorId = anchorId;
       if (useH !== undefined) this.config.useHeritage = useH;
       if (isImpro !== undefined) this.config.isImprovising = isImpro;
+      // Сброс таймера занятости при обновлении базы, чтобы мгновенно подхватить данные.
+      this.soloistBusyUntilBar = -1;
   }
 
   private selectNextAxiom(epoch: number): number | undefined {
-      if (!this.config.useHeritage || !this.config.cloudAxioms?.length) return undefined;
+      if (!this.config.useHeritage || !this.config.cloudAxioms?.length) {
+          this.currentTrackName = 'Generative';
+          return undefined;
+      }
 
       const poolToUse = this.config.cloudAxioms.filter((ax: any) => ax.ignored !== true);
       let effectiveAnchor = this.config.activeAnchorId ? normalizeStr(this.config.activeAnchorId) : this.sessionAnchorId;
@@ -108,7 +113,7 @@ export class BluesBrain {
               const suitePlayhead = epoch % (maxDonorBars || 144);
               
               let selected: any = null;
-              if (this.config.isImprovising) {
+              if (this.config.isImprovising && !this.config.activeAnchorId) {
                   selected = basePool[calculateMusiNum(this.seed, 17, epoch, basePool.length)];
               } else {
                   const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
@@ -124,7 +129,7 @@ export class BluesBrain {
                   this.currentAxiom = mergeIdenticalNotes(decompressCompactPhrase(selected.phrase));
                   const cid = normalizeStr(selected.compositionId);
                   const bassSibling = poolToUse.find((ax: any) => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                  if (bassSibling) this.currentBassAxiom = decompressCompactPhrase(bassSibling.phrase);
+                  this.currentBassAxiom = bassSibling ? decompressCompactPhrase(bassSibling.phrase) : [];
 
                   const accompSiblings = poolToUse.filter((ax: any) => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                   this.currentAccompAxioms = accompSiblings.map((ax: any) => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
@@ -135,7 +140,9 @@ export class BluesBrain {
               }
           }
       }
+      
       this.currentTrackName = 'Generative';
+      this.currentLickId = 'none';
       this.soloistBusyUntilBar = epoch + 4;
       return undefined;
   }
@@ -151,8 +158,10 @@ export class BluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
+    // 1. DRUMS
     if (hints.drums) events.push(...this.renderStandardDrums(epoch, tension));
 
+    // 2. BASS
     if (hints.bass) {
         if (this.currentBassAxiom.length > 0) {
             const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
@@ -161,10 +170,14 @@ export class BluesBrain {
                 events.push({ type: 'bass', note: 31 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' });
             });
         } else {
+            // #ЗАЧЕМ: ПЛАН №1782. Обязательный басовый алгоритм при отсутствии ДНК.
             events.push({ type: 'bass', note: resChord.rootNote - 12, time: 0, duration: 4.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato' });
+            events.push({ type: 'bass', note: resChord.rootNote - 12, time: 2.0, duration: 2.0, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'detached' });
         }
     }
 
+    // 3. MELODY
+    let activeMelLick = 'none';
     if (hints.melody) {
         if (this.currentAxiom.length > 0) {
             const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
@@ -172,9 +185,18 @@ export class BluesBrain {
             this.currentAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
                 events.push({ type: 'melody', note: 60 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: n.tech as any || 'pick', dynamics: 'mf', phrasing: 'legato' });
             });
+            activeMelLick = this.currentLickId;
+        } else {
+            // #ЗАЧЕМ: ПЛАН №1782. Генеративный ответ, если ДНК мелодии нет.
+            [0, 6, 9].forEach(t => {
+                events.push({ type: 'melody', note: resChord.rootNote + 12 + [0, 3, 7][this.random.nextInt(3)], time: t * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.65, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
+            });
+            activeMelLick = 'Algorithmic Pad';
         }
     }
 
+    // 4. ACCOMPANIMENT
+    let usedAccomp = false;
     this.currentAccompAxioms.forEach(ax => {
         const role = ax.role.toLowerCase();
         let target: any = role.includes('piano') ? 'pianoAccompaniment' : 'accompaniment';
@@ -184,19 +206,30 @@ export class BluesBrain {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
                 events.push({ type: target, note: 60 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
             });
+            usedAccomp = true;
         }
     });
 
-    // #ЗАЧЕМ: Возвращаем яркость на основе напряжения.
+    if (hints.accompaniment && !usedAccomp) {
+        events.push({ type: 'accompaniment', note: resChord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
+    }
+
+    const modeStr = this.config.isImprovising && !this.config.activeAnchorId ? 'IMPROVISATION' : 'RESTORATION';
+
     return { 
         events, 
         tension, 
         brightness: tension * 0.8,
-        beautyScore: 0.8, 
+        beautyScore: 0.85, 
         trackName: this.currentTrackName, 
         newBpm, 
         instrumentOverrides, 
-        activeAxioms: { melody: this.currentLickId, bass: this.currentBassAxiom.length > 0 ? 'Heritage' : 'none' } 
+        activeAxioms: { 
+            melody: activeMelLick, 
+            ensemble: `${modeStr} [DNA: ${this.currentTrackName}]`,
+            bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Generative Drone' 
+        },
+        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: PLAYING]`
     };
   }
 
