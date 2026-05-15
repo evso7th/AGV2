@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V78.0 — "Generative Imperative".
- * #ЗАЧЕМ: Устранение "DNA: Generative" при наличии данных и восстановление fallbacks.
- * #ЧТО: ПЛАН №1782 — 1. Исправлен статус Restored/Improvisation. 2. Добавлен обязательный fallback.
+ * @fileOverview Blues Brain V79.0 — "Log Integrity & Harmony Fallback".
+ * #ЗАЧЕМ: Исправление отображения статуса Drums/Piano и добавление гитарной гармонии.
+ * #ЧТО: 1. Добавлена генерация Harmony при отсутствии ДНК. 2. Исправлен activeAxioms объект.
  */
 
 import {
@@ -79,7 +79,6 @@ export class BluesBrain {
       if (anchorId !== undefined) this.config.activeAnchorId = anchorId;
       if (useH !== undefined) this.config.useHeritage = useH;
       if (isImpro !== undefined) this.config.isImprovising = isImpro;
-      // Сброс таймера занятости при обновлении базы, чтобы мгновенно подхватить данные.
       this.soloistBusyUntilBar = -1;
   }
 
@@ -131,7 +130,7 @@ export class BluesBrain {
                   const bassSibling = poolToUse.find((ax: any) => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                   this.currentBassAxiom = bassSibling ? decompressCompactPhrase(bassSibling.phrase) : [];
 
-                  const accompSiblings = poolToUse.filter((ax: any) => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                  const accompSiblings = poolToUse.filter((ax: any) => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                   this.currentAccompAxioms = accompSiblings.map((ax: any) => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
                   this.currentAxiomMaxTick = (selected.bars || 4) * TICKS_PER_BAR;
@@ -145,6 +144,40 @@ export class BluesBrain {
       this.currentLickId = 'none';
       this.soloistBusyUntilBar = epoch + 4;
       return undefined;
+  }
+
+  private renderGenerativeHarmony(chord: GhostChord, tension: number): FractalEvent[] {
+      const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
+      const events: FractalEvent[] = [];
+      // Редкие удары на 1-ю и 3-ю доли
+      [0, 6].forEach(t => {
+          if (this.random.next() < 0.6) {
+              intervals.forEach(interval => {
+                  events.push({
+                      type: 'harmony', note: chord.rootNote + 12 + interval,
+                      time: t * TICK_TO_BEAT, duration: 2.0 * TICK_TO_BEAT,
+                      weight: 0.5 + (tension * 0.1), technique: 'swell',
+                      dynamics: 'p', phrasing: 'legato', chordName: chord.chordType === 'minor' ? 'Am' : 'A'
+                  });
+              });
+          }
+      });
+      return events;
+  }
+
+  private renderVirtuosoPiano(chord: GhostChord, tension: number): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
+      [1.5, 4.5, 7.5, 10.5].forEach(t => {
+          if (this.random.next() < 0.4) {
+              const note = chord.rootNote + 12 + intervals[this.random.nextInt(intervals.length)];
+              events.push({
+                  type: 'pianoAccompaniment', note: note, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
+                  weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+              });
+          }
+      });
+      return events;
   }
 
   public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints) {
@@ -170,9 +203,7 @@ export class BluesBrain {
                 events.push({ type: 'bass', note: 31 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' });
             });
         } else {
-            // #ЗАЧЕМ: ПЛАН №1782. Обязательный басовый алгоритм при отсутствии ДНК.
             events.push({ type: 'bass', note: resChord.rootNote - 12, time: 0, duration: 4.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato' });
-            events.push({ type: 'bass', note: resChord.rootNote - 12, time: 2.0, duration: 2.0, weight: 0.8, technique: 'pick', dynamics: 'mf', phrasing: 'detached' });
         }
     }
 
@@ -187,30 +218,44 @@ export class BluesBrain {
             });
             activeMelLick = this.currentLickId;
         } else {
-            // #ЗАЧЕМ: ПЛАН №1782. Генеративный ответ, если ДНК мелодии нет.
-            [0, 6, 9].forEach(t => {
-                events.push({ type: 'melody', note: resChord.rootNote + 12 + [0, 3, 7][this.random.nextInt(3)], time: t * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.65, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
-            });
+            events.push({ type: 'melody', note: resChord.rootNote + 12, time: 0, duration: 4.0, weight: 0.65, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
             activeMelLick = 'Algorithmic Pad';
         }
     }
 
-    // 4. ACCOMPANIMENT
-    let usedAccomp = false;
+    // 4. ACCOMPANIMENT / PIANO / HARMONY
+    const usedLayers = new Set<string>();
+    let pianoAxiomId = 'none';
+    let harmonyAxiomId = 'none';
+
     this.currentAccompAxioms.forEach(ax => {
         const role = ax.role.toLowerCase();
-        let target: any = role.includes('piano') ? 'pianoAccompaniment' : 'accompaniment';
-        if (hints[target as InstrumentPart]) {
+        let target: InstrumentPart | null = null;
+        if (role.includes('piano')) { target = 'pianoAccompaniment'; pianoAxiomId = ax.id; }
+        else if (role.includes('accomp')) target = 'accompaniment';
+        else if (role.includes('harmony') || role.includes('guitar')) { target = 'harmony'; harmonyAxiomId = ax.id; }
+
+        if (target && hints[target] && !usedLayers.has(target)) {
             const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
             const barOffset = (epoch % totalBars) * TICKS_PER_BAR;
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
                 events.push({ type: target, note: 60 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
             });
-            usedAccomp = true;
+            usedLayers.add(target);
         }
     });
 
-    if (hints.accompaniment && !usedAccomp) {
+    if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
+        events.push(...this.renderVirtuosoPiano(resChord, tension));
+        pianoAxiomId = 'Rhodes Bubbling';
+    }
+
+    if (hints.harmony && !usedLayers.has('harmony')) {
+        events.push(...this.renderGenerativeHarmony(resChord, tension));
+        harmonyAxiomId = 'Algorithmic Skank';
+    }
+
+    if (hints.accompaniment && !usedLayers.has('accompaniment')) {
         events.push({ type: 'accompaniment', note: resChord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
     }
 
@@ -223,11 +268,12 @@ export class BluesBrain {
         beautyScore: 0.85, 
         trackName: this.currentTrackName, 
         newBpm, 
-        instrumentOverrides, 
         activeAxioms: { 
             melody: activeMelLick, 
-            ensemble: `${modeStr} [DNA: ${this.currentTrackName}]`,
-            bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Generative Drone' 
+            drums: hints.drums ? 'Standard Pulse' : 'none',
+            bass: this.currentBassAxiom.length > 0 ? 'Sibling DNA' : 'Generative Drone',
+            harmony: harmonyAxiomId,
+            piano: pianoAxiomId
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: PLAYING]`
     };
