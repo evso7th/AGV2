@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.4 — "Clean Console Edition".
- * #ЗАЧЕМ: Устранение спама в консоли по запросу пользователя.
- * #ЧТО: ПЛАН №1780 — Многострочный лог заменен на одну компактную строку.
+ * @fileOverview AuraGroove Music Worker V5.5 — "Maximum Narrative Report".
+ * #ЗАЧЕМ: Расширенный лог для полного контроля работы ансамбля.
+ * #ЧТО: План №1920 — 1. Добавлена секция Genre/Mood. 2. Раскрыт полный состав инструментов в AX и TIM.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -267,17 +267,17 @@ const Scheduler = {
         }
 
         const h = payload.instrumentHints || {};
-        const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-        const axioms = payload.activeAxioms || {};
-        const trackName = payload.trackName || 'Gen';
+        const ax = payload.activeAxioms || {};
+        const genreMood = `${this.settings.genre.toUpperCase()}/${this.settings.mood.toUpperCase()}`;
+        const track = payload.trackName || 'Algorithm';
+        const section = payload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: Супер-компактная строка для устранения "спама" в консоли.
-        const melStr = axioms.melody === 'Generative' ? 'Algo' : (axioms.melody || 'Breath');
-        const cognitiveStr = `AX: MEL:${melStr} BAS:${axioms.bass || '-'} DRU:${axioms.drums || '-'}`;
-        const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'}`;
+        // #ЗАЧЕМ: ПЛАН №1920 — Полный когнитивный отчет. Раскрываем всех музыкантов.
+        const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
+        const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
         console.log(
-            `%c${getTimestamp()} Bar ${this.barCount} | ${sectionName} | ${trackName} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
+            `%c${getTimestamp()} Bar ${this.barCount} | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;',
             'color: #DA70D6; font-size: 10px;',

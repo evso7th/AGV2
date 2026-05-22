@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V49.2 — "Narrative Clean Up".
- * #ЗАЧЕМ: Устранение спама в narrative.
- * #ЧТО: ПЛАН №1780 — Сокращены текстовые описания для компактного логирования.
+ * @fileOverview Psybient Brain V50.0 — "Full Narrative Report".
+ * #ЗАЧЕМ: Обеспечение полной прозрачности работы ансамбля в логах.
+ * #ЧТО: ПЛАН №1920 — Возвращает статус всех 6 инструментов в activeAxioms.
  */
 
 import type {
@@ -66,7 +66,7 @@ export class TranceBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
-    private currentTrackName: string = 'Algo';
+    private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
@@ -190,7 +190,7 @@ export class TranceBrain {
             }
         }
         
-        this.currentTrackName = 'Algo';
+        this.currentTrackName = 'Algorithmic';
         this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
@@ -230,7 +230,7 @@ export class TranceBrain {
             const next = sorted[i+1];
             const nextStartTime = next ? next.time : 4.0;
             const gap = nextStartTime - current.time;
-            current.duration = Math.max(current.duration, gap + 0.15); // Gap filling + Overlap
+            current.duration = Math.max(current.duration, gap + 0.15); 
             if (next && current.note === next.note) {
                 processed.push(...this.rippleLongNote(current, chord));
             } else {
@@ -272,13 +272,16 @@ export class TranceBrain {
         }
 
         // 1. DRUMS
+        let dStatus = 'none';
         if (hints.drums) {
             const heritageDrums = this.renderHeritageDrums(epoch, tension);
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
                 events.push(...this.renderNeuroBaseSupport(epoch, tension));
+                dStatus = 'Heritage';
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
+                dStatus = 'Algo';
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             if (epoch % 4 === 3) {
@@ -287,21 +290,27 @@ export class TranceBrain {
         }
 
         // 2. BASS
+        let bStatus = 'none';
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension));
+                bStatus = 'Heritage';
             } else {
                 events.push(...this.renderRollingBass(epoch, resChord, tension));
+                bStatus = 'Algo';
             }
         }
 
         // 3. MELODY
         let melodyEvents: FractalEvent[] = [];
+        let mStatus = 'none';
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                mStatus = 'Heritage';
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
+                mStatus = 'Legacy';
             }
             melodyEvents = this.applyMelodicTie(melodyEvents, resChord);
             events.push(...melodyEvents);
@@ -309,6 +318,10 @@ export class TranceBrain {
 
         // 4. ACCOMPANIMENT & PIANO
         const usedTargetLayers = new Set<string>();
+        let accStatus = 'none';
+        let pStatus = 'none';
+        let hStatus = 'none';
+
         if (!isIntro) {
             this.currentAccompAxioms.forEach(ax => {
                 const role = ax.role.toLowerCase();
@@ -320,16 +333,22 @@ export class TranceBrain {
                     if (renders.length > 0) {
                         events.push(...renders);
                         usedTargetLayers.add(target);
+                        if (target === 'accompaniment') accStatus = 'Heritage';
+                        if (target === 'pianoAccompaniment') pStatus = 'Heritage';
                         if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target);
                     }
                 }
             });
             if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
                 events.push(...this.renderSidechainedPad(epoch, resChord, tension));
+                accStatus = 'Algo';
             }
             if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-                if (p.events.length > 0) events.push(...p.events);
+                if (p.events.length > 0) {
+                    events.push(...p.events);
+                    pStatus = 'Shadow';
+                }
             }
         }
 
@@ -338,6 +357,7 @@ export class TranceBrain {
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
             events.push(...harEvents);
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
+            hStatus = 'Algo';
         }
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
@@ -350,13 +370,14 @@ export class TranceBrain {
             newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral',
-                bass: this.currentBassTheme ? 'Sibling' : 'Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Sync' : 'Neuro',
-                accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage' : 'Sidechain',
-                piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage' : 'Shadow'
+                melody: mStatus,
+                bass: bStatus,
+                drums: dStatus,
+                accompaniment: accStatus,
+                piano: pStatus,
+                harmony: hStatus
             },
-            narrative: `${modeStr}: ${this.currentTrackName} [H-Layers: ${usedTargetLayers.size}]`
+            narrative: `${modeStr}: ${this.currentTrackName}`
         };
     }
 
@@ -519,7 +540,7 @@ export class TranceBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-            type: type, note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
         }));

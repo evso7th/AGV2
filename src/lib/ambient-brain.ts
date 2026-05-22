@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V78.0 — "Melodic Pad Sync".
- * #ЗАЧЕМ: Мелодия в Амбиенте теперь играет в технике Аккомпанемента.
- * #ЧТО: ПЛАН №1690 — Мелодия принудительно использует swell, ripple и длинные огибающие.
+ * @fileOverview Ambient Brain V79.0 — "Full Narrative Report".
+ * #ЗАЧЕМ: Обеспечение полной прозрачности работы ансамбля в логах.
+ * #ЧТО: ПЛАН №1920 — Возвращает статус всех 6 инструментов в activeAxioms.
  */
 
 import type {
@@ -81,7 +81,7 @@ export class AmbientBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id?: string, endBar: number, preferredInstrument?: string }[] = [];
     private currentDrumAxioms: { phrase: any[], role: string, endBar: number }[] = [];
 
-    private currentTrackName: string = '';
+    private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
     private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
     private currentMutationType: string = 'none';
@@ -117,6 +117,7 @@ export class AmbientBrain {
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        if (totalBars <= 0) return 0;
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
@@ -191,7 +192,7 @@ export class AmbientBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ 
                             phrase: decompressCompactPhrase(ax.phrase), 
@@ -227,7 +228,7 @@ export class AmbientBrain {
             }
         }
         
-        this.currentTrackName = 'Generative';
+        this.currentTrackName = 'Algorithmic';
         this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
@@ -338,7 +339,7 @@ export class AmbientBrain {
             return {
                 events, tension: localTension, beautyScore: 0.5,
                 trackName: this.currentTrackName,
-                activeAxioms: { melody: 'Bridge Flow', ensemble: 'UNISON', bass: 'Scalar Walk', drums: 'Soft Swells' },
+                activeAxioms: { melody: 'Bridge', bass: 'Scalar', drums: 'Swells', accompaniment: 'Flow', piano: 'Ghost', harmony: 'Unison' },
                 narrative: `Liquid Bridge: Smooth transition through ${navInfo.currentPart.name}`
             };
         }
@@ -394,7 +395,7 @@ export class AmbientBrain {
                         accEvents.forEach(e => e.pan = swirlPan);
                         events.push(...accEvents);
                         usedTargetLayers.add(targetType);
-                        if (targetType === 'accompaniment') accStatus = `Heritage DNA`;
+                        if (targetType === 'accompaniment') accStatus = `Heritage`;
                     }
                 }
             });
@@ -404,7 +405,7 @@ export class AmbientBrain {
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents);
                 usedTargetLayers.add('accompaniment');
-                accStatus = 'Adaptive Pad (No DNA)';
+                accStatus = 'Adaptive';
             }
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
@@ -419,14 +420,14 @@ export class AmbientBrain {
             const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna);
             if (themeBass.length > 0) {
                 events.push(...this.constrainBass(themeBass));
-                bassStatus = 'Sibling DNA';
+                bassStatus = 'Heritage';
             } else {
                 events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
-                bassStatus = 'Walking Drone (drone)';
+                bassStatus = 'Algo';
             }
         } else if (hints.bass) {
             events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
-            bassStatus = 'Walking Drone (drone)';
+            bassStatus = 'Algo';
         }
 
         let melodyEvents: FractalEvent[] = [];
@@ -455,7 +456,7 @@ export class AmbientBrain {
                     usedTargetLayers.add('pianoAccompaniment');
                 }
             } else {
-                pianoInfo = { style: 'Heritage DNA', count: 1 };
+                pianoInfo = { style: 'Heritage', count: 1 };
             }
             
             const pianoRules = navInfo.currentPart.instrumentRules?.pianoAccompaniment;
@@ -474,7 +475,7 @@ export class AmbientBrain {
         if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
         if (hints.sfx && this.random.nextInt(100) < 15) events.push(...this.renderSfx(localTension));
 
-        const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
+        const modeStr = this.isImprovising ? 'IMPRO' : 'RESTO';
 
         return {
             events, tension: localTension, beautyScore: 0.5,
@@ -482,15 +483,15 @@ export class AmbientBrain {
             trackName: this.currentTrackName,
             instrumentOverrides,
             activeAxioms: {
-                melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
+                melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Algo' : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: bassStatus,
-                drums: 'Sonic Landscape', 
+                drums: 'Landscape', 
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
-                harmony: usedTargetLayers.has('harmony') ? 'Generative Flow' : 'none'
+                harmony: usedTargetLayers.has('harmony') ? 'Heritage' : 'Algo'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Landscape: Pumping Textures]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName}`
         };
     }
 
@@ -596,10 +597,6 @@ export class AmbientBrain {
         return this.rippleLongNote(e, chord);
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация "Melodic Pad Sync".
-     * #ЧТО: ПЛАН №1690 — Мелодия теперь полностью имитирует технику аккомпанемента.
-     */
     private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
@@ -608,7 +605,6 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         
         const rawEvents = barNotes.map(n => {
-            // #ЗАЧЕМ: Техника и огибающие как у пэдов аккомпанемента.
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
@@ -619,15 +615,14 @@ export class AmbientBrain {
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
                 params: { 
-                    attack: 1.5, // Pad-like attack
-                    release: 3.5, // Pad-like release
+                    attack: 1.5, 
+                    release: 3.5, 
                     filterCutoff: 1600 + (localTension * 1200), 
                     mood: this.mood 
                 }
             };
         });
 
-        // #ЗАЧЕМ: Дробление через Ripple для текстурной связности.
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -683,7 +678,6 @@ export class AmbientBrain {
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
-        // #ЗАЧЕМ: Применяем Ripple даже к базовой мелодической подложке.
         return this.rippleLongNote(e, resChord);
     }
 
@@ -710,7 +704,7 @@ export class AmbientBrain {
             }
         });
 
-        return { events, style: "Shadow (Thirds)" };
+        return { events, style: "Shadow" };
     }
 
     private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {

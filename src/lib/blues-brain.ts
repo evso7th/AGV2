@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.3 — "Titanium Density Tuning".
- * #ЗАЧЕМ: Ликвидация заиканий в блюзе.
- * #ЧТО: ПЛАН №1670 — Интервал Harmonic Ripple увеличен с 1.5с до 2.6с.
+ * @fileOverview Blues Brain V77.0 — "Full Ensemble Narrative".
+ * #ЗАЧЕМ: Расширение когнитивной отчетности для консольного лога.
+ * #ЧТО: ПЛАН №1920 — Возвращает статус всех инструментов в activeAxioms.
  */
 
 import {
@@ -90,7 +90,7 @@ export class BluesBrain {
   private currentDrumAxioms: { phrase: any[], role: string }[] = [];
 
   private currentLickId: string = '';
-  private currentTrackName: string = 'Local';
+  private currentTrackName: string = 'Algorithmic';
   private sessionAnchorId: string | null = null; 
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
   private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
@@ -184,6 +184,7 @@ export class BluesBrain {
   }
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+      if (totalBars <= 0) return 0;
       if (this.config.isImprovising) {
           return calculateMusiNum(epoch, 7, this.seed, totalBars);
       }
@@ -254,7 +255,7 @@ export class BluesBrain {
 
               if (selected) {
                   this.currentTrackName = selected.compositionId;
-                  this.currentLickId = selected.id || 'DNA-Lick';
+                  this.currentLickId = selected.id || 'DNA';
                   this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                   this.currentPreferredInstrument = selected.preferredInstrument || null;
                   
@@ -283,15 +284,11 @@ export class BluesBrain {
               }
           }
       }
-      this.currentTrackName = 'Generative';
+      this.currentTrackName = 'Algorithmic';
       this.soloistBusyUntilBar = epoch + 4;
       return undefined;
   }
 
-  /**
-   * #ЗАЧЕМ: Протокол "Harmonic Ripple" (Оптимизация План №1670).
-   * #ЧТО: Интервал дробления увеличен до 2.6с для снижения плотности голосов.
-   */
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
       if (e.duration < 3.9) return [e]; 
 
@@ -299,7 +296,6 @@ export class BluesBrain {
       const isMinor = chord.chordType === 'minor';
       const ripplePool = isMinor ? [3, 7, 8, 10] : [4, 7, 9, 11]; 
       
-      // #ЗАЧЕМ: Снижение частоты дробления для разгрузки CPU.
       const numChunks = Math.ceil(e.duration / 2.6); 
       const chunkDur = e.duration / numChunks;
       const baseOctaveMidi = Math.floor(e.note / 12) * 12;
@@ -392,7 +388,7 @@ export class BluesBrain {
         return {
             events, lickId: 'Liquid Bridge', mutationType: 'none',
             trackName: this.currentTrackName,
-            activeAxioms: { melody: 'Bridge Flow', ensemble: 'ORCHESTRA', bass: 'Scale Walk', drums: 'Soft Groove' },
+            activeAxioms: { melody: 'Bridge', bass: 'Scale', drums: 'Soft', accompaniment: 'Flow', piano: 'Ghost', harmony: 'Unison' },
             narrative: `Liquid Bridge: Full ensemble transition through ${navInfo.currentPart.name}`
         };
     }
@@ -404,7 +400,7 @@ export class BluesBrain {
     let bassStatus = 'none';
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     if (bassEvents.length > 0) {
-        bassStatus = this.currentBassAxiom.length > 0 ? 'Sibling DNA' : (tension > 0.7 ? 'Walking Bass' : 'Riff Bass');
+        bassStatus = this.currentBassAxiom.length > 0 ? 'Heritage' : 'Algo';
     }
     events.push(...bassEvents);
 
@@ -414,6 +410,10 @@ export class BluesBrain {
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
+
+    let accStatus = 'none';
+    let pStatus = 'none';
+    let hStatus = 'none';
 
     if (!isSoloistResting) {
         this.currentAccompAxioms.forEach((ax) => {
@@ -428,6 +428,8 @@ export class BluesBrain {
                     if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
                     events.push(...rendered);
                     usedTargetLayers.add(targetType);
+                    if (targetType === 'accompaniment') accStatus = 'Heritage';
+                    if (targetType === 'pianoAccompaniment') pStatus = 'Heritage';
                 }
             }
         });
@@ -437,6 +439,7 @@ export class BluesBrain {
             adaptiveAcc.forEach(e => e.pan = 0.1);
             events.push(...adaptiveAcc);
             usedTargetLayers.add('accompaniment');
+            accStatus = 'Adaptive';
         }
     }
 
@@ -455,7 +458,7 @@ export class BluesBrain {
         
         if (melodyEvents.length === 0) {
             melodyEvents = this.renderGapFiller(epoch, resChord, tension);
-            currentLickDisplayId = 'Gap-Filler';
+            currentLickDisplayId = 'Gap';
         }
 
         melodyEvents.forEach(e => e.pan = -0.15);
@@ -468,6 +471,7 @@ export class BluesBrain {
             pResult.events.forEach(e => e.pan = 0.2);
             events.push(...pResult.events);
             usedTargetLayers.add('pianoAccompaniment');
+            pStatus = pResult.style;
         }
     }
 
@@ -476,9 +480,10 @@ export class BluesBrain {
         const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
         harmonyEvents.forEach(e => e.pan = 0.35);
         events.push(...harmonyEvents);
+        hStatus = 'Algo';
     }
 
-    const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
+    const modeStr = this.config.isImprovising ? 'IMPRO' : 'RESTO';
 
     return {
         events, lickId: currentLickDisplayId, mutationType: this.state.lastMutationType, newBpm,
@@ -487,9 +492,12 @@ export class BluesBrain {
             melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
             bass: bassStatus,
-            drums: isSoloistResting ? 'SOLO FILL' : 'Imperial Pulse'
+            drums: isSoloistResting ? 'Fill' : 'Pulse',
+            accompaniment: isSoloistResting ? 'Breath' : accStatus,
+            harmony: hStatus,
+            piano: pStatus
         },
-        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: ${isSoloistResting ? 'BREATHING' : 'PLAYING'}]`
+        narrative: `Blues ${modeStr}: ${this.currentTrackName}`
     };
   }
 
@@ -670,7 +678,7 @@ export class BluesBrain {
               events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval), weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { ...m.params, release: 2.5 } });
           }
       });
-      return { events, style: "Shadow (Thirds)" };
+      return { events, style: "Shadow" };
   }
 
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
