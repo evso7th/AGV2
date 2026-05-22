@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.9 — "Bugfix & Integrity".
- * #ЧТО: ПЛАН №1680 — Реализована отсутствующая функция moveRouteItem.
+ * #ЗАЧЕМ: Хук управления музыкой V9.0 — "Voice & Logic Integrity".
+ * #ЧТО: ПЛАН №1810 — Исправлен проброс setVoiceLimit и активных голосов в UI.
  */
 'use client';
 
@@ -102,6 +102,10 @@ export type AuraGrooveProps = {
   setShowAdvancedUI: (val: boolean) => void;
   currentBar: number;
   totalBars: number;
+  // --- Voice Sovereignty ---
+  voiceLimit: number;
+  activeVoiceCount: number;
+  setVoiceLimit: (limit: number) => void;
   // --- Preset Specific ---
   eqPresets: PresetItem[];
   saveEqPreset: (name: string) => void;
@@ -118,7 +122,8 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains
+    setEQGain, setCalibrationGain, calibrationGains,
+    voiceLimit, activeVoiceCount, setVoiceLimit // #ЗАЧЕМ: ПЛАН №1810. Извлечение телеметрии.
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -360,7 +365,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             
             const currentBarNum = payload.barCount;
             
-            // #ЗАЧЕМ: Строгое ограничение логики маршрута режимом Навигатора.
             if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0 && options.isNavigatorMode) {
                 handleRouteTransition();
             }
@@ -398,9 +402,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
       });
   };
 
-  /**
-   * #ЗАЧЕМ: Реализация отсутствующей функции перемещения (ПЛАН №1680).
-   */
   const moveRouteItem = (id: string, direction: 'up' | 'down') => {
       setRoute(prev => {
           const index = prev.findIndex(item => item.id === id);
@@ -519,7 +520,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            // #ЗАЧЕМ: Если в Навигаторе есть путь, всегда стартуем с 1-го элемента.
             if (options.isNavigatorMode && route.length > 0) {
                 setActiveRouteIndex(0);
                 applyRouteItem(route[0]);
@@ -557,6 +557,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
+    voiceLimit, activeVoiceCount, setVoiceLimit, // #ЗАЧЕМ: ПЛАН №1810. Проброс данных.
     eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
   };
