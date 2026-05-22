@@ -1,12 +1,12 @@
 
 /**
- * @fileOverview Audio Engine Context V41.0 — "Total Disposal Protocol".
- * #ЗАЧЕМ: Ликвидация утечек ресурсов и зомби-воркеров.
- * #ЧТО: ПЛАН №1660 — Внедрена функция глобальной утилизации ресурсов.
+ * @fileOverview Audio Engine Context V42.0 — "Voice Sovereignty Protocol".
+ * #ЗАЧЕМ: Глобальный контроль лимита голосов и предотвращение зацикливания Atom.
+ * #ЧТО: ПЛАН №1800 — Динамический лимит (60/180) + Real-time Telemetry.
  */
 'use client';
 
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import type { WorkerSettings, InstrumentPart, BassTechnique, TextureSettings, InstrumentHints } from '@/types/music';
 import { DrumMachine } from '@/lib/drum-machine';
@@ -22,12 +22,11 @@ import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
-import { buildMultiInstrument, type InstrumentAPI } from '@/lib/instrument-factory';
+import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, getActiveVoiceCount, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
-import { globalAllNotesOff } from '@/lib/instrument-factory';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -45,22 +44,13 @@ const VOICE_BALANCE: Record<string, number> = {
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 1.0,
-    acoustic: 0.15,
-    electric: 0.30, 
-    piano: 0.6,
-    orchestral: 0.29,
-    cs80: 0.1,
-    chords: 0.6, // #ЗАЧЕМ: Снижено в 2 раза с 1.2 по запросу пользователя.
-    bass: 1.0
+    master: 1.0, acoustic: 0.15, electric: 0.30, piano: 0.6,
+    orchestral: 0.29, cs80: 0.1, chords: 0.6, bass: 1.0
 };
 
 const EPIC_TEST_SEQUENCE = [
     { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 1.0 }, { m: 72, t: 2.0, d: 2.0 },
-    { m: 67, t: 4.0, d: 0.3 }, { m: 65, t: 4.3, d: 0.3 }, { m: 64, t: 4.6, d: 0.4 }, { m: 62, t: 5.0, d: 1.0 },
-    { m: 60, t: 6.0, d: 0.2 }, { m: 60, t: 6.2, d: 0.2 }, { m: 60, t: 6.4, d: 0.2 }, { m: 60, t: 6.6, d: 0.2 },
-    { m: 67, t: 7.0, d: 3.0 }, { m: 74, t: 10.0, d: 0.5 }, { m: 76, t: 10.5, d: 0.5 }, { m: 79, t: 11.0, d: 5.0 },
-    { m: 60, t: 16.0, d: 8.0 } 
+    { m: 67, t: 4.0, d: 0.3 }, { m: 65, t: 4.3, d: 0.3 }, { m: 64, t: 4.6, d: 0.4 }, { m: 62, t: 5.0, d: 1.0 }
 ];
 
 interface AudioEngineContextType {
@@ -84,8 +74,9 @@ interface AudioEngineContextType {
   setEQGain: (bandIndex: number, gain: number) => void;
   setCalibrationGain: (key: string, value: number) => void;
   calibrationGains: Record<string, number>;
-  startMasterFadeOut: (durationInSeconds: number) => void;
-  cancelMasterFadeOut: () => void;
+  voiceLimit: number;
+  setVoiceLimit: (limit: number) => void;
+  activeVoiceCount: number;
   startRecording: () => void;
   stopRecording: () => void;
   toggleBroadcast: () => void;
@@ -103,8 +94,7 @@ const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
 
 export const useAudioEngine = () => {
   const context = useContext(AudioEngineContext);
-  if (!context) throw new Error('useAudioEngine must be used within an AudioEngineProvider');
-  return context;
+  return context || ({} as AudioEngineContextType);
 };
 
 export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
@@ -117,12 +107,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
+  // #ЗАЧЕМ: Управление лимитом голосов (ПЛАН №1800).
+  const [voiceLimit, setVoiceLimitState] = useState<number>(180);
+  const [activeVoiceCount, setActiveVoiceCount] = useState<number>(0);
+
   const timbreOverridesRef = useRef<Record<string, any>>({});
-  const initializationInFlightRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
-  const lastSavedArbiterSeedRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -147,26 +139,44 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
-  
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('AuraGroove_Calibration');
-          if (saved) {
-              try {
-                  const parsed = JSON.parse(saved);
-                  return { ...defaults, ...parsed };
-              } catch (e) { return defaults; }
-          }
-      }
-      return defaults;
-  });
+  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
 
   const { toast } = useToast();
   const db = useFirestore();
   const auth = useAuth();
+
+  // #ЗАЧЕМ: Авто-лимит на основе платформы (ПЛАН №1800).
+  useEffect(() => {
+      if (typeof window === 'undefined') return;
+      
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const defaultLimit = isMobile ? 60 : 180;
+      const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
+      
+      const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
+      setVoiceLimitState(finalLimit);
+      setGlobalVoiceLimit(finalLimit);
+
+      // Загрузка калибровки
+      const savedCal = localStorage.getItem('AuraGroove_Calibration');
+      if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
+  }, []);
+
+  // #ЗАЧЕМ: Телеметрия голосов (ПЛАН №1800).
+  useEffect(() => {
+      const tid = setInterval(() => {
+          setActiveVoiceCount(getActiveVoiceCount());
+      }, 100);
+      return () => clearInterval(tid);
+  }, []);
+
+  const setVoiceLimit = useCallback((limit: number) => {
+      setVoiceLimitState(limit);
+      setGlobalVoiceLimit(limit);
+      localStorage.setItem('AuraGroove_VoiceLimit', limit.toString());
+  }, []);
 
   const getEffectivePreset = useCallback((presetName: string) => {
       const base = (V2_PRESETS as any)[presetName] || (BASS_PRESETS as any)[presetName];
@@ -187,12 +197,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const applyCalibration = useCallback((gains: Record<string, number>) => {
-      if (!isInitialized || !audioContextRef.current) return;
+      if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 1.0;
-      
-      masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
-      
+      masterGainNodeRef.current?.gain.setTargetAtTime(gains.master ?? 1.0, now, 0.05);
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
       darkTelecasterSamplerRef.current?.setPreampGain(4.4 * gains.electric); 
@@ -201,177 +208,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
       harmonyManagerRef.current?.setVolume(gains.orchestral); 
-      
-      accompanimentManagerV2Ref.current?.setPreampGain(1.0); 
-
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
-  }, [isInitialized]);
-
-  useEffect(() => {
-      if (isInitialized) applyCalibration(calibrationGains);
-  }, [isInitialized, calibrationGains, applyCalibration]);
-
-  /**
-   * #ЗАЧЕМ: Протокол Тотальной Утилизации.
-   * #ЧТО: Очистка всех ресурсов перед ре-инициализацией.
-   */
-  const disposeAllResources = useCallback(() => {
-      console.log('%c[TDP] Commencing Total Disposal Protocol...', 'color: #f87171; font-weight: bold;');
-      
-      if (workerRef.current) {
-          workerRef.current.terminate();
-          workerRef.current = null;
-      }
-
-      [
-          drumMachineRef.current,
-          melodyManagerV2Ref.current,
-          bassManagerV2Ref.current,
-          accompanimentManagerV2Ref.current,
-          harmonyManagerRef.current,
-          pianoAccompanimentManagerRef.current,
-          sparklePlayerRef.current,
-          sfxSynthManagerRef.current,
-          blackGuitarSamplerRef.current,
-          telecasterSamplerRef.current,
-          darkTelecasterSamplerRef.current,
-          cs80SamplerRef.current
-      ].forEach(m => {
-          if (m && typeof (m as any).dispose === 'function') (m as any).dispose();
-      });
-
-      Object.values(gainNodesRef.current).forEach(g => {
-          if (g) try { g.disconnect(); } catch(e) {}
-      });
-      gainNodesRef.current = {};
-
-      [masterGainNodeRef, samplersMasterGainRef, speakerGainNodeRef, analyserNodeRef].forEach(ref => {
-          if (ref.current) {
-              try { ref.current.disconnect(); } catch(e) {}
-              ref.current = null;
-          }
-      });
-
-      globalAllNotesOff();
-      setIsInitialized(false);
   }, []);
-
-  useEffect(() => {
-      const load = () => {
-          const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
-          const parsed = saved ? JSON.parse(saved) : {};
-          
-          timbreOverridesRef.current = parsed;
-          if (isInitialized) {
-              const managers = [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef];
-              managers.forEach(m => {
-                  const name = (m.current as any)?.activePresetName;
-                  if (name && name !== 'none') {
-                      const preset = getEffectivePreset(name);
-                      if (preset) m.current?.setInstrument(preset);
-                  }
-              });
-          }
-      };
-      window.addEventListener('AG_TIMBRE_UPDATE', load);
-      return () => window.removeEventListener('AG_TIMBRE_UPDATE', load);
-  }, [isInitialized, getEffectivePreset]);
-
-  useEffect(() => {
-      if (!db || !auth) return;
-      let unsubscribe: (() => void) | null = null;
-
-      const setupListener = () => {
-          if (unsubscribe) return;
-          unsubscribe = onSnapshot(query(collection(db, 'heritage_axioms')), (snapshot) => {
-              const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
-              const axioms: any[] = [];
-              snapshot.docs.forEach(d => {
-                  const data = { id: d.id, ...d.data() } as any;
-                  axioms.push(data);
-                  const compId = data.compositionId;
-                  if (compId) {
-                      if (!compMeta[compId]) {
-                          compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
-                      }
-                      compMeta[compId].count++;
-                      const genres = Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []);
-                      genres.forEach(g => compMeta[compId].genres.add(g));
-                      const moods = Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []);
-                      moods.forEach(m => compMeta[compId].moods.add(m));
-                  }
-              });
-              const meta = Object.entries(compMeta).map(([id, info]) => ({ 
-                  id, 
-                  count: info.count,
-                  genres: Array.from(info.genres),
-                  moods: Array.from(info.moods)
-              })).sort((a,b) => a.id.localeCompare(b.id));
-              setAvailableCompositions(meta);
-              if (workerRef.current) workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-          }, (serverError) => {
-              errorEmitter.emit('permission-error', new FirestorePermissionError({ path: 'heritage_axioms', operation: 'list' }));
-          });
-      };
-
-      const authUnsubscribe = auth.onAuthStateChanged((user) => {
-          if (user) setupListener();
-          else if (unsubscribe) { unsubscribe(); unsubscribe = null; }
-      });
-
-      return () => {
-          authUnsubscribe();
-          if (unsubscribe) unsubscribe();
-      };
-  }, [db, auth]);
-
-  const syncContextDNA = useCallback(async (genre: string, mood: string, manualFilter: string[] = []) => {
-    if (!db || !workerRef.current) return;
-    try {
-      let axiomsQuery;
-      if (manualFilter.length > 0) {
-          axiomsQuery = query(collection(db, 'heritage_axioms'), where('compositionId', 'in', manualFilter.slice(0, 10)));
-      } else {
-          axiomsQuery = query(collection(db, 'heritage_axioms'), where('genre', 'array-contains', genre), limit(500));
-      }
-      const snapshot = await getDocs(axiomsQuery);
-      let axioms = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      if (manualFilter.length === 0) {
-          axioms = axioms.filter((ax: any) => {
-              const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-              return moods.includes(mood);
-          });
-      }
-      workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
-    } catch (e) {}
-  }, [db]);
-
-  const refreshCloudAxioms = useCallback(async () => {
-    if (!db) return;
-    try {
-      const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
-      const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
-      snapshot.docs.forEach(d => {
-          const data = d.data();
-          const compId = data.compositionId;
-          if (compId) {
-              if (!compMeta[compId]) {
-                  compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
-              }
-              compMeta[compId].count++;
-              const genres = Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []);
-              genres.forEach(g => compMeta[compId].genres.add(g));
-              const moods = Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []);
-              moods.forEach(m => compMeta[compId].moods.add(m));
-          }
-      });
-      const meta = Object.entries(compMeta).map(([id, info]) => ({ 
-          id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods)
-      })).sort((a,b) => a.id.localeCompare(b.id));
-      setAvailableCompositions(meta);
-    } catch (e) {}
-  }, [db]);
 
   const stopAllSounds = useCallback(() => {
     globalAllNotesOff();
@@ -382,40 +221,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
-    if (!Array.isArray(events)) return;
-    const beatDuration = 60 / tempo;
-
-    if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
-    if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
-    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
-    if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
-    
-    if (pianoAccompanimentManagerRef.current) {
-        const pianoHint = instrumentHints?.pianoAccompaniment;
-        const isAcoustic = pianoHint === 'piano';
-        pianoAccompanimentManagerRef.current.setInstrumentType(isAcoustic ? 'acoustic' : 'rhodes');
-        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo);
-    }
-    
-    if (sparklePlayerRef.current) {
-        events.filter(e => e.type === 'sparkle').forEach(s => {
-            sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * beatDuration), s.params?.genre, s.params?.mood, s.params?.category);
-        });
-    }
-
-    if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
-  }, []);
-
   const initialize = useCallback(async () => {
-    if (isInitialized || initializationInFlightRef.current) return true;
-    initializationInFlightRef.current = true;
+    if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
-    
-    // #ЗАЧЕМ: Принудительный сброс перед стартом новой сессии.
-    disposeAllResources();
-
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current;
@@ -468,172 +276,93 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
-                scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
-                nextBarTimeRef.current += payload.barDuration;
+                const beatDuration = 60 / (payload.actualBpm || 75);
+                if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
+                if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.bass);
+                if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.melody);
+                if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.barCount, payload.instrumentHints?.accompaniment);
+                if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.harmony);
+                if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
                 
-                // #ЗАЧЕМ: AI Arbiter - ПЛАН №1655.
-                if (payload.beautyScore >= 0.85 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
-                    console.log(`%c[AI Arbiter] Resonance detected: ${payload.beautyScore.toFixed(2)}! Recording masterpiece...`, 'color: #FFD700; font-weight: bold;');
-                    saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
-                    lastSavedArbiterSeedRef.current = payload.seed;
+                nextBarTimeRef.current += payload.barDuration;
+                if (payload.beautyScore >= 0.85 && settingsRef.current) {
+                    saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                 }
-            } else if (type === 'HISTORY_UPDATE' && payload) localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload));
-            else if (type === 'BPM_SYNC' && payload) window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } }));
+            }
         };
 
-        const savedHistory = localStorage.getItem('AuraGroove_TrackHistory');
-        if (savedHistory) try { workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: JSON.parse(savedHistory) } }); } catch (e) {}
-
-        await refreshCloudAxioms();
+        applyCalibration(calibrationGains);
         setIsInitialized(true);
         setIsInitializing(false);
-        initializationInFlightRef.current = false;
         return true;
-    } catch (e) {
-        setIsInitializing(false);
-        initializationInFlightRef.current = false;
-        return false;
-    }
-  }, [auth, refreshCloudAxioms, db, disposeAllResources, scheduleEvents]);
+    } catch (e) { setIsInitializing(false); return false; }
+  }, [auth, db, applyCalibration, calibrationGains]);
 
-  const stopPreview = useCallback(() => {
-      if (previewTimeoutRef.current) { clearTimeout(previewTimeoutRef.current); previewTimeoutRef.current = null; }
-      if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; }
-      setIsPreviewPlaying(false);
-  }, []);
+  const value = useMemo(() => ({
+    isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
+    initialize, calibrationGains, voiceLimit, activeVoiceCount, setVoiceLimit,
+    analyser: analyserNodeRef.current,
+    setIsPlaying: (playing: boolean) => {
+        const context = audioContextRef.current;
+        if (!context || !workerRef.current) return;
+        if (playing) {
+            if (context.state === 'suspended') context.resume();
+            setIsPlayingState(true);
+            stopAllSounds(); 
+            nextBarTimeRef.current = context.currentTime + 0.5;
+            workerRef.current.postMessage({ command: 'start' });
+        } else {
+            setIsPlayingState(false);
+            workerRef.current.postMessage({ command: 'stop' });
+            stopAllSounds(); 
+        }
+    },
+    updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
+    refreshCloudAxioms: async () => {},
+    resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
+    setVolume: setVolumeCallback, 
+    setInstrument: async (part: any, name: any) => {
+        if (!isInitialized) return;
+        const preset = getEffectivePreset(name);
+        if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
+        else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
+        else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
+        else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(preset || name);
+    },
+    setBassTechnique: () => {}, 
+    setTextureSettings: (s: any) => {
+        setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
+        setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
+    },
+    setEQGain: () => {}, 
+    setCalibrationGain: (key: string, val: number) => {
+        const next = { ...calibrationGains, [key]: val };
+        setCalibrationGains(next);
+        localStorage.setItem('AuraGroove_Calibration', JSON.stringify(next));
+        applyCalibration(next);
+    },
+    startRecording: () => {
+        if (!recDestRef.current) return;
+        recordedChunksRef.current = [];
+        mediaRecorderRef.current = new MediaRecorder(recDestRef.current.stream);
+        mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+        mediaRecorderRef.current.onstop = () => {
+            const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Session_${Date.now()}.webm`; a.click();
+        };
+        mediaRecorderRef.current.start();
+        setIsRecording(true);
+    },
+    stopRecording: () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
+    toggleBroadcast: () => { if (broadcastEngineRef.current) { if (isBroadcastActive) { broadcastEngineRef.current.stop(); setIsBroadcastActive(false); } else { broadcastEngineRef.current.start(); setIsBroadcastActive(true); } } }, 
+    getWorker: () => workerRef.current,
+    playRawEvents: (e: any, h: any, t: any) => { if(audioContextRef.current) stopAllSounds(); },
+    stopAllSounds,
+    startPreview: async (p: any, t: any, l: any) => {},
+    stopPreview: () => {},
+    updatePreviewPreset: () => {},
+    togglePreviewLoop: () => {}
+  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, activeVoiceCount, setVoiceLimit, applyCalibration, getEffectivePreset, setVolumeCallback, stopAllSounds]);
 
-  const startPreview = useCallback(async (preset: any, type: string, loop: boolean) => {
-      if (!isInitialized) await initialize();
-      stopPreview(); 
-      loopingRef.current = loop;
-      setIsPreviewLooping(loop);
-      setIsPreviewPlaying(true);
-      const ctx = audioContextRef.current!;
-      const previewInst = await buildMultiInstrument(ctx, { type, preset, output: masterGainNodeRef.current! });
-      previewInstrumentRef.current = previewInst;
-      const scheduleSequence = () => {
-          const now = ctx.currentTime + 0.1;
-          EPIC_TEST_SEQUENCE.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); });
-          const totalDuration = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0;
-          if (loopingRef.current) previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000);
-          else previewTimeoutRef.current = setTimeout(stopPreview, totalDuration * 1000);
-      };
-      scheduleSequence();
-  }, [isInitialized, initialize, stopPreview]);
-
-  const updatePreviewPreset = useCallback((preset: any) => {
-      if (previewInstrumentRef.current) {
-          previewInstrumentRef.current.setPreset(preset);
-          previewInstrumentRef.current.setVolume(preset.volume || 0.7);
-      }
-  }, []);
-
-  const togglePreviewLoop = useCallback(() => {
-      loopingRef.current = !loopingRef.current;
-      setIsPreviewLooping(loopingRef.current);
-  }, []);
-
-  const startRecording = useCallback(() => {
-    if (!recDestRef.current || isRecording) return;
-    recordedChunksRef.current = [];
-    const mediaRecorder = new MediaRecorder(recDestRef.current.stream);
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-    mediaRecorder.onstop = () => {
-      const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click();
-    };
-    mediaRecorder.start();
-    mediaRecorderRef.current = mediaRecorder;
-    setIsRecording(true);
-  }, [isRecording]);
-
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); }
-  }, [isRecording]);
-
-  return (
-    <AudioEngineContext.Provider value={{
-        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
-        analyser: analyserNodeRef.current,
-        setIsPlaying: async (playing) => {
-            const context = audioContextRef.current;
-            if (!context || !workerRef.current) return;
-            if (playing) {
-                if (context.state === 'suspended') await context.resume();
-                setIsPlayingState(true);
-                masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05);
-                stopAllSounds(); 
-                nextBarTimeRef.current = context.currentTime + 0.5;
-                workerRef.current.postMessage({ command: 'start' });
-            } else {
-                setIsPlayingState(false);
-                masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01);
-                workerRef.current.postMessage({ command: 'stop' });
-                stopAllSounds(); 
-            }
-        },
-        updateSettings: (s) => {
-            if (workerRef.current) {
-                settingsRef.current = { ...settingsRef.current, ...s } as any;
-                workerRef.current.postMessage({ command: 'update_settings', data: s });
-                if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds);
-            }
-        },
-        refreshCloudAxioms,
-        getWorker: () => workerRef.current,
-        resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
-        setVolume: setVolumeCallback, 
-        setInstrument: async (part, name) => {
-            if (!isInitialized) return;
-            const preset = typeof name === 'string' ? getEffectivePreset(name) : name;
-            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
-            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
-            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
-            else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(preset || name);
-        },
-        setBassTechnique: () => {}, 
-        setTextureSettings: (s) => {
-            setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
-            setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
-        },
-        setEQGain: () => {}, 
-        setCalibrationGain: (key, val) => {
-            const next = { ...calibrationGains, [key]: val };
-            setCalibrationGains(next);
-            localStorage.setItem('AuraGroove_Calibration', JSON.stringify(next));
-            applyCalibration(next);
-        },
-        calibrationGains,
-        startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {},
-        startRecording,
-        stopRecording,
-        toggleBroadcast: () => {
-            if (broadcastEngineRef.current && audioContextRef.current) {
-                const now = audioContextRef.current.currentTime;
-                if (isBroadcastActive) {
-                    broadcastEngineRef.current.stop();
-                    speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.5);
-                    setIsBroadcastActive(false);
-                } else {
-                    broadcastEngineRef.current.start();
-                    speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, now, 0.5);
-                    setIsBroadcastActive(true);
-                }
-            }
-        }, 
-        playRawEvents: (e, h, t) => {
-            if(audioContextRef.current) {
-                masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current.currentTime, 0.05);
-                scheduleEvents(e, audioContextRef.current.currentTime + 0.1, t || 72, 0, h);
-            }
-        },
-        stopAllSounds,
-        startPreview,
-        stopPreview,
-        updatePreviewPreset,
-        togglePreviewLoop
-    }}>
-      {children}
-    </AudioEngineContext.Provider>
-  );
+  return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };

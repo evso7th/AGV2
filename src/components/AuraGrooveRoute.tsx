@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.3 — "Dual Core Switch".
- * #ЧТО: ПЛАН №1785 — Добавлен переключатель DNA/Atom в футер Навигатора.
+ * #ЗАЧЕМ: UI AuraGroove V6.4 — "Voice & Soul Control".
+ * #ЧТО: ПЛАН №1800 — Бейдж счетчика голосов на лого и модал Voice Limit.
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Dna, Atom
+    GripVertical, Dna, Atom, Zap
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -162,61 +162,13 @@ function SortableRouteItem({
     progress?: number,
     onRemove: (id: string) => void 
 }) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: item.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    };
-
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+    const style = { transform: CSS.Transform.toString(transform), transition };
     return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            className={cn(
-                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden",
-                isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent",
-                isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
-            )}
-        >
-            {isActive && progress !== undefined && (
-                <div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20">
-                    <div 
-                        className="h-full bg-primary transition-all duration-1000 ease-linear" 
-                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
-                    />
-                </div>
-            )}
-
-            <div className="flex items-center gap-3 overflow-hidden z-10">
-                <div 
-                    {...attributes} 
-                    {...listeners} 
-                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors"
-                >
-                    <GripVertical className="h-4 w-4" />
-                </div>
-                <div className="truncate">
-                    <div className="text-[11px] font-black uppercase tracking-tight">
-                        {item.genre} / {item.mood}
-                    </div>
-                </div>
-            </div>
-            <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
-                onClick={() => onRemove(item.id)}
-            >
-                <X className="h-4 w-4" />
-            </Button>
+        <div ref={setNodeRef} style={style} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden", isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent", isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50")}>
+            {isActive && progress !== undefined && (<div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20"><div className="h-full bg-primary transition-all duration-1000 ease-linear" style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }} /></div>)}
+            <div className="flex items-center gap-3 overflow-hidden z-10"><div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors"><GripVertical className="h-4 w-4" /></div><div className="truncate"><div className="text-[11px] font-black uppercase tracking-tight">{item.genre} / {item.mood}</div></div></div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => onRemove(item.id)}><X className="h-4 w-4" /></Button>
         </div>
     );
 }
@@ -231,6 +183,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isSaveRouteOpen, setIsSaveRouteOpen] = useState(false);
     const [isLoadRouteOpen, setIsLoadRouteOpen] = useState(false);
     const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
+    const [isVoiceLimitOpen, setIsVoiceLimitOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
 
     const sensors = useSensors(
@@ -254,13 +207,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {/* TOP 50%: Header + Selectors */}
             <div className="h-1/2 flex flex-col shrink-0 overflow-hidden border-b border-primary/20">
                 <header className="p-3 bg-background/40 shrink-0">
-                    {/* Row 1: AuraGroove (Active) | Play */}
                     <div className="flex items-center justify-between mb-2">
-                        <div 
-                            onClick={props.handleGoHome}
-                            className="flex flex-row items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
-                        >
-                            <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
+                        <div onClick={props.handleGoHome} className="relative cursor-pointer hover:opacity-80 transition-all flex flex-row items-center gap-2">
+                            {/* #ЗАЧЕМ: Бейдж активных голосов на лого (ПЛАН №1800). */}
+                            <div className="relative">
+                                <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
+                                <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90">
+                                    {props.activeVoiceCount}
+                                </Badge>
+                            </div>
                             <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
                         </div>
                         <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-6 font-black uppercase tracking-widest shadow-lg">
@@ -269,9 +224,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
                     
-                    {/* Row 2: Secondary Controls */}
                     <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
-                        {/* Left Side: Home, Broadcast, Record, Regenerate, Like */}
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={props.handleGoHome} className="h-8 w-8 shrink-0"><Home className="h-4 w-4" /></Button>
                             <Button variant={props.isBroadcastActive ? "destructive" : "outline"} onClick={props.handleToggleBroadcast} className="h-8 w-8 p-0 shrink-0">
@@ -281,17 +234,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
-                            <Button 
-                                variant="outline" 
-                                onClick={props.handleSaveMasterpiece} 
-                                disabled={props.isInitializing || !props.isPlaying} 
-                                className="h-8 w-8 p-0 shrink-0"
-                                title="Like"
-                            >
-                                <ThumbsUp className="h-4 w-4 text-primary" />
-                            </Button>
+                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={props.isInitializing || !props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like"><ThumbsUp className="h-4 w-4 text-primary" /></Button>
+                            {/* #ЗАЧЕМ: Кнопка лимита голосов (ПЛАН №1800). */}
+                            <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-8 w-8 shrink-0"><Zap className="h-4 w-4 text-amber-500" /></Button>
                         </div>
-                        {/* Right Side: EQ, Mixer (Under Play) */}
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
                             <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
@@ -349,12 +295,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     })}
                                 </SortableContext>
                             </DndContext>
-                            {props.route.length === 0 && (
-                                <div className="py-10 text-center opacity-30 flex flex-col items-center gap-2">
-                                    <TowerControl className="h-8 w-8" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">No Journey Defined</span>
-                                </div>
-                            )}
                         </div>
                     </ScrollArea>
                 </div>
@@ -365,7 +305,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
                     </div>
                     
-                    {/* #ЗАЧЕМ: ПЛАН №1785. Переключатель DNA/Atom. */}
                     <Button 
                         variant="outline" 
                         size="sm" 
@@ -387,33 +326,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                             <DialogHeader>
-                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                    <Timer className="h-5 w-5" /> Sleep Timer
-                                </DialogTitle>
+                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Timer className="h-5 w-5" /> Sleep Timer</DialogTitle>
                                 <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
                             </DialogHeader>
                             <div className="space-y-8 py-6">
                                 <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
                                     <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
-                                    <Slider
-                                        value={[props.timerSettings.duration / 60]}
-                                        min={0}
-                                        max={30}
-                                        step={5}
-                                        onValueChange={(v) => props.handleTimerDurationChange(v[0])}
-                                        disabled={props.timerSettings.isActive}
-                                    />
+                                    <Slider value={[props.timerSettings.duration / 60]} min={0} max={30} step={5} onValueChange={(v) => props.handleTimerDurationChange(v[0])} disabled={props.timerSettings.isActive} />
                                     <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
                                 </div>
-                                <Button
-                                    onClick={() => {
-                                        props.handleToggleTimer();
-                                        if (!props.timerSettings.isActive) setIsTimerDialogOpen(false);
-                                    }}
-                                    disabled={props.timerSettings.duration === 0}
-                                    variant={props.timerSettings.isActive ? 'destructive' : 'default'}
-                                    className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
-                                >
+                                <Button onClick={() => { props.handleToggleTimer(); if (!props.timerSettings.isActive) setIsTimerDialogOpen(false); }} disabled={props.timerSettings.duration === 0} variant={props.timerSettings.isActive ? 'destructive' : 'default'} className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg">
                                     {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
                                 </Button>
                             </div>
@@ -421,6 +343,38 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </Dialog>
                 </footer>
             </div>
+
+            {/* Voice Limit Modal */}
+            <Dialog open={isVoiceLimitOpen} onOpenChange={setIsVoiceLimitOpen}>
+                <DialogContent className="bg-card border-primary/20 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Zap className="h-5 w-5 text-amber-500" /> Voice Sovereignty</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Hardware Resource Management</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-8 py-8">
+                        <div className="flex justify-between items-center px-2">
+                            <Label className="text-[10px] font-black uppercase opacity-60">Max Active Voices</Label>
+                            <span className="text-xl font-mono font-black text-primary">{props.voiceLimit}</span>
+                        </div>
+                        <Slider 
+                            value={[props.voiceLimit]} 
+                            min={20} max={250} step={10} 
+                            onValueChange={(v) => props.setVoiceLimit(v[0])} 
+                            className="px-2"
+                        />
+                        <div className="bg-muted/30 p-4 rounded-lg border border-primary/5 space-y-2">
+                            <div className="flex justify-between text-[9px] font-black uppercase opacity-40">
+                                <span>Current Engine Pressure:</span>
+                                <span>{props.activeVoiceCount} / {props.voiceLimit}</span>
+                            </div>
+                            <Progress value={(props.activeVoiceCount / props.voiceLimit) * 100} className="h-1.5" />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setIsVoiceLimitOpen(false)} className="w-full font-black uppercase tracking-widest h-12 shadow-xl">Apply System Limit</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Modals */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>

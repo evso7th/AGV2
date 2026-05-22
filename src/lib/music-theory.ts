@@ -1,6 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.8 — "Psybient Standard".
+ * @fileOverview Universal Music Theory Utilities V4.9 — "Masterpiece Expansion".
+ * #ЗАЧЕМ: Устранение цикличности в режиме Atom.
+ * #ЧТО: ПЛАН №1800 — Гармония генерируется более длинными блоками (8-16 тактов).
  */
 
 import type { 
@@ -45,31 +47,20 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
-    
     let targetHint = hint;
-
     if (typeof hint === 'object' && !Array.isArray(hint)) {
         if (tension < 0.4) targetHint = hint.low || hint.mid || hint.high;
         else if (tension < 0.75) targetHint = hint.mid || hint.low || hint.high;
         else targetHint = hint.high || hint.mid || hint.low;
     }
-
     if (!targetHint || targetHint === 'none') return 'none';
-    
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    // #ЗАЧЕМ: ПЛАН №1150. Принудительное разрешение рояля для канала Piano.
-    // Это предотвращает глобальное мапирование 'piano' -> 'ep_rhodes_warm' для этого канала.
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
         if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
     }
-
     if (clean === 'dynamicorgan') {
         if (tension < 0.4) return 'organ_prog';
         if (tension < 0.75) return 'organ_soft_jazz';
@@ -80,15 +71,12 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (tension < 0.75) return 'synth_ambient_pad_lush';
         return 'synth_cave_pad';
     }
-
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedV2) return matchedV2;
-    
     const bassKeys = Object.keys(BASS_PRESETS);
     const matchedBass = bassKeys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedBass) return matchedBass;
-
     if (part === 'melody') {
         if (clean.includes('acoustic')) return 'blackAcoustic';
         if (clean.includes('tele')) return 'telecaster';
@@ -96,24 +84,20 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (clean.includes('muff')) return 'guitar_muffLead';
         if (clean.includes('cs80')) return 'cs80';
     }
-
     if (part === 'accompaniment') {
         const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
         if (isPianoTimbre) {
             return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
         }
     }
-
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
-
     if (part === 'bass') {
         return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     }
-
     return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
 }
 
@@ -129,103 +113,6 @@ export function keyToMidiRoot(key: string | null | undefined): number | null {
     return 48 + offset;
 }
 
-export function getWalkingDegree(epoch: number, seed: number): number {
-    const steps = [0, 7, 9, 12, 7, 0, 14, 0]; 
-    const idx = calculateMusiNum(epoch, 3, seed, steps.length);
-    return steps[idx];
-}
-
-export function safeSemitoneToDegree(s: number): string {
-    const norm = ((s % 12) + 12) % 12;
-    const base = SEMITONE_TO_DEGREE[norm] || 'R';
-    if (s >= 12 && base === 'R') return 'R+8';
-    return base;
-}
-
-export function mergeIdenticalNotes(phrase: any[]): any[] {
-    if (!phrase || phrase.length <= 1) return phrase || [];
-    const sorted = [...phrase].sort((a, b) => a.t - b.t);
-    const merged: any[] = [];
-    let current = { ...sorted[0] };
-    for (let i = 1; i < sorted.length; i++) {
-        const next = sorted[i];
-        if (next.deg === current.deg && Math.abs(next.t - (current.t + current.d)) < 0.01) {
-            current.d += next.d;
-        } else {
-            merged.push(current);
-            current = { ...next };
-        }
-    }
-    merged.push(current);
-    return merged;
-}
-
-export function decompressCompactPhrase(compact: number[]): any[] {
-    const result = [];
-    if (!compact) return [];
-    for (let i = 0; i < compact.length; i += 4) {
-        result.push({
-            t: compact[i], d: compact[i+1],
-            deg: DEGREE_KEYS[compact[i+2]] || 'R',
-            tech: TECHNIQUE_KEYS[compact[i+3]] || 'pick'
-        });
-    }
-    return result;
-}
-
-export function invertPhrase(phrase: any[]): any[] {
-    if (phrase.length === 0) return phrase;
-    return phrase.map(n => {
-        const semitone = DEGREE_TO_SEMITONE[n.deg] || 0;
-        const invertedSemitone = -semitone;
-        return { ...n, deg: safeSemitoneToDegree(invertedSemitone) };
-    });
-}
-
-export function retrogradePhrase(phrase: any[]): any[] {
-    if (phrase.length === 0) return phrase;
-    const maxT = Math.max(...phrase.map(n => n.t + n.d));
-    return phrase.map(n => ({ ...n, t: maxT - (n.t + n.d) })).sort((a, b) => a.t - b.t);
-}
-
-export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
-    return phrase.map((n, i) => {
-        const jitter = (calculateMusiNum(i, 3, seed, 3) - 1); 
-        return { ...n, t: Math.max(0, n.t + jitter) };
-    });
-}
-
-export function repairLegacyPhrase(compact: number[]): number[] {
-    if (!compact || compact.length === 0) return [];
-    const isLegacy = compact.length >= 3 && compact[2] > 20;
-    if (!isLegacy) return compact;
-    const repaired: number[] = [];
-    const BASE_C4 = 60;
-    for (let i = 0; i < compact.length; i += 4) {
-        const t = compact[i]; const d = compact[i+1]; const midi = compact[i+2];
-        const semitone = (midi - BASE_C4) % 12;
-        const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
-        const degIdx = DEGREE_KEYS.indexOf(degName);
-        const techIdx = TECHNIQUE_KEYS.indexOf('pick');
-        repaired.push(t, d, degIdx, techIdx);
-    }
-    return repaired;
-}
-
-export function normalizePhraseGroup(phrases: any[][]): void {
-    let minT = Infinity;
-    phrases.forEach(p => p.forEach(n => { if (n.t < minT) minT = n.t; }));
-    if (minT !== Infinity && minT > 0) {
-        phrases.forEach(p => p.forEach(n => { n.t -= minT; }));
-    }
-}
-
-export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
-    HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
-    MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
-    VOID: { fog: 0.9, depth: 0.8, reg: 0 }
-};
-
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
     let num = Math.abs(Math.floor(step + start));
@@ -237,53 +124,6 @@ export function calculateMusiNum(step: number, base: number = 2, start: number =
     return sum % modulo;
 }
 
-export function getScaleForMood(mood: Mood, key: number = 60): number[] {
-    const root = key % 12;
-    let mode = 'aeolian';
-    if (mood === 'joyful' || mood === 'epic') mode = 'ionian';
-    if (mood === 'enthusiastic' || mood === 'dreamy') mode = 'lydian';
-    if (mood === 'melancholic') mode = 'dorian';
-    if (mood === 'anxious') mode = 'phrygian';
-    if (mood === 'dark' || mood === 'gloomy') mode = 'aeolian';
-    const intervals = MODE_SEMITONES[mode] || MODE_SEMITONES.aeolian;
-    return intervals.map(i => (root + i) % 12);
-}
-
-export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
-    const map: number[] = [];
-    const getJitter = (bar: number) => (calculateMusiNum(bar, 7, seed, 10) / 100) - 0.05;
-    let accumulatedBars = 0;
-    parts?.forEach(part => {
-        const partDuration = Math.round((part.duration.percent / 100) * totalBars);
-        for (let i = 0; i < partDuration; i++) {
-            const progress = i / (partDuration || 1);
-            let tension: number;
-            if (part.id === 'INTRO' || part.id === 'PROLOGUE') tension = 0.25 + (progress * 0.1); 
-            else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
-            else if (part.id === 'OUTRO') tension = 0.3 * (1 - progress * 0.6); 
-            else if (part.id.includes('BRIDGE')) tension = 0.45;
-            else tension = 0.4; 
-            map.push(Math.max(0.1, Math.min(0.95, tension + getJitter(accumulatedBars + i))));
-        }
-        accumulatedBars += partDuration;
-    });
-    while(map.length < totalBars) {
-        const progress = map.length / totalBars;
-        map.push(0.4 + 0.3 * Math.sin(progress * Math.PI) + getJitter(map.length));
-    }
-    return map;
-}
-
-export function pickWeightedDeterministic<T>(options: { name?: T, value?: T, weight: number }[], seed: number, epoch: number, offset: number): T {
-    if (!options || options.length === 0) return null as any;
-    const totalWeight = options.reduce((sum, opt) => sum + opt.weight, 0);
-    const fractalVal = calculateMusiNum(epoch, 11, seed + offset, 100);
-    const target = (fractalVal / 100) * totalWeight;
-    let acc = 0;
-    for (const opt of options) { acc += opt.weight; if (target <= acc) return (opt.name || opt.value) as T; }
-    return (options[options.length - 1].name || options[options.length - 1].value) as T;
-}
-
 export function generateMarkovHarmony(totalBars: number, rootNote: number, seed: number, genre: string): GhostChord[] {
     const track: GhostChord[] = [];
     const matrix = GENRE_HARMONY_MATRICES[genre] || GENRE_HARMONY_MATRICES.ambient;
@@ -291,7 +131,8 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     let currentBar = 0;
     let currentStateIdx = 0;
     while (currentBar < totalBars) {
-        const durPool = [2, 4, 8];
+        // #ЗАЧЕМ: ПЛАН №1800. Увеличение длительности аккордов для устранения цикличности.
+        const durPool = [8, 12, 16]; 
         const dur = durPool[calculateMusiNum(currentBar, 3, seed, 3)];
         track.push({
             rootNote: rootNote + (states[currentStateIdx] || 0),
@@ -334,42 +175,15 @@ export function generateSuiteDNA(
     } else if (ancestor && typeof ancestor.seed === 'number') {
         finalSeed = (initialSeed & 0x55555555) | (ancestor.seed & 0xAAAAAAAA);
     }
-
     const key = 40 + calculateMusiNum(finalSeed, 19, 0, 12); 
     const harmonyTrack = generateMarkovHarmony(totalBars, key, finalSeed, genre);
-
-    let inheritedBpm: number | null = null;
-    if (cloudAxioms && cloudAxioms.length > 0) {
-        const normalizeStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (activeAnchorId) {
-            const target = normalizeStr(activeAnchorId);
-            const anchorAxiom = cloudAxioms.find(ax => normalizeStr(ax.compositionId) === target && ax.nativeBpm);
-            if (anchorAxiom) inheritedBpm = anchorAxiom.nativeBpm;
-        } else {
-            const leaders = cloudAxioms.filter(ax => (ax.role === 'melody' || ax.role === 'bass') && ax.nativeBpm);
-            if (leaders.length > 0) {
-                const picked = leaders[calculateMusiNum(finalSeed, 29, 0, leaders.length)];
-                inheritedBpm = picked.nativeBpm;
-            }
-        }
-    }
-
     let baseTempo = 72;
-    if (inheritedBpm) {
-        baseTempo = inheritedBpm;
-    } else if (bpmConfig) {
+    if (bpmConfig) {
         const [min, max] = bpmConfig.range;
         const deterministicOffset = (calculateMusiNum(finalSeed, 23, 0, 100) / 100) * (max - min);
         baseTempo = Math.round((min + deterministicOffset) * bpmConfig.modifier);
-    } else {
-        const moodTempos: Record<string, number> = {
-            melancholic: 64, dark: 60, anxious: 88, joyful: 100, enthusiastic: 110, calm: 54, dreamy: 58, contemplative: 72, epic: 105
-        };
-        baseTempo = moodTempos[mood] || 72;
     }
-
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
-    
     return { 
         harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', 
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
@@ -379,38 +193,34 @@ export function generateSuiteDNA(
     };
 }
 
-export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
-    const isMinor = chord.chordType === 'minor';
-    const root = chord.rootNote;
-    const notes = [root, root + (isMinor ? 3 : 4), root + 7];
-    return notes.map((note, i) => ({
-        type: 'accompaniment', note: note + 12, time: i * 0.1, duration: 4.0, 
-        weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-        chordName: chord.chordType === 'minor' ? 'Am' : 'E', params: { barCount: epoch }
-    }));
+export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
+    const map: number[] = [];
+    const getJitter = (bar: number) => (calculateMusiNum(bar, 7, seed, 10) / 100) - 0.05;
+    let accumulatedBars = 0;
+    parts?.forEach(part => {
+        const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+        for (let i = 0; i < partDuration; i++) {
+            const progress = i / (partDuration || 1);
+            let tension: number;
+            if (part.id === 'INTRO' || part.id === 'PROLOGUE') tension = 0.25 + (progress * 0.1); 
+            else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
+            else if (part.id === 'OUTRO') tension = 0.3 * (1 - progress * 0.6); 
+            else tension = 0.4; 
+            map.push(Math.max(0.1, Math.min(0.95, tension + getJitter(accumulatedBars + i))));
+        }
+        accumulatedBars += partDuration;
+    });
+    while(map.length < totalBars) {
+        const progress = map.length / totalBars;
+        map.push(0.4 + 0.3 * Math.sin(progress * Math.PI) + getJitter(map.length));
+    }
+    return map;
 }
 
 export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
-    psybient: [
-        [0.6, 0.1, 0.1, 0.1, 0.1], 
-        [0.2, 0.5, 0.2, 0.1, 0.0], 
-        [0.3, 0.1, 0.5, 0.1, 0.0], 
-        [0.2, 0.1, 0.1, 0.5, 0.1], 
-        [0.4, 0.0, 0.1, 0.1, 0.4]  
-    ],
-    ambient: [
-        [0.7, 0.1, 0.05, 0.05, 0.05, 0.05], 
-        [0.3, 0.5, 0.1, 0.0, 0.1, 0.0],     
-        [0.4, 0.1, 0.4, 0.0, 0.0, 0.1],     
-        [0.2, 0.2, 0.1, 0.4, 0.1, 0.0],     
-        [0.3, 0.1, 0.0, 0.1, 0.5, 0.0],     
-        [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]      
-    ],
-    blues: [
-        [0.6, 0.3, 0.1], 
-        [0.4, 0.4, 0.2], 
-        [0.5, 0.2, 0.3]  
-    ]
+    psybient: [[0.6, 0.1, 0.1, 0.1, 0.1], [0.2, 0.5, 0.2, 0.1, 0.0], [0.3, 0.1, 0.5, 0.1, 0.0], [0.2, 0.1, 0.1, 0.5, 0.1], [0.4, 0.0, 0.1, 0.1, 0.4]],
+    ambient: [[0.7, 0.1, 0.05, 0.05, 0.05, 0.05], [0.3, 0.5, 0.1, 0.0, 0.1, 0.0], [0.4, 0.1, 0.4, 0.0, 0.0, 0.1], [0.2, 0.2, 0.1, 0.4, 0.1, 0.0], [0.3, 0.1, 0.0, 0.1, 0.5, 0.0], [0.4, 0.0, 0.1, 0.0, 0.0, 0.5]],
+    blues: [[0.6, 0.3, 0.1], [0.4, 0.4, 0.2], [0.5, 0.2, 0.3]]
 };
 
 export const GENRE_STATES: Record<string, number[]> = {
@@ -418,3 +228,51 @@ export const GENRE_STATES: Record<string, number[]> = {
     ambient: [0, 5, 7, 9, 3, 10], 
     blues: [0, 5, 7]             
 };
+
+export function decompressCompactPhrase(compact: number[]): any[] {
+    const result = [];
+    if (!compact) return [];
+    for (let i = 0; i < compact.length; i += 4) {
+        result.push({
+            t: compact[i], d: compact[i+1],
+            deg: DEGREE_KEYS[compact[i+2]] || 'R',
+            tech: TECHNIQUE_KEYS[compact[i+3]] || 'pick'
+        });
+    }
+    return result;
+}
+
+export function repairLegacyPhrase(compact: number[]): number[] {
+    if (!compact || compact.length === 0) return [];
+    const isLegacy = compact.length >= 3 && compact[2] > 20;
+    if (!isLegacy) return compact;
+    const repaired: number[] = [];
+    const BASE_C4 = 60;
+    for (let i = 0; i < compact.length; i += 4) {
+        const t = compact[i]; const d = compact[i+1]; const midi = compact[i+2];
+        const semitone = (midi - BASE_C4) % 12;
+        const degName = SEMITONE_TO_DEGREE[semitone < 0 ? semitone + 12 : semitone] || 'R';
+        const degIdx = DEGREE_KEYS.indexOf(degName);
+        const techIdx = TECHNIQUE_KEYS.indexOf('pick');
+        repaired.push(t, d, degIdx, techIdx);
+    }
+    return repaired;
+}
+
+export function mergeIdenticalNotes(phrase: any[]): any[] {
+    if (!phrase || phrase.length <= 1) return phrase || [];
+    const sorted = [...phrase].sort((a, b) => a.t - b.t);
+    const merged: any[] = [];
+    let current = { ...sorted[0] };
+    for (let i = 1; i < sorted.length; i++) {
+        const next = sorted[i];
+        if (next.deg === current.deg && Math.abs(next.t - (current.t + current.d)) < 0.01) {
+            current.d += next.d;
+        } else {
+            merged.push(current);
+            current = { ...next };
+        }
+    }
+    merged.push(current);
+    return merged;
+}

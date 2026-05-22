@@ -1,14 +1,27 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.0 — "Sustain Restoration".
- * #ЗАЧЕМ: Ликвидация эффекта "пиццикато" во всех инструментах.
- * #ЧТО: ПЛАН №1715 — Исправлено планирование релиза. Теперь затухание начинается ПОСЛЕ длительности ноты.
+ * @fileOverview Центральная фабрика инструментов V7.5 — "Voice Sovereignty".
+ * #ЗАЧЕМ: Динамическое управление лимитом голосов по требованию пользователя.
+ * #ЧТО: ПЛАН №1800 — Лимит теперь настраиваемый (60..250).
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-const GLOBAL_VOICE_LIMIT = 250; 
+let currentVoiceLimit = 180; 
+
+/**
+ * #ЗАЧЕМ: Экспорт счетчика для UI.
+ */
+export const getActiveVoiceCount = () => globalActiveVoices.length;
+
+/**
+ * #ЗАЧЕМ: Обновление лимита из контекста.
+ */
+export const setGlobalVoiceLimit = (limit: number) => {
+    currentVoiceLimit = limit;
+    console.log(`%c[Factory] Voice Limit set to: ${limit}`, 'color: #3b82f6; font-weight: bold;');
+};
 
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
@@ -58,7 +71,7 @@ const deepCleanup = (voiceRecord: any) => {
 };
 
 const enforceVoiceLimit = () => {
-    if (globalActiveVoices.length > GLOBAL_VOICE_LIMIT) {
+    if (globalActiveVoices.length > currentVoiceLimit) {
         const oldest = globalActiveVoices.shift();
         if (oldest) deepCleanup(oldest);
     }
@@ -97,9 +110,6 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
 
 // ───── DISTORTION CURVES ─────
 
-/**
- * #ЗАЧЕМ: ПЛАН №1720 — Откат к стабильной версии (устранение мерзкого звука).
- */
 export const makeVintageDistortion = (amount: number) => {
     const k = isFinite(amount) ? amount : 50;
     const n_samples = 44100;
@@ -107,15 +117,11 @@ export const makeVintageDistortion = (amount: number) => {
     const deg = Math.PI / 180;
     for (let i = 0; i < n_samples; ++i ) {
         const x = i * 2 / n_samples - 1;
-        // Возврат к оригинальной формуле из спецификации
         curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
     }
     return curve;
 };
 
-/**
- * #ЗАЧЕМ: ПЛАН №1720 — Упрощение Muff до классического Tanh.
- */
 export const makeMuff = (amount: number) => {
     const k = isFinite(amount) ? amount : 5;
     const n_samples = 44100;
@@ -249,18 +255,10 @@ const triggerAttack = (ctx: AudioContext, gain: GainNode, when: number, a: numbe
     return { node: gain, startTime: now };
 };
 
-/**
- * #ЗАЧЕМ: Исправленное планирование релиза (План №1715).
- * #ЧТО: Теперь затухание начинается ровно в startTime + duration.
- */
 const scheduleRelease = (ctx: AudioContext, voiceState: VoiceState, startTime: number, duration: number, r: number): number => {
     const release = isFinite(r) ? Math.max(r, 0.05) : 0.5;
     const releaseStartTime = startTime + (isFinite(duration) ? duration : 1.0);
-    
-    // Планируем начало затухания в будущем
     voiceState.node.gain.setTargetAtTime(0.0001, releaseStartTime, Math.max(release / 2.5, 0.001));
-    
-    // Возвращаем время, когда звук гарантированно стихнет (6 констант времени)
     return releaseStartTime + (release * 6.0); 
 };
 
@@ -584,5 +582,3 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         preset, type
     };
 }
-
-const TECHNIQUE_KEYS = ['pick', 'sl', 'h/p', 'bn', 'vb', 'gr', 'ds', 'harm', 'pick', 'hit', 'swell'];
