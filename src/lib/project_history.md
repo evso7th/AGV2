@@ -3,14 +3,13 @@
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: RUNTIME CRITICAL PATCH)
-**СОБЫТИЕ**: Исправление TypeError в воркере (getScaleForMood) и ошибок импорта AlertDialog.
+### ЗАПИСЬ: 16-03-2026 (STATUS: CRITICAL EXPORT RECOVERY)
+**СОБЫТИЕ**: Исправление ошибок импорта в AmbientBrain и BluesBrain.
 **ИЗМЕНЕНИЯ**: 
-1. `src/lib/music-theory.ts`: Восстановлен экспорт функции `getScaleForMood`, необходимой для расчета резонанса в матрицах.
-2. `src/app/hypercube-dashboard/page.tsx`: Исправлен импорт `AlertDialog`. Компонент теперь импортируется из своего правильного файла `@/components/ui/alert-dialog`, а не из `@/components/ui/dialog`.
-**ИТОГ**: Воркер больше не падает при расчете Beauty Score. Интерфейс Аудитора восстановил полную работоспособность.
+1. `src/lib/music-theory.ts`: Восстановлены и экспортированы критические константы и функции: `GEO_ATLAS`, `LIGHT_ATLAS`, `normalizePhraseGroup`, `invertPhrase`, `retrogradePhrase`, `applyRhythmicJitter`.
+**ИТОГ**: Компиляция проекта восстановлена. Оркестровые «мозги» снова имеют доступ к географии звука и алгоритмам музыкальной трансформации.
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: RUNTIME LOGIC PATCH)
+### ЗАПИСЬ: 16-03-2026 (STATUS: RUNTIME CRITICAL PATCH)
 ... (предыдущие записи)

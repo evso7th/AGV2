@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.8 — "Scale Logic Restoration".
- * #ЗАЧЕМ: Исправление TypeError в воркере (getScaleForMood).
- * #ЧТО: ПЛАН №1895 — Восстановлена функция getScaleForMood для расчета резонанса.
+ * @fileOverview Universal Music Theory Utilities V5.9 — "The Complete Codex".
+ * #ЗАЧЕМ: Исправление ошибок импорта в Ambient и Blues Brain.
+ * #ЧТО: ПЛАН №1905 — Восстановлены GEO_ATLAS, LIGHT_ATLAS и функции L-трансформации.
  */
 
 import type { 
@@ -47,6 +47,78 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+// ───── ATLASES ─────
+
+/**
+ * #ЗАЧЕМ: Атлас Географии для AmbientBrain.
+ */
+export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
+    'harbor': { fog: 0.6, depth: 0.4, reg: -12 },
+    'temple': { fog: 0.2, depth: 0.8, reg: 0 },
+    'plains': { fog: 0.4, depth: 0.3, reg: 12 },
+    'void':   { fog: 0.8, depth: 0.9, reg: -24 }
+};
+
+/**
+ * #ЗАЧЕМ: Атлас Света для AmbientBrain.
+ */
+export const LIGHT_ATLAS: Record<string, { intensity: number, bloom: number }> = {
+    'epic': { intensity: 0.8, bloom: 0.9 },
+    'enthusiastic': { intensity: 0.7, bloom: 0.6 },
+    'joyful': { intensity: 0.9, bloom: 0.4 }
+};
+
+// ───── L-LOGIC (TRANSFORMATIONS) ─────
+
+/**
+ * #ЗАЧЕМ: Нормализация группы нот.
+ */
+export function normalizePhraseGroup(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const minT = Math.min(...phrase.map(n => n.t));
+    return phrase.map(n => ({ ...n, t: n.t - minT }));
+}
+
+/**
+ * #ЗАЧЕМ: Инверсия фраз (Зеркальное отражение).
+ */
+export function invertPhrase(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const firstDeg = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
+    return phrase.map(n => {
+        const currentSemi = DEGREE_TO_SEMITONE[n.deg] || 0;
+        const invertedSemi = firstDeg - (currentSemi - firstDeg);
+        // Защита от выхода за диапазон
+        const wrappedSemi = ((invertedSemi % 12) + 12) % 12;
+        const degName = SEMITONE_TO_DEGREE[wrappedSemi] || 'R';
+        return { ...n, deg: degName };
+    });
+}
+
+/**
+ * #ЗАЧЕМ: Ретроградная трансформация (Реверс).
+ */
+export function retrogradePhrase(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const maxT = Math.max(...phrase.map(n => n.t + n.d));
+    return phrase.map(n => ({ 
+        ...n, 
+        t: maxT - (n.t + n.d) 
+    })).sort((a, b) => a.t - b.t);
+}
+
+/**
+ * #ЗАЧЕМ: Ритмический джиттер (Живое отклонение).
+ */
+export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
+    return phrase.map((n, i) => {
+        const jitter = (calculateMusiNum(seed + i, 7, 0, 10) / 100) - 0.05; 
+        return { ...n, t: Math.max(0, n.t + jitter) };
+    });
+}
+
+// ───── CORE UTILS ─────
 
 /**
  * #ЗАЧЕМ: Сопоставление настроения с музыкальной гаммой.
