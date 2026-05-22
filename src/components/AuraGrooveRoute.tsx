@@ -21,6 +21,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
@@ -233,7 +234,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant={props.isRecording ? "destructive" : "outline"} onClick={props.handleToggleRecording} className="h-8 w-8 p-0 shrink-0">
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
-                            <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
+                            <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className="h-4 w-4" /></Button>
                             <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={props.isInitializing || !props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like"><ThumbsUp className="h-4 w-4 text-primary" /></Button>
                             {/* #ЗАЧЕМ: Кнопка лимита голосов (ПЛАН №1800). */}
                             <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-8 w-8 shrink-0"><Zap className="h-4 w-4 text-amber-500" /></Button>
