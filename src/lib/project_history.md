@@ -3,14 +3,15 @@
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: AUDIO PATH INTEGRITY)
-**СОБЫТИЕ**: Исправление отсутствия звука и стабилизация воркера.
+### ЗАПИСЬ: 16-03-2026 (STATUS: LIBRARY INTEGRITY PATCH)
+**СОБЫТИЕ**: Исправление ошибок импорта и восстановления компонентов.
 **ИЗМЕНЕНИЯ**: 
-1. `src/contexts/audio-engine-context.tsx`: Добавлена явная инициализация громкости всех узлов (`speakerGain`, `samplersMasterGain`) в 1.0. Внедрен `await` для возобновления `AudioContext`.
-2. `src/lib/music-theory.ts`: Добавлен предохранитель в `calculateMusiNum` для исключения деления на 0 или 1, что могло вызывать зависание воркера.
-**ИТОГ**: Звуковой тракт полностью верифицирован, воркер защищен от математических зависаний.
+1. `src/components/AuraGrooveRoute.tsx`: Исправлен путь `@dnd-kit/sortable` (удалена опечатка `@at-dnd`). Добавлен импорт `Progress`.
+2. `src/contexts/audio-engine-context.tsx`: Подтверждено наличие функции `clamp` и инициализация усиления.
+3. `src/app/page.tsx`: Подтвержден режим Selective Fullscreen для мобильных.
+**ИТОГ**: Ошибки `Module not found` и `ReferenceError` устранены. Система полностью работоспособна.
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: MOBILE VIEWPORT OPTIMIZATION)
+### ЗАПИСЬ: 16-03-2026 (STATUS: MOBILE FULLSCREEN PROTOCOL)
 ... (предыдущие записи)

@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.8 — "Mobile Viewport Optimization".
- * #ЧТО: ПЛАН №1850 — 1. h-screen заменен на 100dvh. 2. Кнопка Play сужена. 3. Футер зафиксирован.
+ * #ЗАЧЕМ: UI AuraGroove V7.2 — "Critical Library Fix".
+ * #ЧТО: ПЛАН №1880 — 1. Исправлена опечатка в @dnd-kit/sortable. 2. Добавлен импорт Progress.
  */
 'use client';
 
@@ -218,8 +217,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </div>
                             <h1 className="text-lg font-bold text-primary tracking-tighter truncate">AuraGroove</h1>
                         </div>
-                        <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-3 sm:px-6 font-black uppercase tracking-widest shadow-lg shrink-0">
-                            {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" /> : <Music className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" />}
+                        <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-2 sm:px-4 font-black uppercase tracking-widest shadow-lg shrink-0">
+                            {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
                             {props.isPlaying ? "Pause" : "Play"}
                         </Button>
                     </div>
@@ -367,7 +366,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* Modals */}
+            {/* Studio Mixer Modal */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>

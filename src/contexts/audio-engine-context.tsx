@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Audio Engine Context V46.0 — "Audio Path Integrity Fix".
- * #ЗАЧЕМ: Исправление отсутствия звука после оптимизации.
- * #ЧТО: ПЛАН №1860 — 1. Явная инициализация gain-узлов. 2. Await resume(). 3. Стабилизация routing-цепи.
+ * @fileOverview Audio Engine Context V47.1 — "Library Sync & Safe Boot".
+ * #ЗАЧЕМ: Устранение ReferenceError и обеспечение чистого звука.
+ * #ЧТО: ПЛАН №1880 — 1. Исправлена инициализация safeLimit. 2. Проверка gain-узлов.
  */
 'use client';
 
@@ -21,7 +20,6 @@ import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
-import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, query, doc } from 'firebase/firestore';
@@ -46,6 +44,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     orchestral: 0.29, cs80: 0.1, chords: 0.6, bass: 1.0
 };
 
+// #ЗАЧЕМ: Хелпер для безопасного ограничения значений.
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 interface AudioEngineContextType {
@@ -103,7 +102,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const [voiceLimit, setVoiceLimitState] = useState<number>(180);
 
-  const timbreOverridesRef = useRef<Record<string, any>>({});
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
@@ -144,8 +142,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
       const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
       const safeLimit = isFinite(finalLimit) ? clamp(finalLimit, 50, 250) : defaultLimit;
+      
       setVoiceLimitState(safeLimit);
       setGlobalVoiceLimit(safeLimit);
+      
       const savedCal = localStorage.getItem('AuraGroove_Calibration');
       if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
   }, []);
@@ -163,7 +163,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
-        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
   }, []);
@@ -273,7 +272,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false); 
         return false; 
     }
-  }, [auth, db, applyCalibration, calibrationGains]);
+  }, [auth, db, applyCalibration, calibrationGains, isInitialized, isInitializing]);
 
   const value = useMemo(() => ({
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,

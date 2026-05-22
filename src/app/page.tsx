@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,7 +9,7 @@ import Image from 'next/image';
 
 /**
  * #ЗАЧЕМ: Корневая страница.
- * #ЧТО: ПЛАН №1850 — Добавлен запуск полноэкранного режима для мобильных устройств.
+ * #ЧТО: ПЛАН №1870 — Полноэкранный режим активируется ТОЛЬКО на мобильных устройствах.
  */
 export default function Home() {
   const router = useRouter();
@@ -21,13 +20,17 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
-    // #ЗАЧЕМ: Запуск полноэкранного режима для иммерсивного опыта.
-    if (typeof document !== 'undefined') {
-      const docEl = document.documentElement;
-      if (docEl.requestFullscreen) {
-        docEl.requestFullscreen().catch(() => {
-          // Игнорируем ошибки (например, если браузер заблокировал переход)
-        });
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      // #ЗАЧЕМ: Выборочная активация Fullscreen только для мобилок.
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) {
+          docEl.requestFullscreen().catch(() => {
+            // Игнорируем блокировки браузера
+          });
+        }
       }
     }
     router.push('/home');
