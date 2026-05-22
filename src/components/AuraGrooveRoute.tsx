@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.2 — "Drag & Drop Integrity Fix".
- * #ЧТО: ПЛАН №1680 — Исправлена опечатка overId -> over.id.
+ * #ЗАЧЕМ: UI AuraGroove V6.3 — "Dual Core Switch".
+ * #ЧТО: ПЛАН №1785 — Добавлен переключатель DNA/Atom в футер Навигатора.
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical
+    GripVertical, Dna, Atom
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -186,7 +186,6 @@ function SortableRouteItem({
                 isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
             )}
         >
-            {/* #ЗАЧЕМ: Тонкий прогресс-бар для активного элемента. */}
             {isActive && progress !== undefined && (
                 <div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20">
                     <div 
@@ -257,7 +256,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <header className="p-3 bg-background/40 shrink-0">
                     {/* Row 1: AuraGroove (Active) | Play */}
                     <div className="flex items-center justify-between mb-2">
-                        {/* #ЗАЧЕМ: ПЛАН №1635. Активный заголовок ведет на Home. */}
                         <div 
                             onClick={props.handleGoHome}
                             className="flex flex-row items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
@@ -283,7 +281,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
-                            {/* #ЗАЧЕМ: Кнопка Лайк возвращена в строй (ПЛАН №1650). */}
                             <Button 
                                 variant="outline" 
                                 onClick={props.handleSaveMasterpiece} 
@@ -363,8 +360,24 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
 
                 <footer className="p-4 bg-background/80 backdrop-blur-sm border-t border-primary/10 flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40">
-                    <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
+                    </div>
+                    
+                    {/* #ЗАЧЕМ: ПЛАН №1785. Переключатель DNA/Atom. */}
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => props.setUseHeritage(!props.useHeritage)} 
+                        className={cn(
+                            "h-10 px-3 gap-2 font-black uppercase text-[10px] tracking-widest transition-all", 
+                            props.useHeritage ? "border-primary text-primary bg-primary/5" : "border-muted-foreground text-muted-foreground opacity-60"
+                        )}
+                    >
+                        {props.useHeritage ? <Dna className="h-4 w-4 animate-pulse" /> : <Atom className="h-4 w-4" />}
+                        {props.useHeritage ? "DNA" : "Atom"}
+                    </Button>
                     
                     <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                         <DialogTrigger asChild>
