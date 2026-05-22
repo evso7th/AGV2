@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.0 — "Anti-Cycle Protocol".
- * #ЗАЧЕМ: Ликвидация циклов в режиме Atom.
- * #ЧТО: ПЛАН №1810 — 1. Исправлена матрица вероятностей. 2. Добавлен createHarmonyAxiom.
+ * @fileOverview Universal Music Theory Utilities V5.1 — "Non-Linear Atom Intelligence".
+ * #ЗАЧЕМ: Устранение цикличности в режиме Atom и восстановление огибающих.
+ * #ЧТО: ПЛАН №1830 — 1. Увеличены длительности марковских состояний. 2. Усложнены матрицы переходов.
  */
 
 import type { 
@@ -49,8 +49,8 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
- * #ЗАЧЕМ: Базовая генерация нот для режима Atom (без Наследия).
- * #ЧТО: ПЛАН №1810 — Динамическое заполнение такта на основе MusiNum.
+ * #ЗАЧЕМ: Генерация нот для режима Atom.
+ * #ЧТО: ПЛАН №1830 — Улучшенное разнообразие.
  */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
@@ -58,27 +58,30 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     const scale = MODE_SEMITONES[isMinor ? 'dorian' : 'ionian'];
     const root = chord.rootNote;
 
-    // Плотность зависит от эпохи и жанра
-    const density = 2 + (calculateMusiNum(epoch, 3, 0, 3));
+    // Плотность зависит от эпохи
+    const density = 2 + (calculateMusiNum(epoch, 5, 0, 4));
     
     for (let i = 0; i < density; i++) {
         const t = (TICKS_PER_BAR / density) * i;
-        // Используем MusiNum для детерминированного, но сложного выбора ступеней
-        const degIdx = calculateMusiNum(epoch + i, 11, root, scale.length);
+        const degIdx = calculateMusiNum(epoch + i * 2, 13, root + seedToOffset(epoch), scale.length);
         const note = root + 12 + scale[degIdx];
 
         events.push({
             type: 'accompaniment',
             note: note,
             time: t * TICK_TO_BEAT,
-            duration: 2.5 * TICK_TO_BEAT, // Небольшой нахлест для обволакивания
-            weight: 0.5 + (calculateMusiNum(epoch, 7, i, 3) / 10),
+            duration: 3.5 * TICK_TO_BEAT, 
+            weight: 0.5 + (calculateMusiNum(epoch, 9, i, 3) / 10),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato'
         });
     }
     return events;
+}
+
+function seedToOffset(epoch: number): number {
+    return (epoch % 3 === 0) ? 7 : (epoch % 5 === 0 ? 5 : 0);
 }
 
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
@@ -166,8 +169,8 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     let currentStateIdx = 0;
     
     while (currentBar < totalBars) {
-        // #ЗАЧЕМ: ПЛАН №1810. Увеличение длительности для устранения цикличности.
-        const durPool = [8, 12, 16, 24]; 
+        // #ЗАЧЕМ: Увеличение длительности для ликвидации "шарманки".
+        const durPool = [12, 16, 24, 32]; 
         const dur = durPool[calculateMusiNum(currentBar, 4, seed, 4)];
         
         track.push({
@@ -177,7 +180,7 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
             durationBars: Math.min(dur, totalBars - currentBar)
         });
         
-        const rand = (calculateMusiNum(currentBar, 17, seed, 100)) / 100;
+        const rand = (calculateMusiNum(currentBar, 19, seed, 100)) / 100;
         let acc = 0;
         const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
         
@@ -255,13 +258,10 @@ export function generateTensionMap(seed: number, totalBars: number, mood: Mood, 
     return map;
 }
 
-/**
- * #ЗАЧЕМ: Скорректированные матрицы для большего разнообразия (ПЛАН №1810).
- */
 export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
-    psybient: [[0.3, 0.3, 0.1, 0.2, 0.1], [0.2, 0.4, 0.2, 0.1, 0.1], [0.1, 0.1, 0.5, 0.2, 0.1], [0.2, 0.1, 0.1, 0.4, 0.2], [0.3, 0.1, 0.1, 0.1, 0.4]],
-    ambient: [[0.4, 0.2, 0.1, 0.1, 0.1, 0.1], [0.3, 0.4, 0.1, 0.0, 0.1, 0.1], [0.2, 0.1, 0.4, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.1, 0.1], [0.2, 0.1, 0.1, 0.1, 0.4, 0.1], [0.2, 0.1, 0.1, 0.1, 0.1, 0.4]],
-    blues: [[0.4, 0.4, 0.2], [0.3, 0.4, 0.3], [0.4, 0.2, 0.4]]
+    psybient: [[0.2, 0.4, 0.1, 0.2, 0.1], [0.3, 0.2, 0.2, 0.2, 0.1], [0.1, 0.1, 0.5, 0.2, 0.1], [0.2, 0.1, 0.1, 0.4, 0.2], [0.3, 0.1, 0.1, 0.1, 0.4]],
+    ambient: [[0.3, 0.3, 0.1, 0.1, 0.1, 0.1], [0.2, 0.4, 0.1, 0.1, 0.1, 0.1], [0.2, 0.1, 0.4, 0.1, 0.1, 0.1], [0.2, 0.2, 0.1, 0.3, 0.1, 0.1], [0.2, 0.1, 0.1, 0.1, 0.4, 0.1], [0.2, 0.1, 0.1, 0.1, 0.1, 0.4]],
+    blues: [[0.3, 0.4, 0.3], [0.3, 0.4, 0.3], [0.4, 0.3, 0.3]]
 };
 
 export const GENRE_STATES: Record<string, number[]> = {

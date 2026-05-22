@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V43.0 — "Iron Voice Stability".
- * #ЗАЧЕМ: Гарантированное восстановление звука и телеметрии.
- * #ЧТО: ПЛАН №1800 — Защита лимита голосов и форсированная инициализация мастер-канала.
+ * @fileOverview Audio Engine Context V44.0 — "Static Resource Governance".
+ * #ЗАЧЕМ: Ликвидация телеметрии и переход к статическим лимитам.
+ * #ЧТО: ПЛАН №1830 — Удален activeVoiceCount, исправлена логика инициализации лимита.
  */
 'use client';
 
@@ -22,7 +22,7 @@ import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
-import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, getActiveVoiceCount, globalAllNotesOff } from '@/lib/instrument-factory';
+import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, query, doc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
@@ -69,7 +69,6 @@ interface AudioEngineContextType {
   calibrationGains: Record<string, number>;
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
-  activeVoiceCount: number;
   startRecording: () => void;
   stopRecording: () => void;
   toggleBroadcast: () => void;
@@ -100,9 +99,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
-  // #ЗАЧЕМ: Управление лимитом голосов (ПЛАН №1800).
+  // #ЗАЧЕМ: Статический лимит ресурсов.
   const [voiceLimit, setVoiceLimitState] = useState<number>(180);
-  const [activeVoiceCount, setActiveVoiceCount] = useState<number>(0);
 
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const workerRef = useRef<Worker | null>(null);
@@ -137,7 +135,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
-  // #ЗАЧЕМ: Авто-лимит на основе платформы (ПЛАН №1800).
+  // #ЗАЧЕМ: Загрузка статических настроек лимита.
   useEffect(() => {
       if (typeof window === 'undefined') return;
       
@@ -145,28 +143,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const defaultLimit = isMobile ? 60 : 180;
       const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
       
-      // Защита от NaN и 0
-      const parsedLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
-      const finalLimit = isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : defaultLimit;
+      const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
+      const safeLimit = isFinite(finalLimit) ? clamp(finalLimit, 50, 250) : defaultLimit;
       
-      setVoiceLimitState(finalLimit);
-      setGlobalVoiceLimit(finalLimit);
+      setVoiceLimitState(safeLimit);
+      setGlobalVoiceLimit(safeLimit);
 
       // Загрузка калибровки
       const savedCal = localStorage.getItem('AuraGroove_Calibration');
       if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
   }, []);
 
-  // #ЗАЧЕМ: Телеметрия голосов (ПЛАН №1800).
-  useEffect(() => {
-      const tid = setInterval(() => {
-          setActiveVoiceCount(getActiveVoiceCount());
-      }, 150);
-      return () => clearInterval(tid);
-  }, []);
-
   const setVoiceLimit = useCallback((limit: number) => {
-      const safeLimit = Math.max(20, limit);
+      const safeLimit = clamp(limit, 50, 250);
       setVoiceLimitState(safeLimit);
       setGlobalVoiceLimit(safeLimit);
       localStorage.setItem('AuraGroove_VoiceLimit', safeLimit.toString());
@@ -299,7 +288,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const value = useMemo(() => ({
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
-    initialize, calibrationGains, voiceLimit, activeVoiceCount, setVoiceLimit,
+    initialize, calibrationGains, voiceLimit, setVoiceLimit,
+    activeVoiceCount: 0, // #ЗАЧЕМ: ПЛАН №1830. Телеметрия отключена.
     analyser: analyserNodeRef.current,
     setIsPlaying: (playing: boolean) => {
         const context = audioContextRef.current;
@@ -366,7 +356,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     stopPreview: () => {},
     updatePreviewPreset: () => {},
     togglePreviewLoop: () => {}
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, activeVoiceCount, setVoiceLimit, applyCalibration, getEffectivePreset, setVolumeCallback, stopAllSounds]);
+  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, getEffectivePreset, setVolumeCallback, stopAllSounds, setVoiceLimit]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };

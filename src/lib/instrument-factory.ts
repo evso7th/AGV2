@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.6 — "Steel Voice Protocol".
- * #ЗАЧЕМ: Динамическое управление лимитом голосов и защита от "тишины".
- * #ЧТО: ПЛАН №1800 — Лимит теперь настраиваемый (20..250). Устранено преждевременное удаление.
+ * @fileOverview Центральная фабрика инструментов V7.7 — "Static Voice Protocol".
+ * #ЗАЧЕМ: Ликвидация телеметрии для экономии ресурсов.
+ * #ЧТО: ПЛАН №1830 — Удален экспорт счетчика голосов. Лимит управляет только очередью удаления.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -11,17 +11,10 @@ let globalActiveVoices: any[] = [];
 let currentVoiceLimit = 180; 
 
 /**
- * #ЗАЧЕМ: Экспорт счетчика для UI.
- */
-export const getActiveVoiceCount = () => globalActiveVoices.length;
-
-/**
- * #ЗАЧЕМ: Обновление лимита из контекста с защитой от критических значений.
+ * #ЗАЧЕМ: Обновление лимита из контекста.
  */
 export const setGlobalVoiceLimit = (limit: number) => {
-    // Минимум 20 голосов для предотвращения полной тишины
-    currentVoiceLimit = isFinite(limit) ? Math.max(20, limit) : 60;
-    console.log(`%c[Factory] Voice Limit synchronized: ${currentVoiceLimit}`, 'color: #3b82f6; font-weight: bold;');
+    currentVoiceLimit = isFinite(limit) ? Math.max(20, limit) : 180;
 };
 
 export const globalAllNotesOff = () => {
@@ -300,7 +293,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
             if (!isFinite(midi)) return;
             
-            // #ЗАЧЕМ: Проверка лимита перед добавлением нового голоса.
             enforceVoiceLimit();
 
             const f = midiToHz(midi);

@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.0 — "Voice & Logic Integrity".
- * #ЧТО: ПЛАН №1810 — Исправлен проброс setVoiceLimit и активных голосов в UI.
+ * #ЗАЧЕМ: Хук управления музыкой V9.1 — "Static Voice Cap".
+ * #ЧТО: ПЛАН №1830 — Проброс только статического лимита голосов, удалена телеметрия счета.
  */
 'use client';
 
@@ -123,7 +123,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
     setEQGain, setCalibrationGain, calibrationGains,
-    voiceLimit, activeVoiceCount, setVoiceLimit // #ЗАЧЕМ: ПЛАН №1810. Извлечение телеметрии.
+    voiceLimit, activeVoiceCount, setVoiceLimit
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -557,7 +557,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
-    voiceLimit, activeVoiceCount, setVoiceLimit, // #ЗАЧЕМ: ПЛАН №1810. Проброс данных.
+    voiceLimit, activeVoiceCount, setVoiceLimit,
     eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
   };

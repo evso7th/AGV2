@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.6 — "Steel UI Integrity".
- * #ЧТО: ПЛАН №1820 — Исправлено отображение лимита голосов и импорт Progress.
+ * #ЗАЧЕМ: UI AuraGroove V6.7 — "Static Limit Display".
+ * #ЧТО: ПЛАН №1830 — Бейдж теперь показывает статический лимит голосов. Телеметрия удалена.
  */
 'use client';
 
@@ -213,7 +213,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <div className="relative">
                                 <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
                                 <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90 bg-primary text-primary-foreground">
-                                    {props.activeVoiceCount}
+                                    {/* #ЗАЧЕМ: Бейдж теперь показывает статический лимит голосов. */}
+                                    {props.voiceLimit}
                                 </Badge>
                             </div>
                             <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
@@ -353,22 +354,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </DialogHeader>
                     <div className="space-y-8 py-8">
                         <div className="flex justify-between items-center px-2">
-                            <Label className="text-[10px] font-black uppercase opacity-60">Max Active Voices</Label>
+                            <Label className="text-[10px] font-black uppercase opacity-60">Global Voice Limit</Label>
                             <span className="text-xl font-mono font-black text-primary">{props.voiceLimit}</span>
                         </div>
+                        {/* #ЗАЧЕМ: Слайдер теперь управляет статическим значением лимита (50-250). */}
                         <Slider 
                             value={[props.voiceLimit]} 
-                            min={20} max={250} step={10} 
+                            min={50} max={250} step={10} 
                             onValueChange={(v) => props.setVoiceLimit(v[0])} 
                             className="px-2"
                         />
-                        <div className="bg-muted/30 p-4 rounded-lg border border-primary/5 space-y-2">
-                            <div className="flex justify-between text-[9px] font-black uppercase opacity-40">
-                                <span>Current Engine Pressure:</span>
-                                <span>{props.activeVoiceCount} / {props.voiceLimit}</span>
-                            </div>
-                            <Progress value={(props.activeVoiceCount / props.voiceLimit) * 100} className="h-1.5" />
-                        </div>
                     </div>
                     <DialogFooter>
                         <Button onClick={() => setIsVoiceLimitOpen(false)} className="w-full font-black uppercase tracking-widest h-12 shadow-xl">Apply System Limit</Button>
