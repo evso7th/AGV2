@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.6 — "Safe Logic Deployment".
- * #ЗАЧЕМ: Предотвращение зависаний воркера.
- * #ЧТО: ПЛАН №1860 — Добавлен Safe Guard в calculateMusiNum для base <= 1.
+ * @fileOverview Universal Music Theory Utilities V5.7 — "Logic Restoration".
+ * #ЗАЧЕМ: Исправление TypeError в воркере.
+ * #ЧТО: ПЛАН №1890 — Восстановлена функция pickWeightedDeterministic.
  */
 
 import type { 
@@ -47,6 +47,28 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/**
+ * #ЗАЧЕМ: Детерминированный взвешенный выбор для стабильности сессии.
+ * #ЧТО: ПЛАН №1890. Позволяет выбирать инструменты на основе весов без импорта RNG в чистые функции.
+ */
+export function pickWeightedDeterministic<T>(options: any[], seed: number, step: number, salt: number): T | null {
+    if (!options || options.length === 0) return null;
+    
+    const totalWeight = options.reduce((sum, opt) => sum + (opt.weight || 0), 0);
+    if (totalWeight <= 0) return options[0].name || options[0];
+
+    const rand = (calculateMusiNum(step, 17, seed + salt, 1000) / 1000) * totalWeight;
+    
+    let cumulativeWeight = 0;
+    for (const option of options) {
+        cumulativeWeight += (option.weight || 0);
+        if (rand <= cumulativeWeight) {
+            return option.name || option;
+        }
+    }
+    return options[options.length - 1].name || options[options.length - 1];
+}
 
 /**
  * #ЗАЧЕМ: Генерация нот для режима Atom.

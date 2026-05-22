@@ -3,15 +3,13 @@
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: LIBRARY INTEGRITY PATCH)
-**СОБЫТИЕ**: Исправление ошибок импорта и восстановления компонентов.
+### ЗАПИСЬ: 16-03-2026 (STATUS: RUNTIME LOGIC PATCH)
+**СОБЫТИЕ**: Исправление TypeError в воркере (pickWeightedDeterministic).
 **ИЗМЕНЕНИЯ**: 
-1. `src/components/AuraGrooveRoute.tsx`: Исправлен путь `@dnd-kit/sortable` (удалена опечатка `@at-dnd`). Добавлен импорт `Progress`.
-2. `src/contexts/audio-engine-context.tsx`: Подтверждено наличие функции `clamp` и инициализация усиления.
-3. `src/app/page.tsx`: Подтвержден режим Selective Fullscreen для мобильных.
-**ИТОГ**: Ошибки `Module not found` и `ReferenceError` устранены. Система полностью работоспособна.
+1. `src/lib/music-theory.ts`: Восстановлен экспорт функции `pickWeightedDeterministic`, необходимой для оркестровки в `FractalMusicEngine`.
+**ИТОГ**: Ошибка `pickWeightedDeterministic is not a function` устранена. Движок снова корректно распределяет тембры.
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: MOBILE FULLSCREEN PROTOCOL)
+### ЗАПИСЬ: 16-03-2026 (STATUS: LIBRARY INTEGRITY PATCH)
 ... (предыдущие записи)
