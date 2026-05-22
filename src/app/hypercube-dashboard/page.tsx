@@ -64,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-} from "@/components/ui/dialog"; // Changed from alert-dialog to dialog for consistency in this environment
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -339,8 +339,6 @@ export default function HypercubeDashboard() {
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
 
-  // #ЗАЧЕМ: Система Аудита Здоровья Базы (ПЛАН №1040).
-  // #ЧТО: Индексация треков по полноте оркестровки (наличие Melody и Bass).
   const healthStats = useMemo(() => {
     if (!groupedAxioms || groupedAxioms.length === 0) return { full: 0, partial: 0, critical: [] as string[] };
     let full = 0;
@@ -434,13 +432,10 @@ export default function HypercubeDashboard() {
     } finally { setIsProcessing(false); setEditingGroupId(null); }
   };
 
-  // #ЗАЧЕМ: Функция восстановления целостности метаданных (ПЛАН №1045).
-  // #ЧТО: Синхронизирует все фрагменты трека по эталонному набору тегов.
   const handleRepairMetadata = async (id: string, licks: any[]) => {
       setIsProcessing(true);
       try {
           const batch = writeBatch(db);
-          // Берем данные из первого лика как эталон
           const base = licks[0];
           licks.forEach(ax => {
               batch.update(doc(db, 'heritage_axioms', ax.id), {
@@ -683,7 +678,6 @@ export default function HypercubeDashboard() {
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Axiom Count</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Unique Tracks</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{groupedAxioms.length}</div></CardContent></Card>
             
-            {/* #ЗАЧЕМ: Виджет аудита здоровья базы. */}
             <Card className={cn("border-2 shadow-lg", healthStats.partial > 0 ? "border-amber-500/50 bg-amber-500/5" : "border-primary/20 bg-primary/5")}>
                 <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Health Audit</CardTitle></CardHeader>
                 <CardContent>
@@ -989,18 +983,20 @@ export default function HypercubeDashboard() {
       </Dialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent className="border-primary/20 bg-card">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogPortal>
+            <AlertDialogOverlay />
+            <AlertDialogContent className="border-primary/20 bg-card">
+            <AlertDialogHeader>
+                <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and cannot be undone."}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm Execution</AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialogPortal>
       </AlertDialog>
     </div>
   );
 }
-

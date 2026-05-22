@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.7 — "Logic Restoration".
- * #ЗАЧЕМ: Исправление TypeError в воркере.
- * #ЧТО: ПЛАН №1890 — Восстановлена функция pickWeightedDeterministic.
+ * @fileOverview Universal Music Theory Utilities V5.8 — "Scale Logic Restoration".
+ * #ЗАЧЕМ: Исправление TypeError в воркере (getScaleForMood).
+ * #ЧТО: ПЛАН №1895 — Восстановлена функция getScaleForMood для расчета резонанса.
  */
 
 import type { 
@@ -49,8 +49,27 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
+ * #ЗАЧЕМ: Сопоставление настроения с музыкальной гаммой.
+ */
+export function getScaleForMood(mood: Mood): number[] {
+    const moodMap: Record<string, string> = {
+        epic: 'mixolydian',
+        joyful: 'ionian',
+        enthusiastic: 'lydian',
+        melancholic: 'dorian',
+        dark: 'phrygian',
+        anxious: 'locrian',
+        dreamy: 'lydian',
+        contemplative: 'mixolydian',
+        calm: 'ionian',
+        gloomy: 'aeolian'
+    };
+    const scaleName = moodMap[mood] || 'dorian';
+    return MODE_SEMITONES[scaleName];
+}
+
+/**
  * #ЗАЧЕМ: Детерминированный взвешенный выбор для стабильности сессии.
- * #ЧТО: ПЛАН №1890. Позволяет выбирать инструменты на основе весов без импорта RNG в чистые функции.
  */
 export function pickWeightedDeterministic<T>(options: any[], seed: number, step: number, salt: number): T | null {
     if (!options || options.length === 0) return null;
@@ -168,13 +187,9 @@ export function keyToMidiRoot(key: string | null | undefined): number | null {
     return 48 + offset;
 }
 
-/**
- * #ЗАЧЕМ: Безопасное вычисление MusiNum.
- * #ЧТО: Добавлен Guard для предотвращения бесконечного цикла при base <= 1.
- */
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
-    if (base <= 1) return Math.abs(Math.floor(step + start)) % modulo; // Guard
+    if (base <= 1) return Math.abs(Math.floor(step + start)) % modulo; 
     
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
