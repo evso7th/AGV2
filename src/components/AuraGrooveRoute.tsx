@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.7 — "Static Limit Display".
- * #ЧТО: ПЛАН №1830 — Бейдж теперь показывает статический лимит голосов. Телеметрия удалена.
+ * #ЗАЧЕМ: UI AuraGroove V6.8 — "Mobile Viewport Optimization".
+ * #ЧТО: ПЛАН №1850 — 1. h-screen заменен на 100dvh. 2. Кнопка Play сужена. 3. Футер зафиксирован.
  */
 'use client';
 
@@ -204,23 +204,22 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-card overflow-hidden">
-            {/* TOP 50%: Header + Selectors */}
-            <div className="h-1/2 flex flex-col shrink-0 overflow-hidden border-b border-primary/20">
-                <header className="p-3 bg-background/40 shrink-0">
-                    <div className="flex items-center justify-between mb-2">
-                        <div onClick={props.handleGoHome} className="relative cursor-pointer hover:opacity-80 transition-all flex flex-row items-center gap-2">
-                            <div className="relative">
+        <div className="w-full h-[100dvh] flex flex-col bg-card overflow-hidden">
+            {/* TOP AREA: Header + Selectors */}
+            <div className="flex flex-col flex-grow min-h-0 overflow-hidden">
+                <header className="p-3 bg-background/40 shrink-0 border-b border-primary/20">
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                        <div onClick={props.handleGoHome} className="relative cursor-pointer hover:opacity-80 transition-all flex flex-row items-center gap-2 min-w-0">
+                            <div className="relative shrink-0">
                                 <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
                                 <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90 bg-primary text-primary-foreground">
-                                    {/* #ЗАЧЕМ: Бейдж теперь показывает статический лимит голосов. */}
                                     {props.voiceLimit}
                                 </Badge>
                             </div>
-                            <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
+                            <h1 className="text-lg font-bold text-primary tracking-tighter truncate">AuraGroove</h1>
                         </div>
-                        <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-6 font-black uppercase tracking-widest shadow-lg">
-                            {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
+                        <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-3 sm:px-6 font-black uppercase tracking-widest shadow-lg shrink-0">
+                            {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" /> : <Music className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" />}
                             {props.isPlaying ? "Pause" : "Play"}
                         </Button>
                     </div>
@@ -244,7 +243,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
                 </header>
 
-                <div className="flex-grow grid grid-cols-2 gap-px bg-primary/10 overflow-hidden">
+                <div className="flex-grow grid grid-cols-2 gap-px bg-primary/10 overflow-hidden h-1/2">
                     <div className="bg-card flex flex-col h-full overflow-hidden">
                         <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
                         <SimpleVerticalList items={GENRES} value={selectedGenre} onChange={setSelectedGenre} />
@@ -254,96 +253,94 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <SimpleVerticalList items={MOODS} value={selectedMood} onChange={setSelectedMood} />
                     </div>
                 </div>
-            </div>
 
-            {/* BOTTOM 50%: Controls + Path List + Footer */}
-            <div className="h-1/2 flex flex-col bg-muted/5 relative overflow-hidden">
-                <div className="p-2 flex gap-2 bg-background/20 shrink-0">
-                    <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg"><Plus className="h-4 w-4 mr-2" /> Add to Route</Button>
-                    <div className="flex gap-1">
-                        <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
-                            <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Capture Journey</DialogTitle></DialogHeader><div className="py-4"><Input placeholder="Name..." value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">Store Journey</Button></DialogFooter></DialogContent>
-                        </Dialog>
-                        <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
-                            <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Library</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} steps</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
-                        </Dialog>
-                        <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} className={cn("h-10 w-10", props.isShuffle && "bg-primary/10 border-primary/40 text-primary")}><Shuffle className="h-4 w-4" /></Button>
-                    </div>
-                </div>
-
-                <div className="flex-grow overflow-hidden flex flex-col p-3 pt-1 gap-2">
-                    <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">Current Path</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} steps</Badge></div>
-                    <ScrollArea className="flex-grow pr-3">
-                        <div className="space-y-1.5 pb-24">
-                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <SortableContext items={props.route.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                                    {props.route.map((item, idx) => {
-                                        const isActive = idx === props.activeRouteIndex && props.isPlaying;
-                                        const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
-                                        return (
-                                            <SortableRouteItem 
-                                                key={item.id} 
-                                                item={item} 
-                                                isActive={isActive}
-                                                progress={progress}
-                                                onRemove={props.removeFromRoute}
-                                            />
-                                        );
-                                    })}
-                                </SortableContext>
-                            </DndContext>
+                <div className="flex flex-col bg-muted/5 relative overflow-hidden h-1/2">
+                    <div className="p-2 flex gap-2 bg-background/20 shrink-0">
+                        <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg"><Plus className="h-4 w-4 mr-2" /> Add to Route</Button>
+                        <div className="flex gap-1">
+                            <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
+                                <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
+                                <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Capture Journey</DialogTitle></DialogHeader><div className="py-4"><Input placeholder="Name..." value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">Store Journey</Button></DialogFooter></DialogContent>
+                            </Dialog>
+                            <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
+                                <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
+                                <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Library</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} steps</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
+                            </Dialog>
+                            <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} className={cn("h-10 w-10", props.isShuffle && "bg-primary/10 border-primary/40 text-primary")}><Shuffle className="h-4 w-4" /></Button>
                         </div>
-                    </ScrollArea>
-                </div>
-
-                <footer className="p-4 bg-background/80 backdrop-blur-sm border-t border-primary/10 flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                        {/* #ЗАЧЕМ: Перемещение кнопки управления голосами (ПЛАН №1820). */}
-                        <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-10 w-10"><Zap className="h-5 w-5 text-amber-500" /></Button>
                     </div>
-                    
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => props.setUseHeritage(!props.useHeritage)} 
-                        className={cn(
-                            "h-10 px-3 gap-2 font-black uppercase text-[10px] tracking-widest transition-all", 
-                            props.useHeritage ? "border-primary text-primary bg-primary/5" : "border-muted-foreground text-muted-foreground opacity-60"
-                        )}
-                    >
-                        {props.useHeritage ? <Dna className="h-4 w-4 animate-pulse" /> : <Atom className="h-4 w-4" />}
-                        {props.useHeritage ? "DNA" : "Atom"}
-                    </Button>
-                    
-                    <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
-                        <DialogTrigger asChild>
-                            {/* #ЗАЧЕМ: Очистка лейбла кнопки таймера (ПЛАН №1820). */}
-                            <Button variant="outline" className={cn("h-10 min-w-[60px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
-                                <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : ''}
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Timer className="h-5 w-5" /> Sleep Timer</DialogTitle>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-8 py-6">
-                                <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
-                                    <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
-                                    <Slider value={[props.timerSettings.duration / 60]} min={0} max={30} step={5} onValueChange={(v) => props.handleTimerDurationChange(v[0])} disabled={props.timerSettings.isActive} />
-                                    <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
-                                </div>
-                                <Button onClick={() => { props.handleToggleTimer(); if (!props.timerSettings.isActive) setIsTimerDialogOpen(false); }} disabled={props.timerSettings.duration === 0} variant={props.timerSettings.isActive ? 'destructive' : 'default'} className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg">
-                                    {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
-                                </Button>
+
+                    <div className="flex-grow overflow-hidden flex flex-col p-3 pt-1 gap-2">
+                        <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">Current Path</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} steps</Badge></div>
+                        <ScrollArea className="flex-grow pr-3">
+                            <div className="space-y-1.5 pb-24">
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                    <SortableContext items={props.route.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                                        {props.route.map((item, idx) => {
+                                            const isActive = idx === props.activeRouteIndex && props.isPlaying;
+                                            const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
+                                            return (
+                                                <SortableRouteItem 
+                                                    key={item.id} 
+                                                    item={item} 
+                                                    isActive={isActive}
+                                                    progress={progress}
+                                                    onRemove={props.removeFromRoute}
+                                                />
+                                            );
+                                        })}
+                                    </SortableContext>
+                                </DndContext>
                             </div>
-                        </DialogContent>
-                    </Dialog>
-                </footer>
+                        </ScrollArea>
+                    </div>
+                </div>
             </div>
+
+            {/* BOTTOM TOOLBAR: Fixed/Sticky with Safe Area handling */}
+            <footer className="p-4 bg-background/80 backdrop-blur-md border-t border-primary/10 flex items-center justify-between shrink-0 sticky bottom-0 z-40 pb-safe">
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
+                    <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-10 w-10"><Zap className="h-5 w-5 text-amber-500" /></Button>
+                </div>
+                
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => props.setUseHeritage(!props.useHeritage)} 
+                    className={cn(
+                        "h-10 px-3 gap-2 font-black uppercase text-[10px] tracking-widest transition-all", 
+                        props.useHeritage ? "border-primary text-primary bg-primary/5" : "border-muted-foreground text-muted-foreground opacity-60"
+                    )}
+                >
+                    {props.useHeritage ? <Dna className="h-4 w-4 animate-pulse" /> : <Atom className="h-4 w-4" />}
+                    {props.useHeritage ? "DNA" : "Atom"}
+                </Button>
+                
+                <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className={cn("h-10 min-w-[50px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
+                            <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : ''}
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+                        <DialogHeader>
+                            <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Timer className="h-5 w-5" /> Sleep Timer</DialogTitle>
+                            <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-8 py-6">
+                            <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
+                                <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
+                                <Slider value={[props.timerSettings.duration / 60]} min={0} max={30} step={5} onValueChange={(v) => props.handleTimerDurationChange(v[0])} disabled={props.timerSettings.isActive} />
+                                <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
+                            </div>
+                            <Button onClick={() => { props.handleToggleTimer(); if (!props.timerSettings.isActive) setIsTimerDialogOpen(false); }} disabled={props.timerSettings.duration === 0} variant={props.timerSettings.isActive ? 'destructive' : 'default'} className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg">
+                                {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </footer>
 
             {/* Voice Limit Modal */}
             <Dialog open={isVoiceLimitOpen} onOpenChange={setIsVoiceLimitOpen}>
@@ -357,7 +354,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Label className="text-[10px] font-black uppercase opacity-60">Global Voice Limit</Label>
                             <span className="text-xl font-mono font-black text-primary">{props.voiceLimit}</span>
                         </div>
-                        {/* #ЗАЧЕМ: Слайдер теперь управляет статическим значением лимита (50-250). */}
                         <Slider 
                             value={[props.voiceLimit]} 
                             min={50} max={250} step={10} 
