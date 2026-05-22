@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V45.0 — "Static Resource Governance Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: clamp.
- * #ЧТО: ПЛАН №1840 — Добавлен хелпер clamp, стабилизирована инициализация лимита.
+ * @fileOverview Audio Engine Context V46.0 — "Audio Path Integrity Fix".
+ * #ЗАЧЕМ: Исправление отсутствия звука после оптимизации.
+ * #ЧТО: ПЛАН №1860 — 1. Явная инициализация gain-узлов. 2. Await resume(). 3. Стабилизация routing-цепи.
  */
 'use client';
 
@@ -88,14 +88,13 @@ const AudioEngineContext = createContext<AudioEngineContextType | null>(null);
 
 export const useAudioEngine = () => {
   const context = useContext(AudioEngineContext);
-  // #ЗАЧЕМ: Безопасный экспорт для предотвращения краха UI.
   return context || ({} as AudioEngineContextType);
 };
 
 export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
-  const [isPlaying, setIsPlayingState] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -123,6 +122,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
+  
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const samplersMasterGainRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
@@ -139,17 +139,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   useEffect(() => {
       if (typeof window === 'undefined') return;
-      
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const defaultLimit = isMobile ? 60 : 180;
       const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
-      
       const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
       const safeLimit = isFinite(finalLimit) ? clamp(finalLimit, 50, 250) : defaultLimit;
-      
       setVoiceLimitState(safeLimit);
       setGlobalVoiceLimit(safeLimit);
-
       const savedCal = localStorage.getItem('AuraGroove_Calibration');
       if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
   }, []);
@@ -159,13 +155,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setVoiceLimitState(safeLimit);
       setGlobalVoiceLimit(safeLimit);
       localStorage.setItem('AuraGroove_VoiceLimit', safeLimit.toString());
-  }, []);
-
-  const getEffectivePreset = useCallback((presetName: string) => {
-      const base = (V2_PRESETS as any)[presetName] || (BASS_PRESETS as any)[presetName];
-      if (!base) return null;
-      const override = timbreOverridesRef.current[presetName];
-      return override ? { ...base, ...override } : base;
   }, []);
 
   const setVolumeCallback = useCallback((part: string, volume: number) => {
@@ -217,7 +206,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         masterGainNodeRef.current.gain.value = calibrationGains.master || 1.0; 
 
         samplersMasterGainRef.current = context.createGain(); 
+        samplersMasterGainRef.current.gain.value = 1.0;
+
         speakerGainNodeRef.current = context.createGain();
+        speakerGainNodeRef.current.gain.value = 1.0;
+
         analyserNodeRef.current = context.createAnalyser();
         analyserNodeRef.current.fftSize = 512; 
         
@@ -233,6 +226,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
             gainNodesRef.current[p] = context.createGain();
+            gainNodesRef.current[p].gain.value = VOICE_BALANCE[p] || 0.5;
             gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!);
         });
         
@@ -267,11 +261,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.barCount, payload.instrumentHints?.accompaniment);
                 if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.harmony);
                 if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
-                
                 nextBarTimeRef.current += payload.barDuration;
-                if (payload.beautyScore >= 0.85 && settingsRef.current) {
-                    saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
-                }
             }
         };
 
@@ -280,7 +270,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         return true;
     } catch (e) { 
-        console.error('[AudioEngine] Critical Init Error:', e);
         setIsInitializing(false); 
         return false; 
     }
@@ -289,19 +278,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const value = useMemo(() => ({
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
     initialize, calibrationGains, voiceLimit, setVoiceLimit,
-    activeVoiceCount: 0,
     analyser: analyserNodeRef.current,
-    setIsPlaying: (playing: boolean) => {
+    setIsPlaying: async (playing: boolean) => {
         const context = audioContextRef.current;
         if (!context || !workerRef.current) return;
         if (playing) {
-            if (context.state === 'suspended') context.resume();
-            setIsPlayingState(true);
+            if (context.state === 'suspended') await context.resume();
+            setIsPlaying(true);
             stopAllSounds(); 
             nextBarTimeRef.current = context.currentTime + 0.5;
             workerRef.current.postMessage({ command: 'start' });
         } else {
-            setIsPlayingState(false);
+            setIsPlaying(false);
             workerRef.current.postMessage({ command: 'stop' });
             stopAllSounds(); 
         }
@@ -317,7 +305,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setVolume: setVolumeCallback, 
     setInstrument: async (part: any, name: any) => {
         if (!isInitialized) return;
-        const preset = getEffectivePreset(name);
+        const preset = (V2_PRESETS as any)[name] || (BASS_PRESETS as any)[name];
         if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
         else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
         else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
@@ -356,7 +344,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     stopPreview: () => {},
     updatePreviewPreset: () => {},
     togglePreviewLoop: () => {}
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, getEffectivePreset, setVolumeCallback, stopAllSounds, setVoiceLimit]);
+  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };

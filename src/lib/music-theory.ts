@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.5 — "Non-Linear Atom Evolution".
- * #ЗАЧЕМ: Устранение цикличности ("шарманки") в режиме Atom.
- * #ЧТО: ПЛАН №1840 — 1. Переработан алгоритм createHarmonyAxiom. 2. Усложнены переходы в Марковской цепи.
+ * @fileOverview Universal Music Theory Utilities V5.6 — "Safe Logic Deployment".
+ * #ЗАЧЕМ: Предотвращение зависаний воркера.
+ * #ЧТО: ПЛАН №1860 — Добавлен Safe Guard в calculateMusiNum для base <= 1.
  */
 
 import type { 
@@ -50,7 +50,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Генерация нот для режима Atom.
- * #ЧТО: ПЛАН №1840 — Тотальное разнообразие через многофакторный MusiNum.
  */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
@@ -58,15 +57,11 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     const scale = MODE_SEMITONES[isMinor ? 'dorian' : 'ionian'];
     const root = chord.rootNote;
 
-    // Плотность зависит от эпохи и корня аккорда
     const density = 2 + (calculateMusiNum(epoch, 7, root, 3));
     
     for (let i = 0; i < density; i++) {
-        // Ритмический сдвиг на основе MusiNum для предотвращения "сетки"
         const jitter = (calculateMusiNum(epoch + i, 13, root, 100) / 100) * 0.4;
         const t = (TICKS_PER_BAR / density) * i + jitter;
-        
-        // Сложная формула выбора ступени для ликвидации циклов
         const complexSeed = epoch * 17 + root * 5 + i * 23;
         const degIdx = calculateMusiNum(complexSeed, 19, 0, scale.length);
         const note = root + 12 + scale[degIdx];
@@ -75,7 +70,7 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
             type: 'accompaniment',
             note: note,
             time: t * TICK_TO_BEAT,
-            duration: 5.0 * TICK_TO_BEAT, // Увеличенный нахлест для текстурности
+            duration: 5.0 * TICK_TO_BEAT, 
             weight: 0.45 + (calculateMusiNum(epoch, 11, i, 4) / 10),
             technique: 'swell',
             dynamics: 'p',
@@ -151,8 +146,14 @@ export function keyToMidiRoot(key: string | null | undefined): number | null {
     return 48 + offset;
 }
 
+/**
+ * #ЗАЧЕМ: Безопасное вычисление MusiNum.
+ * #ЧТО: Добавлен Guard для предотвращения бесконечного цикла при base <= 1.
+ */
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
+    if (base <= 1) return Math.abs(Math.floor(step + start)) % modulo; // Guard
+    
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
     while (num > 0) {
@@ -170,7 +171,6 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     let currentStateIdx = 0;
     
     while (currentBar < totalBars) {
-        // #ЗАЧЕМ: Увеличение длительности для ликвидации "шарманки".
         const durPool = [12, 16, 24, 32]; 
         const dur = durPool[calculateMusiNum(currentBar, 5, seed, 4)];
         
@@ -181,7 +181,6 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
             durationBars: Math.min(dur, totalBars - currentBar)
         });
         
-        // Усложненный выбор следующего состояния
         const rand = (calculateMusiNum(currentBar, 23, seed + currentStateIdx, 100)) / 100;
         let acc = 0;
         const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
