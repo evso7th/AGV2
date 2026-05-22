@@ -3,13 +3,14 @@
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: CRITICAL EXPORT RECOVERY)
-**СОБЫТИЕ**: Исправление ошибок импорта в AmbientBrain и BluesBrain.
+### ЗАПИСЬ: 16-03-2026 (STATUS: HERITAGE CONNECTIVITY RESTORED)
+**СОБЫТИЕ**: Восстановление связи музыкального движка с облачной базой «Наследия».
 **ИЗМЕНЕНИЯ**: 
-1. `src/lib/music-theory.ts`: Восстановлены и экспортированы критические константы и функции: `GEO_ATLAS`, `LIGHT_ATLAS`, `normalizePhraseGroup`, `invertPhrase`, `retrogradePhrase`, `applyRhythmicJitter`.
-**ИТОГ**: Компиляция проекта восстановлена. Оркестровые «мозги» снова имеют доступ к географии звука и алгоритмам музыкальной трансформации.
+1. `src/contexts/audio-engine-context.tsx`: Добавлен реалтайм-слушатель Firestore (`onSnapshot`). Теперь аксиомы из облака автоматически загружаются в Web Worker при старте и изменении базы.
+2. `AvailableCompositions`: Реализована динамическая генерация списка треков-доноров на основе метаданных Firestore.
+**ИТОГ**: Система снова умеет играть оцифрованные человеческие фразы. Режим DNA активен и синхронизирован.
 
 ---
 
-### ЗАПИСЬ: 16-03-2026 (STATUS: RUNTIME CRITICAL PATCH)
+### ЗАПИСЬ: 16-03-2026 (STATUS: CRITICAL EXPORT RECOVERY)
 ... (предыдущие записи)

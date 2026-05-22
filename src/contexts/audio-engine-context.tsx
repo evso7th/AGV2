@@ -1,7 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V47.1 — "Library Sync & Safe Boot".
- * #ЗАЧЕМ: Устранение ReferenceError и обеспечение чистого звука.
- * #ЧТО: ПЛАН №1880 — 1. Исправлена инициализация safeLimit. 2. Проверка gain-узлов.
+ * @fileOverview Audio Engine Context V47.5 — "Heritage Bridge Active".
+ * #ЗАЧЕМ: Восстановление связи с Наследием.
+ * #ЧТО: ПЛАН №1910 — Добавлен реалтайм-слушатель Firestore для трансляции аксиом в воркер.
  */
 'use client';
 
@@ -22,7 +22,7 @@ import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
@@ -44,7 +44,6 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     orchestral: 0.29, cs80: 0.1, chords: 0.6, bass: 1.0
 };
 
-// #ЗАЧЕМ: Хелпер для безопасного ограничения значений.
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 interface AudioEngineContextType {
@@ -149,6 +148,48 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const savedCal = localStorage.getItem('AuraGroove_Calibration');
       if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
   }, []);
+
+  // #ЗАЧЕМ: ПЛАН №1910 — Реалтайм Мост Наследия.
+  // #ЧТО: Слушаем Firestore и шлем аксиомы в воркер.
+  useEffect(() => {
+    if (!db || !isInitialized) return;
+
+    console.log('%c[AudioEngine] Heritage Bridge: Listening to Cloud...', 'color: #4ade80;');
+    
+    const axiomsRef = collection(db, 'heritage_axioms');
+    const unsubscribe = onSnapshot(axiomsRef, (snapshot) => {
+        const axioms = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        
+        // 1. Формируем список уникальных треков для UI фильтра
+        const compMap = new Map<string, any>();
+        axioms.forEach((ax: any) => {
+            const id = ax.compositionId || 'Unknown';
+            if (!compMap.has(id)) {
+                compMap.set(id, { id, count: 0, genres: new Set(), moods: new Set() });
+            }
+            const info = compMap.get(id);
+            info.count++;
+            if (ax.genre) (Array.isArray(ax.genre) ? ax.genre : [ax.genre]).forEach((g:any) => info.genres.add(g));
+            if (ax.mood) (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).forEach((m:any) => info.moods.add(m));
+        });
+
+        const comps = Array.from(compMap.values()).map(c => ({
+            id: c.id,
+            count: c.count,
+            genres: Array.from(c.genres) as string[],
+            moods: Array.from(c.moods) as string[]
+        }));
+
+        setAvailableCompositions(comps);
+        
+        // 2. Транслируем весь пул в Web Worker
+        if (workerRef.current) {
+            workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
+        }
+    });
+
+    return () => unsubscribe();
+  }, [db, isInitialized]);
 
   const setVoiceLimit = useCallback((limit: number) => {
       const safeLimit = clamp(limit, 50, 250);
@@ -299,7 +340,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.postMessage({ command: 'update_settings', data: s }); 
         } 
     },
-    refreshCloudAxioms: async () => {},
+    refreshCloudAxioms: async () => {
+        // Логика подхватывается автоматическим слушателем onSnapshot
+    },
     resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
     setVolume: setVolumeCallback, 
     setInstrument: async (part: any, name: any) => {
