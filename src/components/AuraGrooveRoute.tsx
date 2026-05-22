@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.4 — "Voice & Soul Control".
- * #ЧТО: ПЛАН №1800 — Бейдж счетчика голосов на лого и модал Voice Limit.
+ * #ЗАЧЕМ: UI AuraGroove V6.5 — "Clean Toolbar Protocol".
+ * #ЧТО: ПЛАН №1820 — 1. Перемещение Zap в футер. 2. Удаление Cog. 3. Очистка лейбла Timer.
  */
 'use client';
 
@@ -210,7 +210,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <header className="p-3 bg-background/40 shrink-0">
                     <div className="flex items-center justify-between mb-2">
                         <div onClick={props.handleGoHome} className="relative cursor-pointer hover:opacity-80 transition-all flex flex-row items-center gap-2">
-                            {/* #ЗАЧЕМ: Бейдж активных голосов на лого (ПЛАН №1800). */}
                             <div className="relative">
                                 <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
                                 <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90">
@@ -236,8 +235,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className="h-4 w-4" /></Button>
                             <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={props.isInitializing || !props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like"><ThumbsUp className="h-4 w-4 text-primary" /></Button>
-                            {/* #ЗАЧЕМ: Кнопка лимита голосов (ПЛАН №1800). */}
-                            <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-8 w-8 shrink-0"><Zap className="h-4 w-4 text-amber-500" /></Button>
                         </div>
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
@@ -303,7 +300,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <footer className="p-4 bg-background/80 backdrop-blur-sm border-t border-primary/10 flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40">
                     <div className="flex items-center gap-2">
                         <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
+                        {/* #ЗАЧЕМ: Перемещение кнопки управления голосами (ПЛАН №1820). */}
+                        <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-10 w-10"><Zap className="h-5 w-5 text-amber-500" /></Button>
                     </div>
                     
                     <Button 
@@ -321,8 +319,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     
                     <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button variant="outline" className={cn("h-10 min-w-[100px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
-                                <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
+                            {/* #ЗАЧЕМ: Очистка лейбла кнопки таймера (ПЛАН №1820). */}
+                            <Button variant="outline" className={cn("h-10 min-w-[60px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
+                                <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : ''}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
