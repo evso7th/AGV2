@@ -35,7 +35,11 @@ import {
   FileText,
   UploadCloud,
   ClipboardCheck,
-  CloudLightning
+  CloudLightning,
+  AlertCircle,
+  Activity,
+  Navigation,
+  Wrench
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -60,7 +64,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/dialog"; // Changed from alert-dialog to dialog for consistency in this environment
 import {
   Dialog,
   DialogContent,
@@ -68,6 +72,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Radar,
@@ -80,7 +85,7 @@ import {
   Legend as RechartsLegend
 } from 'recharts';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
 import { 
@@ -334,6 +339,27 @@ export default function HypercubeDashboard() {
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
 
+  // #ЗАЧЕМ: Система Аудита Здоровья Базы (ПЛАН №1040).
+  // #ЧТО: Индексация треков по полноте оркестровки (наличие Melody и Bass).
+  const healthStats = useMemo(() => {
+    if (!groupedAxioms || groupedAxioms.length === 0) return { full: 0, partial: 0, critical: [] as string[] };
+    let full = 0;
+    let partial = 0;
+    const critical: string[] = [];
+
+    groupedAxioms.forEach(([id, licks]) => {
+      const hasMelody = licks.some(l => l.role === 'melody');
+      const hasBass = licks.some(l => l.role === 'bass');
+      if (hasMelody && hasBass) full++;
+      else {
+        partial++;
+        critical.push(id);
+      }
+    });
+
+    return { full, partial, critical };
+  }, [groupedAxioms]);
+
   const radarData = useMemo(() => {
     if (!globalAxioms) return [];
     return Object.keys(DYNASTY_CONFIG).map(dynasty => {
@@ -406,6 +432,30 @@ export default function HypercubeDashboard() {
         await batch.commit();
         toast({ title: "Track Metadata Updated" });
     } finally { setIsProcessing(false); setEditingGroupId(null); }
+  };
+
+  // #ЗАЧЕМ: Функция восстановления целостности метаданных (ПЛАН №1045).
+  // #ЧТО: Синхронизирует все фрагменты трека по эталонному набору тегов.
+  const handleRepairMetadata = async (id: string, licks: any[]) => {
+      setIsProcessing(true);
+      try {
+          const batch = writeBatch(db);
+          // Берем данные из первого лика как эталон
+          const base = licks[0];
+          licks.forEach(ax => {
+              batch.update(doc(db, 'heritage_axioms', ax.id), {
+                  genre: base.genre,
+                  mood: base.mood,
+                  commonMood: base.commonMood,
+                  nativeBpm: base.nativeBpm,
+                  nativeKey: base.nativeKey,
+                  nativeScale: base.nativeScale || 'dorian',
+                  timeSignature: base.timeSignature || '4/4'
+              });
+          });
+          await batch.commit();
+          toast({ title: "Metadata Repaired", description: `Synchronized ${licks.length} components for ${id}.` });
+      } finally { setIsProcessing(false); }
   };
 
   const handleWipeSelected = async () => {
@@ -607,7 +657,7 @@ export default function HypercubeDashboard() {
       setIsProcessing(true);
       try {
           const docRef = doc(db, 'project_documents', viewingDocId);
-          await updateDoc(docRef, { content: editingDocContent, timestamp: new Date().toISOString() });
+          await updateDoc(docRef, { content: editingDocContent, timestamp: serverTimestamp() });
           toast({ title: "Manifest Updated" }); setViewingDocId(null);
       } finally { setIsProcessing(false); }
   };
@@ -620,7 +670,7 @@ export default function HypercubeDashboard() {
         <header className="flex items-center justify-between shrink-0">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Indexing & Metadata Verifier</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -630,9 +680,25 @@ export default function HypercubeDashboard() {
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Axiom Count</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Unique Tracks</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{groupedAxioms.length}</div></CardContent></Card>
+            
+            {/* #ЗАЧЕМ: Виджет аудита здоровья базы. */}
+            <Card className={cn("border-2 shadow-lg", healthStats.partial > 0 ? "border-amber-500/50 bg-amber-500/5" : "border-primary/20 bg-primary/5")}>
+                <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Health Audit</CardTitle></CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div className="text-3xl font-black text-primary font-mono">{healthStats.full}</div>
+                        {healthStats.partial > 0 && (
+                            <div className="flex items-center gap-1.5 text-amber-500">
+                                <AlertCircle className="h-5 w-5" />
+                                <span className="text-xl font-black font-mono">{healthStats.partial}</span>
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase">Active</span></div></CardContent></Card>
         </div>
 
@@ -666,8 +732,10 @@ export default function HypercubeDashboard() {
                 <ScrollArea className="h-full px-4 py-2">
                   {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Cloud...</div> : (
                     <Accordion type="multiple" className="space-y-2 pb-10">
-                      {groupedAxioms.map(([compId, licks]) => (
-                        <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
+                      {groupedAxioms.map(([compId, licks]) => {
+                        const isBroken = healthStats.critical.includes(compId);
+                        return (
+                        <AccordionItem key={compId} value={compId} className={cn("border rounded-lg overflow-hidden transition-all", isBroken ? "border-amber-500/30 bg-amber-500/5" : "border-border/50 bg-background/30")}>
                           <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
                             <div className="flex items-center gap-4 flex-grow">
                               <Checkbox checked={selectedTrackGroups.has(compId)} onCheckedChange={() => { const n = new Set(selectedTrackGroups); n.has(compId) ? n.delete(compId) : n.add(compId); setSelectedTrackGroups(n); }} />
@@ -694,7 +762,7 @@ export default function HypercubeDashboard() {
                                         </Select>
                                     </div>
                                     <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" /></div>
-                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={editMoodValue => setEditMoodValue(editMoodValue)} placeholder="Moods" className="w-full" /></div>
                                   </div>
                                   <div className="flex gap-2 pt-1">
                                     <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editScaleValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
@@ -703,12 +771,17 @@ export default function HypercubeDashboard() {
                                 </div>
                               ) : (
                                 <div className="cursor-pointer flex-grow" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || 'C'); setEditScaleValue(licks[0].nativeScale || 'dorian'); }}>
-                                  <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
+                                  <div className="text-sm font-black flex items-center gap-2">
+                                      {compId.replace(/_/g, ' ')} 
+                                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                                      {isBroken && <AlertCircle className="h-4 w-4 text-amber-500" title="Missing core roles" />}
+                                  </div>
                                   <div className="text-[9px] uppercase font-bold opacity-50">G: {(licks[0].genre || []).join(', ')} | M: {(licks[0].mood || []).join(', ')} | {licks[0].nativeKey} {licks[0].nativeScale}</div>
                                 </div>
                               )}
                             </div>
                             <div className="flex items-center gap-2 pr-4">
+                               <Button variant="ghost" size="icon" title="Repair & Sync Metadata" onClick={e => { e.stopPropagation(); handleRepairMetadata(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-amber-500"><Wrench className="h-4 w-4" /></Button>
                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleExportTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-primary"><Download className="h-4 w-4" /></Button>
                                <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); licks.forEach(l => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', l.id))); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                             </div>
@@ -768,7 +841,7 @@ export default function HypercubeDashboard() {
                             </ScrollArea>
                           </AccordionContent>
                         </AccordionItem>
-                      ))}
+                      )})}
                     </Accordion>
                   )}
                 </ScrollArea>
@@ -930,3 +1003,4 @@ export default function HypercubeDashboard() {
     </div>
   );
 }
+
