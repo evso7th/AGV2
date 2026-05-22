@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.1 — "Non-Linear Atom Intelligence".
- * #ЗАЧЕМ: Устранение цикличности в режиме Atom и восстановление огибающих.
- * #ЧТО: ПЛАН №1830 — 1. Увеличены длительности марковских состояний. 2. Усложнены матрицы переходов.
+ * @fileOverview Universal Music Theory Utilities V5.5 — "Non-Linear Atom Evolution".
+ * #ЗАЧЕМ: Устранение цикличности ("шарманки") в режиме Atom.
+ * #ЧТО: ПЛАН №1840 — 1. Переработан алгоритм createHarmonyAxiom. 2. Усложнены переходы в Марковской цепи.
  */
 
 import type { 
@@ -50,7 +50,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Генерация нот для режима Atom.
- * #ЧТО: ПЛАН №1830 — Улучшенное разнообразие.
+ * #ЧТО: ПЛАН №1840 — Тотальное разнообразие через многофакторный MusiNum.
  */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
@@ -58,30 +58,31 @@ export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, 
     const scale = MODE_SEMITONES[isMinor ? 'dorian' : 'ionian'];
     const root = chord.rootNote;
 
-    // Плотность зависит от эпохи
-    const density = 2 + (calculateMusiNum(epoch, 5, 0, 4));
+    // Плотность зависит от эпохи и корня аккорда
+    const density = 2 + (calculateMusiNum(epoch, 7, root, 3));
     
     for (let i = 0; i < density; i++) {
-        const t = (TICKS_PER_BAR / density) * i;
-        const degIdx = calculateMusiNum(epoch + i * 2, 13, root + seedToOffset(epoch), scale.length);
+        // Ритмический сдвиг на основе MusiNum для предотвращения "сетки"
+        const jitter = (calculateMusiNum(epoch + i, 13, root, 100) / 100) * 0.4;
+        const t = (TICKS_PER_BAR / density) * i + jitter;
+        
+        // Сложная формула выбора ступени для ликвидации циклов
+        const complexSeed = epoch * 17 + root * 5 + i * 23;
+        const degIdx = calculateMusiNum(complexSeed, 19, 0, scale.length);
         const note = root + 12 + scale[degIdx];
 
         events.push({
             type: 'accompaniment',
             note: note,
             time: t * TICK_TO_BEAT,
-            duration: 3.5 * TICK_TO_BEAT, 
-            weight: 0.5 + (calculateMusiNum(epoch, 9, i, 3) / 10),
+            duration: 5.0 * TICK_TO_BEAT, // Увеличенный нахлест для текстурности
+            weight: 0.45 + (calculateMusiNum(epoch, 11, i, 4) / 10),
             technique: 'swell',
             dynamics: 'p',
             phrasing: 'legato'
         });
     }
     return events;
-}
-
-function seedToOffset(epoch: number): number {
-    return (epoch % 3 === 0) ? 7 : (epoch % 5 === 0 ? 5 : 0);
 }
 
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
@@ -171,7 +172,7 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     while (currentBar < totalBars) {
         // #ЗАЧЕМ: Увеличение длительности для ликвидации "шарманки".
         const durPool = [12, 16, 24, 32]; 
-        const dur = durPool[calculateMusiNum(currentBar, 4, seed, 4)];
+        const dur = durPool[calculateMusiNum(currentBar, 5, seed, 4)];
         
         track.push({
             rootNote: rootNote + (states[currentStateIdx] || 0),
@@ -180,7 +181,8 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
             durationBars: Math.min(dur, totalBars - currentBar)
         });
         
-        const rand = (calculateMusiNum(currentBar, 19, seed, 100)) / 100;
+        // Усложненный выбор следующего состояния
+        const rand = (calculateMusiNum(currentBar, 23, seed + currentStateIdx, 100)) / 100;
         let acc = 0;
         const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
         
