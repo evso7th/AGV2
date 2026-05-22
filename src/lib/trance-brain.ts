@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V49.1 — "Traditional Drum Focus".
- * #ЗАЧЕМ: Устранение избыточной перкуссии в Псайбиенте.
- * #ЧТО: ПЛАН №1710 — Снижена вероятность "кухни", усилены кик, снейр и томы.
+ * @fileOverview Psybient Brain V49.2 — "Narrative Clean Up".
+ * #ЗАЧЕМ: Устранение спама в narrative.
+ * #ЧТО: ПЛАН №1780 — Сокращены текстовые описания для компактного логирования.
  */
 
 import type {
@@ -66,7 +66,7 @@ export class TranceBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
-    private currentTrackName: string = 'Algorithmic';
+    private currentTrackName: string = 'Algo';
     private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
@@ -190,7 +190,7 @@ export class TranceBrain {
             }
         }
         
-        this.currentTrackName = 'Algorithmic';
+        this.currentTrackName = 'Algo';
         this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
@@ -342,19 +342,21 @@ export class TranceBrain {
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
+        const modeStr = this.isImprovising ? 'IMPRO' : 'RESTO';
+
         return {
             events, tension, beautyScore: 0.9,
             trackName: this.currentTrackName,
             newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Narrative',
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro',
-                accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage DNA' : 'Sidechain Pad',
-                piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage DNA' : 'Shadow Virtuoso'
+                melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral',
+                bass: this.currentBassTheme ? 'Sibling' : 'Rolling',
+                drums: this.currentDrumAxioms.length > 0 ? 'Sync' : 'Neuro',
+                accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage' : 'Sidechain',
+                piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage' : 'Shadow'
             },
-            narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [Heritage Layers: ${usedTargetLayers.size}] [Atmosphere: Wide]`
+            narrative: `${modeStr}: ${this.currentTrackName} [H-Layers: ${usedTargetLayers.size}]`
         };
     }
 
@@ -438,27 +440,22 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1710. Резкое сокращение экзотической перкуссии.
-     */
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kitchenPool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
         const bells = ['drum_Bell_-_Ambient', 'drum_Bell_-_Soft'];
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            // Шанс значительно снижен (был 20+tension*10)
             if (this.rng.chance(5 + tension * 5)) { 
                 events.push({
                     type: kitchenPool[this.rng.nextInt(kitchenPool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.3, // Тише
+                    weight: 0.3,
                     technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
-            // Шанс колокольчиков снижен (был 8)
             if (this.rng.chance(3)) { 
                 events.push({
                     type: bells[this.rng.nextInt(bells.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 2.5, 
-                    weight: 0.25, // Тише
+                    weight: 0.25, 
                     technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.4) - 0.7
                 });
             }
@@ -562,7 +559,7 @@ export class TranceBrain {
                 });
             }
         });
-        return { events, style: "Dynamic Shadow" };
+        return { events, style: "Shadow" };
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {

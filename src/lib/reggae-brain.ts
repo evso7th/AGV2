@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.1 — "Hierarchy Sovereignty Restore".
- * #ЗАЧЕМ: Исправление игнорирования Блюпринтов в Регги.
- * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения. Внедрена поддержка Axiom preferredInstrument.
+ * @fileOverview Reggae Brain V4.2 — "Narrative Clean Up".
+ * #ЗАЧЕМ: Устранение спама в narrative.
+ * #ЧТО: ПЛАН №1780 — Сокращены текстовые описания для компактного логирования.
  */
 
 import type {
@@ -49,7 +49,7 @@ export class ReggaeBrain {
     private activeAnchorId: string | null = null;
     
     private sessionAnchorId: string | null = null; 
-    private currentTrackName: string = 'Algorithmic';
+    private currentTrackName: string = 'Algo';
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     
@@ -175,7 +175,7 @@ export class ReggaeBrain {
             }
         }
         
-        this.currentTrackName = 'Algorithmic';
+        this.currentTrackName = 'Algo';
         this.soloistBusyUntilBar = epoch + 4;
         return undefined;
     }
@@ -200,7 +200,6 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
         if (this.currentPreferredInstrument && hints.melody) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
         }
@@ -245,14 +244,12 @@ export class ReggaeBrain {
             }
         });
 
-        // Generative Harmony Fallback (Guitar Chords Skank)
         if (hints.harmony && !usedLayers.has('harmony')) {
             events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
             usedLayers.add('harmony');
-            harmonyAxiomId = 'Generative Skank';
+            harmonyAxiomId = 'Algo-Skank';
         }
 
-        // Generative Piano Fallback (Rhodes Bubbling)
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, events.filter(e => e.type === 'melody'));
             if (p.events.length > 0) {
@@ -279,11 +276,11 @@ export class ReggaeBrain {
             
             if (activeMelLick === 'none') {
                 events.push(...this.renderGapFiller(epoch, resChord, tension));
-                activeMelLick = 'Gap-Filler';
+                activeMelLick = 'Gap';
             }
         }
 
-        const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
+        const modeStr = this.isImprovising ? 'IMPRO' : 'RESTO';
 
         return {
             events, tension, beautyScore: 0.95,
@@ -292,12 +289,12 @@ export class ReggaeBrain {
             instrumentOverrides,
             activeAxioms: {
                 melody: activeMelLick,
-                bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Generative Pulse',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Standard Pulse',
+                bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Algo',
+                drums: this.currentDrumAxioms.length > 0 ? 'Sync' : 'Pulse',
                 harmony: harmonyAxiomId,
                 piano: pianoAxiomId
             },
-            narrative: `Reggae ${modeStr}: [DNA: ${this.currentTrackName}] [Protocol: ARIA]`
+            narrative: `${modeStr}: ${this.currentTrackName}`
         };
     }
 
@@ -457,7 +454,7 @@ export class ReggaeBrain {
                     });
                 }
             });
-            return { events, style: 'Melodic Shadow' };
+            return { events, style: 'Shadow' };
         } else {
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
                 if (this.random.next() < 0.6) {
@@ -475,7 +472,7 @@ export class ReggaeBrain {
                     });
                 }
             });
-            return { events, style: 'Rhodes Bubbling' };
+            return { events, style: 'Bubble' };
         }
     }
 

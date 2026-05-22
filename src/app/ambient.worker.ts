@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.3 — "Deterministic Timing".
- * #ЗАЧЕМ: Устранение дрейфа времени и заиканий.
- * #ЧТО: ПЛАН №1665 — Внедрен цикл на базе performance.now() для компенсации времени вычислений.
+ * @file AuraGroove Music Worker V5.4 — "Clean Console Edition".
+ * #ЗАЧЕМ: Устранение спама в консоли по запросу пользователя.
+ * #ЧТО: ПЛАН №1780 — Многострочный лог заменен на одну компактную строку.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -168,7 +168,6 @@ const Scheduler = {
             this.initializeEngine(this.settings);
         }
 
-        // #ЗАЧЕМ: Инициализация детерминированного таймера.
         this.expectedNextTick = performance.now();
         const loop = () => {
             if (!this.isRunning) return;
@@ -178,7 +177,6 @@ const Scheduler = {
             const durationMs = this.barDuration * 1000;
             this.expectedNextTick += durationMs;
             
-            // Расчет задержки с учетом времени исполнения tick()
             const drift = performance.now() - (this.expectedNextTick - durationMs);
             const nextInterval = Math.max(0, durationMs - drift);
             
@@ -237,7 +235,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // BPM Morphing Logic
         if (this.targetBpm !== null) {
             this.settings.bpm += this.bpmStep;
             if (Math.abs(this.settings.bpm - this.targetBpm) < 0.5) {
@@ -272,20 +269,19 @@ const Scheduler = {
         const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
-        const trackName = payload.trackName || 'Generative';
+        const trackName = payload.trackName || 'Gen';
         
-        const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
-        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
-        const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
+        // #ЗАЧЕМ: Супер-компактная строка для устранения "спама" в консоли.
+        const melStr = axioms.melody === 'Generative' ? 'Algo' : (axioms.melody || 'Breath');
+        const cognitiveStr = `AX: MEL:${melStr} BAS:${axioms.bass || '-'} DRU:${axioms.drums || '-'}`;
+        const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'}`;
 
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} ` +
-            `%c${cognitiveStr}\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'} | %c${ensembleStr}`,
+            `%c${getTimestamp()} Bar ${this.barCount} | ${sectionName} | ${trackName} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
             'color: #888;', 
             'color: #4ade80; font-weight: bold;',
-            'color: #ADD8E6; font-style: italic;',
-            'color: #DA70D6; font-size: 10px; font-weight: bold;'
+            'color: #DA70D6; font-size: 10px;',
+            'color: #ADD8E6; font-style: italic;'
         );
 
         self.postMessage({ 
