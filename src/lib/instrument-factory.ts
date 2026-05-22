@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.5 — "Voice Sovereignty".
- * #ЗАЧЕМ: Динамическое управление лимитом голосов по требованию пользователя.
- * #ЧТО: ПЛАН №1800 — Лимит теперь настраиваемый (60..250).
+ * @fileOverview Центральная фабрика инструментов V7.6 — "Steel Voice Protocol".
+ * #ЗАЧЕМ: Динамическое управление лимитом голосов и защита от "тишины".
+ * #ЧТО: ПЛАН №1800 — Лимит теперь настраиваемый (20..250). Устранено преждевременное удаление.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -16,11 +16,12 @@ let currentVoiceLimit = 180;
 export const getActiveVoiceCount = () => globalActiveVoices.length;
 
 /**
- * #ЗАЧЕМ: Обновление лимита из контекста.
+ * #ЗАЧЕМ: Обновление лимита из контекста с защитой от критических значений.
  */
 export const setGlobalVoiceLimit = (limit: number) => {
-    currentVoiceLimit = limit;
-    console.log(`%c[Factory] Voice Limit set to: ${limit}`, 'color: #3b82f6; font-weight: bold;');
+    // Минимум 20 голосов для предотвращения полной тишины
+    currentVoiceLimit = isFinite(limit) ? Math.max(20, limit) : 60;
+    console.log(`%c[Factory] Voice Limit synchronized: ${currentVoiceLimit}`, 'color: #3b82f6; font-weight: bold;');
 };
 
 export const globalAllNotesOff = () => {
@@ -62,7 +63,7 @@ const deepCleanup = (voiceRecord: any) => {
                 }
                 voiceRecord.nodes = null;
                 voiceRecord.voiceState = null;
-            }, 80);
+            }, 100);
         }
     }
     
@@ -71,7 +72,8 @@ const deepCleanup = (voiceRecord: any) => {
 };
 
 const enforceVoiceLimit = () => {
-    if (globalActiveVoices.length > currentVoiceLimit) {
+    // Удаляем излишки, если они есть
+    while (globalActiveVoices.length >= currentVoiceLimit && globalActiveVoices.length > 0) {
         const oldest = globalActiveVoices.shift();
         if (oldest) deepCleanup(oldest);
     }
@@ -297,7 +299,10 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     return {
         noteOn: (midi: number, when = ctx.currentTime, velocity = 1.0, duration?: number) => {
             if (!isFinite(midi)) return;
+            
+            // #ЗАЧЕМ: Проверка лимита перед добавлением нового голоса.
             enforceVoiceLimit();
+
             const f = midiToHz(midi);
             const voiceGain = ctx.createGain(); voiceGain.gain.value = 0; voiceGain.connect(comp);
             const nodes: AudioNode[] = [voiceGain];

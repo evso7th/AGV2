@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.5 — "Clean Toolbar Protocol".
- * #ЧТО: ПЛАН №1820 — 1. Перемещение Zap в футер. 2. Удаление Cog. 3. Очистка лейбла Timer.
+ * #ЗАЧЕМ: UI AuraGroove V6.6 — "Steel UI Integrity".
+ * #ЧТО: ПЛАН №1820 — Исправлено отображение лимита голосов и импорт Progress.
  */
 'use client';
 
@@ -212,7 +212,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <div onClick={props.handleGoHome} className="relative cursor-pointer hover:opacity-80 transition-all flex flex-row items-center gap-2">
                             <div className="relative">
                                 <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
-                                <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90">
+                                <Badge className="absolute -top-1 -right-1 h-4 min-w-4 flex items-center justify-center p-0.5 text-[8px] font-black border-background shadow-lg scale-90 bg-primary text-primary-foreground">
                                     {props.activeVoiceCount}
                                 </Badge>
                             </div>

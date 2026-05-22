@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V42.0 — "Voice Sovereignty Protocol".
- * #ЗАЧЕМ: Глобальный контроль лимита голосов и предотвращение зацикливания Atom.
- * #ЧТО: ПЛАН №1800 — Динамический лимит (60/180) + Real-time Telemetry.
+ * @fileOverview Audio Engine Context V43.0 — "Iron Voice Stability".
+ * #ЗАЧЕМ: Гарантированное восстановление звука и телеметрии.
+ * #ЧТО: ПЛАН №1800 — Защита лимита голосов и форсированная инициализация мастер-канала.
  */
 'use client';
 
@@ -24,13 +24,11 @@ import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, getActiveVoiceCount, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, getDocs, query, where, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, doc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.50,            
@@ -47,11 +45,6 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0, acoustic: 0.15, electric: 0.30, piano: 0.6,
     orchestral: 0.29, cs80: 0.1, chords: 0.6, bass: 1.0
 };
-
-const EPIC_TEST_SEQUENCE = [
-    { m: 60, t: 0, d: 0.5 }, { m: 64, t: 0.5, d: 0.5 }, { m: 67, t: 1.0, d: 1.0 }, { m: 72, t: 2.0, d: 2.0 },
-    { m: 67, t: 4.0, d: 0.3 }, { m: 65, t: 4.3, d: 0.3 }, { m: 64, t: 4.6, d: 0.4 }, { m: 62, t: 5.0, d: 1.0 }
-];
 
 interface AudioEngineContextType {
   isInitialized: boolean;
@@ -136,9 +129,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
-  const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
-  const previewTimeoutRef = useRef<any>(null);
-  const loopingRef = useRef(false);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
@@ -155,7 +145,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const defaultLimit = isMobile ? 60 : 180;
       const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
       
-      const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
+      // Защита от NaN и 0
+      const parsedLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
+      const finalLimit = isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : defaultLimit;
+      
       setVoiceLimitState(finalLimit);
       setGlobalVoiceLimit(finalLimit);
 
@@ -168,14 +161,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   useEffect(() => {
       const tid = setInterval(() => {
           setActiveVoiceCount(getActiveVoiceCount());
-      }, 100);
+      }, 150);
       return () => clearInterval(tid);
   }, []);
 
   const setVoiceLimit = useCallback((limit: number) => {
-      setVoiceLimitState(limit);
-      setGlobalVoiceLimit(limit);
-      localStorage.setItem('AuraGroove_VoiceLimit', limit.toString());
+      const safeLimit = Math.max(20, limit);
+      setVoiceLimitState(safeLimit);
+      setGlobalVoiceLimit(safeLimit);
+      localStorage.setItem('AuraGroove_VoiceLimit', safeLimit.toString());
   }, []);
 
   const getEffectivePreset = useCallback((presetName: string) => {
@@ -200,16 +194,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
       masterGainNodeRef.current?.gain.setTargetAtTime(gains.master ?? 1.0, now, 0.05);
-      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * gains.acoustic);
-      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * gains.electric);
-      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * gains.electric); 
-      cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * gains.cs80);
-      melodyManagerV2Ref.current?.setPreampGain(gains.electric); 
+      blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
+      telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
+      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * (gains.electric || 1.0)); 
+      cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
+      melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
-      pianoAccompanimentManagerRef.current?.setVolume(gains.piano); 
-      harmonyManagerRef.current?.setVolume(gains.orchestral); 
+      pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
+      harmonyManagerRef.current?.setVolume(gains.orchestral || 1.0); 
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
-      if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * gains.chords);
+      if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * (gains.chords || 1.0));
   }, []);
 
   const stopAllSounds = useCallback(() => {
@@ -231,6 +225,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         
         masterGainNodeRef.current = context.createGain();
+        masterGainNodeRef.current.gain.value = 1.0; 
+
         samplersMasterGainRef.current = context.createGain(); 
         speakerGainNodeRef.current = context.createGain();
         analyserNodeRef.current = context.createAnalyser();
@@ -276,7 +272,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
-                const beatDuration = 60 / (payload.actualBpm || 75);
                 if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
                 if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.bass);
                 if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.melody);
@@ -295,7 +290,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true);
         setIsInitializing(false);
         return true;
-    } catch (e) { setIsInitializing(false); return false; }
+    } catch (e) { 
+        console.error('[AudioEngine] Critical Init Error:', e);
+        setIsInitializing(false); 
+        return false; 
+    }
   }, [auth, db, applyCalibration, calibrationGains]);
 
   const value = useMemo(() => ({
@@ -317,7 +316,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             stopAllSounds(); 
         }
     },
-    updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
+    updateSettings: (s: any) => { 
+        if (workerRef.current) { 
+            settingsRef.current = { ...(settingsRef.current || {}), ...s }; 
+            workerRef.current.postMessage({ command: 'update_settings', data: s }); 
+        } 
+    },
     refreshCloudAxioms: async () => {},
     resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
     setVolume: setVolumeCallback, 
@@ -327,7 +331,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
         else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
         else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
-        else if (part === 'harmony' && harmonyManagerRef.current) harmonyManagerRef.current.setInstrument(preset || name);
+        else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name);
     },
     setBassTechnique: () => {}, 
     setTextureSettings: (s: any) => {
