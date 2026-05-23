@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Audio Engine Context V48.0 — "Robust Recording Engine".
- * #ЗАЧЕМ: Исправление кнопки записи.
- * #ЧТО: ПЛАН №1960 — Полноценная реализация MediaRecorder с поддержкой MIME-типов и интервальным дампом.
+ * @fileOverview Audio Engine Context V49.0 — "Atmospheric Integration".
+ * #ЗАЧЕМ: Озвучивание каналов Sparkles, SFX и Harmony из партитуры.
+ * #ЧТО: ПЛАН №2080 — 1. Добавлены роутеры для sparkle и sfx. 2. Оптимизирован VOICE_BALANCE.
  */
 'use client';
 
@@ -29,14 +30,14 @@ import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.50,            
+  bass: 0.55,            
   melody: 0.65,           
-  accompaniment: 0.80,
+  accompaniment: 0.70,
   drums: 0.85,            
-  sparkles: 0.45,       
-  sfx: 0.45,            
-  harmony: 0.80,        
-  pianoAccompaniment: 0.325, 
+  sparkles: 0.85,       
+  sfx: 0.90,            
+  harmony: 0.85,        
+  pianoAccompaniment: 0.45, 
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
@@ -278,7 +279,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true),
             telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
             melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), 
-            pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(true),
+            pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(false),
             sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
         ]);
         
@@ -286,12 +287,30 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
-                if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
-                if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.bass);
-                if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.melody);
-                if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.barCount, payload.instrumentHints?.accompaniment);
-                if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm, payload.instrumentHints?.harmony);
-                if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, payload.actualBpm);
+                const bpm = payload.actualBpm || 72;
+                const beatDur = 60 / bpm;
+
+                if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
+                if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.bass);
+                if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.melody);
+                if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.barCount, payload.instrumentHints?.accompaniment);
+                if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.harmony);
+                if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
+                
+                // #ЗАЧЕМ: ПЛАН №2080. Озвучивание атмосферы из партитуры.
+                const sparkles = payload.events.filter((ev: any) => ev.type === 'sparkle');
+                if (sparkles.length > 0 && sparklePlayerRef.current) {
+                    sparkles.forEach((s: any) => {
+                        const playTime = nextBarTimeRef.current + (s.time * beatDur);
+                        sparklePlayerRef.current!.playRandomSparkle(playTime, payload.genre, payload.mood, s.params?.category);
+                    });
+                }
+
+                const sfxEvents = payload.events.filter((ev: any) => ev.type === 'sfx');
+                if (sfxEvents.length > 0 && sfxSynthManagerRef.current) {
+                    sfxSynthManagerRef.current.trigger(sfxEvents, nextBarTimeRef.current, bpm);
+                }
+
                 nextBarTimeRef.current += payload.barDuration;
             }
         };

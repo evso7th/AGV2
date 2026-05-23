@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Ambient Brain V81.0 — "Harmonic Atmosphere Protocol".
- * #ЗАЧЕМ: Внедрение гармонически связанных атмосферных событий.
- * #ЧТО: ПЛАН №2070 — 1. Sparkles привязаны к ступеням R, 5, 9. 2. SFX привязаны к границам фраз (bar % 8).
+ * @fileOverview Ambient Brain V82.0 — "Visibility Boost".
+ * #ЗАЧЕМ: Повышение заметности гармонии и атмосферы.
+ * #ЧТО: ПЛАН №2080 — Harmony probability повышена до 45%.
  */
 
 import type {
@@ -406,7 +407,8 @@ export class AmbientBrain {
             }
             
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
-                if (calculateMusiNum(epoch, 7, this.seed, 100) < 35) {
+                // #ЗАЧЕМ: ПЛАН №2080. Повышение шанса гармонии.
+                if (calculateMusiNum(epoch, 7, this.seed, 100) < 45) {
                     const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                     harEvents.forEach(e => e.pan = 0.35); 
                     events.push(...harEvents);
@@ -472,7 +474,6 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        // #ЗАЧЕМ: ПЛАН №2070. Гармонические Sparkles и структурные SFX.
         if (hints.sparkles) {
             const sparkleProb = localTension > 0.8 ? 0.45 : 0.25;
             if (this.random.next() < sparkleProb) {
@@ -758,7 +759,6 @@ export class AmbientBrain {
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean, epoch: number): FractalEvent {
-        // #ЗАЧЕМ: ПЛАН №2070. Гармонически связанные Sparkles.
         const degrees = [0, 7, 12, 14]; // R, 5, Octave, 9
         const shift = degrees[calculateMusiNum(epoch, 7, this.seed, degrees.length)];
         

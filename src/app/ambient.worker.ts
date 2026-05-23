@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.5 — "Maximum Narrative Report".
- * #ЗАЧЕМ: Расширенный лог для полного контроля работы ансамбля.
- * #ЧТО: План №1920 — 1. Добавлена секция Genre/Mood. 2. Раскрыт полный состав инструментов в AX и TIM.
+ * @fileOverview AuraGroove Music Worker V5.6 — "Atmosphere Transmission".
+ * #ЗАЧЕМ: Добавлена передача контекста (Genre/Mood) для правильной работы сэмплеров.
+ * #ЧТО: ПЛАН №2080 — payload теперь содержит genre и mood для резонансного выбора сэмплов.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -31,7 +31,7 @@ const Scheduler = {
     isRunning: false,
     barCount: 0,
     sessionLickHistory: [] as string[],
-    cloudAxiomPool: [] as any[], 
+    cloudAxioms: [] as any[], 
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     expectedNextTick: 0,
@@ -80,14 +80,14 @@ const Scheduler = {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
         } 
-        else if (this.cloudAxiomPool.length > 0) {
+        else if (this.cloudAxioms.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
             
             const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
                                    (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
-            const matchingAxioms = this.cloudAxiomPool.filter(ax => {
+            const matchingAxioms = this.cloudAxioms.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
                 const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
@@ -115,7 +115,7 @@ const Scheduler = {
                 self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
             }
 
-            const anchorAxiom = this.cloudAxiomPool.find(ax => 
+            const anchorAxiom = this.cloudAxioms.find(ax => 
                 ax.compositionId && normalizeStr(ax.compositionId) === normalizeStr(pickedId!) && ax.nativeKey
             );
             
@@ -129,7 +129,6 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
-        // #ЗАЧЕМ: ПЛАН №1950. Принудительный сброс тактов при любой инициализации (регенерация).
         this.barCount = 0;
         
         const blueprint = getBlueprint(settings.genre, settings.mood);
@@ -144,7 +143,7 @@ const Scheduler = {
             activeAnchorId: anchorInfo.id, 
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
-            cloudAxioms: this.cloudAxiomPool,
+            cloudAxioms: this.cloudAxioms,
             isImprovising: isImprovising
         };
 
@@ -199,7 +198,6 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
-        // #ЗАЧЕМ: Полная очистка памяти сессии
         this.sessionLickHistory = [];
         this.playedTrackHistory = [];
         this.initializeEngine(this.settings);
@@ -230,8 +228,8 @@ const Scheduler = {
     },
 
     updateCloudAxioms(axioms: any[]) {
-        this.cloudAxiomPool = axioms || [];
-        if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxiomPool.length > 0) {
+        this.cloudAxioms = axioms || [];
+        if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxioms.length > 0) {
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
@@ -298,6 +296,8 @@ const Scheduler = {
                 barCount: this.barCount,
                 totalBars: totalBars,
                 actualBpm: Math.round(this.settings.bpm),
+                genre: this.settings.genre,
+                mood: this.settings.mood,
                 lickId: payload.lickId,
                 beautyScore: payload.beautyScore,
                 seed: this.settings.seed
