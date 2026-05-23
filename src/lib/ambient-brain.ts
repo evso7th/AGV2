@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V80.0 — "Harmonic Presence Protocol".
- * #ЗАЧЕМ: Реализация редких и мягких гармонических вставок (скрипки/гитары).
- * #ЧТО: ПЛАН №2060 — 1. Вероятностный гейт (30%) для гармонии. 2. Двухголосные скрипичные интервалы. 3. Динамический выбор аккордов для гитары.
+ * @fileOverview Ambient Brain V81.0 — "Harmonic Atmosphere Protocol".
+ * #ЗАЧЕМ: Внедрение гармонически связанных атмосферных событий.
+ * #ЧТО: ПЛАН №2070 — 1. Sparkles привязаны к ступеням R, 5, 9. 2. SFX привязаны к границам фраз (bar % 8).
  */
 
 import type {
@@ -21,7 +21,6 @@ import type {
 import {
     calculateMusiNum,
     DEGREE_TO_SEMITONE,
-    pickWeightedDeterministic,
     GEO_ATLAS,
     LIGHT_ATLAS,
     decompressCompactPhrase,
@@ -73,7 +72,6 @@ export class AmbientBrain {
     private readonly MELODY_CEILING = 72;
     private readonly BASS_FLOOR = 31;
     private readonly BASS_CEILING = 47;
-    private readonly PAD_CEILING = 64;
 
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string, tags: string[] } | null = null;
     private currentThemeMaxTick: number = 0;
@@ -89,8 +87,6 @@ export class AmbientBrain {
 
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
-
-    private usedThemeHistory: string[] = [];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -476,8 +472,21 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
-        if (hints.sfx && this.random.nextInt(100) < 15) events.push(...this.renderSfx(localTension));
+        // #ЗАЧЕМ: ПЛАН №2070. Гармонические Sparkles и структурные SFX.
+        if (hints.sparkles) {
+            const sparkleProb = localTension > 0.8 ? 0.45 : 0.25;
+            if (this.random.next() < sparkleProb) {
+                events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light', epoch));
+            }
+        }
+        
+        if (hints.sfx) {
+            const isStructuralPoint = epoch % 8 === 0 || navInfo.isPartTransition;
+            const sfxProb = isStructuralPoint ? 0.45 : 0.08;
+            if (this.random.next() < sfxProb) {
+                events.push(...this.renderSfx(localTension));
+            }
+        }
 
         const modeStr = this.isImprovising ? 'IMPRO' : 'RESTO';
 
@@ -493,7 +502,9 @@ export class AmbientBrain {
                 drums: 'Landscape', 
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
-                harmony: usedTargetLayers.has('harmony') ? 'Heritage' : 'Algo'
+                harmony: usedTargetLayers.has('harmony') ? 'Heritage' : 'Algo',
+                sparkles: 'Harmonic',
+                sfx: 'Structural'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName}`
         };
@@ -746,12 +757,27 @@ export class AmbientBrain {
         }
     }
 
-    private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
+    private renderSparkle(chord: GhostChord, isPositive: boolean, epoch: number): FractalEvent {
+        // #ЗАЧЕМ: ПЛАН №2070. Гармонически связанные Sparkles.
+        const degrees = [0, 7, 12, 14]; // R, 5, Octave, 9
+        const shift = degrees[calculateMusiNum(epoch, 7, this.seed, degrees.length)];
+        
+        return { 
+            type: 'sparkle', 
+            note: chord.rootNote + 48 + shift, 
+            time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+            duration: 6.0, 
+            weight: 0.75, 
+            technique: 'hit', 
+            dynamics: 'p', 
+            phrasing: 'legato', 
+            pan: (this.random.next() * 1.8) - 0.9, 
+            params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } 
+        };
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (Math.random() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
+        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 4.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (this.random.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {
@@ -784,7 +810,7 @@ export class AmbientBrain {
                 note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), 
                 time: t * TICK_TO_BEAT, 
                 duration: 3.0 * TICK_TO_BEAT, 
-                weight: 0.6, 
+                weight: 0.7, 
                 technique: 'pick', 
                 dynamics: 'p', 
                 phrasing: 'legato' 

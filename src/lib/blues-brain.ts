@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Blues Brain V77.0 — "Full Ensemble Narrative".
- * #ЗАЧЕМ: Расширение когнитивной отчетности для консольного лога.
- * #ЧТО: ПЛАН №1920 — Возвращает статус всех инструментов в activeAxioms.
+ * @fileOverview Blues Brain V78.0 — "Harmonic Atmosphere Protocol".
+ * #ЗАЧЕМ: Интеллектуальное подмешивание SFX и Sparkles в блюз.
+ * #ЧТО: ПЛАН №2070 — Гармонический резонанс атмосферных событий.
  */
 
 import {
@@ -483,6 +482,9 @@ export class BluesBrain {
         hStatus = 'Algo';
     }
 
+    // #ЗАЧЕМ: ПЛАН №2070. Интеллектуальные атмосферные события.
+    events.push(...this.renderAtmosphericEvents(epoch, tension, resChord));
+
     const modeStr = this.config.isImprovising ? 'IMPRO' : 'RESTO';
 
     return {
@@ -495,7 +497,9 @@ export class BluesBrain {
             drums: isSoloistResting ? 'Fill' : 'Pulse',
             accompaniment: isSoloistResting ? 'Breath' : accStatus,
             harmony: hStatus,
-            piano: pStatus
+            piano: pStatus,
+            sparkles: 'Harmonic',
+            sfx: 'Structural'
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName}`
     };
@@ -712,6 +716,52 @@ export class BluesBrain {
       }
       const e2: FractalEvent = { type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
       return this.rippleLongNote(e2, currentChord);
+  }
+
+  private renderAtmosphericEvents(epoch: number, tension: number, chord: GhostChord): FractalEvent[] {
+      const events: FractalEvent[] = [];
+      const isFourthBar = epoch % 4 === 0;
+      const isEighthBar = epoch % 8 === 0;
+
+      // #ЗАЧЕМ: ПЛАН №2070. Гармонические Sparkles.
+      const sparkleProb = tension > 0.8 ? 0.45 : 0.25;
+      if (this.random.next() < sparkleProb) {
+          const degrees = [0, 7, 12, 14]; // R, 5, Octave, 9
+          const shift = degrees[calculateMusiNum(epoch, 7, this.seed, degrees.length)];
+          const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
+          const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
+          
+          events.push({ 
+              type: 'sparkle', 
+              note: chord.rootNote + 48 + shift, 
+              time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+              duration: 6.0, 
+              weight: 1.0, 
+              technique: 'hit', 
+              dynamics: 'mf', 
+              phrasing: 'legato', 
+              pan: (this.random.next() * 1.8) - 0.9, 
+              params: { mood: this.mood, genre: this.config.genre, category } 
+          });
+      }
+      
+      // #ЗАЧЕМ: ПЛАН №2070. Структурные SFX.
+      const sfxProb = isEighthBar ? 0.45 : 0.12;
+      if (this.random.next() < sfxProb) {
+          events.push({ 
+              type: 'sfx', 
+              note: 60, 
+              time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+              duration: 4.0, 
+              weight: 1.1, 
+              technique: 'hit', 
+              dynamics: 'mf', 
+              phrasing: 'staccato', 
+              pan: (this.random.next() * 1.6) - 0.8, 
+              params: { mood: this.mood, genre: this.config.genre } 
+          });
+      }
+      return events;
   }
 
   private constrainBassOctave(note: number): number {
