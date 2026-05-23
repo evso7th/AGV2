@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.2 — "Full Rebirth Protocol".
- * #ЧТО: ПЛАН №1950 — Реализована глубокая регенерация: очистка звука + сброс воркера + новый посев.
+ * #ЗАЧЕМ: Хук управления музыкой V9.3 — "Regeneration Anchor Fix".
+ * #ЧТО: ПЛАН №1955 — Исправлен прыжок по станциям при регенерации (lastBarCountRef reset).
  */
 'use client';
 
@@ -520,7 +520,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            if (options.isNavigatorMode && route.length > 0) {
+            if (options.isNavigatorMode && route.length > 0 && activeRouteIndex === -1) {
                 setActiveRouteIndex(0);
                 applyRouteItem(route[0]);
             }
@@ -532,7 +532,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     },
     handleRegenerate: () => { 
         setIsRegenerating(true);
-        // #ЗАЧЕМ: ПЛАН №1950. Поэтапный процесс возрождения.
+        // #ЗАЧЕМ: ПЛАН №1955. Регенерация на активной станции без прыжка.
         
         // 1. Очистка звучания и освобождение ресурсов (Silence)
         stopAllSounds();
@@ -540,10 +540,13 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
         // 2. Полный сброс фонового движка (History, BarCount)
         resetWorker();
         
-        // 3. Новый "посев": генерация нового генетического семени
+        // 3. ПРЕДОХРАНИТЕЛЬ: Сброс флага перехода, чтобы остаться на текущей станции.
+        lastBarCountRef.current = -1; 
+        
+        // 4. Новый "посев": генерация нового генетического семени
         setCurrentSeed(Date.now());
         
-        // 4. Перезапуск
+        // 5. Перезапуск
         setTimeout(() => {
             setIsRegenerating(false);
             if (isPlaying) {
