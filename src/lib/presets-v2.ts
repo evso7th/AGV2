@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №2040): Deep Blanket EQ. Срезаны верха (LPF) и усилены низы для всех пэдов.
+// #ОБНОВЛЕНО (ПЛАН №2050): Decaying Blanket. Сустейн снижен, добавлен длительный Decay для естественного затухания.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -9,25 +9,26 @@ export const V2_PRESETS = {
   // SYNTH (Pads, Leads, Keys)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  synth: { // Emerald Pad -> Now "Deep Emerald Blanket"
+  synth: { // Emerald Pad -> Now "Decaying Emerald Blanket"
     type: 'synth',
     volume: 0.65,
     comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 6 },
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.35 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.35 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.95 } // Усилен низ
+      { type: 'sine', detune: 0, octave: -1, gain: 0.95 }
     ],
     noise: { on: true, gain: 0.01 },
-    adsr: { a: 0.15, d: 0.1, s: 1.0, r: 0.5 }, 
-    lpf: { cutoff: 1100, q: 0.8, mode: '24dB' }, // Срезаны верха (было 1800)
+    // #ЗАЧЕМ: ПЛАН №2050. Уход от бесконечного сустейна. Спад до 50% за 4 секунды.
+    adsr: { a: 0.4, d: 4.0, s: 0.5, r: 2.0 }, 
+    lpf: { cutoff: 1100, q: 0.8, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.2, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.15, depth: 0.004, mix: 0.35 },
     delay: { on: true, time: 0.4, fb: 0.2, hc: 3000, mix: 0.15 },
     reverbMix: 0.2
   },
 
-  synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Deep Velvet Blanket"
+  synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Decaying Velvet Blanket"
     type: 'synth',
     name: 'Velvet Lush Pad',
     volume: 0.6,
@@ -35,29 +36,31 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.5 }, 
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.25 },
-      { type: 'sine', detune: 0, octave: -1, gain: 1.0 } // Максимальный низ
+      { type: 'sine', detune: 0, octave: -1, gain: 1.0 } 
     ],
     noise: { on: true, gain: 0.02 },
-    adsr: { a: 0.35, d: 0.4, s: 1.0, r: 2.0 }, 
-    lpf: { cutoff: 850, q: 0.7, mode: '24dB' }, // Глубокий срез (было 1400)
+    // #ЗАЧЕМ: Глубокое погружение с последующим откатом до 40% громкости.
+    adsr: { a: 0.6, d: 6.0, s: 0.4, r: 3.0 }, 
+    lpf: { cutoff: 850, q: 0.7, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.1, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.12, depth: 0.005, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 2500, mix: 0.2 },
     reverbMix: 0.25
   },
 
-  synth_cave_pad: { // Abyssal Depth Pad -> Now even darker
+  synth_cave_pad: { // Abyssal Depth Pad -> "Fading Abyss"
     type: 'synth',
     name: 'Abyssal Depth Pad',
     volume: 0.55,
     osc: [
       { type: 'sine', detune: -12, octave: -1, gain: 0.85 },
       { type: 'sine', detune: 12, octave: 0, gain: 0.4 },
-      { type: 'triangle', detune: 0, octave: -2, gain: 0.65 } // Очень глубокий низ
+      { type: 'triangle', detune: 0, octave: -2, gain: 0.65 } 
     ],
     noise: { on: true, gain: 0.04 },
-    adsr: { a: 0.5, d: 2.0, s: 1.0, r: 4.0 }, 
-    lpf: { cutoff: 400, q: 0.9, mode: '24dB' }, // Экстремальный срез (было 600)
+    // #ЗАЧЕМ: Полное затухание в 0 за 12 секунд. Звук "умирает" сам.
+    adsr: { a: 1.0, d: 12.0, s: 0.0, r: 4.0 }, 
+    lpf: { cutoff: 400, q: 0.9, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.05, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.08, depth: 0.004, mix: 0.45 },
     delay: { on: true, time: 0.8, fb: 0.4, hc: 1500, mix: 0.3 },
