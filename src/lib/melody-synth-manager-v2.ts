@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №2020 — Транзиенты ограничены только для Shine On и Muff Lead.
+ * #ЧТО: ПЛАН №2021 — Транзиенты Shine On унифицированы с Muff Lead (используют Black Acoustic).
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -159,10 +159,8 @@ export class MelodySynthManagerV2 {
         }
         
         // Aria Transient Logic
-        // #ЗАЧЕМ: ПЛАН №2020. Использование транзиентов запрещено для всех, кроме Shine On и Muff Lead.
-        if (currentActive === 'guitar_shineOn') {
-            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
-        } else if (currentActive === 'guitar_muffLead') {
+        // #ЗАЧЕМ: ПЛАН №2021. Shine On и Muff Lead используют транзиенты Black Acoustic для органичности.
+        if (currentActive === 'guitar_shineOn' || currentActive === 'guitar_muffLead') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
