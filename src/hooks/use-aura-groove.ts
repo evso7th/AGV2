@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.1 — "Static Voice Cap".
- * #ЧТО: ПЛАН №1830 — Проброс только статического лимита голосов, удалена телеметрия счета.
+ * #ЗАЧЕМ: Хук управления музыкой V9.2 — "Full Rebirth Protocol".
+ * #ЧТО: ПЛАН №1950 — Реализована глубокая регенерация: очистка звука + сброс воркера + новый посев.
  */
 'use client';
 
@@ -122,7 +122,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains,
+    setEQGain, setCalibrationGain, calibrationGains, stopAllSounds, resetWorker,
     voiceLimit, activeVoiceCount, setVoiceLimit
   } = useAudioEngine(); 
   
@@ -530,7 +530,30 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             setEngineIsPlaying(false);
         }
     },
-    handleRegenerate: () => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); },
+    handleRegenerate: () => { 
+        setIsRegenerating(true);
+        // #ЗАЧЕМ: ПЛАН №1950. Поэтапный процесс возрождения.
+        
+        // 1. Очистка звучания и освобождение ресурсов (Silence)
+        stopAllSounds();
+        
+        // 2. Полный сброс фонового движка (History, BarCount)
+        resetWorker();
+        
+        // 3. Новый "посев": генерация нового генетического семени
+        setCurrentSeed(Date.now());
+        
+        // 4. Перезапуск
+        setTimeout(() => {
+            setIsRegenerating(false);
+            if (isPlaying) {
+                setEngineIsPlaying(false);
+                setTimeout(() => setEngineIsPlaying(true), 150);
+            }
+        }, 400);
+
+        toast({ title: "System Rebirth", description: "All souls cleared. New DNA sown into the field." });
+    },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
     handleToggleBroadcast: () => {
         if (!isBroadcastActive && !isPlaying) {

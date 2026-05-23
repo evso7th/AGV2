@@ -129,6 +129,9 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
+        // #ЗАЧЕМ: ПЛАН №1950. Принудительный сброс тактов при любой инициализации (регенерация).
+        this.barCount = 0;
+        
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
@@ -196,6 +199,9 @@ const Scheduler = {
     reset() {
         const wasRunning = this.isRunning;
         if (wasRunning) this.stop();
+        // #ЗАЧЕМ: Полная очистка памяти сессии
+        this.sessionLickHistory = [];
+        this.playedTrackHistory = [];
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -272,7 +278,6 @@ const Scheduler = {
         const track = payload.trackName || 'Algorithm';
         const section = payload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: ПЛАН №1920 — Полный когнитивный отчет. Раскрываем всех музыкантов.
         const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
