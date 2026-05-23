@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1695 — Оптимизация нахлеста для поддержки длинных релизов.
+ * #ЧТО: ПЛАН №2020 — Транзиенты ограничены только для Shine On и Muff Lead.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,8 +104,6 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1695. Увеличенный нахлест (0.4с) для мелодии.
-            // Это предотвращает обрезание "тела" звука при интенсивных рипплах.
             const extraDuration = this.partName === 'melody' ? 0.40 : 0.05;
             return { 
                 midi: e.note, 
@@ -161,7 +159,8 @@ export class MelodySynthManagerV2 {
         }
         
         // Aria Transient Logic
-        if (currentActive === 'guitar_shineOn' || currentActive === 'synth' || currentActive === 'organ') {
+        // #ЗАЧЕМ: ПЛАН №2020. Использование транзиентов запрещено для всех, кроме Shine On и Muff Lead.
+        if (currentActive === 'guitar_shineOn') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
         } else if (currentActive === 'guitar_muffLead') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
