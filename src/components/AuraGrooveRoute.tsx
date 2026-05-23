@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.2 — "Critical Library Fix".
- * #ЧТО: ПЛАН №1880 — 1. Исправлена опечатка в @dnd-kit/sortable. 2. Добавлен импорт Progress.
+ * #ЗАЧЕМ: UI AuraGroove V7.5 — "Mixer & EQ Sovereignty".
+ * #ЧТО: ПЛАН №1985 — Добавлена индикация активного пресета и кнопка перезаписи.
  */
 'use client';
 
@@ -118,30 +119,54 @@ function SimpleVerticalList({
 
 function PresetManager({ 
     presets, 
+    activeId,
     onSave, 
+    onUpdate,
     onLoad, 
     onDelete, 
     title 
 }: { 
     presets: PresetItem[], 
+    activeId: string | null,
     onSave: (name: string) => void, 
+    onUpdate?: () => void,
     onLoad: (id: string) => void, 
     onDelete: (id: string) => void,
     title: string
 }) {
     const [name, setName] = useState("");
+    const activePreset = presets.find(p => p.id === activeId);
+
     return (
         <div className="space-y-4 pt-4 border-t border-primary/10 mt-4">
-            <Label className="text-[10px] font-black uppercase opacity-50 tracking-widest">{title} Presets</Label>
+            <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase opacity-50 tracking-widest">{title} Presets</Label>
+                {activePreset && (
+                    <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/40 text-primary">
+                        Active: {activePreset.name}
+                    </Badge>
+                )}
+            </div>
             <div className="flex gap-2">
                 <Input placeholder="Preset Name" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background" />
-                <Button size="sm" onClick={() => { if(name.trim()){ onSave(name); setName(""); }}} className="h-8 px-3"><Save className="h-3.5 w-3.5" /></Button>
+                <Button size="sm" onClick={() => { if(name.trim()){ onSave(name); setName(""); }}} className="h-8 px-3" title="Save New"><Plus className="h-3.5 w-3.5" /></Button>
+                {activeId && onUpdate && (
+                    <Button variant="secondary" size="sm" onClick={onUpdate} className="h-8 px-3 border border-primary/20" title="Overwrite Active">
+                        <Check className="h-3.5 w-3.5 text-primary" />
+                    </Button>
+                )}
             </div>
             <ScrollArea className="h-32">
                 <div className="space-y-1">
                     {presets.map(p => (
-                        <div key={p.id} className="flex items-center justify-between p-1.5 rounded bg-muted/30 border border-transparent hover:border-primary/20 group">
-                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow" onClick={() => onLoad(p.id)}>{p.name}</span>
+                        <div key={p.id} className={cn(
+                            "flex items-center justify-between p-1.5 rounded bg-muted/30 border transition-all group",
+                            p.id === activeId ? "border-primary/40 bg-primary/5" : "border-transparent hover:border-primary/20"
+                        )}>
+                            <span className={cn(
+                                "text-[10px] font-bold uppercase cursor-pointer flex-grow",
+                                p.id === activeId ? "text-primary" : ""
+                            )} onClick={() => onLoad(p.id)}>{p.name}</span>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                     ))}
@@ -174,7 +199,6 @@ function SortableRouteItem({
 }
 
 export function AuraGrooveRoute(props: AuraGrooveProps) {
-    const router = useRouter();
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
     const [selectedMood, setSelectedMood] = useState<any>('melancholic');
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
@@ -204,7 +228,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     return (
         <div className="w-full h-[100dvh] flex flex-col bg-card overflow-hidden">
-            {/* TOP AREA: Header + Selectors */}
             <div className="flex flex-col flex-grow min-h-0 overflow-hidden">
                 <header className="p-3 bg-background/40 shrink-0 border-b border-primary/20">
                     <div className="flex items-center justify-between mb-2 gap-2">
@@ -296,7 +319,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </div>
 
-            {/* BOTTOM TOOLBAR: Fixed/Sticky with Safe Area handling */}
             <footer className="p-4 bg-background/80 backdrop-blur-md border-t border-primary/10 flex items-center justify-between shrink-0 sticky bottom-0 z-40 pb-safe">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
@@ -341,7 +363,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </Dialog>
             </footer>
 
-            {/* Voice Limit Modal */}
             <Dialog open={isVoiceLimitOpen} onOpenChange={setIsVoiceLimitOpen}>
                 <DialogContent className="bg-card border-primary/20 shadow-2xl">
                     <DialogHeader>
@@ -353,20 +374,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Label className="text-[10px] font-black uppercase opacity-60">Global Voice Limit</Label>
                             <span className="text-xl font-mono font-black text-primary">{props.voiceLimit}</span>
                         </div>
-                        <Slider 
-                            value={[props.voiceLimit]} 
-                            min={50} max={250} step={10} 
-                            onValueChange={(v) => props.setVoiceLimit(v[0])} 
-                            className="px-2"
-                        />
+                        <Slider value={[props.voiceLimit]} min={50} max={250} step={10} onValueChange={(v) => props.setVoiceLimit(v[0])} className="px-2" />
                     </div>
-                    <DialogFooter>
-                        <Button onClick={() => setIsVoiceLimitOpen(false)} className="w-full font-black uppercase tracking-widest h-12 shadow-xl">Apply System Limit</Button>
-                    </DialogFooter>
+                    <DialogFooter><Button onClick={() => setIsVoiceLimitOpen(false)} className="w-full font-black uppercase tracking-widest h-12 shadow-xl">Apply System Limit</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
 
-            {/* Studio Mixer Modal */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
@@ -374,7 +387,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         const vol = ch.key === 'master' ? props.calibrationGains.master : (ch.key === 'drums' ? props.drumSettings.volume : (['sparkles','sfx'].includes(ch.key) ? (props.textureSettings as any)[ch.key].volume : (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5));
                         return (<div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group"><span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span><Slider orientation="vertical" value={[vol]} max={ch.key === 'master' ? 1.5 : 1.0} step={0.01} onValueChange={v => { if(ch.key === 'master') props.handleCalibrationChange('master', v[0]); else props.handleVolumeChange(ch.key as any, v[0]); }} className="h-full" /><span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span></div>);
                     })}</div>
-                    <PresetManager title="Mixer" presets={props.mixerPresets} onSave={props.saveMixerPreset} onLoad={props.loadMixerPreset} onDelete={props.deleteMixerPreset} />
+                    <PresetManager 
+                        title="Mixer" 
+                        presets={props.mixerPresets} 
+                        activeId={props.activeMixerPresetId}
+                        onSave={props.saveMixerPreset} 
+                        onUpdate={props.updateMixerPreset}
+                        onLoad={props.loadMixerPreset} 
+                        onDelete={props.deleteMixerPreset} 
+                    />
                 </DialogContent>
             </Dialog>
 
@@ -382,7 +403,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> Equalizer</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings[index] > 0 ? '+' : ''}{props.eqSettings[index].toFixed(1)}</span><Slider value={[props.eqSettings[index]]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
-                    <PresetManager title="EQ" presets={props.eqPresets} onSave={props.saveEqPreset} onLoad={props.loadEqPreset} onDelete={props.deleteEqPreset} />
+                    <PresetManager 
+                        title="EQ" 
+                        presets={props.eqPresets} 
+                        activeId={props.activeEqPresetId}
+                        onSave={props.saveEqPreset} 
+                        onUpdate={props.updateEqPreset}
+                        onLoad={props.loadEqPreset} 
+                        onDelete={props.deleteEqPreset} 
+                    />
                 </DialogContent>
             </Dialog>
 

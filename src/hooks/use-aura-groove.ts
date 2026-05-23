@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.3 — "Regeneration Anchor Fix".
- * #ЧТО: ПЛАН №1955 — Исправлен прыжок по станциям при регенерации (lastBarCountRef reset).
+ * #ЗАЧЕМ: Хук управления музыкой V9.5 — "Mixer & EQ Sovereignty".
+ * #ЧТО: ПЛАН №1985 — Реализована память пресетов, перезапись и блокировка авто-микса.
  */
 'use client';
 
@@ -22,9 +22,10 @@ import { useFirestore } from "@/firebase/provider";
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
-const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
 const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
 const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
+const ACTIVE_MIXER_KEY = 'AuraGroove_ActiveMixerPreset';
+const ACTIVE_EQ_KEY = 'AuraGroove_ActiveEqPreset';
 
 export type PresetItem = { id: string; name: string; values: any };
 
@@ -83,7 +84,6 @@ export type AuraGrooveProps = {
   setGenre: (genre: Genre) => void;
   introBars: number;
   setIntroBars: (bars: number) => void;
-  // --- Route Specific ---
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
@@ -102,17 +102,19 @@ export type AuraGrooveProps = {
   setShowAdvancedUI: (val: boolean) => void;
   currentBar: number;
   totalBars: number;
-  // --- Voice Sovereignty ---
   voiceLimit: number;
   activeVoiceCount: number;
   setVoiceLimit: (limit: number) => void;
-  // --- Preset Specific ---
   eqPresets: PresetItem[];
+  activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
+  updateEqPreset: () => void;
   loadEqPreset: (id: string) => void;
   deleteEqPreset: (id: string) => void;
   mixerPresets: PresetItem[];
+  activeMixerPresetId: string | null;
   saveMixerPreset: (name: string) => void;
+  updateMixerPreset: () => void;
   loadMixerPreset: (id: string) => void;
   deleteMixerPreset: (id: string) => void;
 };
@@ -165,8 +167,12 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
+  const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
+  const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
+  
   const [currentBar, setCurrentBar] = useState(0);
   const [totalBars, setTotalBars] = useState(144);
 
@@ -180,32 +186,75 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
       if (savedJourneys) { try { setSavedRoutes(JSON.parse(savedJourneys)); } catch (e) {} }
 
       const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
-      if (lastRoute) {
-          try { 
-              const parsed = JSON.parse(lastRoute);
-              setRoute(parsed);
-          } catch (e) {}
-      }
+      if (lastRoute) { try { setRoute(JSON.parse(lastRoute)); } catch (e) {} }
 
       const savedEq = localStorage.getItem(EQ_PRESETS_KEY);
       if (savedEq) { try { setEqPresets(JSON.parse(savedEq)); } catch (e) {} }
 
       const savedMixer = localStorage.getItem(MIXER_PRESETS_KEY);
       if (savedMixer) { try { setMixerPresets(JSON.parse(savedMixer)); } catch (e) {} }
+      
+      const activeMixer = localStorage.getItem(ACTIVE_MIXER_KEY);
+      if (activeMixer) {
+          setActiveMixerPresetId(activeMixer);
+          // Автоматическая загрузка микшера при старте
+          const presets = savedMixer ? JSON.parse(savedMixer) : [];
+          const found = presets.find((p: any) => p.id === activeMixer);
+          if (found) {
+              setTimeout(() => {
+                  const v = found.values;
+                  handleVolumeChange('bass', v.bass);
+                  handleVolumeChange('melody', v.melody);
+                  handleVolumeChange('accompaniment', v.accompaniment);
+                  handleVolumeChange('harmony', v.harmony);
+                  handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+                  handleVolumeChange('drums', v.drums);
+                  handleVolumeChange('sparkles', v.sparkles);
+                  handleVolumeChange('sfx', v.sfx);
+                  setCalibrationGain('master', v.master);
+              }, 1000);
+          }
+      }
+
+      const activeEq = localStorage.getItem(ACTIVE_EQ_KEY);
+      if (activeEq) {
+          setActiveEqPresetId(activeEq);
+          const presets = savedEq ? JSON.parse(savedEq) : [];
+          const found = presets.find((p: any) => p.id === activeEq);
+          if (found) {
+              setTimeout(() => {
+                  setEqSettings(found.values);
+                  found.values.forEach((val: number, idx: number) => setEQGain(idx, val));
+              }, 1000);
+          }
+      }
   }, []);
 
   const saveEqPreset = (name: string) => {
-      const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
+      const id = `eq-${Date.now()}`;
+      const newPreset: PresetItem = { id, name, values: [...eqSettings] };
       const updated = [...eqPresets, newPreset];
       setEqPresets(updated);
+      setActiveEqPresetId(id);
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+      localStorage.setItem(ACTIVE_EQ_KEY, id);
       toast({ title: "EQ Preset Saved" });
+  };
+
+  const updateEqPreset = () => {
+      if (!activeEqPresetId) return;
+      const updated = eqPresets.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p);
+      setEqPresets(updated);
+      localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+      toast({ title: "EQ Preset Updated" });
   };
 
   const loadEqPreset = (id: string) => {
       const preset = eqPresets.find(p => p.id === id);
       if (preset) {
           setEqSettings(preset.values);
+          setActiveEqPresetId(id);
+          localStorage.setItem(ACTIVE_EQ_KEY, id);
           preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
           toast({ title: "EQ Preset Loaded", description: preset.name });
       }
@@ -214,57 +263,60 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   const deleteEqPreset = (id: string) => {
       const updated = eqPresets.filter(p => p.id !== id);
       setEqPresets(updated);
+      if (activeEqPresetId === id) {
+          setActiveEqPresetId(null);
+          localStorage.removeItem(ACTIVE_EQ_KEY);
+      }
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
   };
 
+  const getMixerSnapshot = () => ({
+      bass: instrumentSettings.bass.volume,
+      melody: instrumentSettings.melody.volume,
+      accompaniment: instrumentSettings.accompaniment.volume,
+      harmony: instrumentSettings.harmony.volume,
+      pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+      drums: drumSettings.volume,
+      sparkles: textureSettings.sparkles.volume,
+      sfx: textureSettings.sfx.volume,
+      master: calibrationGains.master
+  });
+
   const saveMixerPreset = (name: string) => {
-      const values = {
-          bass: instrumentSettings.bass.volume,
-          melody: instrumentSettings.melody.volume,
-          accompaniment: instrumentSettings.accompaniment.volume,
-          harmony: instrumentSettings.harmony.volume,
-          pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
-          drums: drumSettings.volume,
-          sparkles: textureSettings.sparkles.volume,
-          sfx: textureSettings.sfx.volume,
-          master: calibrationGains.master
-      };
-      const newPreset: PresetItem = { id: `mixer-${Date.now()}`, name, values };
+      const id = `mixer-${Date.now()}`;
+      const newPreset: PresetItem = { id, name, values: getMixerSnapshot() };
       const updated = [...mixerPresets, newPreset];
       setMixerPresets(updated);
+      setActiveMixerPresetId(id);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+      localStorage.setItem(ACTIVE_MIXER_KEY, id);
       toast({ title: "Mixer Preset Saved" });
+  };
+
+  const updateMixerPreset = () => {
+      if (!activeMixerPresetId) return;
+      const updated = mixerPresets.map(p => p.id === activeMixerPresetId ? { ...p, values: getMixerSnapshot() } : p);
+      setMixerPresets(updated);
+      localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+      toast({ title: "Mixer Preset Updated" });
   };
 
   const loadMixerPreset = (id: string) => {
       const preset = mixerPresets.find(p => p.id === id);
       if (preset) {
           const v = preset.values;
+          setActiveMixerPresetId(id);
+          localStorage.setItem(ACTIVE_MIXER_KEY, id);
           
-          setVolume('bass', v.bass);
-          setVolume('melody', v.melody);
-          setVolume('accompaniment', v.accompaniment);
-          setVolume('harmony', v.harmony);
-          setVolume('pianoAccompaniment', v.pianoAccompaniment);
-          setVolume('drums', v.drums);
-          setVolume('sparkles', v.sparkles);
-          setVolume('sfx', v.sfx);
+          handleVolumeChange('bass', v.bass);
+          handleVolumeChange('melody', v.melody);
+          handleVolumeChange('accompaniment', v.accompaniment);
+          handleVolumeChange('harmony', v.harmony);
+          handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+          handleVolumeChange('drums', v.drums);
+          handleVolumeChange('sparkles', v.sparkles);
+          handleVolumeChange('sfx', v.sfx);
           setCalibrationGain('master', v.master);
-
-          setInstrumentSettings(prev => ({
-              ...prev,
-              bass: { ...prev.bass, volume: v.bass },
-              melody: { ...prev.melody, volume: v.melody },
-              accompaniment: { ...prev.accompaniment, volume: v.accompaniment },
-              harmony: { ...prev.harmony, volume: v.harmony },
-              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment }
-          }));
-          setDrumSettings(prev => ({ ...prev, volume: v.drums }));
-          setTextureSettings(prev => ({
-              ...prev,
-              sparkles: { ...prev.sparkles, volume: v.sparkles },
-              sfx: { ...prev.sfx, volume: v.sfx }
-          }));
 
           toast({ title: "Mixer Preset Loaded", description: preset.name });
       }
@@ -273,14 +325,12 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   const deleteMixerPreset = (id: string) => {
       const updated = mixerPresets.filter(p => p.id !== id);
       setMixerPresets(updated);
+      if (activeMixerPresetId === id) {
+          setActiveMixerPresetId(null);
+          localStorage.removeItem(ACTIVE_MIXER_KEY);
+      }
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
   };
-
-  useEffect(() => {
-      if (route.length > 0) {
-          localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(route));
-      }
-  }, [route]);
 
   const saveRoute = (name: string) => {
       if (route.length === 0) { toast({ title: "Route Empty" }); return; }
@@ -362,9 +412,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             setBpm(payload.actualBpm);
             setCurrentBar(payload.barCount);
             if (payload.totalBars) setTotalBars(payload.totalBars);
-            
             const currentBarNum = payload.barCount;
-            
             if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0 && options.isNavigatorMode) {
                 handleRouteTransition();
             }
@@ -375,77 +423,15 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     return () => worker.removeEventListener('message', handleMessage);
   }, [isPlaying, activeRouteIndex, route.length, getWorker, handleRouteTransition, options.isNavigatorMode]);
 
-  useEffect(() => {
-    if (activeRouteIndex >= 0 && activeRouteIndex < route.length) {
-        setRoute(prev => prev.map((it, idx) => ({ 
-            ...it, 
-            status: idx === activeRouteIndex ? 'playing' : (idx < activeRouteIndex ? 'completed' : 'pending') 
-        })));
-    }
-  }, [activeRouteIndex]);
-
-  const addToRoute = (g: Genre | 'random', m: Mood | 'random') => {
-      const newItem: RouteItem = { id: `route-${Date.now()}`, genre: g, mood: m, status: 'pending' };
-      setRoute(prev => [...prev, newItem]);
-  };
-
-  const removeFromRoute = (id: string) => {
-      setRoute(prev => {
-          const idx = prev.findIndex(it => it.id === id);
-          const next = prev.filter(it => it.id !== id);
-          if (idx === activeRouteIndex) {
-              setActiveRouteIndex(-1);
-          } else if (idx < activeRouteIndex) {
-              setActiveRouteIndex(activeRouteIndex - 1);
-          }
-          return next;
-      });
-  };
-
-  const moveRouteItem = (id: string, direction: 'up' | 'down') => {
-      setRoute(prev => {
-          const index = prev.findIndex(item => item.id === id);
-          if (index === -1) return prev;
-          const newIndex = direction === 'up' ? index - 1 : index + 1;
-          if (newIndex < 0 || newIndex >= prev.length) return prev;
-          
-          const next = arrayMove(prev, index, newIndex);
-          
-          if (activeRouteIndex === index) {
-              setActiveRouteIndex(newIndex);
-          } else if (activeRouteIndex === newIndex) {
-              setActiveRouteIndex(index);
-          }
-          
-          return next;
-      });
-  };
-
-  const reorderRoute = (activeId: string, overId: string) => {
-      if (activeId === overId) return;
-      setRoute(prev => {
-          const oldIndex = prev.findIndex(item => item.id === activeId);
-          const newIndex = prev.findIndex(item => item.id === overId);
-          const next = arrayMove(prev, oldIndex, newIndex);
-          
-          if (activeRouteIndex === oldIndex) {
-              setActiveRouteIndex(newIndex);
-          } else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) {
-              setActiveRouteIndex(activeRouteIndex - 1);
-          } else if (activeRouteIndex < oldIndex && activeRouteIndex >= newIndex) {
-              setActiveRouteIndex(activeRouteIndex + 1);
-          }
-          
-          return next;
-      });
-  };
-
   const applyAutoMix = useCallback(() => {
-      if (!isInitialized) return;
+      // #ЗАЧЕМ: Суверенитет микса. Если выбран пресет — авто-микширование отключается.
+      if (!isInitialized || activeMixerPresetId) return;
+      
       const masterGenreMix = GENRE_MASTER_MIX[genre];
       const blueprint = getBlueprint(genre, mood);
       const moodOverrideMix = blueprint.soundMix || {};
       const finalMix: SoundMix = { ...masterGenreMix, ...moodOverrideMix };
+      
       const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
       parts.forEach(part => {
           const vol = finalMix[part];
@@ -454,10 +440,19 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
               setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: vol } }));
           }
       });
-      if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
-      if (finalMix.sparkles !== undefined) { setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); }
-      if (finalMix.sfx !== undefined) { setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); }
-  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled]);
+      if (finalMix.drums !== undefined) { 
+          setVolume('drums', finalMix.drums); 
+          setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); 
+      }
+      if (finalMix.sparkles !== undefined) { 
+          setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); 
+          setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); 
+      }
+      if (finalMix.sfx !== undefined) { 
+          setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); 
+          setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); 
+      }
+  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled, activeMixerPresetId]);
 
   useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized, applyAutoMix]);
 
@@ -485,28 +480,10 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     else if (part === 'sparkles' || part === 'sfx') { setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); }
   };
 
-  const setGenre = (g: Genre) => {
-      if (g !== genre) {
-          setGenreState(g);
-          setSelectedCompositionIds([]); 
-      }
-  };
-
-  const setMood = (m: Mood) => {
-      if (m !== mood) {
-          setMoodState(m);
-          setSelectedCompositionIds([]); 
-      }
-  };
-
   const handleSaveMasterpieceCallback = useCallback(() => {
     if (!isInitialized || !isPlaying) return;
     saveMasterpiece(db, {
-      seed: currentSeed,
-      mood: mood,
-      genre: genre,
-      density: density,
-      bpm: bpm,
+      seed: currentSeed, mood, genre, density, bpm,
       instrumentSettings: instrumentSettings
     });
   }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
@@ -526,27 +503,14 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             }
             lastBarCountRef.current = -1;
             setEngineIsPlaying(true);
-        } else {
-            setEngineIsPlaying(false);
-        }
+        } else { setEngineIsPlaying(false); }
     },
     handleRegenerate: () => { 
         setIsRegenerating(true);
-        // #ЗАЧЕМ: ПЛАН №1955. Регенерация на активной станции без прыжка.
-        
-        // 1. Очистка звучания и освобождение ресурсов (Silence)
         stopAllSounds();
-        
-        // 2. Полный сброс фонового движка (History, BarCount)
         resetWorker();
-        
-        // 3. ПРЕДОХРАНИТЕЛЬ: Сброс флага перехода, чтобы остаться на текущей станции.
         lastBarCountRef.current = -1; 
-        
-        // 4. Новый "посев": генерация нового генетического семени
         setCurrentSeed(Date.now());
-        
-        // 5. Перезапуск
         setTimeout(() => {
             setIsRegenerating(false);
             if (isPlaying) {
@@ -554,8 +518,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
                 setTimeout(() => setEngineIsPlaying(true), 150);
             }
         }, 400);
-
-        toast({ title: "System Rebirth", description: "All souls cleared. New DNA sown into the field." });
+        toast({ title: "System Rebirth" });
     },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
     handleToggleBroadcast: () => {
@@ -584,7 +547,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
     voiceLimit, activeVoiceCount, setVoiceLimit,
-    eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
-    mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
+    eqPresets, activeEqPresetId, saveEqPreset, updateEqPreset, loadEqPreset, deleteEqPreset,
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateMixerPreset, loadMixerPreset, deleteMixerPreset
   };
 };
