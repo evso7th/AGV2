@@ -1,7 +1,8 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.5 — "Mixer & EQ Sovereignty".
- * #ЧТО: ПЛАН №1985 — Реализована память пресетов, перезапись и блокировка авто-микса.
+ * @fileOverview Хук управления музыкой V9.6 — "State Setter Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError (setMood/setGenre).
+ * #ЧТО: ПЛАН №1995 — Корректное сопоставление имен функций в объекте возврата.
  */
 'use client';
 
@@ -197,7 +198,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
       const activeMixer = localStorage.getItem(ACTIVE_MIXER_KEY);
       if (activeMixer) {
           setActiveMixerPresetId(activeMixer);
-          // Автоматическая загрузка микшера при старте
           const presets = savedMixer ? JSON.parse(savedMixer) : [];
           const found = presets.find((p: any) => p.id === activeMixer);
           if (found) {
@@ -424,7 +424,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
   }, [isPlaying, activeRouteIndex, route.length, getWorker, handleRouteTransition, options.isNavigatorMode]);
 
   const applyAutoMix = useCallback(() => {
-      // #ЗАЧЕМ: Суверенитет микса. Если выбран пресет — авто-микширование отключается.
       if (!isInitialized || activeMixerPresetId) return;
       
       const masterGenreMix = GENRE_MASTER_MIX[genre];
@@ -541,7 +540,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     isCalibrationModalOpen, setIsCalibrationModalOpen, calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
-    mood, setMood, genre, setGenre, introBars, setIntroBars,
+    mood, setMood: setMoodState, genre, setGenre: setGenreState, introBars, setIntroBars,
     route, addToRoute, removeFromRoute, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
