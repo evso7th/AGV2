@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Хук управления музыкой V9.6 — "State Setter Fix".
- * #ЗАЧЕМ: Исправление ReferenceError (setMood/setGenre).
- * #ЧТО: ПЛАН №1995 — Корректное сопоставление имен функций в объекте возврата.
+ * @fileOverview Хук управления музыкой V9.7 — "Route Function Recovery".
+ * #ЗАЧЕМ: Исправление ReferenceError (addToRoute, removeFromRoute и др.).
+ * #ЧТО: ПЛАН №1995 — Добавлены определения функций управления маршрутом.
  */
 'use client';
 
@@ -330,6 +330,48 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
           localStorage.removeItem(ACTIVE_MIXER_KEY);
       }
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+  };
+
+  // --- Route Handlers ---
+
+  const addToRoute = (genre: Genre | 'random', mood: Mood | 'random') => {
+    const newItem: RouteItem = {
+      id: `route-${Date.now()}`,
+      genre,
+      mood,
+      status: 'pending'
+    };
+    const nextRoute = [...route, newItem];
+    setRoute(nextRoute);
+    localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(nextRoute));
+    toast({ title: "Added to Path", description: `${genre.toUpperCase()} / ${mood.toUpperCase()}` });
+  };
+
+  const removeFromRoute = (id: string) => {
+    const nextRoute = route.filter(item => item.id !== id);
+    setRoute(nextRoute);
+    localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(nextRoute));
+  };
+
+  const moveRouteItem = (id: string, direction: 'up' | 'down') => {
+    const index = route.findIndex(item => item.id === id);
+    if (index === -1) return;
+    const nextIndex = direction === 'up' ? index - 1 : index + 1;
+    if (nextIndex < 0 || nextIndex >= route.length) return;
+    const nextRoute = [...route];
+    [nextRoute[index], nextRoute[nextIndex]] = [nextRoute[nextIndex], nextRoute[index]];
+    setRoute(nextRoute);
+    localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(nextRoute));
+  };
+
+  const reorderRoute = (activeId: string, overId: string) => {
+    const oldIndex = route.findIndex(item => item.id === activeId);
+    const newIndex = route.findIndex(item => item.id === overId);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      const nextRoute = arrayMove(route, oldIndex, newIndex);
+      setRoute(nextRoute);
+      localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(nextRoute));
+    }
   };
 
   const saveRoute = (name: string) => {
