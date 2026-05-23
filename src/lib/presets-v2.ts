@@ -107,19 +107,19 @@ export const V2_PRESETS = {
     reverbMix: 0.2
   },
 
-  guitar_shineOn: {
+  guitar_shineOn: { // #ЗАЧЕМ: ПЛАН №2110. Тембр Shine On теперь 100% копия Muff Lead.
     type: 'guitar',
     name: 'Shine On Lead',
     volume: 0.175, 
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600 },
-    drive: { type: 'soft', amount: 0.25 },
-    comp: { threshold: -18, ratio: 3, makeup: 3 },
-    post: { lpf: 4200 },
-    chorus: { on: true, mix: 0.35 },
-    delay: { on: true, time: 0.4, fb: 0.35, mix: 0.28 },
-    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.8 },
-    reverbMix: 0.22
+    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    pickup: { cutoff: 2900 },
+    drive: { type: 'muff', amount: 0.6 },
+    comp: { threshold: -20, ratio: 4, makeup: 4 },
+    post: { lpf: 3800 },
+    chorus: { on: true, mix: 0.2 },
+    delay: { on: true, time: 0.38, fb: 0.3, mix: 0.2 },
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 2.0 },
+    reverbMix: 0.18
   },
 
   guitar_muffLead: {
