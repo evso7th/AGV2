@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №2030): Ликвидация «волн». Пэды переведены в режим статического одеяла (LFO Amount = 0).
+// #ОБНОВЛЕНО (ПЛАН №2040): Deep Blanket EQ. Срезаны верха (LPF) и усилены низы для всех пэдов.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -9,59 +9,55 @@ export const V2_PRESETS = {
   // SYNTH (Pads, Leads, Keys)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  synth: { // Emerald Pad -> Now "Static Emerald Blanket"
+  synth: { // Emerald Pad -> Now "Deep Emerald Blanket"
     type: 'synth',
     volume: 0.65,
     comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 6 },
     osc: [
-      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
-      { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 } 
+      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.35 },
+      { type: 'sawtooth', detune: +5, octave: 0, gain: 0.35 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.95 } // Усилен низ
     ],
     noise: { on: true, gain: 0.01 },
-    // #ЗАЧЕМ: Четкий вход и бесконечный сустейн без заплывов.
     adsr: { a: 0.15, d: 0.1, s: 1.0, r: 0.5 }, 
-    lpf: { cutoff: 1800, q: 0.8, mode: '24dB' }, 
-    // #ЗАЧЕМ: Отключение волнообразной модуляции (завываний).
+    lpf: { cutoff: 1100, q: 0.8, mode: '24dB' }, // Срезаны верха (было 1800)
     lfo: { shape: 'sine', rate: 0.2, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.15, depth: 0.004, mix: 0.35 },
     delay: { on: true, time: 0.4, fb: 0.2, hc: 3000, mix: 0.15 },
     reverbMix: 0.2
   },
 
-  synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Stable Velvet Blanket"
+  synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Deep Velvet Blanket"
     type: 'synth',
     name: 'Velvet Lush Pad',
     volume: 0.6,
     comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     osc: [
-      { type: 'sine', detune: -4, octave: 0, gain: 0.6 }, 
-      { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
+      { type: 'sine', detune: -4, octave: 0, gain: 0.5 }, 
+      { type: 'sawtooth', detune: +4, octave: 0, gain: 0.25 },
+      { type: 'sine', detune: 0, octave: -1, gain: 1.0 } // Максимальный низ
     ],
     noise: { on: true, gain: 0.02 },
-    // #ЗАЧЕМ: Сокращение атаки для исключения эффекта «прилива».
     adsr: { a: 0.35, d: 0.4, s: 1.0, r: 2.0 }, 
-    lpf: { cutoff: 1400, q: 0.7, mode: '24dB' }, 
+    lpf: { cutoff: 850, q: 0.7, mode: '24dB' }, // Глубокий срез (было 1400)
     lfo: { shape: 'sine', rate: 0.1, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.12, depth: 0.005, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.3, hc: 2500, mix: 0.2 },
     reverbMix: 0.25
   },
 
-  synth_cave_pad: {
+  synth_cave_pad: { // Abyssal Depth Pad -> Now even darker
     type: 'synth',
     name: 'Abyssal Depth Pad',
     volume: 0.55,
     osc: [
-      { type: 'sine', detune: -12, octave: -1, gain: 0.7 },
-      { type: 'sine', detune: 12, octave: 0, gain: 0.5 },
-      { type: 'triangle', detune: 0, octave: -2, gain: 0.4 }
+      { type: 'sine', detune: -12, octave: -1, gain: 0.85 },
+      { type: 'sine', detune: 12, octave: 0, gain: 0.4 },
+      { type: 'triangle', detune: 0, octave: -2, gain: 0.65 } // Очень глубокий низ
     ],
     noise: { on: true, gain: 0.04 },
-    // #ЗАЧЕМ: Монолитное звучание, атака быстрее.
     adsr: { a: 0.5, d: 2.0, s: 1.0, r: 4.0 }, 
-    lpf: { cutoff: 600, q: 0.9, mode: '24dB' }, 
+    lpf: { cutoff: 400, q: 0.9, mode: '24dB' }, // Экстремальный срез (было 600)
     lfo: { shape: 'sine', rate: 0.05, amount: 0, target: 'filter' },
     chorus: { on: true, rate: 0.08, depth: 0.004, mix: 0.45 },
     delay: { on: true, time: 0.8, fb: 0.4, hc: 1500, mix: 0.3 },
