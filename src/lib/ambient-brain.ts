@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V82.0 — "Visibility Boost".
- * #ЗАЧЕМ: Повышение заметности гармонии и атмосферы.
- * #ЧТО: ПЛАН №2080 — Harmony probability повышена до 45%.
+ * @fileOverview Ambient Brain V83.0 — "Atmospheric Dynamics".
+ * #ЗАЧЕМ: Оптимизация частоты атмосферных событий.
+ * #ЧТО: ПЛАН №2090 — 1. Привязка частоты к Tension, Fog и Depth. 2. Исправление синтаксической ошибки テーマ.
  */
 
 import type {
@@ -475,7 +475,8 @@ export class AmbientBrain {
         }
 
         if (hints.sparkles) {
-            const sparkleProb = localTension > 0.8 ? 0.45 : 0.25;
+            // #ЗАЧЕМ: ПЛАН №2090. Снижение частоты и привязка к Ландшафту (Depth).
+            const sparkleProb = (0.12 + (localTension * 0.18)) * (this.depth + 0.5);
             if (this.random.next() < sparkleProb) {
                 events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light', epoch));
             }
@@ -483,7 +484,8 @@ export class AmbientBrain {
         
         if (hints.sfx) {
             const isStructuralPoint = epoch % 8 === 0 || navInfo.isPartTransition;
-            const sfxProb = isStructuralPoint ? 0.45 : 0.08;
+            // #ЗАЧЕМ: ПЛАН №2090. Снижение частоты и привязка к Туману (Fog).
+            const sfxProb = (isStructuralPoint ? 0.25 : 0.05) * (this.fog + 0.5);
             if (this.random.next() < sfxProb) {
                 events.push(...this.renderSfx(localTension));
             }
@@ -652,7 +654,7 @@ export class AmbientBrain {
         if (barNotes.length === 0) return []; 
         const rawEvents = barNotes.map(n => ({
             type: 'bass' as any, note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
         }));
         
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));

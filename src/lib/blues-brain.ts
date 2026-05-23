@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Blues Brain V78.0 — "Harmonic Atmosphere Protocol".
- * #ЗАЧЕМ: Интеллектуальное подмешивание SFX и Sparkles в блюз.
- * #ЧТО: ПЛАН №2070 — Гармонический резонанс атмосферных событий.
+ * @fileOverview Blues Brain V79.0 — "Atmospheric Dynamics".
+ * #ЗАЧЕМ: Оптимизация частоты атмосферных событий.
+ * #ЧТО: ПЛАН №2090 — Установлена более разреженная сетка для Sparkles и SFX.
  */
 
 import {
@@ -488,7 +489,8 @@ export class BluesBrain {
     const modeStr = this.config.isImprovising ? 'IMPRO' : 'RESTO';
 
     return {
-        events, lickId: currentLickDisplayId, mutationType: this.state.lastMutationType, newBpm,
+        events, tension, beautyScore: 0.5,
+        lickId: currentLickDisplayId, mutationType: this.state.lastMutationType, newBpm,
         instrumentOverrides, trackName: this.currentTrackName,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
@@ -723,8 +725,8 @@ export class BluesBrain {
       const isFourthBar = epoch % 4 === 0;
       const isEighthBar = epoch % 8 === 0;
 
-      // #ЗАЧЕМ: ПЛАН №2070. Гармонические Sparkles.
-      const sparkleProb = tension > 0.8 ? 0.45 : 0.25;
+      // #ЗАЧЕМ: ПЛАН №2090. Более редкие и динамические Sparkles.
+      const sparkleProb = 0.12 + (tension * 0.15);
       if (this.random.next() < sparkleProb) {
           const degrees = [0, 7, 12, 14]; // R, 5, Octave, 9
           const shift = degrees[calculateMusiNum(epoch, 7, this.seed, degrees.length)];
@@ -745,8 +747,8 @@ export class BluesBrain {
           });
       }
       
-      // #ЗАЧЕМ: ПЛАН №2070. Структурные SFX.
-      const sfxProb = isEighthBar ? 0.45 : 0.12;
+      // #ЗАЧЕМ: ПЛАН №2090. Снижение частоты SFX.
+      const sfxProb = isEighthBar ? 0.25 : 0.08;
       if (this.random.next() < sfxProb) {
           events.push({ 
               type: 'sfx', 
