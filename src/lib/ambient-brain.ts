@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Ambient Brain V79.0 — "Full Narrative Report".
- * #ЗАЧЕМ: Обеспечение полной прозрачности работы ансамбля в логах.
- * #ЧТО: ПЛАН №1920 — Возвращает статус всех 6 инструментов в activeAxioms.
+ * @fileOverview Ambient Brain V80.0 — "Harmonic Presence Protocol".
+ * #ЗАЧЕМ: Реализация редких и мягких гармонических вставок (скрипки/гитары).
+ * #ЧТО: ПЛАН №2060 — 1. Вероятностный гейт (30%) для гармонии. 2. Двухголосные скрипичные интервалы. 3. Динамический выбор аккордов для гитары.
  */
 
 import type {
@@ -44,6 +43,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
+
+const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -407,11 +408,14 @@ export class AmbientBrain {
                 usedTargetLayers.add('accompaniment');
                 accStatus = 'Adaptive';
             }
+            
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
-                const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
-                harEvents.forEach(e => e.pan = 0.25);
-                events.push(...harEvents);
-                usedTargetLayers.add('harmony');
+                if (calculateMusiNum(epoch, 7, this.seed, 100) < 35) {
+                    const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
+                    harEvents.forEach(e => e.pan = 0.35); 
+                    events.push(...harEvents);
+                    usedTargetLayers.add('harmony');
+                }
             }
         }
 
@@ -651,8 +655,7 @@ export class AmbientBrain {
         const rawEvents = barNotes.map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            technique: tension > 0.7 ? ('hit' as Technique) : ('swell' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
-            params: { mood: this.mood }
+            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
         }));
 
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
@@ -709,14 +712,38 @@ export class AmbientBrain {
 
     private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
         const root = resChord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
-        const colorDegree = epoch % 8 < 4 ? (resChord.chordType === 'minor' ? 3 : 4) : 7;
-        const note = this.constrainAccompanimentOctave(root + colorDegree);
         
-        const e: FractalEvent = (timbre === 'guitarChords') 
-            ? { type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }
-            : { type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } };
-            
-        return this.rippleLongNote(e, resChord);
+        const rootName = MIDI_NOTE_NAMES[resChord.rootNote % 12] || 'C';
+        const chordName = rootName + (resChord.chordType === 'minor' ? 'm' : '');
+
+        if (timbre === 'guitarChords') {
+            const e: FractalEvent = { 
+                type: 'harmony', 
+                note: root, 
+                time: 0, 
+                duration: 4.0, 
+                weight: 0.35, 
+                technique: 'hit', 
+                dynamics: 'p', 
+                phrasing: 'staccato', 
+                chordName: chordName, 
+                params: { mood: this.mood } 
+            };
+            return [e];
+        } else {
+            const interval = resChord.chordType === 'minor' ? 3 : 4;
+            const e1: FractalEvent = { 
+                type: 'harmony', note: this.constrainAccompanimentOctave(root), 
+                time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 1.5, release: 2.5 }
+            };
+            const e2: FractalEvent = { 
+                type: 'harmony', note: this.constrainAccompanimentOctave(root + 7), 
+                time: 0.5, duration: 3.5, weight: 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 2.0, release: 3.0 }
+            };
+            return [...this.rippleLongNote(e1, resChord), ...this.rippleLongNote(e2, resChord)];
+        }
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
