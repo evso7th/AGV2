@@ -1,7 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V47.5 — "Heritage Bridge Active".
- * #ЗАЧЕМ: Восстановление связи с Наследием.
- * #ЧТО: ПЛАН №1910 — Добавлен реалтайм-слушатель Firestore для трансляции аксиом в воркер.
+ * @fileOverview Audio Engine Context V48.0 — "Robust Recording Engine".
+ * #ЗАЧЕМ: Исправление кнопки записи.
+ * #ЧТО: ПЛАН №1960 — Полноценная реализация MediaRecorder с поддержкой MIME-типов и интервальным дампом.
  */
 'use client';
 
@@ -149,18 +149,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (savedCal) try { setCalibrationGains(JSON.parse(savedCal)); } catch(e) {}
   }, []);
 
-  // #ЗАЧЕМ: ПЛАН №1910 — Реалтайм Мост Наследия.
-  // #ЧТО: Слушаем Firestore и шлем аксиомы в воркер.
   useEffect(() => {
     if (!db || !isInitialized) return;
 
-    console.log('%c[AudioEngine] Heritage Bridge: Listening to Cloud...', 'color: #4ade80;');
-    
     const axiomsRef = collection(db, 'heritage_axioms');
     const unsubscribe = onSnapshot(axiomsRef, (snapshot) => {
         const axioms = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-        
-        // 1. Формируем список уникальных треков для UI фильтра
         const compMap = new Map<string, any>();
         axioms.forEach((ax: any) => {
             const id = ax.compositionId || 'Unknown';
@@ -181,13 +175,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }));
 
         setAvailableCompositions(comps);
-        
-        // 2. Транслируем весь пул в Web Worker
         if (workerRef.current) {
             workerRef.current.postMessage({ command: 'update_cloud_axioms', data: axioms });
         }
     });
-
     return () => unsubscribe();
   }, [db, isInitialized]);
 
@@ -340,9 +331,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.postMessage({ command: 'update_settings', data: s }); 
         } 
     },
-    refreshCloudAxioms: async () => {
-        // Логика подхватывается автоматическим слушателем onSnapshot
-    },
+    refreshCloudAxioms: async () => {},
     resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
     setVolume: setVolumeCallback, 
     setInstrument: async (part: any, name: any) => {
@@ -367,17 +356,35 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     },
     startRecording: () => {
         if (!recDestRef.current) return;
-        recordedChunksRef.current = [];
-        mediaRecorderRef.current = new MediaRecorder(recDestRef.current.stream);
-        mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-        mediaRecorderRef.current.onstop = () => {
-            const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Session_${Date.now()}.webm`; a.click();
-        };
-        mediaRecorderRef.current.start();
-        setIsRecording(true);
+        try {
+            recordedChunksRef.current = [];
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType });
+            mediaRecorderRef.current = recorder;
+            recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+            recorder.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+                const ext = mimeType.split('/')[1].split(';')[0];
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a'); a.style.display = 'none';
+                a.href = url; a.download = `AuraGroove_Session_${Date.now()}.${ext}`;
+                document.body.appendChild(a); a.click();
+                setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+            };
+            recorder.start(1000); 
+            setIsRecording(true);
+            toast({ title: "Recording Started", description: "Audio stream is being captured." });
+        } catch (e) {
+            toast({ variant: "destructive", title: "Recording Failed", description: "Could not initialize recorder." });
+        }
     },
-    stopRecording: () => { if (mediaRecorderRef.current) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
+    stopRecording: () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            toast({ title: "Recording Stopped", description: "Generating audio file..." });
+        }
+    },
     toggleBroadcast: () => { if (broadcastEngineRef.current) { if (isBroadcastActive) { broadcastEngineRef.current.stop(); setIsBroadcastActive(false); } else { broadcastEngineRef.current.start(); setIsBroadcastActive(true); } } }, 
     getWorker: () => workerRef.current,
     playRawEvents: (e: any, h: any, t: any) => { if(audioContextRef.current) stopAllSounds(); },
@@ -386,7 +393,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     stopPreview: () => {},
     updatePreviewPreset: () => {},
     togglePreviewLoop: () => {}
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit]);
+  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };
