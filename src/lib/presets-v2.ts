@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1695): Корректировка громкости гитар для баланса с транзиентами.
+// #ОБНОВЛЕНО (ПЛАН №2010): Органная трансформация пэдов (ADSR, LFO, FX).
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -9,7 +9,7 @@ export const V2_PRESETS = {
   // SYNTH (Pads, Leads, Keys)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  synth: { // Emerald Pad
+  synth: { // Emerald Pad -> Now "Emerald Organ-Synth"
     type: 'synth',
     volume: 0.65,
     comp: { threshold: -18, ratio: 4, attack: 0.003, release: 0.15, makeup: 6 },
@@ -18,16 +18,18 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.8 } 
     ],
-    noise: { on: true, gain: 0.015 },
-    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 3.5 }, 
-    lpf: { cutoff: 850, q: 1.2, mode: '24dB' }, 
-    lfo: { shape: 'sine', rate: 0.12, amount: 300, target: 'filter' },
-    chorus: { on: true, rate: 0.18, depth: 0.008, mix: 0.45 },
-    delay: { on: true, time: 0.5, fb: 0.3, hc: 1800, mix: 0.2 },
-    reverbMix: 0.3
+    noise: { on: true, gain: 0.01 },
+    // #ЗАЧЕМ: Органная динамика (быстрый вход, полный сустейн)
+    adsr: { a: 0.02, d: 0.1, s: 1.0, r: 0.18 }, 
+    lpf: { cutoff: 2200, q: 1.5, mode: '24dB' }, 
+    // #ЗАЧЕМ: Эмуляция Leslie/Vibrato
+    lfo: { shape: 'sine', rate: 6.2, amount: 450, target: 'filter' },
+    chorus: { on: true, rate: 0.85, depth: 0.015, mix: 0.55 },
+    delay: { on: true, time: 0.35, fb: 0.25, hc: 3500, mix: 0.15 },
+    reverbMix: 0.2
   },
 
-  synth_ambient_pad_lush: {
+  synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Velvet Organ-Pad"
     type: 'synth',
     name: 'Velvet Lush Pad',
     volume: 0.6,
@@ -38,12 +40,13 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
     ],
     noise: { on: true, gain: 0.02 },
-    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 4.5 }, 
-    lpf: { cutoff: 750, q: 0.8, mode: '24dB' }, 
-    lfo: { shape: 'sine', rate: 0.08, amount: 350, target: 'filter' },
-    chorus: { on: true, rate: 0.15, depth: 0.01, mix: 0.5 },
-    delay: { on: true, time: 0.6, fb: 0.4, hc: 1500, mix: 0.25 },
-    reverbMix: 0.35
+    // #ЗАЧЕМ: Более собранная динамика
+    adsr: { a: 0.08, d: 0.2, s: 0.9, r: 0.4 }, 
+    lpf: { cutoff: 1400, q: 1.0, mode: '24dB' }, 
+    lfo: { shape: 'sine', rate: 5.5, amount: 400, target: 'filter' },
+    chorus: { on: true, rate: 0.65, depth: 0.01, mix: 0.45 },
+    delay: { on: true, time: 0.5, fb: 0.3, hc: 2500, mix: 0.2 },
+    reverbMix: 0.28
   },
 
   synth_cave_pad: {
@@ -56,11 +59,11 @@ export const V2_PRESETS = {
       { type: 'triangle', detune: 0, octave: -2, gain: 0.4 }
     ],
     noise: { on: true, gain: 0.04 },
-    adsr: { a: 3.5, d: 4.0, s: 0.95, r: 6.0 }, 
-    lpf: { cutoff: 450, q: 0.6, mode: '24dB' }, 
-    chorus: { on: true, rate: 0.08, depth: 0.012, mix: 0.6 },
-    delay: { on: true, time: 0.8, fb: 0.5, hc: 1000, mix: 0.4 },
-    reverbMix: 0.45
+    adsr: { a: 1.5, d: 2.0, s: 0.95, r: 3.0 }, 
+    lpf: { cutoff: 650, q: 1.2, mode: '24dB' }, 
+    chorus: { on: true, rate: 0.12, depth: 0.008, mix: 0.5 },
+    delay: { on: true, time: 0.8, fb: 0.5, hc: 1500, mix: 0.35 },
+    reverbMix: 0.4
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -106,7 +109,7 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.175, // #ЗАЧЕМ: ПЛАН №1725. Снижено в 4 раза (с 0.7).
+    volume: 0.175, 
     osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
     pickup: { cutoff: 3600 },
     drive: { type: 'soft', amount: 0.25 },
@@ -121,7 +124,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    volume: 0.175, // #ЗАЧЕМ: ПЛАН №1725. Снижено в 4 раза (с 0.7).
+    volume: 0.175, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.6 },
