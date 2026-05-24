@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.5 — "Mixer & EQ Sovereignty".
- * #ЧТО: ПЛАН №1985 — Добавлена индикация активного пресета и кнопка перезаписи.
+ * #ЗАЧЕМ: UI AuraGroove V7.7 — "Atomic Route Synchronization".
+ * #ЧТО: ПЛАН №2230/2290 — 1. Исправлена опечатка в импорте @dnd-kit/sortable. 2. Кнопка Update Path в нижнем тулбаре.
  */
 'use client';
 
@@ -322,7 +322,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             <footer className="p-4 bg-background/80 backdrop-blur-md border-t border-primary/10 flex items-center justify-between shrink-0 sticky bottom-0 z-40 pb-safe">
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                    <Button variant="outline" size="icon" onClick={() => setIsVoiceLimitOpen(true)} className="h-10 w-10"><Zap className="h-5 w-5 text-amber-500" /></Button>
+                    <Button variant="outline" size="icon" onClick={props.handleUpdatePath} title="Update Current Path" className="h-10 w-10 border-primary/30 text-primary hover:bg-primary/5">
+                        <Navigation className="h-5 w-5" />
+                    </Button>
                 </div>
                 
                 <Button 

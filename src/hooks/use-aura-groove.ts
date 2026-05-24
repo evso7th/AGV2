@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Хук управления музыкой V9.8 — "Transition Purge Protocol".
- * #ЗАЧЕМ: Реализация гарантированной очистки контекста при переходах.
- * #ЧТО: ПЛАН №2250 — Внедрен вызов stopAllSounds во все навигационные функции.
+ * @fileOverview Хук управления музыкой V10.0 — "Atomic Path Synchronization".
+ * #ЗАЧЕМ: Исправление замирания навигатора при изменении порядка очереди.
+ * #ЧТО: ПЛАН №2230 — 1. Метод handleUpdatePath. 2. Синхронный пуш настроек перед ресетом. 3. Smart Reorder.
  */
 'use client';
 
@@ -58,6 +58,7 @@ export type AuraGrooveProps = {
   handleScoreChange: (value: ScoreName) => void;
   handlePlayPause: () => void;
   handleRegenerate: () => void;
+  handleUpdatePath: () => void;
   handleToggleRecording: () => void;
   handleToggleBroadcast: () => void;
   handleSaveMasterpiece: () => void;
@@ -369,6 +370,14 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     const newIndex = route.findIndex(item => item.id === overId);
     if (oldIndex !== -1 && newIndex !== -1) {
       const nextRoute = arrayMove(route, oldIndex, newIndex);
+      
+      // #ЗАЧЕМ: ПЛАН №2230. Сохранение активного индекса при перемещении элемента.
+      if (activeRouteIndex !== -1) {
+          const currentId = route[activeRouteIndex].id;
+          const newActiveIndex = nextRoute.findIndex(item => item.id === currentId);
+          setActiveRouteIndex(newActiveIndex);
+      }
+      
       setRoute(nextRoute);
       localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(nextRoute));
     }
@@ -436,7 +445,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
           nextIndex = (activeRouteIndex + 1) % route.length;
       }
 
-      // #ЗАЧЕМ: Гарантированная очистка при переходе (ПЛАН №2250).
       stopAllSounds();
 
       setActiveRouteIndex(nextIndex);
@@ -549,15 +557,31 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             setEngineIsPlaying(true);
         } else { 
             setEngineIsPlaying(false); 
-            stopAllSounds(); // #ЗАЧЕМ: Полная тишина при паузе (ПЛАН №2255).
+            stopAllSounds();
         }
     },
     handleRegenerate: () => { 
         setIsRegenerating(true);
-        stopAllSounds(); // #ЗАЧЕМ: Глубокая очистка перед регенерацией (ПЛАН №2255).
+        stopAllSounds();
+        
+        // #ЗАЧЕМ: ПЛАН №2230. Синхронизация с текущей точкой маршрута при регенерации.
+        if (options.isNavigatorMode && activeRouteIndex >= 0 && route[activeRouteIndex]) {
+            const item = route[activeRouteIndex];
+            const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+            const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+            
+            // Синхронный пуш перед ресетом
+            updateSettings({ genre: g, mood: m, seed: Date.now() });
+            setGenreState(g);
+            setMoodState(m);
+            setCurrentSeed(Date.now());
+            console.log(`%c[Navigator] Path Synchronization: ${g}/${m}`, 'color: #4ade80; font-weight: bold;');
+        } else {
+            setCurrentSeed(Date.now());
+        }
+
         resetWorker();
         lastBarCountRef.current = -1; 
-        setCurrentSeed(Date.now());
         setTimeout(() => {
             setIsRegenerating(false);
             if (isPlaying) {
@@ -566,6 +590,30 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             }
         }, 400);
         toast({ title: "System Rebirth" });
+    },
+    handleUpdatePath: () => {
+        // #ЗАЧЕМ: ПЛАН №2230. Перечитывание очереди и установка на 1-ю позицию.
+        if (route.length === 0) return;
+        stopAllSounds();
+        const nextIndex = 0;
+        setActiveRouteIndex(nextIndex);
+        const item = route[nextIndex];
+        
+        const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+        const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+        
+        // Синхронный пуш
+        updateSettings({ genre: g, mood: m, seed: Date.now() });
+        setGenreState(g);
+        setMoodState(m);
+        setCurrentSeed(Date.now());
+        
+        resetWorker();
+        if (isPlaying) {
+            setEngineIsPlaying(false);
+            setTimeout(() => setEngineIsPlaying(true), 150);
+        }
+        toast({ title: "Path Updated", description: "Returning to start of route with fresh DNA." });
     },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
     handleToggleBroadcast: () => {
@@ -584,7 +632,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     useHeritage, setUseHeritage,
     handleGoHome: () => { 
         setEngineIsPlaying(false); 
-        stopAllSounds(); // #ЗАЧЕМ: Протокол «Total Purge on Exit» (ПЛАН №2220).
+        stopAllSounds(); 
         window.location.href = '/'; 
     },
     isEqModalOpen, setIsEqModalOpen, eqSettings, 

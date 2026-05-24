@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V49.5 — "Absolute Silence & Suite Finale".
- * #ЗАЧЕМ: Реализация плавного затухания в конце пьесы и глубокой очистки.
- * #ЧТО: ПЛАН №2260 — 1. Автоматический Fade Out за 2 такта до конца. 2. Остановка DrumMachine. 3. Прямой ресет громкости на 0 такте.
+ * @fileOverview Audio Engine Context V50.0 — "Atomic Path Sync & DNA Audition".
+ * #ЗАЧЕМ: Реализация полноценного прослушивания в Dashboard и атомной синхронизации настроек.
+ * #ЧТО: ПЛАН №2230 — 1. Реализован playRawEvents для Dashboard. 2. Улучшена устойчивость setIsPlaying.
  */
 'use client';
 
@@ -216,9 +216,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * (gains.chords || 1.0));
   }, []);
 
-  /**
-   * #ЗАЧЕМ: Глубокая очистка контекста (ПЛАН №2260).
-   */
   const stopAllSounds = useCallback(() => {
     globalAllNotesOff();
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
@@ -227,7 +224,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     sfxSynthManagerRef.current?.allNotesOff();
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
     
-    // Мгновенный возврат громкости для чистой атаки следующего запуска
     if (audioContextRef.current && masterGainNodeRef.current) {
         masterGainNodeRef.current.gain.cancelScheduledValues(audioContextRef.current.currentTime);
         masterGainNodeRef.current.gain.setValueAtTime(calibrationGains.master, audioContextRef.current.currentTime);
@@ -300,8 +296,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // --- SUITE FINALE: AUTO FADE LOGIC ---
-                // #ЗАЧЕМ: Плавное затухание за 2 такта до конца пьесы.
                 if (payload.barCount === 0) {
                     masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
                 }
@@ -437,7 +431,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         } 
     }, 
     getWorker: () => workerRef.current,
-    playRawEvents: (e: any, h: any, t: any) => { if(audioContextRef.current) stopAllSounds(); },
+    playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => {
+        if (!audioContextRef.current || !isInitialized) return;
+        const now = audioContextRef.current.currentTime;
+        const bpm = tempo || 72;
+        
+        // #ЗАЧЕМ: Протокол «Direct Audition». Остановка текущей игры перед проверкой ДНК.
+        stopAllSounds();
+        
+        if (drumMachineRef.current) drumMachineRef.current.schedule(events, now, bpm);
+        if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, now, bpm);
+        if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, now, bpm);
+        if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, now, bpm);
+        if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, now, bpm);
+        if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, now, bpm);
+    },
     stopAllSounds,
     startPreview: async (p: any, t: any, l: any) => {},
     stopPreview: () => {},
