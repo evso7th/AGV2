@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Universal Music Theory Utilities V5.9 — "The Complete Codex".
- * #ЗАЧЕМ: Исправление ошибок импорта в Ambient и Blues Brain.
- * #ЧТО: ПЛАН №1905 — Восстановлены GEO_ATLAS, LIGHT_ATLAS и функции L-трансформации.
+ * @fileOverview Universal Music Theory Utilities V6.0 — "Dynamic Hybrid Domain".
+ * #ЗАЧЕМ: Реализация динамических групп инструментов для ДНА Аудитора.
+ * #ЧТО: ПЛАН №2700 — Добавлены гибридные пресеты (Lead, Acoustic/Electric Hybrid, Piano Dualism).
  */
 
 import type { 
@@ -50,9 +49,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 // ───── ATLASES ─────
 
-/**
- * #ЗАЧЕМ: Атлас Географии для AmbientBrain.
- */
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
     'harbor': { fog: 0.6, depth: 0.4, reg: -12 },
     'temple': { fog: 0.2, depth: 0.8, reg: 0 },
@@ -60,9 +56,6 @@ export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number
     'void':   { fog: 0.8, depth: 0.9, reg: -24 }
 };
 
-/**
- * #ЗАЧЕМ: Атлас Света для AmbientBrain.
- */
 export const LIGHT_ATLAS: Record<string, { intensity: number, bloom: number }> = {
     'epic': { intensity: 0.8, bloom: 0.9 },
     'enthusiastic': { intensity: 0.7, bloom: 0.6 },
@@ -71,34 +64,24 @@ export const LIGHT_ATLAS: Record<string, { intensity: number, bloom: number }> =
 
 // ───── L-LOGIC (TRANSFORMATIONS) ─────
 
-/**
- * #ЗАЧЕМ: Нормализация группы нот.
- */
 export function normalizePhraseGroup(phrase: any[]): any[] {
     if (!phrase || phrase.length === 0) return [];
     const minT = Math.min(...phrase.map(n => n.t));
     return phrase.map(n => ({ ...n, t: n.t - minT }));
 }
 
-/**
- * #ЗАЧЕМ: Инверсия фраз (Зеркальное отражение).
- */
 export function invertPhrase(phrase: any[]): any[] {
     if (!phrase || phrase.length === 0) return [];
     const firstDeg = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
     return phrase.map(n => {
         const currentSemi = DEGREE_TO_SEMITONE[n.deg] || 0;
         const invertedSemi = firstDeg - (currentSemi - firstDeg);
-        // Защита от выхода за диапазон
         const wrappedSemi = ((invertedSemi % 12) + 12) % 12;
         const degName = SEMITONE_TO_DEGREE[wrappedSemi] || 'R';
         return { ...n, deg: degName };
     });
 }
 
-/**
- * #ЗАЧЕМ: Ретроградная трансформация (Реверс).
- */
 export function retrogradePhrase(phrase: any[]): any[] {
     if (!phrase || phrase.length === 0) return [];
     const maxT = Math.max(...phrase.map(n => n.t + n.d));
@@ -108,9 +91,6 @@ export function retrogradePhrase(phrase: any[]): any[] {
     })).sort((a, b) => a.t - b.t);
 }
 
-/**
- * #ЗАЧЕМ: Ритмический джиттер (Живое отклонение).
- */
 export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
     return phrase.map((n, i) => {
         const jitter = (calculateMusiNum(seed + i, 7, 0, 10) / 100) - 0.05; 
@@ -120,74 +100,45 @@ export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
 
 // ───── CORE UTILS ─────
 
-/**
- * #ЗАЧЕМ: Сопоставление настроения с музыкальной гаммой.
- */
 export function getScaleForMood(mood: Mood): number[] {
     const moodMap: Record<string, string> = {
-        epic: 'mixolydian',
-        joyful: 'ionian',
-        enthusiastic: 'lydian',
-        melancholic: 'dorian',
-        dark: 'phrygian',
-        anxious: 'locrian',
-        dreamy: 'lydian',
-        contemplative: 'mixolydian',
-        calm: 'ionian',
-        gloomy: 'aeolian'
+        epic: 'mixolydian', joyful: 'ionian', enthusiastic: 'lydian',
+        melancholic: 'dorian', dark: 'phrygian', anxious: 'locrian',
+        dreamy: 'lydian', contemplative: 'mixolydian', calm: 'ionian', gloomy: 'aeolian'
     };
     const scaleName = moodMap[mood] || 'dorian';
     return MODE_SEMITONES[scaleName];
 }
 
-/**
- * #ЗАЧЕМ: Детерминированный взвешенный выбор для стабильности сессии.
- */
 export function pickWeightedDeterministic<T>(options: any[], seed: number, step: number, salt: number): T | null {
     if (!options || options.length === 0) return null;
-    
     const totalWeight = options.reduce((sum, opt) => sum + (opt.weight || 0), 0);
     if (totalWeight <= 0) return options[0].name || options[0];
-
     const rand = (calculateMusiNum(step, 17, seed + salt, 1000) / 1000) * totalWeight;
-    
     let cumulativeWeight = 0;
     for (const option of options) {
         cumulativeWeight += (option.weight || 0);
-        if (rand <= cumulativeWeight) {
-            return option.name || option;
-        }
+        if (rand <= cumulativeWeight) return option.name || option;
     }
     return options[options.length - 1].name || options[options.length - 1];
 }
 
-/**
- * #ЗАЧЕМ: Генерация нот для режима Atom.
- */
 export function createHarmonyAxiom(chord: GhostChord, mood: Mood, genre: Genre, random: any, epoch: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const isMinor = chord.chordType === 'minor' || genre === 'ambient' || genre === 'psybient';
     const scale = MODE_SEMITONES[isMinor ? 'dorian' : 'ionian'];
     const root = chord.rootNote;
-
     const density = 2 + (calculateMusiNum(epoch, 7, root, 3));
-    
     for (let i = 0; i < density; i++) {
         const jitter = (calculateMusiNum(epoch + i, 13, root, 100) / 100) * 0.4;
         const t = (TICKS_PER_BAR / density) * i + jitter;
         const complexSeed = epoch * 17 + root * 5 + i * 23;
         const degIdx = calculateMusiNum(complexSeed, 19, 0, scale.length);
         const note = root + 12 + scale[degIdx];
-
         events.push({
-            type: 'accompaniment',
-            note: note,
-            time: t * TICK_TO_BEAT,
-            duration: 5.0 * TICK_TO_BEAT, 
+            type: 'accompaniment', note: note, time: t * TICK_TO_BEAT, duration: 5.0 * TICK_TO_BEAT, 
             weight: 0.45 + (calculateMusiNum(epoch, 11, i, 4) / 10),
-            technique: 'swell',
-            dynamics: 'p',
-            phrasing: 'legato'
+            technique: 'swell', dynamics: 'p', phrasing: 'legato'
         });
     }
     return events;
@@ -203,6 +154,36 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
     if (!targetHint || targetHint === 'none') return 'none';
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // ───── DYNAMIC HYBRID GROUPS (PLAN №2700) ─────
+    
+    // 1. ShineOn / Muff Lead
+    if (clean === 'dynamiclead') {
+        return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
+    }
+    // 2. Black - CS80 - Telecaster
+    if (clean === 'dynamichybrid1' || clean === 'blackcs80tele') {
+        if (tension < 0.35) return 'blackAcoustic';
+        if (tension < 0.70) return 'cs80';
+        return 'telecaster';
+    }
+    // 3. Telecaster - CS80 - ShineOn
+    if (clean === 'dynamichybrid2' || clean === 'telecs80shine') {
+        if (tension < 0.35) return 'telecaster';
+        if (tension < 0.70) return 'cs80';
+        return 'guitar_shineOn';
+    }
+    // 4. Black - CS80 - ShineOn
+    if (clean === 'dynamicblackshine' || clean === 'blackcs80shine') {
+        if (tension < 0.35) return 'blackAcoustic';
+        if (tension < 0.70) return 'cs80';
+        return 'guitar_shineOn';
+    }
+    // 5. Warm Rhodes - Acoustic Piano
+    if (clean === 'dynamicpianodual' || clean === 'rhodespiano') {
+        return tension < 0.5 ? 'ep_rhodes_warm' : 'piano';
+    }
+
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
         if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
@@ -232,18 +213,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
     if (part === 'accompaniment') {
         const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
-        if (isPianoTimbre) {
-            return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
-        }
+        if (isPianoTimbre) return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
     }
     if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
         if (tension < 0.45) return 'telecaster';
         if (tension > 0.75) return 'guitar_muffLead';
         return 'guitar_shineOn';
     }
-    if (part === 'bass') {
-        return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
-    }
+    if (part === 'bass') return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
     return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
 }
 
@@ -262,7 +239,6 @@ export function keyToMidiRoot(key: string | null | undefined): number | null {
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
     if (base <= 1) return Math.abs(Math.floor(step + start)) % modulo; 
-    
     let num = Math.abs(Math.floor(step + start));
     let sum = 0;
     while (num > 0) {
@@ -278,22 +254,18 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
     const states = GENRE_STATES[genre] || GENRE_STATES.ambient;
     let currentBar = 0;
     let currentStateIdx = 0;
-    
     while (currentBar < totalBars) {
         const durPool = [12, 16, 24, 32]; 
         const dur = durPool[calculateMusiNum(currentBar, 5, seed, 4)];
-        
         track.push({
             rootNote: rootNote + (states[currentStateIdx] || 0),
             chordType: 'minor',
             bar: currentBar,
             durationBars: Math.min(dur, totalBars - currentBar)
         });
-        
         const rand = (calculateMusiNum(currentBar, 23, seed + currentStateIdx, 100)) / 100;
         let acc = 0;
         const currentMatrixRow = matrix[currentStateIdx] || matrix[0];
-        
         for (let i = 0; i < currentMatrixRow.length; i++) {
             acc += currentMatrixRow[i];
             if (rand <= acc) { currentStateIdx = i; break; }
@@ -304,19 +276,10 @@ export function generateMarkovHarmony(totalBars: number, rootNote: number, seed:
 }
 
 export function generateSuiteDNA(
-    totalBars: number, 
-    mood: Mood, 
-    initialSeed: number, 
-    originalRandom: any, 
-    genre: Genre, 
-    blueprintParts: any[], 
-    ancestor?: any, 
-    sessionHistory?: string[],
+    totalBars: number, mood: Mood, initialSeed: number, originalRandom: any, genre: Genre, 
+    blueprintParts: any[], ancestor?: any, sessionHistory?: string[],
     bpmConfig?: { base: number, range: [number, number], modifier: number },
-    masterpieces?: any[],
-    cloudAxioms?: any[], 
-    activeAnchorId?: string | null,
-    activeAnchorRoot?: number | null
+    masterpieces?: any[], cloudAxioms?: any[], activeAnchorId?: string | null, activeAnchorRoot?: number | null
 ): SuiteDNA {
     let finalSeed = initialSeed;
     if (masterpieces && masterpieces.length > 0) {
@@ -339,8 +302,7 @@ export function generateSuiteDNA(
         harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', 
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
-        cloudAxioms, activeAnchorId,
-        activeAnchorRoot: activeAnchorRoot || null 
+        cloudAxioms, activeAnchorId, activeAnchorRoot: activeAnchorRoot || null 
     };
 }
 

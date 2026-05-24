@@ -124,7 +124,8 @@ const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian'
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-// #ЗАЧЕМ: Группировка инструментов для удобства аудита (ПЛАН №2360).
+// #ЗАЧЕМ: Группировка инструментов для удобства аудита.
+// #ЧТО: ПЛАН №2700 — Добавлены динамические гибридные группы по запросу пользователя.
 const INSTRUMENT_GROUPS = [
   {
     label: 'Acoustic Guitars',
@@ -135,6 +136,11 @@ const INSTRUMENT_GROUPS = [
     label: 'Electric Guitars',
     color: 'bg-blue-500/10 text-blue-400',
     options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar']
+  },
+  {
+    label: 'Dynamic Leads & Hybrids',
+    color: 'bg-cyan-500/10 text-cyan-400',
+    options: ['dynamic_lead', 'dynamic_hybrid_1', 'dynamic_hybrid_2', 'dynamic_black_shine']
   },
   {
     label: 'Bass Section',
@@ -154,7 +160,7 @@ const INSTRUMENT_GROUPS = [
   {
     label: 'Piano & Keys',
     color: 'bg-emerald-500/10 text-emerald-400',
-    options: ['piano', 'ep_rhodes_warm']
+    options: ['piano', 'ep_rhodes_warm', 'dynamic_piano_dual']
   },
   {
     label: 'Others',
@@ -203,7 +209,13 @@ const DISPLAY_NAMES: Record<string, string> = {
     'bass_slap': 'Slap Funk Bass',
     'bass_cs80': 'CS80 Hybrid Bass',
     'none': 'No Override',
-    'psybient': 'Psy-Ambient'
+    'psybient': 'Psy-Ambient',
+    // #ЗАЧЕМ: Динамические гибриды.
+    'dynamic_lead': '⚡ SHINE ON / MUFF LEAD',
+    'dynamic_hybrid_1': '⚡ BLACK / CS80 / TELE',
+    'dynamic_hybrid_2': '⚡ TELE / CS80 / SHINE',
+    'dynamic_black_shine': '⚡ BLACK / CS80 / SHINE',
+    'dynamic_piano_dual': '⚡ RHODES / PIANO'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -1024,7 +1036,7 @@ export default function HypercubeDashboard() {
           </DialogContent>
       </Dialog>
 
-      <AlertDialog confirmOpen={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogPortal>
             <AlertDialogOverlay />
             <AlertDialogContent className="border-primary/20 bg-card">
