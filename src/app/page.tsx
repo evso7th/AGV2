@@ -10,7 +10,7 @@ import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 /**
  * #ЗАЧЕМ: Корневая страница приветствия.
- * #ЧТО: ПЛАН №2340 — Выделение версии 3.0 "The Infinite Take Orchestra" основным цветом.
+ * #ЧТО: ПЛАН №2350 — Кнопка переименована в "Let's Go!" по запросу пользователя.
  */
 export default function Home() {
   const router = useRouter();
@@ -70,7 +70,7 @@ export default function Home() {
         <CardFooter>
           <Button onClick={handleStart} className="w-full text-lg py-7 font-black uppercase tracking-widest shadow-xl active:scale-[0.98] transition-all" disabled={!isClient}>
             <Music className="mr-3 h-6 w-6" />
-            Start AuraGroove
+            Let's Go!
           </Button>
         </CardFooter>
       </Card>
