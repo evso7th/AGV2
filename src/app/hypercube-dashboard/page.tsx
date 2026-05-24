@@ -45,7 +45,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -124,15 +124,43 @@ const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian'
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-const INSTRUMENT_OPTIONS = [
-    'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'ep_rhodes_warm', 
-    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ',
-    'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80', 'theremin', 'mellotron',
-    'bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 
-    'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 
-    'bass_rock_pick', 'bass_slap', 'bass_cs80',
-    'blackAcoustic', 'telecaster', 'darkTelecaster', 'piano', 'violin', 'flute', 'guitarChords',
-    'dynamicOrgan', 'dynamicPad', 'none'
+// #ЗАЧЕМ: Группировка инструментов для удобства аудита (ПЛАН №2360).
+const INSTRUMENT_GROUPS = [
+  {
+    label: 'Acoustic Guitars',
+    color: 'bg-orange-500/10 text-orange-400',
+    options: ['blackAcoustic', 'guitarChords']
+  },
+  {
+    label: 'Electric Guitars',
+    color: 'bg-blue-500/10 text-blue-400',
+    options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar']
+  },
+  {
+    label: 'Bass Section',
+    color: 'bg-red-500/10 text-red-400',
+    options: ['bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 'bass_rock_pick', 'bass_slap', 'bass_cs80']
+  },
+  {
+    label: 'Organs',
+    color: 'bg-yellow-500/10 text-yellow-500',
+    options: ['dynamicOrgan', 'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ']
+  },
+  {
+    label: 'Atmospheric Pads',
+    color: 'bg-purple-500/10 text-purple-400',
+    options: ['dynamicPad', 'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'mellotron']
+  },
+  {
+    label: 'Piano & Keys',
+    color: 'bg-emerald-500/10 text-emerald-400',
+    options: ['piano', 'ep_rhodes_warm']
+  },
+  {
+    label: 'Others',
+    color: 'bg-gray-500/10 text-gray-400',
+    options: ['cs80', 'theremin', 'violin', 'flute', 'none']
+  }
 ];
 
 const DISPLAY_NAMES: Record<string, string> = {
@@ -806,8 +834,21 @@ export default function HypercubeDashboard() {
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
-                                              <SelectTrigger className="h-7 text-[10px] uppercase font-black w-32"><SelectValue /></SelectTrigger>
-                                              <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                              <SelectTrigger className="h-7 text-[10px] uppercase font-black w-40"><SelectValue /></SelectTrigger>
+                                              <SelectContent>
+                                                {INSTRUMENT_GROUPS.map((group) => (
+                                                    <SelectGroup key={group.label}>
+                                                        <SelectLabel className={cn("text-[9px] uppercase font-black px-2 py-1 mb-1 rounded-sm", group.color)}>
+                                                            {group.label}
+                                                        </SelectLabel>
+                                                        {group.options.map(opt => (
+                                                            <SelectItem key={opt} value={opt} className="text-[10px] font-black pl-4">
+                                                                {DISPLAY_NAMES[opt] || opt}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                ))}
+                                              </SelectContent>
                                             </Select>
                                           ) : (
                                             ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[String(ax.preferredInstrument)] || String(ax.preferredInstrument).toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
@@ -817,7 +858,7 @@ export default function HypercubeDashboard() {
                                             O:{ax.barOffset || 0} / B:{ax.bars || 1} / N:{ax.noteCount || 0}
                                         </td>
                                         <td className="p-3 font-mono text-[10px] opacity-60">[{ax.vector?.t?.toFixed(1)}, {ax.vector?.b?.toFixed(1)}, {ax.vector?.e?.toFixed(1)}, {ax.vector?.h?.toFixed(1)}]</td>
-                                        <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs" /> : <div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>}</td>
+                                        <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full min-w-[150px]" /> : <div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>}</td>
                                         <td className="p-3 text-right">
                                           <div className="flex justify-end gap-1">
                                             {editingAxiomId === ax.id ? (
@@ -983,7 +1024,7 @@ export default function HypercubeDashboard() {
           </DialogContent>
       </Dialog>
 
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <AlertDialog confirmOpen={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogPortal>
             <AlertDialogOverlay />
             <AlertDialogContent className="border-primary/20 bg-card">
