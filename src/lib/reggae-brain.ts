@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Reggae Brain V4.3 — "Context Integrity Fix".
- * #ЗАЧЕМ: Устранение потенциальных TypeError при рендеринге слоев.
- * #ЧТО: ПЛАН №2320 — Все методы ограничения октав гарантированы внутри класса.
+ * @fileOverview Reggae Brain V44.0 — "The Mutation Pulse".
+ * #ЗАЧЕМ: Реальное применение мутаций к Наследию.
+ * #ЧТО: ПЛАН №2900 — Внедрена система трансформаций фраз для обеспечения уникальности каждой сессии.
  */
 
 import type {
@@ -27,6 +26,10 @@ import {
     mergeIdenticalNotes,
     keyToMidiRoot,
     normalizeStr,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter,
+    transposePhraseDegrees,
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
@@ -60,6 +63,8 @@ export class ReggaeBrain {
     private currentDrumAxioms: { phrase: any[], role: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
+    private currentMutationType: string = 'none';
+    private degreeTransposition: number = 0;
     private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -167,7 +172,7 @@ export class ReggaeBrain {
                     this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                     const baseBars = selected.bars || 4;
-                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: rawPhrase, startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
@@ -213,11 +218,26 @@ export class ReggaeBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number, mutationType?: string } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const events: FractalEvent[] = [];
         
+        // --- MUTATION DECISION ---
+        if (epoch % 4 === 0) {
+            const mutationRand = this.random.next();
+            const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
+
+            if (mutationRand < mutationThreshold * 0.25) {
+                this.degreeTransposition = [-1, 1, 2, -2][this.random.nextInt(4)];
+                this.currentMutationType = 'transpose_deg';
+            }
+            else if (mutationRand < mutationThreshold * 0.5) this.currentMutationType = 'inversion';
+            else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
+            else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
+            else this.currentMutationType = 'none';
+        }
+
         let newBpm: number | undefined;
         if (epoch >= this.soloistBusyUntilBar) {
             newBpm = this.selectNextAxiom(navInfo, dna, epoch);
@@ -243,7 +263,12 @@ export class ReggaeBrain {
         // 2. BASS
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-                events.push(...this.renderHeritageBass(epoch, resChord, tension));
+                // #ЗАЧЕМ: Мутации баса.
+                let bassPhrase = this.currentBassTheme.phrase;
+                if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
+                else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
+
+                events.push(...this.renderHeritageBass(epoch, resChord, tension, bassPhrase));
             } else {
                 events.push(...this.renderGenerativeBass(epoch, resChord, tension));
             }
@@ -262,7 +287,13 @@ export class ReggaeBrain {
             else if (role.includes('harmony') || role.includes('strings') || role.includes('guitar')) { target = 'harmony'; harmonyAxiomId = ax.id; }
 
             if (target && hints[target] && !usedLayers.has(target)) {
-                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
+                // #ЗАЧЕМ: Мутации слоев сопровождения.
+                let activePhrase = ax.phrase;
+                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                events.push(...this.renderHeritageLayer(resChord, epoch, activePhrase, target, tension));
                 usedLayers.add(target);
                 
                 if (ax.preferredInstrument) {
@@ -294,7 +325,14 @@ export class ReggaeBrain {
         let activeMelLick = 'none';
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension);
+                // #ЗАЧЕМ: ПЛАН №2900. Реальное применение мутации к фразе.
+                let activePhrase = this.currentTheme.phrase;
+                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
+                else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension, activePhrase);
                 if (heritageMelody.length > 0) {
                     events.push(...heritageMelody);
                     activeMelLick = this.currentTheme.id;
@@ -314,6 +352,7 @@ export class ReggaeBrain {
             trackName: this.currentTrackName,
             newBpm,
             instrumentOverrides,
+            mutationType: this.currentMutationType,
             activeAxioms: {
                 melody: activeMelLick,
                 bass: this.currentBassTheme ? `DNA: ${this.currentBassTheme.id}` : 'Algo',
@@ -374,13 +413,13 @@ export class ReggaeBrain {
         return events;
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, phrase: any[]): FractalEvent[] {
         if (!this.currentTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        const rawEvents = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
             const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
@@ -394,13 +433,13 @@ export class ReggaeBrain {
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
-    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderHeritageBass(epoch: number, chord: GhostChord, tension: number, phrase: any[]): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        const rawEvents = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'mf', phrasing: 'detached'

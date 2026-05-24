@@ -1,7 +1,7 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.0 — "Dynamic Hybrid Domain".
- * #ЗАЧЕМ: Реализация динамических групп инструментов для ДНА Аудитора.
- * #ЧТО: ПЛАН №2700 — Добавлены гибридные пресеты (Lead, Acoustic/Electric Hybrid, Piano Dualism).
+ * @fileOverview Universal Music Theory Utilities V6.1 — "Mutation Core".
+ * #ЗАЧЕМ: Реализация математических трансформаций для Наследия.
+ * #ЧТО: ПЛАН №2900 — Добавлены функции транспозиции ступеней и улучшен ретроград.
  */
 
 import type { 
@@ -70,31 +70,55 @@ export function normalizePhraseGroup(phrase: any[]): any[] {
     return phrase.map(n => ({ ...n, t: n.t - minT }));
 }
 
+/**
+ * #ЗАЧЕМ: Инверсия мелодии (зеркальное отражение).
+ */
 export function invertPhrase(phrase: any[]): any[] {
     if (!phrase || phrase.length === 0) return [];
-    const firstDeg = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
+    const firstSemi = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
     return phrase.map(n => {
         const currentSemi = DEGREE_TO_SEMITONE[n.deg] || 0;
-        const invertedSemi = firstDeg - (currentSemi - firstDeg);
+        const invertedSemi = firstSemi - (currentSemi - firstSemi);
+        // Заворачиваем в одну октаву для стабильности, но сохраняем направление
         const wrappedSemi = ((invertedSemi % 12) + 12) % 12;
         const degName = SEMITONE_TO_DEGREE[wrappedSemi] || 'R';
         return { ...n, deg: degName };
     });
 }
 
+/**
+ * #ЗАЧЕМ: Ретроград (проигрывание задом наперед).
+ */
 export function retrogradePhrase(phrase: any[]): any[] {
     if (!phrase || phrase.length === 0) return [];
     const maxT = Math.max(...phrase.map(n => n.t + n.d));
-    return phrase.map(n => ({ 
+    return [...phrase].map(n => ({ 
         ...n, 
         t: maxT - (n.t + n.d) 
     })).sort((a, b) => a.t - b.t);
 }
 
+/**
+ * #ЗАЧЕМ: Ритмический джиттер (микро-сдвиги времени).
+ */
 export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
     return phrase.map((n, i) => {
-        const jitter = (calculateMusiNum(seed + i, 7, 0, 10) / 100) - 0.05; 
+        // Детерминированный джиттер на основе Seed сессии
+        const jitter = (calculateMusiNum(seed + i, 7, 0, 20) / 100) - 0.1; 
         return { ...n, t: Math.max(0, n.t + jitter) };
+    });
+}
+
+/**
+ * #ЗАЧЕМ: Модальная транспозиция (сдвиг ступеней).
+ */
+export function transposePhraseDegrees(phrase: any[], shift: number): any[] {
+    if (!phrase || phrase.length === 0 || shift === 0) return phrase;
+    return phrase.map(n => {
+        const currentIdx = DEGREE_KEYS.indexOf(n.deg);
+        if (currentIdx === -1) return n;
+        const nextIdx = (currentIdx + shift + DEGREE_KEYS.length) % DEGREE_KEYS.length;
+        return { ...n, deg: DEGREE_KEYS[nextIdx] };
     });
 }
 

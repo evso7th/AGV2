@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Ambient Brain V84.0 — "Atmospheric Parity".
- * #ЗАЧЕМ: Унификация атмосферных слоев с Psybient.
- * #ЧТО: ПЛАН №2110 — Реализован метод renderAtmosphericEvents по модели TranceBrain.
+ * @fileOverview Ambient Brain V85.0 — "The Mutation Awakening".
+ * #ЗАЧЕМ: Реальное применение мутаций к Наследию.
+ * #ЧТО: ПЛАН №2900 — 1. Исправлен баг игнорирования мутаций. 2. Внедрена транспозиция ступеней.
  */
 
 import type {
@@ -29,6 +28,7 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
+    transposePhraseDegrees,
     mergeIdenticalNotes,
     keyToMidiRoot,
     resolveSemanticTimbre,
@@ -63,6 +63,7 @@ export class AmbientBrain {
     private registerShift: number = 0;
     private currentTransposition: number = 0;
     private microTransposition: number = 0;
+    private degreeTransposition: number = 0;
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
 
@@ -318,6 +319,7 @@ export class AmbientBrain {
             const shifts = [0, 2, -2, 5, 7, -5];
             this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
             this.microTransposition = 0;
+            this.degreeTransposition = 0;
         }
 
         this.applyGeography(epoch, dna);
@@ -342,13 +344,14 @@ export class AmbientBrain {
             };
         }
 
+        // --- MUTATION DECISION ---
         if (epoch % 4 === 0) {
             const mutationRand = this.random.next();
-            const mutationThreshold = this.isImprovising ? 0.8 : 0.4;
+            const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
 
             if (mutationRand < mutationThreshold * 0.25) {
-                this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)];
-                this.currentMutationType = 'transpose';
+                this.degreeTransposition = [-1, 1, 2, -2][this.random.nextInt(4)];
+                this.currentMutationType = 'transpose_deg';
             }
             else if (mutationRand < mutationThreshold * 0.5) this.currentMutationType = 'inversion';
             else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
@@ -384,7 +387,14 @@ export class AmbientBrain {
                 else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
                 
                 if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
-                    const accEvents = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, localTension);
+                    // #ЗАЧЕМ: Применение мутаций к слоям сопровождения.
+                    let activePhrase = ax.phrase;
+                    if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                    else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                    else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
+                    else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                    const accEvents = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, localTension);
                     
                     if (accEvents.length > 0) {
                         if (ax.preferredInstrument) {
@@ -418,7 +428,12 @@ export class AmbientBrain {
 
         let bassStatus = 'none';
         if (hints.bass && this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna);
+            // #ЗАЧЕМ: Мутации для баса (ПЛАН №2900).
+            let bassPhrase = this.currentBassTheme.phrase;
+            if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
+            else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
+
+            const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna, bassPhrase);
             if (themeBass.length > 0) {
                 events.push(...this.constrainBass(themeBass));
                 bassStatus = 'Heritage';
@@ -434,7 +449,14 @@ export class AmbientBrain {
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
+                // #ЗАЧЕМ: ПЛАН №2900. Реальное применение мутации к лидирующей фразе.
+                let activePhrase = this.currentTheme.phrase;
+                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
+                else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
             } 
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
@@ -473,8 +495,6 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        // --- ATMOSPHERIC EVENTS (SFX & SPARKLES) ---
-        // #ЗАЧЕМ: ПЛАН №2110. Унификация с Psybient (точно так же как в TranceBrain).
         if (hints.sparkles || hints.sfx) {
             events.push(...this.renderAtmosphericEvents(epoch, localTension));
         }
@@ -487,7 +507,7 @@ export class AmbientBrain {
             trackName: this.currentTrackName,
             instrumentOverrides,
             activeAxioms: {
-                melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Algo' : 'Waiting'),
+                melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? (this.currentTheme?.id || 'Algo') : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: bassStatus,
                 drums: 'Landscape', 
@@ -501,47 +521,27 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №2110. Метод генерации атмосферы по модели Psybient.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // 1. Sparkles (25% chance, exactly like Psybient)
         if (this.random.next() < 0.25) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ 
-                type: 'sparkle', 
-                note: 60, 
-                time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 6.0, 
-                weight: 1.2, 
-                technique: 'hit', 
-                dynamics: 'mf', 
-                phrasing: 'legato', 
+                type: 'sparkle', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', 
                 pan: (this.random.next() * 1.8) - 0.9, 
                 params: { mood: this.mood, genre: this.genre, category } 
             });
         }
-        
-        // 2. SFX (Breath chance adaptive to tension)
         const breathChance = tension < 0.3 ? 0.35 : 0.18;
         if (this.random.next() < breathChance) {
             events.push({ 
-                type: 'sfx', 
-                note: 60, 
-                time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 4.0, 
-                weight: 1.1, 
-                technique: 'hit', 
-                dynamics: 'mf', 
-                phrasing: 'staccato', 
+                type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                duration: 4.0, weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
                 pan: (this.random.next() * 1.6) - 0.8, 
                 params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } } 
             });
         }
-        
         return events;
     }
 
@@ -567,21 +567,11 @@ export class AmbientBrain {
             });
         }
 
-        if (tension > 0.6 && this.random.next() < 0.2) {
-            const t = this.random.next() * TICKS_PER_BAR;
-            events.push({
-                type: 'drum_25693__walter_odington__hackney-hat-1', note: 42,
-                time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.2 + (this.random.next() * 0.15),
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
-            });
-        }
-
         const hitCount = 2 + this.random.nextInt(Math.floor(tension * 6) + 2);
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
             const time = this.random.next() * TICKS_PER_BAR;
             const pan = (this.random.next() * 1.8) - 0.9;
-            
             events.push({
                 type: perc as any, note: 48, 
                 time: time * TICK_TO_BEAT, duration: 1.0, 
@@ -592,12 +582,8 @@ export class AmbientBrain {
 
         if (this.currentDrumAxioms.length > 0) {
             const hDrums = this.renderHeritageDrums(epoch, tension);
-            hDrums.forEach(e => {
-                e.weight *= 0.35; 
-                events.push(e);
-            });
+            hDrums.forEach(e => { e.weight *= 0.35; events.push(e); });
         }
-
         return events;
     }
 
@@ -610,26 +596,12 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
 
         this.currentDrumAxioms.forEach(ax => {
-            const barNotes = ax.phrase.filter(n => {
-                const isCorrectBar = n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR;
-                const passesFogFilter = calculateMusiNum(n.t, 13, this.seed, 100) < 30;
-                return isCorrectBar && passesFogFilter;
-            });
-            
-            barNotes.forEach(n => {
-                let pan = (this.random.next() * 1.4) - 0.7;
-                const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-
+            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
                 events.push({
-                    type: 'drums', 
-                    note: midiNote, 
+                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), 
                     time: (n.t - barOffset + (this.random.next() - 0.5) * 0.8) * TICK_TO_BEAT, 
-                    duration: 0.1, 
-                    weight: 0.5, 
-                    technique: 'hit', 
-                    dynamics: 'p', 
-                    phrasing: 'staccato', 
-                    pan
+                    duration: 0.1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
+                    pan: (this.random.next() * 1.4) - 0.7
                 });
             });
         });
@@ -654,41 +626,30 @@ export class AmbientBrain {
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         
-        const rawEvents = barNotes.map(n => {
-            return {
-                type: type as any,
-                note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-                time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-                duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
-                weight: 0.7,
-                technique: localTension > 0.85 ? ('hit' as Technique) : ('swell' as Technique), 
-                dynamics: 'p' as Dynamics, 
-                phrasing: 'legato' as Phrasing,
-                params: { 
-                    attack: 1.5, 
-                    release: 3.5, 
-                    filterCutoff: 1600 + (localTension * 1200), 
-                    mood: this.mood 
-                }
-            };
-        });
-
+        const rawEvents = barNotes.map(n => ({
+            type: type as any,
+            note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
+            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
+            weight: 0.7,
+            technique: localTension > 0.85 ? ('hit' as Technique) : ('swell' as Technique), 
+            dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
+            params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (localTension * 1200), mood: this.mood }
+        }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
-    private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA): FractalEvent[] {
-        if (!this.currentBassTheme) return [];
+    private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA, phrase: any[]): FractalEvent[] {
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, localTension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        const barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         if (barNotes.length === 0) return []; 
         const rawEvents = barNotes.map(n => ({
             type: 'bass' as any, note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
         }));
-        
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -703,7 +664,6 @@ export class AmbientBrain {
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
         }));
-
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -711,8 +671,7 @@ export class AmbientBrain {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const e: FractalEvent = {
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 4.0, 
-            weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         };
         return this.rippleLongNote(e, chord);
@@ -722,9 +681,7 @@ export class AmbientBrain {
         const shift = [0, 2, 4, 7, 9, 7, 4, 0][calculateMusiNum(epoch, 4, this.seed, 8)];
         const e: FractalEvent = {
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: 0, 
-            duration: 4.5, 
-            weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.5, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         };
         return this.rippleLongNote(e, resChord);
@@ -732,64 +689,28 @@ export class AmbientBrain {
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
-
         if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
-
-        const isMinor = chord.chordType === 'minor';
-        const thirdInterval = isMinor ? 3 : 4;
-
+        const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
         melodyEvents.forEach((m, i) => {
             if (i % 2 === 0) {
-                events.push({
-                    ...m,
-                    type: 'pianoAccompaniment',
-                    note: this.constrainAccompanimentOctave(m.note + thirdInterval),
-                    weight: 0.25,
-                    technique: 'hit',
-                    dynamics: 'p',
-                    phrasing: 'staccato',
-                    params: { ...m.params, release: 2.5 }
-                });
+                events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval), weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { ...m.params, release: 2.5 } });
             }
         });
-
         return { events, style: "Shadow" };
     }
 
     private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
         const root = resChord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
-        
         const rootName = MIDI_NOTE_NAMES[resChord.rootNote % 12] || 'C';
         const chordName = rootName + (resChord.chordType === 'minor' ? 'm' : '');
-
         if (timbre === 'guitarChords') {
-            const e: FractalEvent = { 
-                type: 'harmony', 
-                note: root, 
-                time: 0, 
-                duration: 4.0, 
-                weight: 0.35, 
-                technique: 'hit', 
-                dynamics: 'p', 
-                phrasing: 'staccato', 
-                chordName: chordName, 
-                params: { mood: this.mood } 
-            };
+            const e: FractalEvent = { type: 'harmony', note: root, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName, params: { mood: this.mood } };
             return [e];
-        } else {
-            const interval = resChord.chordType === 'minor' ? 3 : 4;
-            const e1: FractalEvent = { 
-                type: 'harmony', note: this.constrainAccompanimentOctave(root), 
-                time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 1.5, release: 2.5 }
-            };
-            const e2: FractalEvent = { 
-                type: 'harmony', note: this.constrainAccompanimentOctave(root + 7), 
-                time: 0.5, duration: 3.5, weight: 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 2.0, release: 3.0 }
-            };
-            return [...this.rippleLongNote(e1, resChord), ...this.rippleLongNote(e2, resChord)];
         }
+        const interval = resChord.chordType === 'minor' ? 3 : 4;
+        const e1: FractalEvent = { type: 'harmony', note: this.constrainAccompanimentOctave(root), time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5 } };
+        const e2: FractalEvent = { type: 'harmony', note: this.constrainAccompanimentOctave(root + 7), time: 0.5, duration: 3.5, weight: 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0 } };
+        return [...this.rippleLongNote(e1, resChord), ...this.rippleLongNote(e2, resChord)];
     }
 
     private constrainBassOctave(note: number): number {
@@ -815,69 +736,17 @@ export class AmbientBrain {
         const events: FractalEvent[] = []; 
         const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
         const scale = [0, 2, 4, 5, 7, 9, 11];
-        
         [0, 3, 6, 9].forEach((t, i) => { 
-            events.push({ 
-                type: 'bass', 
-                note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), 
-                time: t * TICK_TO_BEAT, 
-                duration: 3.0 * TICK_TO_BEAT, 
-                weight: 0.7, 
-                technique: 'pick', 
-                dynamics: 'p', 
-                phrasing: 'legato' 
-            }); 
+            events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
         });
-
-        const padE: FractalEvent = { 
-            type: 'accompaniment', 
-            note: this.constrainAccompanimentOctave(root + 12), 
-            time: 0, 
-            duration: 4.25, 
-            weight: 0.3, 
-            technique: 'swell', 
-            dynamics: 'p', 
-            phrasing: 'legato', 
-            params: { attack: 1.5, release: 2.5, mood: this.mood } 
-        };
+        const padE: FractalEvent = { type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.25, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5, mood: this.mood } };
         events.push(...this.rippleLongNote(padE, chord));
-
         if (hints.melody) { 
-            const melE: FractalEvent = { 
-                type: 'melody', 
-                note: root + 24, 
-                time: 1.5, 
-                duration: 3.125, 
-                weight: 0.5, 
-                technique: 'swell', 
-                dynamics: 'p', 
-                phrasing: 'legato', 
-                params: { attack: 2.0, release: 3.0, mood: this.mood } 
-            };
+            const melE: FractalEvent = { type: 'melody', note: root + 24, time: 1.5, duration: 3.125, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0, mood: this.mood } };
             events.push(...this.rippleLongNote(melE, chord)); 
         }
-
-        events.push({ 
-            type: 'drum_kick_reso', 
-            note: 36, 
-            time: 0, 
-            duration: 0.1, 
-            weight: 0.7, 
-            technique: 'hit', 
-            dynamics: 'p', 
-            phrasing: 'staccato' 
-        });
-        events.push({ 
-            type: 'drum_snare_ghost_note', 
-            note: 38, 
-            time: 9 * TICK_TO_BEAT, 
-            duration: 0.1, 
-            weight: 0.3, 
-            technique: 'hit', 
-            dynamics: 'p', 
-            phrasing: 'staccato' 
-        });
-
+        events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+        events.push({ type: 'drum_snare_ghost_note', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         return events;
     }
 }

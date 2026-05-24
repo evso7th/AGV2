@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Blues Brain V80.0 — "Pure Blues Integrity".
- * #ЗАЧЕМ: Очистка блюзового движка от нехарактерных атмосферных слоев.
- * #ЧТО: ПЛАН №2100 — Полностью удалена генерация Sparkles и SFX.
+ * @fileOverview Blues Brain V81.0 — "The Mutation Force".
+ * #ЗАЧЕМ: Реальное применение мутаций к Наследию.
+ * #ЧТО: ПЛАН №2900 — Добавлена поддержка транспозиции ступеней и исправлены логические цепочки.
  */
 
 import {
@@ -29,6 +28,7 @@ import {
     invertPhrase,
     retrogradePhrase,
     applyRhythmicJitter,
+    transposePhraseDegrees,
     mergeIdenticalNotes,
     keyToMidiRoot,
     resolveSemanticTimbre,
@@ -105,6 +105,7 @@ export class BluesBrain {
 
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
+  private degreeTransposition: number = 0;
 
   private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
   private lastHarmonySwitchBar: number = -1;
@@ -348,14 +349,15 @@ export class BluesBrain {
         const shifts = [0, 2, -2, 5, 7, -5];
         this.currentTransposition = shifts[this.random.nextInt(shifts.length)];
         this.microTransposition = 0;
+        this.degreeTransposition = 0;
     }
 
     if (epoch % 4 === 0) {
         const mutationRand = this.random.next();
-        const mutationThreshold = this.config.isImprovising ? 0.9 : 0.45;
+        const mutationThreshold = this.config.isImprovising ? 0.9 : 0.5;
         if (mutationRand < mutationThreshold * 0.25) {
-            this.microTransposition = [-2, 0, 2, 5, -5][this.random.nextInt(5)];
-            this.state.lastMutationType = 'transpose';
+            this.degreeTransposition = [-1, 1, 2, -2][this.random.nextInt(4)];
+            this.state.lastMutationType = 'transpose_deg';
         }
         else if (mutationRand < mutationThreshold * 0.5) this.state.lastMutationType = 'inversion';
         else if (mutationRand < mutationThreshold * 0.75) this.state.lastMutationType = 'retrograde';
@@ -423,7 +425,14 @@ export class BluesBrain {
             else if (rawRole.includes('accomp')) targetType = 'accompaniment';
             
             if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
-                const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
+                // #ЗАЧЕМ: Применение мутаций к сопровождению.
+                let activePhrase = ax.phrase;
+                if (this.state.lastMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                else if (this.state.lastMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                else if (this.state.lastMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
+                else if (this.state.lastMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, tension);
                 if (rendered.length > 0) {
                     if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
                     events.push(...rendered);
@@ -452,6 +461,7 @@ export class BluesBrain {
             if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
             else if (this.state.lastMutationType === 'retrograde') activeAxiom = retrogradePhrase(activeAxiom);
             else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
+            else if (this.state.lastMutationType === 'transpose_deg') activeAxiom = transposePhraseDegrees(activeAxiom, this.degreeTransposition);
             
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
         }
@@ -628,7 +638,13 @@ export class BluesBrain {
           const startEpoch = this.soloistBusyUntilBar - totalBars;
           const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
           const barOffset = mosaicBar * TICKS_PER_BAR;
-          const barNotes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+          
+          // #ЗАЧЕМ: Мутации баса.
+          let activeBassAxiom = this.currentBassAxiom;
+          if (this.state.lastMutationType === 'retrograde') activeBassAxiom = retrogradePhrase(activeBassAxiom);
+          else if (this.state.lastMutationType === 'jitter') activeBassAxiom = applyRhythmicJitter(activeBassAxiom, this.seed + epoch);
+
+          const barNotes = activeBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           if (barNotes.length > 0) {
               const rawEvents = barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
               return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
