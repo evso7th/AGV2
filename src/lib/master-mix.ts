@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Master Mix Registry V1.5 — "Drum Normalization".
- * #ЗАЧЕМ: Унификация дефолтных громкостей по запросу пользователя.
- * #ЧТО: Громкость ударных установлена на 0.5 (50) для всех жанров.
+ * @fileOverview Master Mix Registry V1.6 — "Reggae Drum Normalization".
+ * #ЗАЧЕМ: Точечная настройка баланса для Регги по запросу пользователя.
+ * #ЧТО: ПЛАН №2120 — Громкость ударных для 'reggae' снижена в 3 раза (0.50 -> 0.17).
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -44,7 +44,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         accompaniment: 0.30,
         harmony: 0.30,
         pianoAccompaniment: 0.30,
-        drums: 0.50,
+        // #ЗАЧЕМ: ПЛАН №2120. Снижение в 3 раза для мягкого даб-звучания.
+        drums: 0.17, 
         sparkles: 0.18,
         sfx: 0.25
     },
