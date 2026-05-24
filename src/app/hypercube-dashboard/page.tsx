@@ -124,8 +124,6 @@ const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian'
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-// #ЗАЧЕМ: Группировка инструментов для удобства аудита.
-// #ЧТО: ПЛАН №2700 — Добавлены динамические гибридные группы по запросу пользователя.
 const INSTRUMENT_GROUPS = [
   {
     label: 'Acoustic Guitars',
@@ -135,7 +133,8 @@ const INSTRUMENT_GROUPS = [
   {
     label: 'Electric Guitars',
     color: 'bg-blue-500/10 text-blue-400',
-    options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar']
+    // #ЗАЧЕМ: CS80 перемещен сюда по запросу пользователя.
+    options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80']
   },
   {
     label: 'Dynamic Leads & Hybrids',
@@ -165,7 +164,7 @@ const INSTRUMENT_GROUPS = [
   {
     label: 'Others',
     color: 'bg-gray-500/10 text-gray-400',
-    options: ['cs80', 'theremin', 'violin', 'flute', 'none']
+    options: ['theremin', 'violin', 'flute', 'none']
   }
 ];
 
@@ -210,7 +209,6 @@ const DISPLAY_NAMES: Record<string, string> = {
     'bass_cs80': 'CS80 Hybrid Bass',
     'none': 'No Override',
     'psybient': 'Psy-Ambient',
-    // #ЗАЧЕМ: Динамические гибриды.
     'dynamic_lead': '⚡ SHINE ON / MUFF LEAD',
     'dynamic_hybrid_1': '⚡ BLACK / CS80 / TELE',
     'dynamic_hybrid_2': '⚡ TELE / CS80 / SHINE',
