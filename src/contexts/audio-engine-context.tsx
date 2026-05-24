@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V49.0 — "Atmospheric Integration".
- * #ЗАЧЕМ: Озвучивание каналов Sparkles, SFX и Harmony из партитуры.
- * #ЧТО: ПЛАН №2080 — 1. Добавлены роутеры для sparkle и sfx. 2. Оптимизирован VOICE_BALANCE.
+ * @fileOverview Audio Engine Context V49.1 — "Radio Silence Protocol".
+ * #ЗАЧЕМ: Устранение эффекта эха при включении бродкаста.
+ * #ЧТО: ПЛАН №2140 — speakerGainNode глушится при активации Radio.
  */
 'use client';
 
@@ -297,7 +297,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.harmony);
                 if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
                 
-                // #ЗАЧЕМ: ПЛАН №2080. Озвучивание атмосферы из партитуры.
                 const sparkles = payload.events.filter((ev: any) => ev.type === 'sparkle');
                 if (sparkles.length > 0 && sparklePlayerRef.current) {
                     sparkles.forEach((s: any) => {
@@ -404,7 +403,26 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             toast({ title: "Recording Stopped", description: "Generating audio file..." });
         }
     },
-    toggleBroadcast: () => { if (broadcastEngineRef.current) { if (isBroadcastActive) { broadcastEngineRef.current.stop(); setIsBroadcastActive(false); } else { broadcastEngineRef.current.start(); setIsBroadcastActive(true); } } }, 
+    /**
+     * #ЗАЧЕМ: Протокол «Radio Silence» (План №2140).
+     * #ЧТО: Глушение прямого выхода на динамики при активации бродкаста.
+     */
+    toggleBroadcast: () => { 
+        if (broadcastEngineRef.current && audioContextRef.current) { 
+            const now = audioContextRef.current.currentTime;
+            if (isBroadcastActive) { 
+                broadcastEngineRef.current.stop(); 
+                setIsBroadcastActive(false); 
+                // Возвращаем звук в динамики
+                speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.1);
+            } else { 
+                broadcastEngineRef.current.start(); 
+                setIsBroadcastActive(true); 
+                // Глушим динамики - звук идет только через скрытый элемент бродкаста
+                speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, now, 0.1);
+            } 
+        } 
+    }, 
     getWorker: () => workerRef.current,
     playRawEvents: (e: any, h: any, t: any) => { if(audioContextRef.current) stopAllSounds(); },
     stopAllSounds,
@@ -412,7 +430,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     stopPreview: () => {},
     updatePreviewPreset: () => {},
     togglePreviewLoop: () => {}
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
+  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };
