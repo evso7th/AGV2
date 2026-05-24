@@ -1,7 +1,7 @@
 /**
- * @fileOverview Blues Brain V81.0 — "The Mutation Force".
- * #ЗАЧЕМ: Реальное применение мутаций к Наследию.
- * #ЧТО: ПЛАН №2900 — Добавлена поддержка транспозиции ступеней и исправлены логические цепочки.
+ * @fileOverview Blues Brain V82.0 — "The Mosaic Storyteller".
+ * #ЗАЧЕМ: Реализация генеративных мостов (Stitches) для бесшовного соединения ликов.
+ * #ЧТО: ПЛАН №3000 — 1. Внедрена логика bridgeUntilBar. 2. Автоматическое заполнение лакун между аксиомами.
  */
 
 import {
@@ -33,7 +33,9 @@ import {
     keyToMidiRoot,
     resolveSemanticTimbre,
     TICKS_PER_BAR,
-    TICK_TO_BEAT
+    TICK_TO_BEAT,
+    generateStitchPhrase,
+    getScaleForMood
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
@@ -102,6 +104,8 @@ export class BluesBrain {
   private soloistBusyUntilBar: number = -1;
   private soloistRestingUntilBar: number = -1;
   private accompanimentRestingUntilBar: number = -1;
+  private bridgeUntilBar: number = -1;
+  private lastMelodyNote: number = 60;
 
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
@@ -375,10 +379,19 @@ export class BluesBrain {
     }
 
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
+    const isBridging = epoch === this.bridgeUntilBar;
 
     let newBpm: number | undefined;
-    if (isSoloistFree && !isSoloistResting && !isBridge) {
-        newBpm = this.selectNextAxiom(navInfo, dna, epoch);
+    let melodyStatus = 'Waiting';
+
+    // #ЗАЧЕМ: Логика вставки моста между ликами.
+    if (isSoloistFree && !isSoloistResting && !isBridging && !isBridge) {
+        if (this.currentAxiom.length > 0 && this.config.useHeritage) {
+            this.bridgeUntilBar = epoch;
+            melodyStatus = 'STITCH';
+        } else {
+            newBpm = this.selectNextAxiom(navInfo, dna, epoch);
+        }
     }
 
     const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
@@ -393,6 +406,17 @@ export class BluesBrain {
             activeAxioms: { melody: 'Bridge', bass: 'Scale', drums: 'Soft', accompaniment: 'Flow', piano: 'Ghost', harmony: 'Unison' },
             narrative: `Liquid Bridge: Full ensemble transition through ${navInfo.currentPart.name}`
         };
+    }
+
+    if (isBridging) {
+        const scale = getScaleForMood(this.mood);
+        const nextNote = resChord.rootNote + 12;
+        const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
+        const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', stitch, TICKS_PER_BAR, 1.0, tension);
+        events.push(...stitchEvents);
+        melodyStatus = 'STITCH';
+        this.bridgeUntilBar = -1;
+        this.soloistBusyUntilBar = epoch + 1;
     }
 
     if (hints.drums) {
@@ -417,7 +441,7 @@ export class BluesBrain {
     let pStatus = 'none';
     let hStatus = 'none';
 
-    if (!isSoloistResting) {
+    if (!isSoloistResting && !isBridging) {
         this.currentAccompAxioms.forEach((ax) => {
             const rawRole = ax.role.toLowerCase(); 
             let targetType: InstrumentPart | null = null;
@@ -425,7 +449,6 @@ export class BluesBrain {
             else if (rawRole.includes('accomp')) targetType = 'accompaniment';
             
             if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
-                // #ЗАЧЕМ: Применение мутаций к сопровождению.
                 let activePhrase = ax.phrase;
                 if (this.state.lastMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
                 else if (this.state.lastMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
@@ -455,7 +478,7 @@ export class BluesBrain {
     let melodyEvents: FractalEvent[] = [];
     let currentLickDisplayId = this.currentLickId;
 
-    if (hints.melody && !isSoloistResting) {
+    if (hints.melody && !isSoloistResting && !isBridging) {
         if (this.currentAxiom.length > 0 && epoch < this.soloistBusyUntilBar) {
             let activeAxiom = this.currentAxiom;
             if (this.state.lastMutationType === 'inversion') activeAxiom = invertPhrase(activeAxiom);
@@ -464,14 +487,19 @@ export class BluesBrain {
             else if (this.state.lastMutationType === 'transpose_deg') activeAxiom = transposePhraseDegrees(activeAxiom, this.degreeTransposition);
             
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
+            melodyStatus = currentLickDisplayId;
         }
         
         if (melodyEvents.length === 0) {
             melodyEvents = this.renderGapFiller(epoch, resChord, tension);
             currentLickDisplayId = 'Gap';
+            melodyStatus = 'Gap';
         }
 
         melodyEvents.forEach(e => e.pan = -0.15);
+        if (melodyEvents.length > 0) {
+            this.lastMelodyNote = melodyEvents[melodyEvents.length - 1].note;
+        }
         events.push(...melodyEvents);
     }
 
@@ -497,10 +525,10 @@ export class BluesBrain {
 
     return {
         events, tension, beautyScore: 0.5,
-        lickId: currentLickDisplayId, mutationType: this.state.lastMutationType, newBpm,
+        lickId: melodyStatus, mutationType: this.state.lastMutationType, newBpm,
         instrumentOverrides, trackName: this.currentTrackName,
         activeAxioms: {
-            melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
+            melody: isSoloistResting ? 'Breath' : melodyStatus,
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
             bass: bassStatus,
             drums: isSoloistResting ? 'Fill' : 'Pulse',
@@ -541,72 +569,18 @@ export class BluesBrain {
 
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
-      
-      events.push({ 
-          type: 'drum_kick_reso', note: 36, time: 0, 
-          duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-      });
-      
-      if (tension > 0.6 || this.random.next() < 0.4) {
-          events.push({ 
-              type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, 
-              duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-          });
-      }
-
-      [3, 9].forEach(t => {
-          events.push({ 
-              type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, 
-              duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-          });
-      });
-
-      [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
-          if (this.random.next() < 0.45) {
-              events.push({ 
-                  type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, 
-                  duration: 0.1, weight: 0.15 + (this.random.next() * 0.2), 
-                  technique: 'ghost', dynamics: 'p', phrasing: 'staccato' 
-              });
-          }
-      });
-
-      if (this.random.next() < 0.15) {
-          events.push({
-              type: 'drum_ride_wetter', note: 51, 
-              time: (this.random.nextInt(12)) * TICK_TO_BEAT, 
-              duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.4
-          });
-      }
-
-      [0, 3, 6, 9].forEach(t => {
-          events.push({ 
-              type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-              time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, 
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
-          });
-      });
-
-      const isFourthBar = epoch % 4 === 3;
-      const isEighthBar = epoch % 8 === 7;
-      
-      if (isFourthBar || isEighthBar || isSoloistResting) {
-          const intensity = isEighthBar ? 1.2 : 0.95;
+      events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      if (tension > 0.6 || this.random.next() < 0.4) events.push({ type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
+      [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => { if (this.random.next() < 0.45) events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.15 + (this.random.next() * 0.2), technique: 'ghost', dynamics: 'p', phrasing: 'staccato' }); });
+      if (this.random.next() < 0.15) events.push({ type: 'drum_ride_wetter', note: 51, time: (this.random.nextInt(12)) * TICK_TO_BEAT, duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.4 });
+      [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2 }));
+      if (epoch % 4 === 3 || isSoloistResting) {
+          const intensity = epoch % 8 === 7 ? 1.2 : 0.95;
           const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           const pans = [-0.8, 0.0, 0.8]; 
-          
-          [9, 10, 11].forEach((t, i) => {
-              const rollRoll = this.random.next();
-              if (rollRoll < 0.9) { 
-                  events.push({ 
-                      type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
-                      duration: 0.5, weight: (0.75 + i * 0.1) * intensity, 
-                      technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: pans[i] 
-                  });
-              }
-          });
+          [9, 10, 11].forEach((t, i) => { if (this.random.next() < 0.9) events.push({ type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5, weight: (0.75 + i * 0.1) * intensity, technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: pans[i] }); });
       }
-
       return events;
   }
 
@@ -617,10 +591,9 @@ export class BluesBrain {
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
         const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
-        
         return {
             type: type as any,
-            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+            note: Math.min(chord.rootNote + 12 + (n.octShift ? n.octShift * 12 : 0) + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
             weight: 0.75, 
@@ -638,12 +611,9 @@ export class BluesBrain {
           const startEpoch = this.soloistBusyUntilBar - totalBars;
           const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
           const barOffset = mosaicBar * TICKS_PER_BAR;
-          
-          // #ЗАЧЕМ: Мутации баса.
           let activeBassAxiom = this.currentBassAxiom;
           if (this.state.lastMutationType === 'retrograde') activeBassAxiom = retrogradePhrase(activeBassAxiom);
           else if (this.state.lastMutationType === 'jitter') activeBassAxiom = applyRhythmicJitter(activeBassAxiom, this.seed + epoch);
-
           const barNotes = activeBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           if (barNotes.length > 0) {
               const rawEvents = barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
@@ -690,11 +660,7 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
       if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
       const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
-      melodyEvents.forEach((m, i) => {
-          if (i % 2 === 0) {
-              events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval), weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { ...m.params, release: 2.5 } });
-          }
-      });
+      melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval), weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { ...m.params, release: 2.5 } }); });
       return { events, style: "Shadow" };
   }
 
@@ -702,17 +668,10 @@ export class BluesBrain {
       const events: FractalEvent[] = []; 
       const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
       const scale = [0, 2, 4, 5, 7, 9, 11];
-      [0, 3, 6, 9].forEach((t, i) => { 
-          events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
-      });
+      [0, 3, 6, 9].forEach((t, i) => { events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); });
       const padE: FractalEvent = { type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
       events.push(...this.rippleLongNote(padE, chord));
-      
-      if (hints.melody) {
-          const melE: FractalEvent = { type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
-          events.push(...this.rippleLongNote(melE, chord));
-      }
-      
+      if (hints.melody) { const melE: FractalEvent = { type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' }; events.push(...this.rippleLongNote(melE, chord)); }
       events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       return events;
@@ -723,19 +682,11 @@ export class BluesBrain {
       const rootName = MIDI_NOTE_NAMES[rootMidi % 12] || 'C';
       const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : '');
       const note = this.constrainAccompanimentOctave(rootMidi + 12);
-      if (timbre === 'guitarChords') {
-          const e: FractalEvent = { type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName };
-          return this.rippleLongNote(e, currentChord);
-      }
+      if (timbre === 'guitarChords') { const e: FractalEvent = { type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName }; return this.rippleLongNote(e, currentChord); }
       const e2: FractalEvent = { type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
       return this.rippleLongNote(e2, currentChord);
   }
 
-  private constrainBassOctave(note: number): number {
-      let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
-  }
-
-  private constrainAccompanimentOctave(note: number): number {
-      let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
-  }
+  private constrainBassOctave(note: number): number { let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
+  private constrainAccompanimentOctave(note: number): number { let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }

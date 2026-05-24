@@ -1,7 +1,7 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.1 — "Mutation Core".
- * #ЗАЧЕМ: Реализация математических трансформаций для Наследия.
- * #ЧТО: ПЛАН №2900 — Добавлены функции транспозиции ступеней и улучшен ретроград.
+ * @fileOverview Universal Music Theory Utilities V6.2 — "The Stitching Core".
+ * #ЗАЧЕМ: Реализация математических трансформаций и генеративных мостов.
+ * #ЧТО: ПЛАН №3000 — Добавлена функция generateStitchPhrase для бесшовных переходов.
  */
 
 import type { 
@@ -47,6 +47,86 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
+// ───── L-LOGIC (TRANSFORMATIONS & BRIDGES) ─────
+
+/**
+ * #ЗАЧЕМ: Генератор "Музыкальных Сшивок" (Musical Stitches).
+ * #ЧТО: Создает короткую фразу, соединяющую последнюю ноту одного блока с первой нотой следующего.
+ */
+export function generateStitchPhrase(
+    fromNote: number, 
+    toNote: number, 
+    scale: number[]
+): any[] {
+    const phrase: any[] = [];
+    const interval = toNote - fromNote;
+    const steps = 3; // 3 ноты для заполнения такта (триоли или четверти)
+    
+    for (let i = 1; i <= steps; i++) {
+        const progress = i / (steps + 1);
+        const approxPitch = fromNote + (interval * progress);
+        
+        // Привязка к гамме
+        const octave = Math.floor(approxPitch / 12) * 12;
+        const semi = Math.round(approxPitch % 12);
+        const inScale = scale.reduce((prev, curr) => 
+            Math.abs(curr - semi) < Math.abs(prev - semi) ? curr : prev
+        );
+        
+        phrase.push({
+            t: (TICKS_PER_BAR / steps) * (i - 1),
+            d: TICKS_PER_BAR / steps,
+            deg: SEMITONE_TO_DEGREE[inScale] || 'R',
+            tech: Math.abs(interval) > 5 ? 'sl' : 'pick'
+        });
+    }
+    return phrase;
+}
+
+export function normalizePhraseGroup(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const minT = Math.min(...phrase.map(n => n.t));
+    return phrase.map(n => ({ ...n, t: n.t - minT }));
+}
+
+export function invertPhrase(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const firstSemi = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
+    return phrase.map(n => {
+        const currentSemi = DEGREE_TO_SEMITONE[n.deg] || 0;
+        const invertedSemi = firstSemi - (currentSemi - firstSemi);
+        const wrappedSemi = ((invertedSemi % 12) + 12) % 12;
+        const degName = SEMITONE_TO_DEGREE[wrappedSemi] || 'R';
+        return { ...n, deg: degName };
+    });
+}
+
+export function retrogradePhrase(phrase: any[]): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    const maxT = Math.max(...phrase.map(n => n.t + n.d));
+    return [...phrase].map(n => ({ 
+        ...n, 
+        t: maxT - (n.t + n.d) 
+    })).sort((a, b) => a.t - b.t);
+}
+
+export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
+    return phrase.map((n, i) => {
+        const jitter = (calculateMusiNum(seed + i, 7, 0, 20) / 100) - 0.1; 
+        return { ...n, t: Math.max(0, n.t + jitter) };
+    });
+}
+
+export function transposePhraseDegrees(phrase: any[], shift: number): any[] {
+    if (!phrase || phrase.length === 0 || shift === 0) return phrase;
+    return phrase.map(n => {
+        const currentIdx = DEGREE_KEYS.indexOf(n.deg);
+        if (currentIdx === -1) return n;
+        const nextIdx = (currentIdx + shift + DEGREE_KEYS.length) % DEGREE_KEYS.length;
+        return { ...n, deg: DEGREE_KEYS[nextIdx] };
+    });
+}
+
 // ───── ATLASES ─────
 
 export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
@@ -61,66 +141,6 @@ export const LIGHT_ATLAS: Record<string, { intensity: number, bloom: number }> =
     'enthusiastic': { intensity: 0.7, bloom: 0.6 },
     'joyful': { intensity: 0.9, bloom: 0.4 }
 };
-
-// ───── L-LOGIC (TRANSFORMATIONS) ─────
-
-export function normalizePhraseGroup(phrase: any[]): any[] {
-    if (!phrase || phrase.length === 0) return [];
-    const minT = Math.min(...phrase.map(n => n.t));
-    return phrase.map(n => ({ ...n, t: n.t - minT }));
-}
-
-/**
- * #ЗАЧЕМ: Инверсия мелодии (зеркальное отражение).
- */
-export function invertPhrase(phrase: any[]): any[] {
-    if (!phrase || phrase.length === 0) return [];
-    const firstSemi = DEGREE_TO_SEMITONE[phrase[0].deg] || 0;
-    return phrase.map(n => {
-        const currentSemi = DEGREE_TO_SEMITONE[n.deg] || 0;
-        const invertedSemi = firstSemi - (currentSemi - firstSemi);
-        // Заворачиваем в одну октаву для стабильности, но сохраняем направление
-        const wrappedSemi = ((invertedSemi % 12) + 12) % 12;
-        const degName = SEMITONE_TO_DEGREE[wrappedSemi] || 'R';
-        return { ...n, deg: degName };
-    });
-}
-
-/**
- * #ЗАЧЕМ: Ретроград (проигрывание задом наперед).
- */
-export function retrogradePhrase(phrase: any[]): any[] {
-    if (!phrase || phrase.length === 0) return [];
-    const maxT = Math.max(...phrase.map(n => n.t + n.d));
-    return [...phrase].map(n => ({ 
-        ...n, 
-        t: maxT - (n.t + n.d) 
-    })).sort((a, b) => a.t - b.t);
-}
-
-/**
- * #ЗАЧЕМ: Ритмический джиттер (микро-сдвиги времени).
- */
-export function applyRhythmicJitter(phrase: any[], seed: number): any[] {
-    return phrase.map((n, i) => {
-        // Детерминированный джиттер на основе Seed сессии
-        const jitter = (calculateMusiNum(seed + i, 7, 0, 20) / 100) - 0.1; 
-        return { ...n, t: Math.max(0, n.t + jitter) };
-    });
-}
-
-/**
- * #ЗАЧЕМ: Модальная транспозиция (сдвиг ступеней).
- */
-export function transposePhraseDegrees(phrase: any[], shift: number): any[] {
-    if (!phrase || phrase.length === 0 || shift === 0) return phrase;
-    return phrase.map(n => {
-        const currentIdx = DEGREE_KEYS.indexOf(n.deg);
-        if (currentIdx === -1) return n;
-        const nextIdx = (currentIdx + shift + DEGREE_KEYS.length) % DEGREE_KEYS.length;
-        return { ...n, deg: DEGREE_KEYS[nextIdx] };
-    });
-}
 
 // ───── CORE UTILS ─────
 
@@ -179,34 +199,24 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     if (!targetHint || targetHint === 'none') return 'none';
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // ───── DYNAMIC HYBRID GROUPS (PLAN №2700) ─────
-    
-    // 1. ShineOn / Muff Lead
-    if (clean === 'dynamiclead') {
-        return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
-    }
-    // 2. Black - CS80 - Telecaster
+    // ───── DYNAMIC HYBRID GROUPS ─────
+    if (clean === 'dynamiclead') return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
     if (clean === 'dynamichybrid1' || clean === 'blackcs80tele') {
         if (tension < 0.35) return 'blackAcoustic';
         if (tension < 0.70) return 'cs80';
         return 'telecaster';
     }
-    // 3. Telecaster - CS80 - ShineOn
     if (clean === 'dynamichybrid2' || clean === 'telecs80shine') {
         if (tension < 0.35) return 'telecaster';
         if (tension < 0.70) return 'cs80';
         return 'guitar_shineOn';
     }
-    // 4. Black - CS80 - ShineOn
     if (clean === 'dynamicblackshine' || clean === 'blackcs80shine') {
         if (tension < 0.35) return 'blackAcoustic';
         if (tension < 0.70) return 'cs80';
         return 'guitar_shineOn';
     }
-    // 5. Warm Rhodes - Acoustic Piano
-    if (clean === 'dynamicpianodual' || clean === 'rhodespiano') {
-        return tension < 0.5 ? 'ep_rhodes_warm' : 'piano';
-    }
+    if (clean === 'dynamicpianodual' || clean === 'rhodespiano') return tension < 0.5 ? 'ep_rhodes_warm' : 'piano';
 
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
