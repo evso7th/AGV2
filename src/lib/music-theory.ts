@@ -1,7 +1,7 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.2 — "The Stitching Core".
- * #ЗАЧЕМ: Реализация математических трансформаций и генеративных мостов.
- * #ЧТО: ПЛАН №3000 — Добавлена функция generateStitchPhrase для бесшовных переходов.
+ * @fileOverview Universal Music Theory Utilities V6.3 — "The Articulation Core".
+ * #ЗАЧЕМ: Реализация математических трансформаций и динамической артикуляции.
+ * #ЧТО: ПЛАН №3100 — Добавлена функция applyDynamicArticulation для живого переосмысления штрихов.
  */
 
 import type { 
@@ -50,6 +50,35 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 // ───── L-LOGIC (TRANSFORMATIONS & BRIDGES) ─────
 
 /**
+ * #ЗАЧЕМ: Утилита "Живой Артикуляции".
+ * #ЧТО: Динамическая замена техник исполнения в зависимости от энергии сессии.
+ */
+export function applyDynamicArticulation(phrase: any[], tension: number, seed: number): any[] {
+    if (!phrase) return [];
+    return phrase.map((n, i) => {
+        let tech = n.tech || 'pick';
+        const rand = (calculateMusiNum(seed + i, 19, 0, 100) / 100);
+        
+        // 1. Длинные ноты (>= 1/2 такта)
+        if (n.d >= 6) {
+            if (tension > 0.75) tech = 'bn'; // Экспрессивная подтяжка на пиках
+            else if (tension > 0.25) tech = 'vb'; // Классическое вибрато
+            else if (rand < 0.4) tech = 'swell'; // Плавное вплывание в тишине
+        } 
+        // 2. Короткие ноты (<= 1/4 такта)
+        else if (n.d <= 3) {
+            if (rand < 0.12) tech = 'sl'; // Слайд
+            else if (rand > 0.94) tech = 'gr'; // Форшлаг (grace note)
+        }
+        
+        // 3. Смена характера атаки для "шепота"
+        if (tech === 'pick' && tension < 0.15 && rand > 0.7) tech = 'swell';
+        
+        return { ...n, tech };
+    });
+}
+
+/**
  * #ЗАЧЕМ: Генератор "Музыкальных Сшивок" (Musical Stitches).
  * #ЧТО: Создает короткую фразу, соединяющую последнюю ноту одного блока с первой нотой следующего.
  */
@@ -60,17 +89,16 @@ export function generateStitchPhrase(
 ): any[] {
     const phrase: any[] = [];
     const interval = toNote - fromNote;
-    const steps = 3; // 3 ноты для заполнения такта (триоли или четверти)
+    const steps = 3; 
     
     for (let i = 1; i <= steps; i++) {
         const progress = i / (steps + 1);
         const approxPitch = fromNote + (interval * progress);
         
-        // Привязка к гамме
         const octave = Math.floor(approxPitch / 12) * 12;
         const semi = Math.round(approxPitch % 12);
         const inScale = scale.reduce((prev, curr) => 
-            Math.abs(curr - semi) < Math.abs(prev - semi) ? curr : prev
+            Math.abs(prev - semi) < Math.abs(curr - semi) ? prev : curr
         );
         
         phrase.push({

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Blues Brain V82.0 — "The Mosaic Storyteller".
- * #ЗАЧЕМ: Реализация генеративных мостов (Stitches) для бесшовного соединения ликов.
- * #ЧТО: ПЛАН №3000 — 1. Внедрена логика bridgeUntilBar. 2. Автоматическое заполнение лакун между аксиомами.
+ * @fileOverview Blues Brain V83.0 — "The Expressive Storyteller".
+ * #ЗАЧЕМ: Реализация динамической артикуляции для живого исполнения блюза.
+ * #ЧТО: ПЛАН №3100 — Интеграция applyDynamicArticulation. Блюзовая гитара теперь плачет и поет.
  */
 
 import {
@@ -35,7 +35,8 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT,
     generateStitchPhrase,
-    getScaleForMood
+    getScaleForMood,
+    applyDynamicArticulation
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
@@ -384,7 +385,6 @@ export class BluesBrain {
     let newBpm: number | undefined;
     let melodyStatus = 'Waiting';
 
-    // #ЗАЧЕМ: Логика вставки моста между ликами.
     if (isSoloistFree && !isSoloistResting && !isBridging && !isBridge) {
         if (this.currentAxiom.length > 0 && this.config.useHeritage) {
             this.bridgeUntilBar = epoch;
@@ -412,7 +412,9 @@ export class BluesBrain {
         const scale = getScaleForMood(this.mood);
         const nextNote = resChord.rootNote + 12;
         const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-        const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', stitch, TICKS_PER_BAR, 1.0, tension);
+        // #ЗАЧЕМ: Артикуляция моста.
+        const articulatedStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+        const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', articulatedStitch, TICKS_PER_BAR, 1.0, tension);
         events.push(...stitchEvents);
         melodyStatus = 'STITCH';
         this.bridgeUntilBar = -1;
@@ -455,6 +457,9 @@ export class BluesBrain {
                 else if (this.state.lastMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.state.lastMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
+                // #ЗАЧЕМ: Динамическое исполнение аккомпанемента.
+                activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+
                 const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, tension);
                 if (rendered.length > 0) {
                     if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
@@ -476,7 +481,7 @@ export class BluesBrain {
     }
 
     let melodyEvents: FractalEvent[] = [];
-    let currentLickDisplayId = this.currentLickId;
+    let melodyStatusId = 'Algo';
 
     if (hints.melody && !isSoloistResting && !isBridging) {
         if (this.currentAxiom.length > 0 && epoch < this.soloistBusyUntilBar) {
@@ -486,14 +491,16 @@ export class BluesBrain {
             else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
             else if (this.state.lastMutationType === 'transpose_deg') activeAxiom = transposePhraseDegrees(activeAxiom, this.degreeTransposition);
             
+            // #ЗАЧЕМ: ПЛАН №3100. Живое соло.
+            activeAxiom = applyDynamicArticulation(activeAxiom, tension, this.seed + epoch);
+
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
-            melodyStatus = currentLickDisplayId;
+            melodyStatusId = this.currentLickId;
         }
         
         if (melodyEvents.length === 0) {
             melodyEvents = this.renderGapFiller(epoch, resChord, tension);
-            currentLickDisplayId = 'Gap';
-            melodyStatus = 'Gap';
+            melodyStatusId = 'Gap';
         }
 
         melodyEvents.forEach(e => e.pan = -0.15);
@@ -501,6 +508,7 @@ export class BluesBrain {
             this.lastMelodyNote = melodyEvents[melodyEvents.length - 1].note;
         }
         events.push(...melodyEvents);
+        melodyStatus = melodyStatusId;
     }
 
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
@@ -524,8 +532,8 @@ export class BluesBrain {
     const modeStr = this.config.isImprovising ? 'IMPRO' : 'RESTO';
 
     return {
-        events, tension, beautyScore: 0.5,
-        lickId: melodyStatus, mutationType: this.state.lastMutationType, newBpm,
+        events, lickId: melodyStatus, tension, beautyScore: 0.5,
+        mutationType: this.state.lastMutationType, newBpm,
         instrumentOverrides, trackName: this.currentTrackName,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : melodyStatus,
@@ -558,6 +566,7 @@ export class BluesBrain {
               time: t * TICK_TO_BEAT,
               duration: (1.5 * TICK_TO_BEAT) * 1.25,
               weight: 0.65 + (tension * 0.15),
+              // #ЗАЧЕМ: Умный выбор техники даже в лакунах.
               technique: tension > 0.4 ? 'vb' : 'pick',
               dynamics: 'p',
               phrasing: 'legato'
@@ -590,14 +599,14 @@ export class BluesBrain {
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
-        const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
         return {
             type: type as any,
             note: Math.min(chord.rootNote + 12 + (n.octShift ? n.octShift * 12 : 0) + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
             weight: 0.75, 
-            technique: useVibrato ? 'vb' as Technique : (n.tech as any || 'pick'), 
+            // #ЗАЧЕМ: Используем живую технику из фразы.
+            technique: n.tech as Technique, 
             dynamics: 'p', 
             phrasing: 'legato'
         };
@@ -614,9 +623,13 @@ export class BluesBrain {
           let activeBassAxiom = this.currentBassAxiom;
           if (this.state.lastMutationType === 'retrograde') activeBassAxiom = retrogradePhrase(activeBassAxiom);
           else if (this.state.lastMutationType === 'jitter') activeBassAxiom = applyRhythmicJitter(activeBassAxiom, this.seed + epoch);
+          
+          // #ЗАЧЕМ: Артикуляция баса.
+          activeBassAxiom = applyDynamicArticulation(activeBassAxiom, tension, this.seed + epoch + 50);
+
           const barNotes = activeBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           if (barNotes.length > 0) {
-              const rawEvents = barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'legato' }));
+              const rawEvents = barNotes.map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: n.tech as Technique, dynamics: 'p', phrasing: 'legato' }));
               return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
           }
       }
@@ -645,7 +658,7 @@ export class BluesBrain {
       const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
           type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
           time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
-          technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
+          technique: n.tech as Technique, dynamics: 'p', phrasing: 'staccato'
       }));
       return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
   }

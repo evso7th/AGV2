@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V86.0 — "The Stitching Prophet".
- * #ЗАЧЕМ: Реализация генеративных мостов (Stitches) между блоками Наследия.
- * #ЧТО: ПЛАН №3000 — 1. Добавлено состояние bridgeUntilBar. 2. Алгоритмическая сшивка фраз.
+ * @fileOverview Ambient Brain V87.0 — "The Articulate Dreamer".
+ * #ЗАЧЕМ: Реализация динамической артикуляции для живого исполнения Наследия.
+ * #ЧТО: ПЛАН №3100 — Интеграция applyDynamicArticulation в рендеринг мелодий и аккомпанемента.
  */
 
 import type {
@@ -36,7 +36,8 @@ import {
     TICK_TO_BEAT,
     normalizeStr,
     generateStitchPhrase,
-    getScaleForMood
+    getScaleForMood,
+    applyDynamicArticulation
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -368,9 +369,7 @@ export class AmbientBrain {
         let newBpm: number | undefined;
         let melodyStatus = 'Waiting';
 
-        // #ЗАЧЕМ: Логика вставки "Сшивок" (Stitches).
         if (isSoloistFree && !isSoloistResting && !isBridging) {
-            // Перед входом в новый сегмент, если мы не в режиме отдыха, вставляем мост на 1 такт.
             if (this.currentTheme && this.useHeritage) {
                 this.bridgeUntilBar = epoch;
                 melodyStatus = 'STITCH';
@@ -380,15 +379,16 @@ export class AmbientBrain {
         }
 
         if (isBridging) {
-            // Генерируем мост
             const scale = getScaleForMood(this.mood);
-            const nextNote = resRoot + 12 + this.registerShift; // Приблизительная цель
+            const nextNote = resRoot + 12 + this.registerShift; 
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-            const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', stitch, TICKS_PER_BAR, 1.0, localTension);
+            // #ЗАЧЕМ: Применяем артикуляцию к мосту.
+            const articulatedStitch = applyDynamicArticulation(stitch, localTension, this.seed + epoch);
+            const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', articulatedStitch, TICKS_PER_BAR, 1.0, localTension);
             events.push(...stitchEvents);
             melodyStatus = 'STITCH';
-            this.bridgeUntilBar = -1; // Сброс
-            this.soloistBusyUntilBar = epoch + 1; // Занимаем такт мостом
+            this.bridgeUntilBar = -1; 
+            this.soloistBusyUntilBar = epoch + 1; 
         }
 
         const instrumentOverrides: Partial<InstrumentHints> = {};
@@ -416,6 +416,9 @@ export class AmbientBrain {
                     else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                     else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                     else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                    // #ЗАЧЕМ: ПЛАН №3100. Живое исполнение аккомпанемента.
+                    activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch + 100);
 
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, localTension);
                     
@@ -454,6 +457,9 @@ export class AmbientBrain {
             let bassPhrase = this.currentBassTheme.phrase;
             if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
             else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
+            
+            // #ЗАЧЕМ: Басист тоже проявляет характер.
+            bassPhrase = applyDynamicArticulation(bassPhrase, localTension, this.seed + epoch + 50);
 
             const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna, bassPhrase);
             if (themeBass.length > 0) {
@@ -476,6 +482,9 @@ export class AmbientBrain {
                 else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                // #ЗАЧЕМ: ПЛАН №3100. Центральное звено живого соло.
+                activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
 
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
                 melodyStatus = this.currentTheme.id;
@@ -613,27 +622,6 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-
-        this.currentDrumAxioms.forEach(ax => {
-            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
-                events.push({
-                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), 
-                    time: (n.t - barOffset + (this.random.next() - 0.5) * 0.8) * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
-                    pan: (this.random.next() * 1.4) - 0.7
-                });
-            });
-        });
-        return events;
-    }
-
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const degrees = [0, 7, 9, 5, 0, 7, 2, 0];
         const shift = degrees[calculateMusiNum(epoch, 4, this.seed, 8)];
@@ -658,9 +646,10 @@ export class AmbientBrain {
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
             weight: 0.7,
-            technique: tension > 0.85 ? ('hit' as Technique) : ('swell' as Technique), 
+            // #ЗАЧЕМ: Используем технику из фразы (она уже артикулирована).
+            technique: n.tech as Technique, 
             dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
-            params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (localTension * 1200), mood: this.mood }
+            params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (tension * 1200), mood: this.mood }
         }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
@@ -678,7 +667,7 @@ export class AmbientBrain {
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
             weight: 0.7,
-            technique: localTension > 0.85 ? ('hit' as Technique) : ('swell' as Technique), 
+            technique: n.tech as Technique, 
             dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (localTension * 1200), mood: this.mood }
         }));
@@ -694,7 +683,7 @@ export class AmbientBrain {
         if (barNotes.length === 0) return []; 
         const rawEvents = barNotes.map(n => ({
             type: 'bass' as any, note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8, technique: n.tech as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
         }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
@@ -708,7 +697,7 @@ export class AmbientBrain {
         const rawEvents = barNotes.map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
+            technique: n.tech as Technique, dynamics: 'p', phrasing: 'staccato'
         }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }

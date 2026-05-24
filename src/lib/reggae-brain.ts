@@ -1,7 +1,7 @@
 /**
- * @fileOverview Reggae Brain V45.0 — "The Dub Stitcher".
- * #ЗАЧЕМ: Реализация генеративных мостов (Stitches) для бесшовности даб-структур.
- * #ЧТО: ПЛАН №3000 — Добавлена поддержка bridgeUntilBar и интеграция Stitches.
+ * @fileOverview Reggae Brain V46.0 — "The Articulate Dubber".
+ * #ЗАЧЕМ: Реализация динамической артикуляции для живого исполнения регги.
+ * #ЧТО: ПЛАН №3100 — Интеграция applyDynamicArticulation. Гитары и басы получают живой характер.
  */
 
 import type {
@@ -33,7 +33,8 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT,
     generateStitchPhrase,
-    getScaleForMood
+    getScaleForMood,
+    applyDynamicArticulation
 } from './music-theory';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -164,16 +165,20 @@ export class ReggaeBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    drumSiblings.forEach(ax => {
+                        this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id });
+                    });
+
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
                     const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accompSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
-
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
+                    accompSiblings.forEach(ax => {
+                        this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
+                    });
 
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -247,7 +252,6 @@ export class ReggaeBrain {
         let newBpm: number | undefined;
         let melodyStatus = 'Waiting';
 
-        // #ЗАЧЕМ: Логика вставки моста (Stitch).
         if (isSoloistFree && !isBridging) {
             if (this.currentTheme && this.useHeritage) {
                 this.bridgeUntilBar = epoch;
@@ -269,7 +273,9 @@ export class ReggaeBrain {
             const scale = getScaleForMood(this.mood);
             const nextNote = resRoot + 12;
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-            const stitchEvents = this.renderHeritageMelody(epoch, resChord, tension, stitch);
+            // #ЗАЧЕМ: Артикуляция моста.
+            const articulatedStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+            const stitchEvents = this.renderHeritageMelody(epoch, resChord, tension, articulatedStitch);
             events.push(...stitchEvents);
             melodyStatus = 'STITCH';
             this.bridgeUntilBar = -1;
@@ -288,6 +294,10 @@ export class ReggaeBrain {
                 let bassPhrase = this.currentBassTheme.phrase;
                 if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
                 else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
+                
+                // #ЗАЧЕМ: Артикуляция баса.
+                bassPhrase = applyDynamicArticulation(bassPhrase, tension, this.seed + epoch + 50);
+
                 events.push(...this.renderHeritageBass(epoch, resChord, tension, bassPhrase));
             } else {
                 events.push(...this.renderGenerativeBass(epoch, resChord, tension));
@@ -311,6 +321,10 @@ export class ReggaeBrain {
                     if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
                     else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                     else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+                    
+                    // #ЗАЧЕМ: Артикуляция аккомпанемента.
+                    activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+
                     events.push(...this.renderHeritageLayer(resChord, epoch, activePhrase, target, tension));
                     usedLayers.add(target);
                     if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
@@ -333,6 +347,10 @@ export class ReggaeBrain {
                 else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+                
+                // #ЗАЧЕМ: Динамическая артикуляция мелодии.
+                activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
+
                 const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension, activePhrase);
                 if (heritageMelody.length > 0) { events.push(...heritageMelody); melodyStatus = this.currentTheme.id; }
             }
@@ -392,8 +410,7 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
-            const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
-            return { type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING), time: (n.t - barOffset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 0.85 + (tension * 0.1), technique: useVibrato ? 'vb' as Technique : 'pick', dynamics: 'mf', phrasing: 'legato' };
+            return { type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING), time: (n.t - barOffset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 0.85 + (tension * 0.1), technique: n.tech as Technique, dynamics: 'mf', phrasing: 'legato' };
         });
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
@@ -403,7 +420,7 @@ export class ReggaeBrain {
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }));
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({ type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: n.tech as Technique, dynamics: 'mf', phrasing: 'detached' }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
@@ -412,7 +429,7 @@ export class ReggaeBrain {
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({ type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato' }));
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({ type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)), time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, technique: n.tech as Technique, dynamics: 'p', phrasing: 'staccato' }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
