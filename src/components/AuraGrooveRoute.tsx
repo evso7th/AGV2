@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.8 — "Voice Sovereignty Restoration".
- * #ЧТО: ПЛАН №2300 — Возвращена кнопка управления лимитом голосов в нижний тулбар.
+ * #ЗАЧЕМ: UI AuraGroove V7.9 — "Mobile Tactile Queue".
+ * #ЧТО: ПЛАН №2310 — Внедрена поддержка touch-dragging через touch-none и оптимизацию сенсоров.
  */
 'use client';
 
@@ -191,7 +191,16 @@ function SortableRouteItem({
     return (
         <div ref={setNodeRef} style={style} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden", isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent", isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50")}>
             {isActive && progress !== undefined && (<div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20"><div className="h-full bg-primary transition-all duration-1000 ease-linear" style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }} /></div>)}
-            <div className="flex items-center gap-3 overflow-hidden z-10"><div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors"><GripVertical className="h-4 w-4" /></div><div className="truncate"><div className="text-[11px] font-black uppercase tracking-tight">{item.genre} / {item.mood}</div></div></div>
+            <div className="flex items-center gap-3 overflow-hidden z-10">
+                <div 
+                    {...attributes} 
+                    {...listeners} 
+                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none"
+                >
+                    <GripVertical className="h-4 w-4" />
+                </div>
+                <div className="truncate"><div className="text-[11px] font-black uppercase tracking-tight">{item.genre} / {item.mood}</div></div>
+            </div>
             <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => onRemove(item.id)}><X className="h-4 w-4" /></Button>
         </div>
     );
@@ -210,7 +219,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [routeName, setRouteName] = useState("");
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
