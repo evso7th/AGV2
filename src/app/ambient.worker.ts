@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.6 — "Atmosphere Transmission".
- * #ЗАЧЕМ: Добавлена передача контекста (Genre/Mood) для правильной работы сэмплеров.
- * #ЧТО: ПЛАН №2080 — payload теперь содержит genre и mood для резонансного выбора сэмплов.
+ * @fileOverview AuraGroove Music Worker V5.7 — "Atmosphere Transmission with Mutation Telemetry".
+ * #ЗАЧЕМ: Добавлена визуализация мутаций в консоли для контроля динамики Наследия.
+ * #ЧТО: ПЛАН №2910 — Лог теперь содержит поле [MUT: TYPE] с цветовым выделением.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -279,9 +279,18 @@ const Scheduler = {
         const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
+        // #ЗАЧЕМ: Логирование мутаций.
+        const mutType = payload.mutationType || 'none';
+        const mutationLabel = mutType !== 'none' ? ` [MUT: ${mutType.toUpperCase()}]` : '';
+        const mutationStyle = mutType !== 'none' 
+            ? 'color: #ff00ff; font-weight: bold; background: #222; padding: 0 4px; border-radius: 2px;' 
+            : 'color: #888;';
+
         console.log(
-            `%c${getTimestamp()} Bar ${this.barCount} | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
+            `%c${getTimestamp()} Bar ${this.barCount}%c${mutationLabel}%c | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
             'color: #888;', 
+            mutationStyle,
+            'color: #888;',
             'color: #4ade80; font-weight: bold;',
             'color: #DA70D6; font-size: 10px;',
             'color: #ADD8E6; font-style: italic;'
