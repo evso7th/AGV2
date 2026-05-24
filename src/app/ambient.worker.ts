@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.8 — "True Random Heritage Protocol".
- * #ЗАЧЕМ: Реализация алгоритма Shuffle Bag для исключения предсказуемости выбора треков.
- * #ЧТО: ПЛАН №3300 — Очередь треков перемешивается и не повторяется до полного исчерпания пула.
+ * @fileOverview AuraGroove Music Worker V5.9 — "Silent Transition Protocol".
+ * #ЗАЧЕМ: Перемешивание Shuffle Bag перенесено в зону тишины между треками.
+ * #ЧТО: ПЛАН №3310 — Гарантировано отсутствие вычислительной нагрузки во время активной генерации такта.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -27,7 +27,7 @@ function generateTrueSeed(): number {
 }
 
 /**
- * #ЗАЧЕМ: Универсальный инструмент перемешивания массива.
+ * #ЗАЧЕМ: Универсальный инструмент перемешивания массива (Fisher-Yates).
  */
 function shuffleArray<T>(array: T[]): T[] {
     const next = [...array];
@@ -49,7 +49,6 @@ const Scheduler = {
     expectedNextTick: 0,
     
     // --- SHUFFLE BAG STATE ---
-    // #ЗАЧЕМ: Хранение "мешка" доступных треков для предотвращения повторов.
     activeShuffleBag: [] as string[],
     currentFilterHash: "",
 
@@ -89,7 +88,7 @@ const Scheduler = {
 
     /**
      * #ЗАЧЕМ: Умный выбор Активного Якоря (Anchor) с логикой Shuffle Bag.
-     * #ЧТО: Если "мешок" пуст или фильтры изменились — создаем новую перемешанную очередь.
+     * #ЧТО: ПЛАН №3310 — Работает в "тишине" между треками.
      */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
@@ -97,7 +96,7 @@ const Scheduler = {
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
-        // 1. Ручной режим: просто ротация по списку пользователя
+        // 1. Ручной режим: ротация по списку пользователя
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
@@ -115,6 +114,8 @@ const Scheduler = {
             }
 
             if (this.activeShuffleBag.length === 0) {
+                console.log(`%c${getTimestamp()} [Shuffle Bag] Transition Zone: Refilling and shuffling the pool for ${uiGenre}/${uiMood}...`, 'color: #3b82f6; font-weight: bold;');
+                
                 const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
@@ -129,19 +130,16 @@ const Scheduler = {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
                 
                 if (uniqueIds.length > 0) {
-                    // Перемешиваем весь доступный пул
                     this.activeShuffleBag = shuffleArray(uniqueIds);
                 }
             }
 
             if (this.activeShuffleBag.length > 0) {
-                // "Вынимаем" трек из мешка
                 pickedId = this.activeShuffleBag.shift()!;
             }
         }
 
         if (pickedId) {
-            // Обновляем историю для UI и внутреннего контроля
             if (!this.playedTrackHistory.includes(pickedId)) {
                 this.playedTrackHistory.push(pickedId);
                 if (this.playedTrackHistory.length > 100) this.playedTrackHistory.shift();
@@ -164,6 +162,7 @@ const Scheduler = {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
+        // ВАЖНО: pickActiveAnchor вызывается здесь, до начала игры
         const anchorInfo = this.pickActiveAnchor();
         const isImprovising = (settings.selectedCompositionIds || []).length === 0;
 
@@ -230,7 +229,7 @@ const Scheduler = {
         if (wasRunning) this.stop();
         this.sessionLickHistory = [];
         this.playedTrackHistory = [];
-        this.activeShuffleBag = []; // Сброс мешка при полном ресете
+        this.activeShuffleBag = []; 
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -281,10 +280,11 @@ const Scheduler = {
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         if (this.barCount >= totalBars) {
+             console.log(`%c${getTimestamp()} [Shuffle Bag] Track Ended. Transitioning in silence...`, 'color: #8b5cf6; font-style: italic;');
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
-             this.initializeEngine(this.settings);
+             this.initializeEngine(this.settings); // pickActiveAnchor вызывается внутри
              this.barCount = 0;
         }
 
