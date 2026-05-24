@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -6,13 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Music } from 'lucide-react';
 import Image from 'next/image';
+import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 /**
  * #ЗАЧЕМ: Корневая страница.
- * #ЧТО: ПЛАН №1870 — Полноэкранный режим активируется ТОЛЬКО на мобильных устройствах.
+ * #ЧТО: ПЛАН №2240 — Протокол «Safe Entry Purge». Кнопка входа принудительно чистит контекст.
  */
 export default function Home() {
   const router = useRouter();
+  const { stopAllSounds } = useAudioEngine();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -20,8 +23,12 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
+    // #ЗАЧЕМ: Гарантированная тишина перед входом в систему.
+    try {
+        stopAllSounds();
+    } catch(e) {}
+
     if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-      // #ЗАЧЕМ: Выборочная активация Fullscreen только для мобилок.
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
       if (isMobile) {

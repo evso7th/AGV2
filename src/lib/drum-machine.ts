@@ -127,10 +127,12 @@ type Sampler = {
     buffers: Map<string, AudioBuffer>;
     load: (samples: Record<string, string>) => Promise<void>;
     triggerAttack: (note: string, time: number, velocity?: number, pan?: number) => void;
+    stopAll: () => void;
 }
 
 function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
     const buffers = new Map<string, AudioBuffer>();
+    const activeSources = new Set<AudioBufferSourceNode>();
 
     const load = async (samples: Record<string, string>) => {
         const promises = Object.entries(samples).map(async ([note, url]) => {
@@ -159,7 +161,10 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 
         source.connect(gainNode).connect(panner).connect(output);
         source.start(time);
+        
+        activeSources.add(source);
         source.onended = () => {
+            activeSources.delete(source);
             try {
                 gainNode.disconnect();
                 panner.disconnect();
@@ -167,7 +172,14 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         };
     };
 
-    return { buffers, load, triggerAttack };
+    const stopAll = () => {
+        activeSources.forEach(s => {
+            try { s.stop(); } catch(e) {}
+        });
+        activeSources.clear();
+    };
+
+    return { buffers, load, triggerAttack, stopAll };
 }
 
 export class DrumMachine {
@@ -211,10 +223,8 @@ export class DrumMachine {
             
             let sampleName = eventType;
             
-            // #ЗАЧЕМ: Улучшенный маппинг для канала 'drums' (ПЛАН №987).
             if (eventType === 'drums' || eventType === 'drum') {
                 const n = event.note;
-                // Стандартный MIDI маппинг
                 if (n === 36) sampleName = 'drum_kick_reso';
                 else if (n === 38) sampleName = 'drum_snare';
                 else if (n === 42 || n === 44) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
@@ -228,7 +238,6 @@ export class DrumMachine {
 
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) {
-                // Пытаемся найти по префиксу роли
                 if (sampleName.includes('kick')) sampleName = 'drum_kick_reso';
                 else if (sampleName.includes('snare')) sampleName = 'drum_snare';
                 else if (sampleName.includes('hat')) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
@@ -239,7 +248,7 @@ export class DrumMachine {
             if (!isFinite(absoluteTime)) continue;
             
             let velocity = event.weight;
-            if (sampleName.startsWith('perc-')) velocity *= 0.8;
+            if (sampleName.startsWith('perc-')) velocity *= 0.4; // #ЗАЧЕМ: ПЛАН №2095. Снижено в 2 раза.
             else if (sampleName.includes('ride')) velocity *= 0.7;
             
             const pan = event.pan || 0;
@@ -247,5 +256,9 @@ export class DrumMachine {
         }
     }
 
-    public stop() {}
+    public stop() {
+        if (this.sampler) {
+            this.sampler.stopAll();
+        }
+    }
 }

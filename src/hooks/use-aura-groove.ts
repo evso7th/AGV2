@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Хук управления музыкой V9.7 — "Route Function Recovery".
- * #ЗАЧЕМ: Исправление ReferenceError (addToRoute, removeFromRoute и др.).
- * #ЧТО: ПЛАН №1995 — Добавлены определения функций управления маршрутом.
+ * @fileOverview Хук управления музыкой V9.8 — "Transition Purge Protocol".
+ * #ЗАЧЕМ: Реализация гарантированной очистки контекста при переходах.
+ * #ЧТО: ПЛАН №2250 — Внедрен вызов stopAllSounds во все навигационные функции.
  */
 'use client';
 
@@ -436,6 +436,9 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
           nextIndex = (activeRouteIndex + 1) % route.length;
       }
 
+      // #ЗАЧЕМ: Гарантированная очистка при переходе (ПЛАН №2250).
+      stopAllSounds();
+
       setActiveRouteIndex(nextIndex);
       applyRouteItem(route[nextIndex]);
       
@@ -443,7 +446,7 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
           title: "Navigator: Next Station",
           description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}`
       });
-  }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
+  }, [activeRouteIndex, route, isShuffle, applyRouteItem, stopAllSounds, toast]);
 
   useEffect(() => {
     const worker = getWorker();
@@ -544,11 +547,14 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             }
             lastBarCountRef.current = -1;
             setEngineIsPlaying(true);
-        } else { setEngineIsPlaying(false); }
+        } else { 
+            setEngineIsPlaying(false); 
+            stopAllSounds(); // #ЗАЧЕМ: Полная тишина при паузе (ПЛАН №2255).
+        }
     },
     handleRegenerate: () => { 
         setIsRegenerating(true);
-        stopAllSounds();
+        stopAllSounds(); // #ЗАЧЕМ: Глубокая очистка перед регенерацией (ПЛАН №2255).
         resetWorker();
         lastBarCountRef.current = -1; 
         setCurrentSeed(Date.now());
@@ -576,7 +582,11 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
-    handleGoHome: () => { setEngineIsPlaying(false); window.location.href = '/'; },
+    handleGoHome: () => { 
+        setEngineIsPlaying(false); 
+        stopAllSounds(); // #ЗАЧЕМ: Протокол «Total Purge on Exit» (ПЛАН №2220).
+        window.location.href = '/'; 
+    },
     isEqModalOpen, setIsEqModalOpen, eqSettings, 
     handleEqChange: (index: number, value: number) => { const next = [...eqSettings]; next[index] = value; setEqSettings(next); setEQGain(index, value); },
     isCalibrationModalOpen, setIsCalibrationModalOpen, calibrationGains, handleCalibrationChange: setCalibrationGain,
