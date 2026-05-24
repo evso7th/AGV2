@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.2 — "Narrative Clean Up".
- * #ЗАЧЕМ: Устранение спама в narrative.
- * #ЧТО: ПЛАН №1780 — Сокращены текстовые описания для компактного логирования.
+ * @fileOverview Reggae Brain V4.3 — "Context Integrity Fix".
+ * #ЗАЧЕМ: Устранение потенциальных TypeError при рендеринге слоев.
+ * #ЧТО: ПЛАН №2320 — Все методы ограничения октав гарантированы внутри класса.
  */
 
 import type {
@@ -180,6 +180,33 @@ export class ReggaeBrain {
         return undefined;
     }
 
+    private constrainBassOctave(note: number): number {
+        let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
+    }
+
+    private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+        if (e.duration < 3.9) return [e]; 
+        const rippled: FractalEvent[] = [];
+        const isMinor = chord.chordType === 'minor';
+        const ripplePool = isMinor ? [3, 7, 8, 10] : [4, 7, 9, 11]; 
+        const numChunks = Math.ceil(e.duration / 2.6); 
+        const chunkDur = e.duration / numChunks;
+        const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+        for (let i = 0; i < numChunks; i++) {
+            let note = (i === 0) ? e.note : baseOctaveMidi + ripplePool[calculateMusiNum(Math.floor(e.time * 12) + i, 13, this.seed, ripplePool.length)];
+            rippled.push({
+                ...e, note: Math.min(note, this.MELODY_CEILING),
+                time: e.time + (i * chunkDur), duration: chunkDur,
+                params: { ...e.params, attack: i === 0 ? 1.5 : 0.8, release: 2.5 }
+            });
+        }
+        return rippled;
+    }
+
     public generateBar(
         epoch: number,
         currentChord: GhostChord,
@@ -314,7 +341,7 @@ export class ReggaeBrain {
                 type: 'melody',
                 note: Math.min(note, this.MELODY_CEILING),
                 time: t * TICK_TO_BEAT,
-                duration: (1.5 * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                duration: (1.5 * TICK_TO_BEAT) * 1.25, 
                 weight: 0.7 + (tension * 0.2),
                 technique: tension > 0.4 ? 'vb' : 'pick',
                 dynamics: 'p',
@@ -329,13 +356,13 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        [3, 9].forEach(t => { // Beats 2 and 4 (Skank)
+        [3, 9].forEach(t => { 
             intervals.forEach(interval => {
                 events.push({
                     type: 'harmony',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 0.5 * TICK_TO_BEAT, // Short skank
+                    duration: 0.5 * TICK_TO_BEAT, 
                     weight: 0.45 + (tension * 0.1),
                     technique: 'hit',
                     dynamics: 'p',
@@ -353,17 +380,18 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+        const rawEvents = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
             const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 0.85 + (tension * 0.1),
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', phrasing: 'legato'
             };
         });
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -372,11 +400,12 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        const rawEvents = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
@@ -385,11 +414,12 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
         }));
+        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
@@ -424,14 +454,14 @@ export class ReggaeBrain {
     private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote - 12;
         return [
-            { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
-            { type: 'bass', note: root + 7, time: 7.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
+            { type: 'bass', note: this.constrainBassOctave(root), time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
+            { type: 'bass', note: this.constrainBassOctave(root + 7), time: 7.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
         ];
     }
 
     private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
         return [{
-            type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
+            type: 'accompaniment', note: this.constrainAccompanimentOctave(chord.rootNote + 12), time: 0, duration: 4.0, weight: 0.5,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }];
     }
@@ -439,7 +469,6 @@ export class ReggaeBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         const root = chord.rootNote + 12;
-        const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
 
         if (melodyEvents.length > 0) {
             melodyEvents.forEach((m, i) => {
@@ -458,6 +487,7 @@ export class ReggaeBrain {
         } else {
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
                 if (this.random.next() < 0.6) {
+                    const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
                     intervals.forEach(interval => {
                         events.push({
                             type: 'pianoAccompaniment',
@@ -474,13 +504,5 @@ export class ReggaeBrain {
             });
             return { events, style: 'Bubble' };
         }
-    }
-
-    private constrainBassOctave(note: number): number {
-        let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
-    }
-
-    private constrainAccompanimentOctave(note: number): number {
-        let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
     }
 }

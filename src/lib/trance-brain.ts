@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V50.0 — "Full Narrative Report".
- * #ЗАЧЕМ: Обеспечение полной прозрачности работы ансамбля в логах.
- * #ЧТО: ПЛАН №1920 — Возвращает статус всех 6 инструментов в activeAxioms.
+ * @fileOverview Psybient Brain V50.1 — "Context Integrity Fix".
+ * #ЗАЧЕМ: Исправление TypeError: this.constrainAccompanimentOctave is not a function.
+ * #ЧТО: ПЛАН №2320 — 1. Гарантировано наличие методов внутри класса. 2. Исправлен контекст вызова.
  */
 
 import type {
@@ -238,6 +238,14 @@ export class TranceBrain {
             }
         }
         return processed;
+    }
+
+    private constrainBassOctave(note: number): number {
+        let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
     }
 
     public generateBar(
@@ -523,19 +531,19 @@ export class TranceBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-            type: 'bass', note: chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+            type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }
 
     private renderSpecificHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -575,7 +583,7 @@ export class TranceBrain {
         melodyEvents.forEach((m, i) => {
             if (i % 3 === 0) {
                 events.push({
-                    ...m, type: 'pianoAccompaniment', note: m.note + thirdInterval,
+                    ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval),
                     weight: 0.35, technique: 'hit', phrasing: 'staccato', params: { ...m.params, release: 2.5 }
                 });
             }
@@ -584,14 +592,14 @@ export class TranceBrain {
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        const e: FractalEvent = { type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5 } };
+        const e: FractalEvent = { type: 'harmony', note: this.constrainAccompanimentOctave(currentChord.rootNote + 12 + this.spiralTransposition), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5 } };
         return this.rippleLongNote(e, currentChord);
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const isMinor = chord.chordType === 'minor';
         return (isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11]).map((interval, i) => ({
-            type: 'accompaniment', note: chord.rootNote + 12 + interval, time: 0.1, duration: 3.8, weight: 0.6, technique: 'swell',
+            type: 'accompaniment', note: this.constrainAccompanimentOctave(chord.rootNote + 12 + interval), time: 0.1, duration: 3.8, weight: 0.6, technique: 'swell',
             dynamics: 'p', phrasing: 'legato', pan: (i % 2 === 0 ? -0.6 : 0.6), params: { attack: 1.0, release: 2.0, gainCurve: [1.0, 0.1, 0.9, 0.2, 1.0, 0.3, 1.0] }
         }));
     }
