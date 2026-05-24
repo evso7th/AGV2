@@ -10,7 +10,7 @@ import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 /**
  * #ЗАЧЕМ: Корневая страница приветствия.
- * #ЧТО: ПЛАН №2330 — Обновление бренда и версии системы до v3.0.
+ * #ЧТО: ПЛАН №2340 — Выделение версии 3.0 "The Infinite Take Orchestra" основным цветом.
  */
 export default function Home() {
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function Home() {
           <CardDescription className="text-lg leading-relaxed">
             Your personal pure digital fractal music generator. 
             <br />
-            <span className="text-sm font-black uppercase tracking-widest opacity-70">
+            <span className="text-sm font-black uppercase tracking-widest text-primary">
               v 3.0 "The Infinite Take Orchestra"
             </span>
             <br />
