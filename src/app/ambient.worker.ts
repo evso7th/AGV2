@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.7 — "Atmosphere Transmission with Mutation Telemetry".
- * #ЗАЧЕМ: Добавлена визуализация мутаций в консоли для контроля динамики Наследия.
- * #ЧТО: ПЛАН №2910 — Лог теперь содержит поле [MUT: TYPE] с цветовым выделением.
+ * @fileOverview AuraGroove Music Worker V5.8 — "True Random Heritage Protocol".
+ * #ЗАЧЕМ: Реализация алгоритма Shuffle Bag для исключения предсказуемости выбора треков.
+ * #ЧТО: ПЛАН №3300 — Очередь треков перемешивается и не повторяется до полного исчерпания пула.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -26,6 +26,18 @@ function generateTrueSeed(): number {
     return array[0];
 }
 
+/**
+ * #ЗАЧЕМ: Универсальный инструмент перемешивания массива.
+ */
+function shuffleArray<T>(array: T[]): T[] {
+    const next = [...array];
+    for (let i = next.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [next[i], next[j]] = [next[j], next[i]];
+    }
+    return next;
+}
+
 const Scheduler = {
     loopId: null as any,
     isRunning: false,
@@ -36,6 +48,11 @@ const Scheduler = {
     playedTrackHistory: [] as string[], 
     expectedNextTick: 0,
     
+    // --- SHUFFLE BAG STATE ---
+    // #ЗАЧЕМ: Хранение "мешка" доступных треков для предотвращения повторов.
+    activeShuffleBag: [] as string[],
+    currentFilterHash: "",
+
     // Morphing State
     targetBpm: null as number | null,
     bpmStep: 0,
@@ -70,45 +87,61 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
+    /**
+     * #ЗАЧЕМ: Умный выбор Активного Якоря (Anchor) с логикой Shuffle Bag.
+     * #ЧТО: Если "мешок" пуст или фильтры изменились — создаем новую перемешанную очередь.
+     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
+        // 1. Ручной режим: просто ротация по списку пользователя
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
         } 
+        // 2. Автоматический режим: Shuffle Bag логика
         else if (this.cloudAxioms.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
-            
-            const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
-                                   (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
+            const newHash = `${uiGenre}_${uiMood}`;
 
-            const matchingAxioms = this.cloudAxioms.filter(ax => {
-                const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                
-                return genres.includes(uiGenre) && (moods.includes(uiMood) || commons.includes(commonMoodFilter));
-            });
+            // Сброс мешка при смене фильтров
+            if (this.currentFilterHash !== newHash) {
+                this.activeShuffleBag = [];
+                this.currentFilterHash = newHash;
+            }
 
-            if (matchingAxioms.length > 0) {
+            if (this.activeShuffleBag.length === 0) {
+                const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
+                                       (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
+
+                const matchingAxioms = this.cloudAxioms.filter(ax => {
+                    if (ax.ignored === true) return false;
+                    const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                    const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                    const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                    return genres.includes(uiGenre) && (moods.includes(uiMood) || commons.includes(commonMoodFilter));
+                });
+
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
-                const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
                 
-                if (freshCandidates.length === 0) {
-                    this.playedTrackHistory = this.playedTrackHistory.filter(id => !uniqueIds.includes(id));
+                if (uniqueIds.length > 0) {
+                    // Перемешиваем весь доступный пул
+                    this.activeShuffleBag = shuffleArray(uniqueIds);
                 }
+            }
 
-                pickedId = pool[Math.floor(Math.random() * pool.length)];
+            if (this.activeShuffleBag.length > 0) {
+                // "Вынимаем" трек из мешка
+                pickedId = this.activeShuffleBag.shift()!;
             }
         }
 
         if (pickedId) {
+            // Обновляем историю для UI и внутреннего контроля
             if (!this.playedTrackHistory.includes(pickedId)) {
                 this.playedTrackHistory.push(pickedId);
                 if (this.playedTrackHistory.length > 100) this.playedTrackHistory.shift();
@@ -119,10 +152,7 @@ const Scheduler = {
                 ax.compositionId && normalizeStr(ax.compositionId) === normalizeStr(pickedId!) && ax.nativeKey
             );
             
-            if (anchorAxiom) {
-                return { id: pickedId, nativeRoot: keyToMidiRoot(anchorAxiom.nativeKey) }; 
-            }
-            return { id: pickedId, nativeRoot: null };
+            return { id: pickedId, nativeRoot: anchorAxiom ? keyToMidiRoot(anchorAxiom.nativeKey) : null };
         }
 
         return { id: null, nativeRoot: null };
@@ -200,6 +230,7 @@ const Scheduler = {
         if (wasRunning) this.stop();
         this.sessionLickHistory = [];
         this.playedTrackHistory = [];
+        this.activeShuffleBag = []; // Сброс мешка при полном ресете
         this.initializeEngine(this.settings);
         if (wasRunning) this.start();
     },
@@ -261,7 +292,6 @@ const Scheduler = {
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            console.error('[Worker] Evolution Error:', e);
             return;
         }
 
@@ -269,6 +299,12 @@ const Scheduler = {
             this.settings.bpm = payload.newBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
+
+        const mutType = payload.mutationType || 'none';
+        const mutationLabel = mutType !== 'none' ? ` [MUT: ${mutType.toUpperCase()}]` : '';
+        const mutationStyle = mutType !== 'none' 
+            ? 'color: #ff00ff; font-weight: bold; background: #222; padding: 0 4px; border-radius: 2px;' 
+            : 'color: #888;';
 
         const h = payload.instrumentHints || {};
         const ax = payload.activeAxioms || {};
@@ -278,13 +314,6 @@ const Scheduler = {
         
         const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
-
-        // #ЗАЧЕМ: Логирование мутаций.
-        const mutType = payload.mutationType || 'none';
-        const mutationLabel = mutType !== 'none' ? ` [MUT: ${mutType.toUpperCase()}]` : '';
-        const mutationStyle = mutType !== 'none' 
-            ? 'color: #ff00ff; font-weight: bold; background: #222; padding: 0 4px; border-radius: 2px;' 
-            : 'color: #888;';
 
         console.log(
             `%c${getTimestamp()} Bar ${this.barCount}%c${mutationLabel}%c | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
