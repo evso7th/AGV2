@@ -1,7 +1,7 @@
 /**
- * @fileOverview Blues Brain V83.0 — "The Expressive Storyteller".
- * #ЗАЧЕМ: Реализация динамической артикуляции для живого исполнения блюза.
- * #ЧТО: ПЛАН №3100 — Интеграция applyDynamicArticulation. Блюзовая гитара теперь плачет и поет.
+ * @fileOverview Blues Brain V84.0 — "The Elastic Storyteller".
+ * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
+ * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Блюзовое соло теперь обладает "филом" живого мастера.
  */
 
 import {
@@ -36,7 +36,8 @@ import {
     TICK_TO_BEAT,
     generateStitchPhrase,
     getScaleForMood,
-    applyDynamicArticulation
+    applyDynamicArticulation,
+    applyMicroChronos
 } from './music-theory';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
@@ -189,7 +190,7 @@ export class BluesBrain {
       if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
   }
 
-  private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+  private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
       if (totalBars <= 0) return 0;
       if (this.config.isImprovising) {
           return calculateMusiNum(epoch, 7, this.seed, totalBars);
@@ -412,9 +413,11 @@ export class BluesBrain {
         const scale = getScaleForMood(this.mood);
         const nextNote = resChord.rootNote + 12;
         const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-        // #ЗАЧЕМ: Артикуляция моста.
-        const articulatedStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
-        const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', articulatedStitch, TICKS_PER_BAR, 1.0, tension);
+        // #ЗАЧЕМ: Применяем артикуляцию и микро-хронос к мосту.
+        let finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+        finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+        
+        const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', finalStitch, TICKS_PER_BAR, 1.0, tension);
         events.push(...stitchEvents);
         melodyStatus = 'STITCH';
         this.bridgeUntilBar = -1;
@@ -457,8 +460,9 @@ export class BluesBrain {
                 else if (this.state.lastMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.state.lastMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
-                // #ЗАЧЕМ: Динамическое исполнение аккомпанемента.
+                // #ЗАЧЕМ: ПЛАН №3200. Артикуляция и Микро-хронос аккомпанемента.
                 activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+                activePhrase = applyMicroChronos(activePhrase, this.seed + 150, tension);
 
                 const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, tension);
                 if (rendered.length > 0) {
@@ -491,8 +495,9 @@ export class BluesBrain {
             else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
             else if (this.state.lastMutationType === 'transpose_deg') activeAxiom = transposePhraseDegrees(activeAxiom, this.degreeTransposition);
             
-            // #ЗАЧЕМ: ПЛАН №3100. Живое соло.
+            // #ЗАЧЕМ: ПЛАН №3200. "Дышащее" соло (Артикуляция + Микро-хронос).
             activeAxiom = applyDynamicArticulation(activeAxiom, tension, this.seed + epoch);
+            activeAxiom = applyMicroChronos(activeAxiom, this.seed, tension);
 
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
             melodyStatusId = this.currentLickId;
@@ -566,7 +571,6 @@ export class BluesBrain {
               time: t * TICK_TO_BEAT,
               duration: (1.5 * TICK_TO_BEAT) * 1.25,
               weight: 0.65 + (tension * 0.15),
-              // #ЗАЧЕМ: Умный выбор техники даже в лакунах.
               technique: tension > 0.4 ? 'vb' : 'pick',
               dynamics: 'p',
               phrasing: 'legato'
@@ -596,7 +600,7 @@ export class BluesBrain {
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
     const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-    const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
+    const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase);
     const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
     const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
         return {
@@ -605,7 +609,6 @@ export class BluesBrain {
             time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
             weight: 0.75, 
-            // #ЗАЧЕМ: Используем живую технику из фразы.
             technique: n.tech as Technique, 
             dynamics: 'p', 
             phrasing: 'legato'
@@ -618,14 +621,15 @@ export class BluesBrain {
       if (this.currentBassAxiom.length > 0) {
           const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
           const startEpoch = this.soloistBusyUntilBar - totalBars;
-          const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+          const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
           const barOffset = mosaicBar * TICKS_PER_BAR;
           let activeBassAxiom = this.currentBassAxiom;
           if (this.state.lastMutationType === 'retrograde') activeBassAxiom = retrogradePhrase(activeBassAxiom);
           else if (this.state.lastMutationType === 'jitter') activeBassAxiom = applyRhythmicJitter(activeBassAxiom, this.seed + epoch);
           
-          // #ЗАЧЕМ: Артикуляция баса.
+          // #ЗАЧЕМ: Артикуляция и Микро-хронос баса.
           activeBassAxiom = applyDynamicArticulation(activeBassAxiom, tension, this.seed + epoch + 50);
+          activeBassAxiom = applyMicroChronos(activeBassAxiom, this.seed + 250, tension);
 
           const barNotes = activeBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           if (barNotes.length > 0) {
@@ -653,7 +657,7 @@ export class BluesBrain {
   private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
       const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
       const startEpoch = this.soloistBusyUntilBar - totalBars;
-      const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
+      const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
       const barOffset = mosaicBar * TICKS_PER_BAR;
       const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
           type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),

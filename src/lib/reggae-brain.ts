@@ -1,7 +1,7 @@
 /**
- * @fileOverview Reggae Brain V46.0 — "The Articulate Dubber".
- * #ЗАЧЕМ: Реализация динамической артикуляции для живого исполнения регги.
- * #ЧТО: ПЛАН №3100 — Интеграция applyDynamicArticulation. Гитары и басы получают живой характер.
+ * @fileOverview Reggae Brain V47.0 — "The Elastic Dubber".
+ * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
+ * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Даб-грув теперь "плавает" ритмически.
  */
 
 import type {
@@ -34,7 +34,8 @@ import {
     TICK_TO_BEAT,
     generateStitchPhrase,
     getScaleForMood,
-    applyDynamicArticulation
+    applyDynamicArticulation,
+    applyMicroChronos
 } from './music-theory';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
@@ -175,7 +176,7 @@ export class ReggaeBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                     });
@@ -273,9 +274,11 @@ export class ReggaeBrain {
             const scale = getScaleForMood(this.mood);
             const nextNote = resRoot + 12;
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-            // #ЗАЧЕМ: Артикуляция моста.
-            const articulatedStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
-            const stitchEvents = this.renderHeritageMelody(epoch, resChord, tension, articulatedStitch);
+            // #ЗАЧЕМ: Применяем артикуляцию и микро-хронос к мосту.
+            let finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+            finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+            
+            const stitchEvents = this.renderHeritageMelody(epoch, resChord, tension, finalStitch);
             events.push(...stitchEvents);
             melodyStatus = 'STITCH';
             this.bridgeUntilBar = -1;
@@ -295,8 +298,9 @@ export class ReggaeBrain {
                 if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
                 else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
                 
-                // #ЗАЧЕМ: Артикуляция баса.
+                // #ЗАЧЕМ: Артикуляция и Микро-хронос баса.
                 bassPhrase = applyDynamicArticulation(bassPhrase, tension, this.seed + epoch + 50);
+                bassPhrase = applyMicroChronos(bassPhrase, this.seed + 200, tension);
 
                 events.push(...this.renderHeritageBass(epoch, resChord, tension, bassPhrase));
             } else {
@@ -322,8 +326,9 @@ export class ReggaeBrain {
                     else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                     else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
                     
-                    // #ЗАЧЕМ: Артикуляция аккомпанемента.
+                    // #ЗАЧЕМ: Артикуляция и Микро-хронос аккомпанемента.
                     activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed + 300, tension);
 
                     events.push(...this.renderHeritageLayer(resChord, epoch, activePhrase, target, tension));
                     usedLayers.add(target);
@@ -348,8 +353,9 @@ export class ReggaeBrain {
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
                 
-                // #ЗАЧЕМ: Динамическая артикуляция мелодии.
+                // #ЗАЧЕМ: ПЛАН №3200. "Дышащее" регги-соло.
                 activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
+                activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
 
                 const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension, activePhrase);
                 if (heritageMelody.length > 0) { events.push(...heritageMelody); melodyStatus = this.currentTheme.id; }

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.3 — "The Articulation Core".
- * #ЗАЧЕМ: Реализация математических трансформаций и динамической артикуляции.
- * #ЧТО: ПЛАН №3100 — Добавлена функция applyDynamicArticulation для живого переосмысления штрихов.
+ * @fileOverview Universal Music Theory Utilities V6.4 — "The Chronos Engine".
+ * #ЗАЧЕМ: Реализация математических трансформаций, динамической артикуляции и микро-хроноса.
+ * #ЧТО: ПЛАН №3200 — Добавлена функция applyMicroChronos для имитации человеческого ритмического "фила".
  */
 
 import type { 
@@ -48,6 +48,32 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 // ───── L-LOGIC (TRANSFORMATIONS & BRIDGES) ─────
+
+/**
+ * #ЗАЧЕМ: Утилита "Микро-хроноса" (ритмической эластичности).
+ * #ЧТО: Применяет микро-сдвиги времени к нотам для имитации живого исполнения.
+ *       Основано на Seed (общий "фил" сессии) и Tension (интенсивность джиттера).
+ */
+export function applyMicroChronos(phrase: any[], seed: number, tension: number): any[] {
+    if (!phrase || phrase.length === 0) return [];
+    
+    // Глобальный "фил" сессии: от -0.06 (оттяжка) до 0.06 (опережение) тика.
+    const sessionFeel = (calculateMusiNum(seed, 23, 0, 120) / 1000) - 0.06;
+    
+    return phrase.map((n, i) => {
+        // Индивидуальный джиттер каждой ноты: +/- 0.02 тика.
+        const noteJitter = (calculateMusiNum(seed + i, 17, 0, 40) / 1000) - 0.02;
+        
+        // Сдвиг масштабируется Tension: при высоком напряжении игра становится более "нервной".
+        const intensity = 0.8 + tension * 0.7;
+        const totalShift = (sessionFeel + noteJitter) * intensity;
+        
+        return { 
+            ...n, 
+            t: Math.max(0, n.t + totalShift) 
+        };
+    });
+}
 
 /**
  * #ЗАЧЕМ: Утилита "Живой Артикуляции".
