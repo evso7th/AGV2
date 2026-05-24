@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,8 +9,8 @@ import Image from 'next/image';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 /**
- * #ЗАЧЕМ: Корневая страница.
- * #ЧТО: ПЛАН №2240 — Протокол «Safe Entry Purge». Кнопка входа принудительно чистит контекст.
+ * #ЗАЧЕМ: Корневая страница приветствия.
+ * #ЧТО: ПЛАН №2330 — Обновление бренда и версии системы до v3.0.
  */
 export default function Home() {
   const router = useRouter();
@@ -45,22 +44,32 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
-      <Card className="w-full max-w-lg shadow-2xl text-center">
+      <Card className="w-full max-w-lg shadow-2xl text-center border-primary/20 bg-card/80 backdrop-blur-sm">
         <CardHeader>
           <div className="mx-auto mb-4">
-            <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={80} height={80} className="rounded-full" />
+            <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={80} height={80} className="rounded-full shadow-lg border-2 border-primary/30" />
           </div>
-          <CardTitle className="font-headline text-4xl">Welcome to AuraGroove</CardTitle>
-          <CardDescription className="text-lg">Your personal pure digital neuro music generator. <br />v 2.7 Stream Bridge Imperial Sound</CardDescription>
+          <CardTitle className="font-headline text-4xl text-primary">Welcome to AuraGroove</CardTitle>
+          <CardDescription className="text-lg leading-relaxed">
+            Your personal pure digital fractal music generator. 
+            <br />
+            <span className="text-sm font-black uppercase tracking-widest opacity-70">
+              v 3.0 "The Infinite Take Orchestra"
+            </span>
+            <br />
+            <span className="text-xs font-bold text-muted-foreground italic">
+              Stream Bridge PWA Edition
+            </span>
+          </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[60px] flex flex-col items-center justify-center">
-          <p className="text-muted-foreground min-h-[20px]">
+          <p className="text-muted-foreground text-sm font-medium">
             Click the button below to start the experience.
           </p>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleStart} className="w-full text-lg py-6" disabled={!isClient}>
-            <Music className="mr-2 h-6 w-6" />
+          <Button onClick={handleStart} className="w-full text-lg py-7 font-black uppercase tracking-widest shadow-xl active:scale-[0.98] transition-all" disabled={!isClient}>
+            <Music className="mr-3 h-6 w-6" />
             Start AuraGroove
           </Button>
         </CardFooter>
