@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V83.0 — "Atmospheric Dynamics".
- * #ЗАЧЕМ: Оптимизация частоты атмосферных событий.
- * #ЧТО: ПЛАН №2090 — 1. Привязка частоты к Tension, Fog и Depth. 2. Исправление синтаксической ошибки テーマ.
+ * @fileOverview Ambient Brain V84.0 — "Atmospheric Parity".
+ * #ЗАЧЕМ: Унификация атмосферных слоев с Psybient.
+ * #ЧТО: ПЛАН №2110 — Реализован метод renderAtmosphericEvents по модели TranceBrain.
  */
 
 import type {
@@ -407,7 +407,6 @@ export class AmbientBrain {
             }
             
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
-                // #ЗАЧЕМ: ПЛАН №2080. Повышение шанса гармонии.
                 if (calculateMusiNum(epoch, 7, this.seed, 100) < 45) {
                     const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                     harEvents.forEach(e => e.pan = 0.35); 
@@ -474,21 +473,10 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        if (hints.sparkles) {
-            // #ЗАЧЕМ: ПЛАН №2090. Снижение частоты и привязка к Ландшафту (Depth).
-            const sparkleProb = (0.12 + (localTension * 0.18)) * (this.depth + 0.5);
-            if (this.random.next() < sparkleProb) {
-                events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light', epoch));
-            }
-        }
-        
-        if (hints.sfx) {
-            const isStructuralPoint = epoch % 8 === 0 || navInfo.isPartTransition;
-            // #ЗАЧЕМ: ПЛАН №2090. Снижение частоты и привязка к Туману (Fog).
-            const sfxProb = (isStructuralPoint ? 0.25 : 0.05) * (this.fog + 0.5);
-            if (this.random.next() < sfxProb) {
-                events.push(...this.renderSfx(localTension));
-            }
+        // --- ATMOSPHERIC EVENTS (SFX & SPARKLES) ---
+        // #ЗАЧЕМ: ПЛАН №2110. Унификация с Psybient (точно так же как в TranceBrain).
+        if (hints.sparkles || hints.sfx) {
+            events.push(...this.renderAtmosphericEvents(epoch, localTension));
         }
 
         const modeStr = this.isImprovising ? 'IMPRO' : 'RESTO';
@@ -506,11 +494,55 @@ export class AmbientBrain {
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
                 harmony: usedTargetLayers.has('harmony') ? 'Heritage' : 'Algo',
-                sparkles: 'Harmonic',
-                sfx: 'Structural'
+                sparkles: 'Spiral',
+                sfx: 'Breath'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName}`
         };
+    }
+
+    /**
+     * #ЗАЧЕМ: ПЛАН №2110. Метод генерации атмосферы по модели Psybient.
+     */
+    private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        
+        // 1. Sparkles (25% chance, exactly like Psybient)
+        if (this.random.next() < 0.25) {
+            const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
+            const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
+            events.push({ 
+                type: 'sparkle', 
+                note: 60, 
+                time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                duration: 6.0, 
+                weight: 1.2, 
+                technique: 'hit', 
+                dynamics: 'mf', 
+                phrasing: 'legato', 
+                pan: (this.random.next() * 1.8) - 0.9, 
+                params: { mood: this.mood, genre: this.genre, category } 
+            });
+        }
+        
+        // 2. SFX (Breath chance adaptive to tension)
+        const breathChance = tension < 0.3 ? 0.35 : 0.18;
+        if (this.random.next() < breathChance) {
+            events.push({ 
+                type: 'sfx', 
+                note: 60, 
+                time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                duration: 4.0, 
+                weight: 1.1, 
+                technique: 'hit', 
+                dynamics: 'mf', 
+                phrasing: 'staccato', 
+                pan: (this.random.next() * 1.6) - 0.8, 
+                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } } 
+            });
+        }
+        
+        return events;
     }
 
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
@@ -606,7 +638,7 @@ export class AmbientBrain {
 
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const degrees = [0, 7, 9, 5, 0, 7, 2, 0];
-        const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
+        const shift = degrees[calculateMusiNum(epoch, 4, this.seed, 8)];
         const e: FractalEvent = {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition + this.microTransposition),
             time: 0, duration: 4.0, weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
@@ -758,28 +790,6 @@ export class AmbientBrain {
             };
             return [...this.rippleLongNote(e1, resChord), ...this.rippleLongNote(e2, resChord)];
         }
-    }
-
-    private renderSparkle(chord: GhostChord, isPositive: boolean, epoch: number): FractalEvent {
-        const degrees = [0, 7, 12, 14]; // R, 5, Octave, 9
-        const shift = degrees[calculateMusiNum(epoch, 7, this.seed, degrees.length)];
-        
-        return { 
-            type: 'sparkle', 
-            note: chord.rootNote + 48 + shift, 
-            time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
-            duration: 6.0, 
-            weight: 0.75, 
-            technique: 'hit', 
-            dynamics: 'p', 
-            phrasing: 'legato', 
-            pan: (this.random.next() * 1.8) - 0.9, 
-            params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } 
-        };
-    }
-
-    private renderSfx(tension: number): FractalEvent[] {
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 4.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (this.random.next() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {
