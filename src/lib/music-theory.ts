@@ -2,6 +2,7 @@
  * @fileOverview Universal Music Theory Utilities V6.4 — "The Chronos Engine".
  * #ЗАЧЕМ: Реализация математических трансформаций, динамической артикуляции и микро-хроноса.
  * #ЧТО: ПЛАН №3200 — Добавлена функция applyMicroChronos для имитации человеческого ритмического "фила".
+ * #ОБНОВЛЕНО (ПЛАН №3400): Глобальное ограничение скрипок для Blues/Reggae.
  */
 
 import type { 
@@ -271,6 +272,11 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return 'guitar_shineOn';
     }
     if (clean === 'dynamicpianodual' || clean === 'rhodespiano') return tension < 0.5 ? 'ep_rhodes_warm' : 'piano';
+
+    // #ЗАЧЕМ: ПЛАН №3400. Полное ограничение скрипок для Блюза и Регги.
+    if ((genre === 'reggae' || genre === 'blues') && clean === 'violin') {
+        return 'guitarChords';
+    }
 
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';

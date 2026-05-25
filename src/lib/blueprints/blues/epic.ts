@@ -3,6 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Блюпринт "The Grand Finale" (Epic Blues v11.1).
  * #ЧТО: ПЛАН №817 — Величественная смесь Cathedral и Prog органов.
+ * #ОБНОВЛЕНО (ПЛАН №3400): Скрипки удалены. Только гитары.
  */
 export const EpicBluesBlueprint: MusicBlueprint = {
     id: 'epic_blues',
@@ -65,7 +66,9 @@ export const EpicBluesBlueprint: MusicBlueprint = {
                         instrumentation: {
                            melody: { activationChance: 1.0, instrumentOptions: [ { name: 'melody', weight: 1.0 } ] },
                            drums: { activationChance: 1.0, instrumentOptions: [ { name: 'blues_epic', weight: 1.0 } ] },
-                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'rockBass', weight: 1.0 } ] }
+                           bass: { activationChance: 1.0, instrumentOptions: [ { name: 'rockBass', weight: 1.0 } ] },
+                           // #ЗАЧЕМ: Исключение скрипок.
+                           harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                         }
                     }
                 ],

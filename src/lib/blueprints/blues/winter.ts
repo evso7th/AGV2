@@ -1,9 +1,9 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v33.0 — Controlled Dualism).
  * #ЧТО: ПЛАН №989 — Регулировка вероятности Рояля (pianoProbability) в каждой части.
+ * #ОБНОВЛЕНО (ПЛАН №3400): Скрипки удалены. Только гитары.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -35,7 +35,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                    melody: { strategy: 'weighted', options: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] },
-                   harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] },
+                   // #ЗАЧЕМ: Исключение скрипок.
+                   harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 1.0 } ] },
                    sfx: { strategy: 'weighted', options: [ { name: 'voice', weight: 1.0 } ] }
                 },
                 instrumentRules: {
@@ -86,7 +87,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
-                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
+                   // #ЗАЧЕМ: Только гитары.
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
@@ -138,7 +140,8 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_prog', weight: 1.0 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
-                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
+                   // #ЗАЧЕМ: Только гитары.
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },

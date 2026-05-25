@@ -3,6 +3,7 @@ import type { MusicBlueprint } from '@/types/music';
 /**
  * #ЗАЧЕМ: Блюпринт "Ritual of Smoldering Textures" (Dark Blues v16.4).
  * #ЧТО: ПЛАН №873 — Расширение палитры: Shine On + Muff Lead (50/50).
+ * #ОБНОВЛЕНО (ПЛАН №3400): Скрипки удалены. Только гитары.
  */
 export const DarkBluesBlueprint: MusicBlueprint = {
     id: 'dark_blues',
@@ -83,7 +84,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 0.7 }, { name: 'violin', weight: 0.3 }] },
+                            // #ЗАЧЕМ: Скрипка заменена на гитару.
+                            harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] },
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 }] }
                         }
@@ -105,7 +107,8 @@ export const DarkBluesBlueprint: MusicBlueprint = {
                    accompaniment: { strategy: 'weighted', v2Options: [ { name: 'organ', weight: 0.7 }, { name: 'organ_soft_jazz', weight: 0.3 } ] },
                    melody: { strategy: 'weighted', v2Options: [ { name: 'guitar_shineOn', weight: 0.5 }, { name: 'guitar_muffLead', weight: 0.5 } ] },
                    pianoAccompaniment: { strategy: 'weighted', options: [ { name: 'piano', weight: 1.0 } ] },
-                   harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 0.8 }, { name: 'violin', weight: 0.2 } ] }
+                   // #ЗАЧЕМ: Только гитары.
+                   harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 1.0 } ] }
                 },
                 instrumentRules: {
                     accompaniment: { unisonType: 'strict', density: { min: 0.8, max: 1.0 } },

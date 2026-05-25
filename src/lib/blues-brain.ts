@@ -2,6 +2,7 @@
  * @fileOverview Blues Brain V84.0 — "The Elastic Storyteller".
  * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
  * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Блюзовое соло теперь обладает "филом" живого мастера.
+ * #ОБНОВЛЕНО (ПЛАН №3400): Полное исключение скрипок. Только guitarChords.
  */
 
 import {
@@ -199,15 +200,8 @@ export class BluesBrain {
   }
 
   private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
-      if (epoch % 4 === 0 && epoch !== this.lastHarmonySwitchBar) {
-          this.lastHarmonySwitchBar = epoch;
-          const rand = this.random.next();
-          if (hasHeritageStrings) {
-              this.activeHarmonyInstrument = rand < 0.7 ? 'violin' : 'guitarChords';
-          } else {
-              this.activeHarmonyInstrument = (tension > 0.85 || tension < 0.15) ? 'violin' : 'guitarChords';
-          }
-      }
+      // #ЗАЧЕМ: ПЛАН №3400. Скрипки полностью удалены из Блюза.
+      this.activeHarmonyInstrument = 'guitarChords';
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -449,11 +443,11 @@ export class BluesBrain {
     if (!isSoloistResting && !isBridging) {
         this.currentAccompAxioms.forEach((ax) => {
             const rawRole = ax.role.toLowerCase(); 
-            let targetType: InstrumentPart | null = null;
-            if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
-            else if (rawRole.includes('accomp')) targetType = 'accompaniment';
+            let target: InstrumentPart | null = null;
+            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
+            else if (rawRole.includes('accomp')) target = 'accompaniment';
             
-            if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let activePhrase = ax.phrase;
                 if (this.state.lastMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
                 else if (this.state.lastMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
@@ -464,13 +458,13 @@ export class BluesBrain {
                 activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
                 activePhrase = applyMicroChronos(activePhrase, this.seed + 150, tension);
 
-                const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, tension);
+                const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, target, dna, tension);
                 if (rendered.length > 0) {
-                    if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
+                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
                     events.push(...rendered);
-                    usedTargetLayers.add(targetType);
-                    if (targetType === 'accompaniment') accStatus = 'Heritage';
-                    if (targetType === 'pianoAccompaniment') pStatus = 'Heritage';
+                    usedTargetLayers.add(target);
+                    if (target === 'accompaniment') accStatus = 'Heritage';
+                    if (target === 'pianoAccompaniment') pStatus = 'Heritage';
                 }
             }
         });
