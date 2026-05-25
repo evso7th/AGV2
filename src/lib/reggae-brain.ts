@@ -2,6 +2,7 @@
  * @fileOverview Reggae Brain V47.0 — "The Elastic Dubber".
  * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
  * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Даб-грув теперь "плавает" ритмически.
+ * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
  */
 
 import type {
@@ -337,7 +338,16 @@ export class ReggaeBrain {
             });
         }
 
-        if (hints.harmony && !usedLayers.has('harmony')) { events.push(...this.renderGenerativeHarmony(resChord, epoch, tension)); usedLayers.add('harmony'); harmonyAxiomId = 'Algo-Skank'; }
+        if (hints.harmony && !usedLayers.has('harmony')) { 
+            // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в Регги.
+            const harProb = 0.2 + (tension * 0.4);
+            if (this.random.next() < harProb) {
+                events.push(...this.renderGenerativeHarmony(resChord, epoch, tension)); 
+                usedLayers.add('harmony'); 
+                harmonyAxiomId = 'Algo-Skank'; 
+            }
+        }
+        
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, events.filter(e => e.type === 'melody'));
             if (p.events.length > 0) { events.push(...p.events); usedLayers.add('pianoAccompaniment'); pianoAxiomId = p.style; }
@@ -442,7 +452,7 @@ export class ReggaeBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         if (this.currentDrumAxioms.length === 0) return [];
         const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;

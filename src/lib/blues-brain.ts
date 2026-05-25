@@ -3,6 +3,7 @@
  * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
  * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Блюзовое соло теперь обладает "филом" живого мастера.
  * #ОБНОВЛЕНО (ПЛАН №3400): Полное исключение скрипок. Только guitarChords.
+ * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
  */
 
 import {
@@ -521,11 +522,15 @@ export class BluesBrain {
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        this.selectHarmonyInstrument(epoch, tension, false);
-        const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
-        harmonyEvents.forEach(e => e.pan = 0.35);
-        events.push(...harmonyEvents);
-        hStatus = 'Algo';
+        // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в зависимости от Tension.
+        const harProb = 0.2 + (tension * 0.5); // Ранжируется от 0.2 (тишина) до 0.7 (накал)
+        if (this.random.next() < harProb) {
+            this.selectHarmonyInstrument(epoch, tension, false);
+            const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
+            harmonyEvents.forEach(e => e.pan = 0.35);
+            events.push(...harmonyEvents);
+            hStatus = 'Algo';
+        }
     }
 
     const modeStr = this.config.isImprovising ? 'IMPRO' : 'RESTO';

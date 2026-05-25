@@ -2,6 +2,7 @@
  * @fileOverview Ambient Brain V88.0 — "The Elastic Dreamer".
  * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
  * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Музыка теперь "дышит" ритмически.
+ * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
  */
 
 import type {
@@ -34,7 +35,6 @@ import {
     resolveSemanticTimbre,
     TICKS_PER_BAR,
     TICK_TO_BEAT,
-    normalizeStr,
     generateStitchPhrase,
     getScaleForMood,
     applyDynamicArticulation,
@@ -447,7 +447,9 @@ export class AmbientBrain {
             }
             
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
-                if (calculateMusiNum(epoch, 7, this.seed, 100) < 45) {
+                // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в зависимости от Tension.
+                const harProb = 15 + (localTension * 50); // 15% до 65%
+                if (calculateMusiNum(epoch, 7, this.seed, 100) < harProb) {
                     const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                     harEvents.forEach(e => e.pan = 0.35); 
                     events.push(...harEvents);
@@ -642,7 +644,7 @@ export class AmbientBrain {
     private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
         const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         
@@ -659,30 +661,10 @@ export class AmbientBrain {
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
-    private renderThemeMelody(chord: GhostChord, epoch: number, localTension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-        const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase);
-        const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
-        const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
-        
-        const rawEvents = barNotes.map(n => ({
-            type: type as any,
-            note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
-            weight: 0.7,
-            technique: n.tech as Technique, 
-            dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
-            params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (localTension * 1200), mood: this.mood }
-        }));
-        return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
-    }
-
     private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA, phrase: any[]): FractalEvent[] {
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, localTension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         if (barNotes.length === 0) return []; 
@@ -696,7 +678,7 @@ export class AmbientBrain {
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
         const rawEvents = barNotes.map(n => ({
@@ -769,7 +751,7 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         this.currentDrumAxioms.forEach(ax => {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
