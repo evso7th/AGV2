@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V50.0 — "Atomic Path Sync & DNA Audition".
- * #ЗАЧЕМ: Реализация полноценного прослушивания в Dashboard и атомной синхронизации настроек.
- * #ЧТО: ПЛАН №2230 — 1. Реализован playRawEvents для Dashboard. 2. Улучшена устойчивость setIsPlaying.
+ * @fileOverview Audio Engine Context V51.0 — "System Native Integration".
+ * #ЗАЧЕМ: Реализация Media Session API для управления с экрана блокировки.
+ * #ЧТО: ПЛАН №4000 — 1. Интеграция метаданных трека. 2. Системные обработчики Play/Pause.
  */
 'use client';
 
@@ -129,6 +129,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
+  // #ЗАЧЕМ: Предотвращение лишних обновлений Media Session.
+  const lastTrackNameRef = useRef<string | null>(null);
+
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
 
   const { toast } = useToast();
@@ -230,6 +233,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [calibrationGains.master]);
 
+  // #ЗАЧЕМ: Синхронизация системного состояния воспроизведения.
+  useEffect(() => {
+      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      }
+  }, [isPlaying]);
+
   const initialize = useCallback(async () => {
     if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
@@ -296,6 +306,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
+                // #ЗАЧЕМ: Обновление метаданных Media Session при смене трека.
+                if (payload.trackName && payload.trackName !== lastTrackNameRef.current) {
+                    lastTrackNameRef.current = payload.trackName;
+                    if ('mediaSession' in navigator) {
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: payload.trackName.replace(/_/g, ' '),
+                            artist: 'AuraGroove Orchestra',
+                            album: (payload.genre || 'Digital DNA').toUpperCase(),
+                            artwork: [
+                                { src: '/assets/icon8.jpeg', sizes: '512x512', type: 'image/jpeg' }
+                            ]
+                        });
+                    }
+                }
+
                 if (payload.barCount === 0) {
                     masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
                 }
@@ -337,121 +362,129 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [auth, db, applyCalibration, calibrationGains, isInitialized, isInitializing]);
 
-  const value = useMemo(() => ({
-    isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
-    initialize, calibrationGains, voiceLimit, setVoiceLimit,
-    analyser: analyserNodeRef.current,
-    setIsPlaying: async (playing: boolean) => {
-        const context = audioContextRef.current;
-        if (!context || !workerRef.current) return;
-        if (playing) {
-            if (context.state === 'suspended') await context.resume();
-            setIsPlaying(true);
-            stopAllSounds(); 
-            nextBarTimeRef.current = context.currentTime + 0.5;
-            workerRef.current.postMessage({ command: 'start' });
-        } else {
-            setIsPlaying(false);
-            workerRef.current.postMessage({ command: 'stop' });
-            stopAllSounds(); 
-        }
-    },
-    updateSettings: (s: any) => { 
-        if (workerRef.current) { 
-            settingsRef.current = { ...(settingsRef.current || {}), ...s }; 
-            workerRef.current.postMessage({ command: 'update_settings', data: s }); 
-        } 
-    },
-    refreshCloudAxioms: async () => {},
-    resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
-    setVolume: setVolumeCallback, 
-    setInstrument: async (part: any, name: any) => {
-        if (!isInitialized) return;
-        const preset = (V2_PRESETS as any)[name] || (BASS_PRESETS as any)[name];
-        if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
-        else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
-        else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
-        else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name);
-    },
-    setBassTechnique: () => {}, 
-    setTextureSettings: (s: any) => {
-        setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
-        setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
-    },
-    setEQGain: () => {}, 
-    setCalibrationGain: (key: string, val: number) => {
-        const next = { ...calibrationGains, [key]: val };
-        setCalibrationGains(next);
-        localStorage.setItem('AuraGroove_Calibration', JSON.stringify(next));
-        applyCalibration(next);
-    },
-    startRecording: () => {
-        if (!recDestRef.current) return;
-        try {
-            recordedChunksRef.current = [];
-            const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-            const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType });
-            mediaRecorderRef.current = recorder;
-            recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
-            recorder.onstop = () => {
-                const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-                const ext = mimeType.split('/')[1].split(';')[0];
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a'); a.style.display = 'none';
-                a.href = url; a.download = `AuraGroove_Session_${Date.now()}.${ext}`;
-                document.body.appendChild(a); a.click();
-                setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
-            };
-            recorder.start(1000); 
-            setIsRecording(true);
-            toast({ title: "Recording Started", description: "Audio stream is being captured." });
-        } catch (e) {
-            toast({ variant: "destructive", title: "Recording Failed", description: "Could not initialize recorder." });
-        }
-    },
-    stopRecording: () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            toast({ title: "Recording Stopped", description: "Generating audio file..." });
-        }
-    },
-    toggleBroadcast: () => { 
-        if (broadcastEngineRef.current && audioContextRef.current) { 
-            const now = audioContextRef.current.currentTime;
-            if (isBroadcastActive) { 
-                broadcastEngineRef.current.stop(); 
-                setIsBroadcastActive(false); 
-                speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.1);
-            } else { 
-                broadcastEngineRef.current.start(); 
-                setIsBroadcastActive(true); 
-                speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, now, 0.1);
+  const value = useMemo(() => {
+    const api = {
+        isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
+        initialize, calibrationGains, voiceLimit, setVoiceLimit,
+        analyser: analyserNodeRef.current,
+        setIsPlaying: async (playing: boolean) => {
+            const context = audioContextRef.current;
+            if (!context || !workerRef.current) return;
+            if (playing) {
+                if (context.state === 'suspended') await context.resume();
+                setIsPlaying(true);
+                stopAllSounds(); 
+                nextBarTimeRef.current = context.currentTime + 0.5;
+                workerRef.current.postMessage({ command: 'start' });
+            } else {
+                setIsPlaying(false);
+                workerRef.current.postMessage({ command: 'stop' });
+                stopAllSounds(); 
+            }
+        },
+        updateSettings: (s: any) => { 
+            if (workerRef.current) { 
+                settingsRef.current = { ...(settingsRef.current || {}), ...s }; 
+                workerRef.current.postMessage({ command: 'update_settings', data: s }); 
             } 
-        } 
-    }, 
-    getWorker: () => workerRef.current,
-    playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => {
-        if (!audioContextRef.current || !isInitialized) return;
-        const now = audioContextRef.current.currentTime;
-        const bpm = tempo || 72;
-        
-        // #ЗАЧЕМ: Протокол «Direct Audition». Остановка текущей игры перед проверкой ДНК.
-        stopAllSounds();
-        
-        if (drumMachineRef.current) drumMachineRef.current.schedule(events, now, bpm);
-        if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, now, bpm);
-        if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, now, bpm);
-        if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, now, bpm);
-        if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, now, bpm);
-        if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, now, bpm);
-    },
-    stopAllSounds,
-    startPreview: async (p: any, t: any, l: any) => {},
-    stopPreview: () => {},
-    updatePreviewPreset: () => {},
-    togglePreviewLoop: () => {}
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
+        },
+        refreshCloudAxioms: async () => {},
+        resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
+        setVolume: setVolumeCallback, 
+        setInstrument: async (part: any, name: any) => {
+            if (!isInitialized) return;
+            const preset = (V2_PRESETS as any)[name] || (BASS_PRESETS as any)[name];
+            if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name);
+            else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name);
+        },
+        setBassTechnique: () => {}, 
+        setTextureSettings: (s: any) => {
+            setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0);
+            setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0);
+        },
+        setEQGain: () => {}, 
+        setCalibrationGain: (key: string, val: number) => {
+            const next = { ...calibrationGains, [key]: val };
+            setCalibrationGains(next);
+            localStorage.setItem('AuraGroove_Calibration', JSON.stringify(next));
+            applyCalibration(next);
+        },
+        startRecording: () => {
+            if (!recDestRef.current) return;
+            try {
+                recordedChunksRef.current = [];
+                const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+                const recorder = new MediaRecorder(recDestRef.current.stream, { mimeType });
+                mediaRecorderRef.current = recorder;
+                recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
+                recorder.onstop = () => {
+                    const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+                    const ext = mimeType.split('/')[1].split(';')[0];
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.style.display = 'none';
+                    a.href = url; a.download = `AuraGroove_Session_${Date.now()}.${ext}`;
+                    document.body.appendChild(a); a.click();
+                    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+                };
+                recorder.start(1000); 
+                setIsRecording(true);
+                toast({ title: "Recording Started", description: "Audio stream is being captured." });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Recording Failed", description: "Could not initialize recorder." });
+            }
+        },
+        stopRecording: () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+                setIsRecording(false);
+                toast({ title: "Recording Stopped", description: "Generating audio file..." });
+            }
+        },
+        toggleBroadcast: () => { 
+            if (broadcastEngineRef.current && audioContextRef.current) { 
+                const now = audioContextRef.current.currentTime;
+                if (isBroadcastActive) { 
+                    broadcastEngineRef.current.stop(); 
+                    setIsBroadcastActive(false); 
+                    speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, now, 0.1);
+                } else { 
+                    broadcastEngineRef.current.start(); 
+                    setIsBroadcastActive(true); 
+                    speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, now, 0.1);
+                } 
+            } 
+        }, 
+        getWorker: () => workerRef.current,
+        playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => {
+            if (!audioContextRef.current || !isInitialized) return;
+            const now = audioContextRef.current.currentTime;
+            const bpm = tempo || 72;
+            stopAllSounds();
+            if (drumMachineRef.current) drumMachineRef.current.schedule(events, now, bpm);
+            if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, now, bpm);
+            if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, now, bpm);
+            if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, now, bpm);
+            if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, now, bpm);
+            if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(events, now, bpm);
+        },
+        stopAllSounds,
+        startPreview: async (p: any, t: any, l: any) => {},
+        stopPreview: () => {},
+        updatePreviewPreset: () => {},
+        togglePreviewLoop: () => {}
+    };
+
+    // #ЗАЧЕМ: Регистрация системных обработчиков Media Session.
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => api.setIsPlaying(true));
+        navigator.mediaSession.setActionHandler('pause', () => api.setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('stop', () => api.setIsPlaying(false));
+    }
+
+    return api;
+  }, [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };
