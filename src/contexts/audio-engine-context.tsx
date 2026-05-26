@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V56.0 — "Sequence-Locked Auto-Ignition".
- * #ЗАЧЕМ: Гарантированный старт Бродкаста и музыки только после полной загрузки ресурсов.
- * #ЧТО: ПЛАН №8800 — Внедрено ожидание initialize() внутри setIsPlaying.
+ * @fileOverview Audio Engine Context V57.0 — "Cold Start Synchronization".
+ * #ЗАЧЕМ: Устранение спотыканий в первые 3-4 такта.
+ * #ЧТО: ПЛАН №8900 — Стартовое окно расширено до 1.5с (синхронно с фейдом Бродкаста).
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -129,7 +129,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  // #ЗАЧЕМ: Флаг для автоматического старта Бродкаста один раз за сессию.
   const hasAutoStartedBroadcastRef = useRef<boolean>(false);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
@@ -245,7 +244,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
             sampleRate: 44100,
-            latencyHint: 'playback' // #ЗАЧЕМ: Сигнал браузеру о приоритете плеера.
+            latencyHint: 'playback'
         });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
@@ -292,7 +291,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
-        // Поэтапная загрузка
         await Promise.all([
             drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true),
             telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
@@ -347,7 +345,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         return true;
     } catch (e) { 
-        console.error('[AudioEngine] Init error:', e);
         setIsInitializing(false); 
         return false; 
     }
@@ -359,7 +356,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         initialize, calibrationGains, voiceLimit, setVoiceLimit,
         analyser: analyserNodeRef.current,
         setIsPlaying: async (playing: boolean) => {
-            // #ЗАЧЕМ: ПЛАН №8800. Принудительное ожидание инициализации сэмплеров перед пуском.
             const ready = await initialize();
             if (!ready) return;
 
@@ -369,7 +365,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
 
-                // #ЗАЧЕМ: Автоматическая активация Бродкаста при первом Play ПОСЛЕ загрузки.
                 if (!hasAutoStartedBroadcastRef.current && broadcastEngineRef.current) {
                     await broadcastEngineRef.current.start();
                     setIsBroadcastActive(true);
@@ -380,7 +375,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 setIsPlaying(true);
                 stopAllSounds(); 
-                nextBarTimeRef.current = context.currentTime + 0.5;
+                // #ЗАЧЕМ: ПЛАН №8900. Буфер 1.5с для синхронизации с фейдом Бродкаста и устранения спотыканий.
+                nextBarTimeRef.current = context.currentTime + 1.5;
+                console.log(`%c[AudioEngine] Start sequence initialized. Scheduled for T+1.5s`, 'color: #DA70D6;');
                 workerRef.current.postMessage({ command: 'start' });
             } else {
                 setIsPlaying(false);
