@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V89.6 — "The Reference Integrity Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: activeAxiom is not defined.
- * #ЧТО: ПЛАН №9960 — Переменная activeAxiom заменена на корректную activePhrase.
+ * @fileOverview Ambient Brain V90.0 — "The Landscape Architect".
+ * #ЗАЧЕМ: Ударные в амбиенте переведены в режим "Ландшафт".
+ * #ЧТО: ПЛАН №9980 — Полное игнорирование аксиом барабанов. Только перкуссия, колокольчики и редкий пульс.
  */
 
 import type {
@@ -207,14 +207,8 @@ export class AmbientBrain {
                         });
                     });
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    drumSiblings.forEach(ax => { 
-                        this.currentDrumAxioms.push({ 
-                            phrase: decompressCompactPhrase(ax.phrase), 
-                            role: ax.role,
-                            endBar: epoch + (selected.bars || 4)
-                        }); 
-                    });
+                    // #ЗАЧЕМ: Барабанные аксиомы игнорируются в Амбиенте (ПЛАН №9980).
+                    // Мы не заполняем currentDrumAxioms, чтобы не провоцировать их рендер.
 
                     const baseBars = selected.bars || 4;
                     this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
@@ -498,7 +492,6 @@ export class AmbientBrain {
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
                 if (epoch >= 4) {
-                    // #ЗАЧЕМ: Исправление ReferenceError (activeAxiom -> activePhrase)
                     activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
                     activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
                 }
@@ -541,8 +534,8 @@ export class AmbientBrain {
         }
 
         if (hints.drums) {
-            const landscapeDrums = this.renderSonicLandscape(epoch, localTension);
-            events.push(...landscapeDrums);
+            // #ЗАЧЕМ: Барабаны в Амбиенте — это Ландшафт. Аксиомы наследия удалены (ПЛАН №9980).
+            events.push(...this.renderSonicLandscape(epoch, localTension));
         }
 
         if (hints.sparkles || hints.sfx) {
@@ -595,45 +588,61 @@ export class AmbientBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Генератор звуковых ландшафтов.
+     * #ЧТО: ПЛАН №9980. Чисто процедурная генерация перкуссии без DNA.
+     */
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        if (this.random.next() < 0.35) {
-            const time = this.random.next() * TICKS_PER_BAR; 
+        // 1. Редкий пульс бочки (Кик)
+        if (this.random.next() < 0.30) {
+            const time = [0, 6][this.random.nextInt(2)]; 
             events.push({
                 type: (kit.kick[this.random.nextInt(kit.kick.length)] || 'drum_kick_soft') as any,
-                note: 36, time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.65,
+                note: 36, time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.7,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
 
-        if (this.random.next() < 0.45) {
+        // 2. Редкий хэт (или его призрак)
+        if (this.random.next() < 0.20) {
+            const time = [3, 9][this.random.nextInt(2)];
             events.push({
-                type: 'drum_ride_wetter', note: 51, 
-                time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 4.5, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato',
-                pan: (this.random.next() * 1.6) - 0.8
+                type: 'drum_closed_hi_hat_ghost', note: 42, 
+                time: time * TICK_TO_BEAT, duration: 0.1, weight: 0.35, 
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                pan: 0.2
             });
         }
 
-        const hitCount = 2 + this.random.nextInt(Math.floor(tension * 6) + 2);
-        for (let i = 0; i < hitCount; i++) {
+        // 3. Райд / Текстурный металл
+        if (this.random.next() < 0.40) {
+            events.push({
+                type: 'drum_ride_wetter', note: 51, 
+                time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, 
+                duration: 4.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                pan: (this.random.next() * 1.4) - 0.7
+            });
+        }
+
+        // 4. Текстурная перкуссия (Колокольчики, трубки, перки)
+        // Плотность ландшафта зависит от Tension
+        const landscapeDensity = 2 + this.random.nextInt(Math.floor(tension * 5) + 3);
+        for (let i = 0; i < landscapeDensity; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
             const time = this.random.next() * TICKS_PER_BAR;
             const pan = (this.random.next() * 1.8) - 0.9;
+            
             events.push({
                 type: perc as any, note: 48, 
-                time: time * TICK_TO_BEAT, duration: 1.0, 
-                weight: 0.4 + (this.random.next() * 0.35), 
+                time: time * TICK_TO_BEAT, duration: 1.2, 
+                weight: 0.3 + (this.random.next() * 0.3), 
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan
             });
         }
 
-        if (this.currentDrumAxioms.length > 0) {
-            const hDrums = this.renderHeritageDrums(epoch, tension);
-            hDrums.forEach(e => { e.weight *= 0.35; events.push(e); });
-        }
         return events;
     }
 
@@ -687,7 +696,7 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -757,54 +766,6 @@ export class AmbientBrain {
         if (atom) { this.fog = atom.fog; this.depth = atom.depth; this.registerShift = atom.reg; }
     }
 
-    private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
-        if (this.currentDrumAxioms.length === 0) return [];
-        const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-        this.currentDrumAxioms.forEach(ax => {
-            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
-                events.push({
-                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                    time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.9,
-                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
-                });
-            });
-        });
-        return events;
-    }
-
-    private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
-        const events: FractalEvent[] = []; 
-        const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
-        const scale = [0, 2, 4, 5, 7, 9, 11];
-        [0, 3, 6, 9].forEach((t, i) => { 
-            events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
-        });
-        const padE: FractalEvent = { type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.25, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 2.5, mood: this.mood } };
-        events.push(...this.rippleLongNote(padE, chord));
-        if (hints.melody) { 
-            const melE: FractalEvent = { type: 'melody', note: root + 24, time: 1.5, duration: 3.125, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 2.0, release: 3.0, mood: this.mood } };
-            events.push(...this.rippleLongNote(melE, chord)); 
-        }
-        events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-        events.push({ type: 'drum_snare_ghost_note', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-        return events;
-    }
-
-    private constrainBassOctave(note: number): number {
-        let n = note;
-        while (n > 47) n -= 12;
-        while (n < 31) n += 12;
-        return n;
-    }
-
-    private constrainAccompanimentOctave(note: number): number {
-        let n = note;
-        while (n > 71) n -= 12;
-        while (n < 48) n += 12;
-        return n;
-    }
+    private constrainBassOctave(note: number): number { let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
+    private constrainAccompanimentOctave(note: number): number { let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }
