@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V52.0 — "The Atmospheric Voyager".
- * #ЗАЧЕМ: Реализация динамической плотности атмосферы (ПЛАН №10000).
- * #ЧТО: Частота Sparkles и SFX теперь привязана к Tension (T). Базовая частота разряжена.
+ * @fileOverview Psybient Brain V53.0 — "The Stable Voyager".
+ * #ЗАЧЕМ: 1. Мутации раз в 8 тактов. 2. Нормализация Heritage Drums (0.35).
+ * #ЧТО: ПЛАН №11000 — Синхронизация логики с Регги.
  */
 
 import type {
@@ -266,7 +266,9 @@ export class TranceBrain {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         
-        if (epoch % 4 === 0 && epoch >= 4) {
+        // --- MUTATION DECISION ---
+        // #ЗАЧЕМ: ПЛАН №11000. Мутации раз в 8 тактов.
+        if (epoch % 8 === 0 && epoch >= 4) {
             const mutationRand = this.rng.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
             if (mutationRand < mutationThreshold * 0.25) {
@@ -507,7 +509,10 @@ export class TranceBrain {
             barNotes.forEach(n => {
                 events.push({
                     type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+                    duration: 0.1, 
+                    // #ЗАЧЕМ: ПЛАН №11000. Нормализация громкости в Psybient.
+                    weight: 0.35, 
+                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
         });
@@ -656,15 +661,8 @@ export class TranceBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Динамическая плотность атмосферы.
-     * #ЧТО: ПЛАН №10000. Вероятность появления Sparkles и SFX теперь привязана к Tension (T).
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // 1. Sparkles (Droplets) — Прямая зависимость от T.
-        // Диапазон вероятности: 5% (T=0.1) до 20% (T=0.9).
         const sparkleProb = 5 + (tension * 18);
         if (this.rng.chance(sparkleProb)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
@@ -676,9 +674,6 @@ export class TranceBrain {
                 params: { mood: this.mood, genre: this.genre, category } 
             });
         }
-
-        // 2. SFX (Voices, Lasers) — Прямая зависимость от T.
-        // Диапазон вероятности: 4% (T=0.1) до 15% (T=0.9).
         const sfxProb = 4 + (tension * 12);
         if (this.rng.chance(sfxProb)) {
             events.push({ 

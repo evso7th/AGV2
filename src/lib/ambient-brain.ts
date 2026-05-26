@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V90.1 — "The Landscape Architect Verified".
- * #ЗАЧЕМ: Финализация Текстурного Мозга после серии багфиксов.
- * #ЧТО: ПЛАН №10100 — Чистка кода и подтверждение стабильности импортов.
+ * @fileOverview Ambient Brain V91.0 — "The Quiet Architect".
+ * #ЗАЧЕМ: Снижение частоты мутаций до 8 тактов.
+ * #ЧТО: ПЛАН №11000 — Стабилизация текстурного потока.
  */
 
 import type {
@@ -341,7 +341,8 @@ export class AmbientBrain {
         }
 
         // --- MUTATION DECISION ---
-        if (epoch % 4 === 0 && epoch >= 4) {
+        // #ЗАЧЕМ: ПЛАН №11000. Мутации раз в 8 тактов.
+        if (epoch % 8 === 0 && epoch >= 4) {
             const mutationRand = this.random.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
 
@@ -683,7 +684,7 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;

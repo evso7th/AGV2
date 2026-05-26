@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V85.0 — "The Protected Storyteller".
- * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
- * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
+ * @fileOverview Blues Brain V86.0 — "The Relaxed Storyteller".
+ * #ЗАЧЕМ: Снижение частоты мутаций до 8 тактов.
+ * #ЧТО: ПЛАН №11000 — Интервал мутаций изменен с 4 на 8 тактов.
  */
 
 import {
@@ -351,8 +351,8 @@ export class BluesBrain {
         this.degreeTransposition = 0;
     }
 
-    // #ЗАЧЕМ: Протокол "Safe Warm-up" (ПЛАН №5100). Мутации спят первые 4 такта.
-    if (epoch % 4 === 0 && epoch >= 4) {
+    // #ЗАЧЕМ: ПЛАН №11000. Мутации раз в 8 тактов.
+    if (epoch % 8 === 0 && epoch >= 4) {
         const mutationRand = this.random.next();
         const mutationThreshold = this.config.isImprovising ? 0.9 : 0.5;
         if (mutationRand < mutationThreshold * 0.25) {
@@ -412,7 +412,6 @@ export class BluesBrain {
         const nextNote = resChord.rootNote + 12;
         const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
         
-        // #ЗАЧЕМ: ПЛАН №5100. Артикуляция только после периода стабилизации.
         let finalStitch = stitch;
         if (epoch >= 4) {
             finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
@@ -452,8 +451,8 @@ export class BluesBrain {
         this.currentAccompAxioms.forEach((ax) => {
             const rawRole = ax.role.toLowerCase(); 
             let target: InstrumentPart | null = null;
-            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
-            else if (rawRole.includes('accomp')) target = 'accompaniment';
+            if (role.includes('piano')) target = 'pianoAccompaniment';
+            else if (role.includes('accomp')) target = 'accompaniment';
             
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let activePhrase = ax.phrase;
