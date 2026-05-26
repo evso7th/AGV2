@@ -3,12 +3,16 @@
   "short_name": "AuraGroove",
   "description": "AI-powered fractal music generator",
   "id": "/?source=pwa",
-  "start_url": "/?source=pwa",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "display_override": [
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
   "background_color": "#111111",
   "theme_color": "#111111",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "/icon8.png",
