@@ -1,10 +1,9 @@
-
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V53.0 — "Cover Art Synchronization".
- * #ЗАЧЕМ: Обеспечение идеального отображения обложки в системном плеере.
- * #ЧТО: ПЛАН №7500 — Artwork принудительно использует /icon8.png (512x512).
+ * @fileOverview Audio Engine Context V54.0 — "Cover Art Update".
+ * #ЗАЧЕМ: Смена обложки для системного плеера по запросу пользователя.
+ * #ЧТО: ПЛАН №7600 — Artwork переведен на /cover.jpg (JPEG).
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -305,7 +304,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // #ЗАЧЕМ: ПЛАН №7500. artwork принудительно указывает на icon8.png 512x512.
+                // #ЗАЧЕМ: Смена обложки на cover.jpg (ПЛАН №7600).
                 const currentSessionIdentity = `${payload.genre}-${payload.mood}`;
                 if (currentSessionIdentity !== lastSessionIdentityRef.current) {
                     lastSessionIdentityRef.current = currentSessionIdentity;
@@ -315,7 +314,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                             artist: `${payload.genre}`.toUpperCase(),
                             album: `${payload.mood}`.toUpperCase(),
                             artwork: [
-                                { src: '/icon8.png', sizes: '512x512', type: 'image/png' }
+                                { src: '/cover.jpg', sizes: '512x512', type: 'image/jpeg' }
                             ]
                         });
                     }
