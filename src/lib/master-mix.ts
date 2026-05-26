@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Master Mix Registry V1.6 — "Reggae Drum Normalization".
- * #ЗАЧЕМ: Точечная настройка баланса для Регги по запросу пользователя.
- * #ЧТО: ПЛАН №2120 — Громкость ударных для 'reggae' снижена в 3 раза (0.50 -> 0.17).
+ * @fileOverview Master Mix Registry V1.7 — "Deep Dub Drum Calibration".
+ * #ЗАЧЕМ: Дополнительное снижение громкости ударных для Регги.
+ * #ЧТО: ПЛАН №2121 — Громкость ударных для 'reggae' снижена ещё в 2 раза (0.17 -> 0.085).
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -44,8 +44,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         accompaniment: 0.30,
         harmony: 0.30,
         pianoAccompaniment: 0.30,
-        // #ЗАЧЕМ: ПЛАН №2120. Снижение в 3 раза для мягкого даб-звучания.
-        drums: 0.17, 
+        // #ЗАЧЕМ: ПЛАН №2121. Дополнительное снижение в 2 раза (от 0.17) для экстремально мягкого даба.
+        drums: 0.085, 
         sparkles: 0.18,
         sfx: 0.25
     },
