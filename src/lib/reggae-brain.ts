@@ -1,8 +1,8 @@
+
 /**
- * @fileOverview Reggae Brain V47.0 — "The Elastic Dubber".
- * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
- * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Даб-грув теперь "плавает" ритмически.
- * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
+ * @fileOverview Reggae Brain V48.0 — "The Protected Dubber".
+ * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
+ * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
  */
 
 import type {
@@ -159,6 +159,7 @@ export class ReggaeBrain {
 
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
+                    this.currentLickId = selected.id || 'DNA';
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
                     
@@ -235,7 +236,8 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         
         // --- MUTATION DECISION ---
-        if (epoch % 4 === 0) {
+        // #ЗАЧЕМ: ПЛАН №5100. Охранный интервал для Бродкаста.
+        if (epoch % 4 === 0 && epoch >= 4) {
             const mutationRand = this.random.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
             if (mutationRand < mutationThreshold * 0.25) {
@@ -246,6 +248,10 @@ export class ReggaeBrain {
             else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
             else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
             else this.currentMutationType = 'none';
+            
+            console.log(`%c[ReggaeBrain] Applied Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
+        } else if (epoch < 4) {
+            this.currentMutationType = 'none';
         }
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -275,9 +281,13 @@ export class ReggaeBrain {
             const scale = getScaleForMood(this.mood);
             const nextNote = resRoot + 12;
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-            // #ЗАЧЕМ: Применяем артикуляцию и микро-хронос к мосту.
-            let finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
-            finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+            
+            // #ЗАЧЕМ: ПЛАН №5100. Артикуляция только после "прогрева".
+            let finalStitch = stitch;
+            if (epoch >= 4) {
+                finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+                finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+            }
             
             const stitchEvents = this.renderHeritageMelody(epoch, resChord, tension, finalStitch);
             events.push(...stitchEvents);
@@ -299,9 +309,10 @@ export class ReggaeBrain {
                 if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
                 else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
                 
-                // #ЗАЧЕМ: Артикуляция и Микро-хронос баса.
-                bassPhrase = applyDynamicArticulation(bassPhrase, tension, this.seed + epoch + 50);
-                bassPhrase = applyMicroChronos(bassPhrase, this.seed + 200, tension);
+                if (epoch >= 4) {
+                    bassPhrase = applyDynamicArticulation(bassPhrase, tension, this.seed + epoch + 50);
+                    bassPhrase = applyMicroChronos(bassPhrase, this.seed + 200, tension);
+                }
 
                 events.push(...this.renderHeritageBass(epoch, resChord, tension, bassPhrase));
             } else {
@@ -327,9 +338,10 @@ export class ReggaeBrain {
                     else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                     else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
                     
-                    // #ЗАЧЕМ: Артикуляция и Микро-хронос аккомпанемента.
-                    activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
-                    activePhrase = applyMicroChronos(activePhrase, this.seed + 300, tension);
+                    if (epoch >= 4) {
+                        activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+                        activePhrase = applyMicroChronos(activePhrase, this.seed + 300, tension);
+                    }
 
                     events.push(...this.renderHeritageLayer(resChord, epoch, activePhrase, target, tension));
                     usedLayers.add(target);
@@ -339,7 +351,6 @@ export class ReggaeBrain {
         }
 
         if (hints.harmony && !usedLayers.has('harmony')) { 
-            // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в Регги.
             const harProb = 0.2 + (tension * 0.4);
             if (this.random.next() < harProb) {
                 events.push(...this.renderGenerativeHarmony(resChord, epoch, tension)); 
@@ -363,9 +374,10 @@ export class ReggaeBrain {
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
                 
-                // #ЗАЧЕМ: ПЛАН №3200. "Дышащее" регги-соло.
-                activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
-                activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+                if (epoch >= 4) {
+                    activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+                }
 
                 const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension, activePhrase);
                 if (heritageMelody.length > 0) { events.push(...heritageMelody); melodyStatus = this.currentTheme.id; }
@@ -454,7 +466,7 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         this.currentDrumAxioms.forEach(ax => {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => { events.push({ type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }); });

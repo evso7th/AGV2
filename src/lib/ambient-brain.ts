@@ -1,8 +1,8 @@
+
 /**
- * @fileOverview Ambient Brain V88.0 — "The Elastic Dreamer".
- * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
- * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Музыка теперь "дышит" ритмически.
- * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
+ * @fileOverview Ambient Brain V89.0 — "The Stabilized Dreamer".
+ * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
+ * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
  */
 
 import type {
@@ -349,7 +349,8 @@ export class AmbientBrain {
         }
 
         // --- MUTATION DECISION ---
-        if (epoch % 4 === 0) {
+        // #ЗАЧЕМ: ПЛАН №5100. Ожидание стабилизации Бродкаста (epoch >= 4).
+        if (epoch % 4 === 0 && epoch >= 4) {
             const mutationRand = this.random.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
 
@@ -361,6 +362,10 @@ export class AmbientBrain {
             else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
             else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
             else this.currentMutationType = 'none';
+
+            console.log(`%c[AmbientBrain] Applied Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
+        } else if (epoch < 4) {
+            this.currentMutationType = 'none';
         }
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -383,9 +388,13 @@ export class AmbientBrain {
             const scale = getScaleForMood(this.mood);
             const nextNote = resRoot + 12 + this.registerShift; 
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-            // #ЗАЧЕМ: Применяем артикуляцию и микро-хронос к мосту.
-            let finalStitch = applyDynamicArticulation(stitch, localTension, this.seed + epoch);
-            finalStitch = applyMicroChronos(finalStitch, this.seed, localTension);
+            
+            // #ЗАЧЕМ: ПЛАН №5100. Артикуляция и микро-хронос только после "прогрева".
+            let finalStitch = stitch;
+            if (epoch >= 4) {
+                finalStitch = applyDynamicArticulation(stitch, localTension, this.seed + epoch);
+                finalStitch = applyMicroChronos(finalStitch, this.seed, localTension);
+            }
             
             const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', finalStitch, TICKS_PER_BAR, 1.0, localTension);
             events.push(...stitchEvents);
@@ -420,9 +429,10 @@ export class AmbientBrain {
                     else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                     else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
-                    // #ЗАЧЕМ: ПЛАН №3200. Плотная артикуляция и микро-хронос.
-                    activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch + 100);
-                    activePhrase = applyMicroChronos(activePhrase, this.seed + 200, localTension);
+                    if (epoch >= 4) {
+                        activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch + 100);
+                        activePhrase = applyMicroChronos(activePhrase, this.seed + 200, localTension);
+                    }
 
                     const accEvents = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, targetType, dna, localTension);
                     
@@ -447,8 +457,7 @@ export class AmbientBrain {
             }
             
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
-                // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в зависимости от Tension.
-                const harProb = 15 + (localTension * 50); // 15% до 65%
+                const harProb = 15 + (localTension * 50); 
                 if (calculateMusiNum(epoch, 7, this.seed, 100) < harProb) {
                     const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
                     harEvents.forEach(e => e.pan = 0.35); 
@@ -464,9 +473,10 @@ export class AmbientBrain {
             if (this.currentMutationType === 'retrograde') bassPhrase = retrogradePhrase(bassPhrase);
             else if (this.currentMutationType === 'jitter') bassPhrase = applyRhythmicJitter(bassPhrase, this.seed + epoch);
             
-            // #ЗАЧЕМ: Микро-хронос басиста.
-            bassPhrase = applyDynamicArticulation(bassPhrase, localTension, this.seed + epoch + 50);
-            bassPhrase = applyMicroChronos(bassPhrase, this.seed + 300, localTension);
+            if (epoch >= 4) {
+                bassPhrase = applyDynamicArticulation(bassPhrase, localTension, this.seed + epoch + 50);
+                bassPhrase = applyMicroChronos(bassPhrase, this.seed + 300, localTension);
+            }
 
             const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna, bassPhrase);
             if (themeBass.length > 0) {
@@ -490,9 +500,10 @@ export class AmbientBrain {
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
-                // #ЗАЧЕМ: ПЛАН №3200. Эластичное соло.
-                activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
-                activePhrase = applyMicroChronos(activePhrase, this.seed, localTension);
+                if (epoch >= 4) {
+                    activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+                }
 
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
                 melodyStatus = this.currentTheme.id;

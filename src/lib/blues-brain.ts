@@ -1,9 +1,8 @@
+
 /**
- * @fileOverview Blues Brain V84.0 — "The Elastic Storyteller".
- * #ЗАЧЕМ: Реализация микро-хроноса (ритмической эластичности).
- * #ЧТО: ПЛАН №3200 — Интеграция applyMicroChronos. Блюзовое соло теперь обладает "филом" живого мастера.
- * #ОБНОВЛЕНО (ПЛАН №3400): Полное исключение скрипок. Только guitarChords.
- * #ОБНОВЛЕНО (ПЛАН №3500): Частота вступления Harmony привязана к Tension.
+ * @fileOverview Blues Brain V85.0 — "The Protected Storyteller".
+ * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
+ * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
  */
 
 import {
@@ -201,7 +200,6 @@ export class BluesBrain {
   }
 
   private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
-      // #ЗАЧЕМ: ПЛАН №3400. Скрипки полностью удалены из Блюза.
       this.activeHarmonyInstrument = 'guitarChords';
   }
 
@@ -353,7 +351,8 @@ export class BluesBrain {
         this.degreeTransposition = 0;
     }
 
-    if (epoch % 4 === 0) {
+    // #ЗАЧЕМ: Протокол "Safe Warm-up" (ПЛАН №5100). Мутации спят первые 4 такта.
+    if (epoch % 4 === 0 && epoch >= 4) {
         const mutationRand = this.random.next();
         const mutationThreshold = this.config.isImprovising ? 0.9 : 0.5;
         if (mutationRand < mutationThreshold * 0.25) {
@@ -364,6 +363,10 @@ export class BluesBrain {
         else if (mutationRand < mutationThreshold * 0.75) this.state.lastMutationType = 'retrograde';
         else if (mutationRand < mutationThreshold) this.state.lastMutationType = 'jitter';
         else this.state.lastMutationType = 'none';
+        
+        console.log(`%c[BluesBrain] Applied Mutation: ${this.state.lastMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
+    } else if (epoch < 4) {
+        this.state.lastMutationType = 'none';
     }
 
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
@@ -408,9 +411,13 @@ export class BluesBrain {
         const scale = getScaleForMood(this.mood);
         const nextNote = resChord.rootNote + 12;
         const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
-        // #ЗАЧЕМ: Применяем артикуляцию и микро-хронос к мосту.
-        let finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
-        finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+        
+        // #ЗАЧЕМ: ПЛАН №5100. Артикуляция только после периода стабилизации.
+        let finalStitch = stitch;
+        if (epoch >= 4) {
+            finalStitch = applyDynamicArticulation(stitch, tension, this.seed + epoch);
+            finalStitch = applyMicroChronos(finalStitch, this.seed, tension);
+        }
         
         const stitchEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', finalStitch, TICKS_PER_BAR, 1.0, tension);
         events.push(...stitchEvents);
@@ -455,9 +462,10 @@ export class BluesBrain {
                 else if (this.state.lastMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.state.lastMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
-                // #ЗАЧЕМ: ПЛАН №3200. Артикуляция и Микро-хронос аккомпанемента.
-                activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
-                activePhrase = applyMicroChronos(activePhrase, this.seed + 150, tension);
+                if (epoch >= 4) {
+                    activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed + 150, tension);
+                }
 
                 const rendered = this.renderHeritageAccompaniment(resChord, epoch, activePhrase, target, dna, tension);
                 if (rendered.length > 0) {
@@ -490,9 +498,10 @@ export class BluesBrain {
             else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
             else if (this.state.lastMutationType === 'transpose_deg') activeAxiom = transposePhraseDegrees(activeAxiom, this.degreeTransposition);
             
-            // #ЗАЧЕМ: ПЛАН №3200. "Дышащее" соло (Артикуляция + Микро-хронос).
-            activeAxiom = applyDynamicArticulation(activeAxiom, tension, this.seed + epoch);
-            activeAxiom = applyMicroChronos(activeAxiom, this.seed, tension);
+            if (epoch >= 4) {
+                activeAxiom = applyDynamicArticulation(activeAxiom, tension, this.seed + epoch);
+                activeAxiom = applyMicroChronos(activeAxiom, this.seed, tension);
+            }
 
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
             melodyStatusId = this.currentLickId;
@@ -522,8 +531,7 @@ export class BluesBrain {
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        // #ЗАЧЕМ: ПЛАН №3500. Динамическая плотность Harmony в зависимости от Tension.
-        const harProb = 0.2 + (tension * 0.5); // Ранжируется от 0.2 (тишина) до 0.7 (накал)
+        const harProb = 0.2 + (tension * 0.5); 
         if (this.random.next() < harProb) {
             this.selectHarmonyInstrument(epoch, tension, false);
             const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
@@ -626,9 +634,10 @@ export class BluesBrain {
           if (this.state.lastMutationType === 'retrograde') activeBassAxiom = retrogradePhrase(activeBassAxiom);
           else if (this.state.lastMutationType === 'jitter') activeBassAxiom = applyRhythmicJitter(activeBassAxiom, this.seed + epoch);
           
-          // #ЗАЧЕМ: Артикуляция и Микро-хронос баса.
-          activeBassAxiom = applyDynamicArticulation(activeBassAxiom, tension, this.seed + epoch + 50);
-          activeBassAxiom = applyMicroChronos(activeBassAxiom, this.seed + 250, tension);
+          if (epoch >= 4) {
+              activeBassAxiom = applyDynamicArticulation(activeBassAxiom, tension, this.seed + epoch + 50);
+              activeBassAxiom = applyMicroChronos(activeBassAxiom, this.seed + 250, tension);
+          }
 
           const barNotes = activeBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
           if (barNotes.length > 0) {

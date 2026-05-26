@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V50.1 — "Context Integrity Fix".
- * #ЗАЧЕМ: Исправление TypeError: this.constrainAccompanimentOctave is not a function.
- * #ЧТО: ПЛАН №2320 — 1. Гарантировано наличие методов внутри класса. 2. Исправлен контекст вызова.
+ * @fileOverview Psybient Brain V51.0 — "The Protected Voyager".
+ * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
+ * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
  */
 
 import type {
@@ -27,7 +27,13 @@ import {
     keyToMidiRoot,
     normalizeStr,
     TICKS_PER_BAR,
-    TICK_TO_BEAT
+    TICK_TO_BEAT,
+    applyDynamicArticulation,
+    applyMicroChronos,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter,
+    transposePhraseDegrees
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
@@ -72,6 +78,8 @@ export class TranceBrain {
     private currentPreferredInstrument: string | null = null;
     private soloistBusyUntilBar: number = -1;
     private spiralTransposition: number = 0;
+    private currentMutationType: string = 'none';
+    private degreeTransposition: number = 0;
 
     private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
     private lastHarmonySwitchBar: number = -1;
@@ -254,10 +262,28 @@ export class TranceBrain {
         navInfo: NavigationInfo,
         dna: SuiteDNA,
         hints: InstrumentHints
-    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
+    ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number, mutationType?: string } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         
+        // #ЗАЧЕМ: ПЛАН №5100. Охранный интервал для Бродкаста.
+        if (epoch % 4 === 0 && epoch >= 4) {
+            const mutationRand = this.rng.next();
+            const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
+            if (mutationRand < mutationThreshold * 0.25) {
+                this.degreeTransposition = [-1, 1, 2, -2][this.rng.nextInt(4)];
+                this.currentMutationType = 'transpose_deg';
+            }
+            else if (mutationRand < mutationThreshold * 0.5) this.currentMutationType = 'inversion';
+            else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
+            else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
+            else this.currentMutationType = 'none';
+
+            console.log(`%c[TranceBrain] Applied Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
+        } else if (epoch < 4) {
+            this.currentMutationType = 'none';
+        }
+
         if (epoch > 0 && epoch % 8 === 0) {
             const shifts = [0, 3, 5, 7, -2];
             this.spiralTransposition = shifts[calculateMusiNum(epoch, 11, this.seed, shifts.length)];
@@ -314,7 +340,18 @@ export class TranceBrain {
         let mStatus = 'none';
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melodyEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                let activePhrase = this.currentTheme.phrase;
+                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
+                else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                if (epoch >= 4) {
+                    activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+                }
+
+                melodyEvents = this.renderHeritageMelodyRaw(epoch, resChord, tension, activePhrase);
                 mStatus = 'Heritage';
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
@@ -337,7 +374,17 @@ export class TranceBrain {
                 if (role.includes('piano')) target = 'pianoAccompaniment';
                 else if (role.includes('accomp')) target = 'accompaniment';
                 if (target && hints[target] && !usedTargetLayers.has(target)) {
-                    const renders = this.renderSpecificHeritageAccompaniment(resChord, epoch, ax.phrase, target, tension);
+                    let activePhrase = ax.phrase;
+                    if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                    else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+                    else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
+
+                    if (epoch >= 4) {
+                        activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch + 100);
+                        activePhrase = applyMicroChronos(activePhrase, this.seed + 300, tension);
+                    }
+
+                    const renders = this.renderSpecificHeritageAccompaniment(resChord, epoch, activePhrase, target, tension);
                     if (renders.length > 0) {
                         events.push(...renders);
                         usedTargetLayers.add(target);
@@ -377,6 +424,7 @@ export class TranceBrain {
             trackName: this.currentTrackName,
             newBpm,
             instrumentOverrides,
+            mutationType: this.currentMutationType,
             activeAxioms: {
                 melody: mStatus,
                 bass: bStatus,
@@ -504,25 +552,21 @@ export class TranceBrain {
         return events;
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (!this.currentTheme) return [];
+    private renderHeritageMelodyRaw(epoch: number, chord: GhostChord, tension: number, phrase: any[]): FractalEvent[] {
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        const rawEvents = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+        const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
             return {
                 type: 'melody' as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
                 duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 1.0,
-                technique: tension > 0.8 ? ('hit' as Technique) : ('swell' as Technique), 
+                technique: n.tech as Technique, 
                 dynamics: 'mf', phrasing: 'legato',
-                params: {
-                    attack: 1.5,
-                    release: 3.0
-                }
+                params: { attack: 1.5, release: 3.0 }
             };
         });
         
@@ -535,7 +579,15 @@ export class TranceBrain {
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        
+        let activePhrase = this.currentBassTheme.phrase;
+        if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
+        
+        if (epoch >= 4) {
+            activePhrase = applyMicroChronos(activePhrase, this.seed + 250, tension);
+        }
+
+        return activePhrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
             technique: 'pulse', dynamics: 'f', phrasing: 'detached'
@@ -550,7 +602,7 @@ export class TranceBrain {
         const rawEvents = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
-            technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'legato'
+            technique: n.tech as Technique, dynamics: 'p', phrasing: 'legato'
         }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
@@ -561,15 +613,18 @@ export class TranceBrain {
         const lick = BLUES_SOLO_LICKS[key];
         if (!lick) return [];
         
-        const rawEvents = decompressCompactPhrase(lick.phrase as any).map(n => ({
+        let activePhrase = decompressCompactPhrase(lick.phrase as any);
+        if (epoch >= 4) {
+            activePhrase = applyDynamicArticulation(activePhrase, tension, this.seed + epoch);
+            activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+        }
+
+        const rawEvents = activePhrase.map(n => ({
             type: 'melody' as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 0.9, 
-            technique: tension > 0.8 ? ('hit' as Technique) : ('swell' as Technique), 
+            technique: n.tech as Technique, 
             dynamics: 'mf', phrasing: 'legato',
-            params: {
-                attack: 1.2,
-                release: 2.8
-            }
+            params: { attack: 1.2, release: 2.8 }
         }));
         
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
