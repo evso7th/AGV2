@@ -369,7 +369,7 @@ export class ReggaeBrain {
         if (hints.melody && !isBridging) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 let activePhrase = this.currentTheme.phrase;
-                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activePhrase);
+                if (this.currentMutationType === 'inversion') activePhrase = invertPhrase(activeAxiom);
                 else if (this.currentMutationType === 'retrograde') activePhrase = retrogradePhrase(activePhrase);
                 else if (this.currentMutationType === 'jitter') activePhrase = applyRhythmicJitter(activePhrase, this.seed + epoch);
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
@@ -469,7 +469,8 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         this.currentDrumAxioms.forEach(ax => {
-            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => { events.push({ type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }); });
+            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => { events.push({ type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    duration: 0.1, weight: 0.32, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }); });
         });
         return events;
     }
