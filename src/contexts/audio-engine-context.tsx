@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V60.0 — "The Silk Start Protocol".
- * #ЗАЧЕМ: Устранение заиканий при старте бродкаста.
- * #ЧТО: ПЛАН №12000 — 1. Увеличен стартовый оффсет до 3.5с. 2. Плавный вход мастер-гейна.
+ * @fileOverview Audio Engine Context V60.1 — "Balanced Silk Start".
+ * #ЗАЧЕМ: Оптимизация времени ожидания перед стартом.
+ * #ЧТО: ПЛАН №12010 — Начальное смещение (nextBarTimeRef) скорректировано до 2.0с.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -389,8 +389,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 setIsPlaying(true);
                 stopAllSounds(); 
-                // #ЗАЧЕМ: ПЛАН №12000. Увеличенный запас времени (3.5с) для наполнения системных буферов.
-                nextBarTimeRef.current = context.currentTime + 3.5;
+                // #ЗАЧЕМ: ПЛАН №12010. Смещение планировщика оптимизировано до 2.0с для более быстрого старта.
+                nextBarTimeRef.current = context.currentTime + 2.0;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
                 setIsPlaying(false);
