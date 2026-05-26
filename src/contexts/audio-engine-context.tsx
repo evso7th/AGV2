@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V55.0 — "Auto-Ignition Protocol".
- * #ЗАЧЕМ: Автоматическое включение Бродкаста при первом нажатии Play.
- * #ЧТО: ПЛАН №8700 — Реализована ловушка первого запуска для стабилизации аппаратных часов.
+ * @fileOverview Audio Engine Context V56.0 — "Sequence-Locked Auto-Ignition".
+ * #ЗАЧЕМ: Гарантированный старт Бродкаста и музыки только после полной загрузки ресурсов.
+ * #ЧТО: ПЛАН №8800 — Внедрено ожидание initialize() внутри setIsPlaying.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -15,6 +15,7 @@ import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
+import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
@@ -130,7 +131,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   // #ЗАЧЕМ: Флаг для автоматического старта Бродкаста один раз за сессию.
   const hasAutoStartedBroadcastRef = useRef<boolean>(false);
-  const lastSessionIdentityRef = useRef<string | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
 
@@ -234,10 +234,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [calibrationGains.master]);
 
   const initialize = useCallback(async () => {
-    if (isInitialized || isInitializing) return true;
+    if (isInitialized) return true;
+    if (isInitializing) return new Promise<boolean>((resolve) => {
+        const check = setInterval(() => {
+            if (isInitialized) { clearInterval(check); resolve(true); }
+        }, 100);
+    });
+
     setIsInitializing(true);
     try {
-        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
+        if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+            sampleRate: 44100,
+            latencyHint: 'playback' // #ЗАЧЕМ: Сигнал браузеру о приоритете плеера.
+        });
         const context = audioContextRef.current;
         if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
@@ -283,6 +292,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         
+        // Поэтапная загрузка
         await Promise.all([
             drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true),
             telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), 
@@ -291,75 +301,81 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
         ]);
         
-        workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
-        workerRef.current.onmessage = (e) => {
-            const { type, payload } = e.data;
-            if (type === 'SCORE_READY' && payload) {
-                const bpm = payload.actualBpm || 72;
-                const beatDur = 60 / bpm;
-                const now = context.currentTime;
+        if (!workerRef.current) {
+            workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
+            workerRef.current.onmessage = (e) => {
+                const { type, payload } = e.data;
+                if (type === 'SCORE_READY' && payload) {
+                    const bpm = payload.actualBpm || 72;
+                    const beatDur = 60 / bpm;
+                    const now = context.currentTime;
 
-                if (payload.barCount === 0) {
-                    masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
-                }
-                if (payload.totalBars && payload.barCount >= payload.totalBars - 2) {
-                    masterGainNodeRef.current?.gain.setTargetAtTime(0.0001, nextBarTimeRef.current, 1.5);
-                }
+                    if (payload.barCount === 0) {
+                        masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
+                    }
+                    if (payload.totalBars && payload.barCount >= payload.totalBars - 2) {
+                        masterGainNodeRef.current?.gain.setTargetAtTime(0.0001, nextBarTimeRef.current, 1.5);
+                    }
 
-                if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
-                if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.bass);
-                if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.melody);
-                if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.barCount, payload.instrumentHints?.accompaniment);
-                if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.harmony);
-                if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
-                
-                const sparkles = payload.events.filter((ev: any) => ev.type === 'sparkle');
-                if (sparkles.length > 0 && sparklePlayerRef.current) {
-                    sparkles.forEach((s: any) => {
-                        const playTime = nextBarTimeRef.current + (s.time * beatDur);
-                        sparklePlayerRef.current!.playRandomSparkle(playTime, payload.genre, payload.mood, s.params?.category);
-                    });
-                }
+                    if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
+                    if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.bass);
+                    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.melody);
+                    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.barCount, payload.instrumentHints?.accompaniment);
+                    if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.harmony);
+                    if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
+                    
+                    const sparkles = payload.events.filter((ev: any) => ev.type === 'sparkle');
+                    if (sparkles.length > 0 && sparklePlayerRef.current) {
+                        sparkles.forEach((s: any) => {
+                            const playTime = nextBarTimeRef.current + (s.time * beatDur);
+                            sparklePlayerRef.current!.playRandomSparkle(playTime, payload.genre, payload.mood, s.params?.category);
+                        });
+                    }
 
-                const sfxEvents = payload.events.filter((ev: any) => ev.type === 'sfx');
-                if (sfxEvents.length > 0 && sfxSynthManagerRef.current) {
-                    sfxSynthManagerRef.current.trigger(sfxEvents, nextBarTimeRef.current, bpm);
-                }
+                    const sfxEvents = payload.events.filter((ev: any) => ev.type === 'sfx');
+                    if (sfxEvents.length > 0 && sfxSynthManagerRef.current) {
+                        sfxSynthManagerRef.current.trigger(sfxEvents, nextBarTimeRef.current, bpm);
+                    }
 
-                nextBarTimeRef.current += payload.barDuration;
-            }
-        };
+                    nextBarTimeRef.current += payload.barDuration;
+                }
+            };
+        }
 
         applyCalibration(calibrationGains);
         setIsInitialized(true);
         setIsInitializing(false);
         return true;
     } catch (e) { 
+        console.error('[AudioEngine] Init error:', e);
         setIsInitializing(false); 
         return false; 
     }
   }, [auth, db, applyCalibration, calibrationGains, isInitialized, isInitializing]);
 
   const value = useMemo(() => {
-    const api = {
+    return {
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions,
         initialize, calibrationGains, voiceLimit, setVoiceLimit,
         analyser: analyserNodeRef.current,
         setIsPlaying: async (playing: boolean) => {
+            // #ЗАЧЕМ: ПЛАН №8800. Принудительное ожидание инициализации сэмплеров перед пуском.
+            const ready = await initialize();
+            if (!ready) return;
+
             const context = audioContextRef.current;
             if (!context || !workerRef.current) return;
+
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
 
-                // #ЗАЧЕМ: ПЛАН №8700. Автоматическая активация Бродкаста при первом Play.
-                // Это гарантирует стабильный темп (Clock Lock) без участия пользователя.
+                // #ЗАЧЕМ: Автоматическая активация Бродкаста при первом Play ПОСЛЕ загрузки.
                 if (!hasAutoStartedBroadcastRef.current && broadcastEngineRef.current) {
-                    broadcastEngineRef.current.start();
+                    await broadcastEngineRef.current.start();
                     setIsBroadcastActive(true);
-                    // Переключаем вывод звука на Радио (Бродкаст-мост)
                     speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, context.currentTime, 0.1);
                     hasAutoStartedBroadcastRef.current = true;
-                    console.log('%c[AudioEngine] Auto-Ignition: Direct Stream Bridge activated for clock stability.', 'color: #4ade80; font-weight: bold;');
+                    console.log('%c[AudioEngine] Sequence-Locked Auto-Ignition: Direct Stream Bridge activated.', 'color: #4ade80; font-weight: bold;');
                 }
 
                 setIsPlaying(true);
@@ -377,15 +393,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 settingsRef.current = { ...(settingsRef.current || {}), ...s }; 
                 workerRef.current.postMessage({ command: 'update_settings', data: s }); 
                 
-                // Обновление MediaSession при смене жанра/настроения
                 if ((s.genre || s.mood) && 'mediaSession' in navigator) {
                     navigator.mediaSession.metadata = new MediaMetadata({
                         title: 'AuraGroove',
                         artist: String(s.genre || settingsRef.current.genre).toUpperCase(),
                         album: String(s.mood || settingsRef.current.mood).toUpperCase(),
-                        artwork: [
-                            { src: '/cover.jpg', sizes: '512x512', type: 'image/jpeg' }
-                        ]
+                        artwork: [{ src: '/cover.jpg', sizes: '512x512', type: 'image/jpeg' }]
                     });
                 }
             } 
@@ -423,10 +436,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 recorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); };
                 recorder.onstop = () => {
                     const blob = new Blob(recordedChunksRef.current, { type: mimeType });
-                    const ext = mimeType.split('/')[1].split(';')[0];
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a'); a.style.display = 'none';
-                    a.href = url; a.download = `AuraGroove_Session_${Date.now()}.${ext}`;
+                    a.href = url; a.download = `AuraGroove_Session_${Date.now()}.webm`;
                     document.body.appendChild(a); a.click();
                     setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
                 };
@@ -477,9 +489,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         updatePreviewPreset: () => {},
         togglePreviewLoop: () => {}
     };
-
-    return api;
-  }, [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
+  }, [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, initialize, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
