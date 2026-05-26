@@ -6,11 +6,11 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №7500 — Использование icon8.png (512x512) как эталонного ассета.
+ * #ЧТО: ПЛАН №7700 — Обновлено описание приложения.
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
-  description: 'AI-powered fractal music generator',
+  description: 'personal pure digital fractal music generator',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

@@ -1,10 +1,9 @@
-
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "AI-powered fractal music generator",
+  "description": "personal pure digital fractal music generator",
+  "start_url": "/?source=pwa",
   "id": "/?source=pwa",
-  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "minimal-ui"],
