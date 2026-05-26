@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V54.0 — "Cover Art Update".
- * #ЗАЧЕМ: Смена обложки для системного плеера по запросу пользователя.
- * #ЧТО: ПЛАН №7600 — Artwork переведен на /cover.jpg (JPEG).
+ * @fileOverview Audio Engine Context V55.0 — "Auto-Ignition Protocol".
+ * #ЗАЧЕМ: Автоматическое включение Бродкаста при первом нажатии Play.
+ * #ЧТО: ПЛАН №8700 — Реализована ловушка первого запуска для стабилизации аппаратных часов.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -15,7 +15,6 @@ import { MelodySynthManagerV2 } from '@/lib/melody-synth-manager-v2';
 import { HarmonySynthManager } from '@/lib/harmony-synth-manager';
 import { PianoAccompanimentManager } from '@/lib/piano-accompaniment-manager';
 import { SparklePlayer } from '@/lib/sparkle-player';
-import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
@@ -129,6 +128,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
+  // #ЗАЧЕМ: Флаг для автоматического старта Бродкаста один раз за сессию.
+  const hasAutoStartedBroadcastRef = useRef<boolean>(false);
   const lastSessionIdentityRef = useRef<string | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
@@ -232,12 +233,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [calibrationGains.master]);
 
-  useEffect(() => {
-      if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-          navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-      }
-  }, [isPlaying]);
-
   const initialize = useCallback(async () => {
     if (isInitialized || isInitializing) return true;
     setIsInitializing(true);
@@ -304,22 +299,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // #ЗАЧЕМ: Смена обложки на cover.jpg (ПЛАН №7600).
-                const currentSessionIdentity = `${payload.genre}-${payload.mood}`;
-                if (currentSessionIdentity !== lastSessionIdentityRef.current) {
-                    lastSessionIdentityRef.current = currentSessionIdentity;
-                    if ('mediaSession' in navigator) {
-                        navigator.mediaSession.metadata = new MediaMetadata({
-                            title: 'AuraGroove',
-                            artist: `${payload.genre}`.toUpperCase(),
-                            album: `${payload.mood}`.toUpperCase(),
-                            artwork: [
-                                { src: '/cover.jpg', sizes: '512x512', type: 'image/jpeg' }
-                            ]
-                        });
-                    }
-                }
-
                 if (payload.barCount === 0) {
                     masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
                 }
@@ -371,6 +350,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (!context || !workerRef.current) return;
             if (playing) {
                 if (context.state === 'suspended') await context.resume();
+
+                // #ЗАЧЕМ: ПЛАН №8700. Автоматическая активация Бродкаста при первом Play.
+                // Это гарантирует стабильный темп (Clock Lock) без участия пользователя.
+                if (!hasAutoStartedBroadcastRef.current && broadcastEngineRef.current) {
+                    broadcastEngineRef.current.start();
+                    setIsBroadcastActive(true);
+                    // Переключаем вывод звука на Радио (Бродкаст-мост)
+                    speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, context.currentTime, 0.1);
+                    hasAutoStartedBroadcastRef.current = true;
+                    console.log('%c[AudioEngine] Auto-Ignition: Direct Stream Bridge activated for clock stability.', 'color: #4ade80; font-weight: bold;');
+                }
+
                 setIsPlaying(true);
                 stopAllSounds(); 
                 nextBarTimeRef.current = context.currentTime + 0.5;
@@ -385,6 +376,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             if (workerRef.current) { 
                 settingsRef.current = { ...(settingsRef.current || {}), ...s }; 
                 workerRef.current.postMessage({ command: 'update_settings', data: s }); 
+                
+                // Обновление MediaSession при смене жанра/настроения
+                if ((s.genre || s.mood) && 'mediaSession' in navigator) {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'AuraGroove',
+                        artist: String(s.genre || settingsRef.current.genre).toUpperCase(),
+                        album: String(s.mood || settingsRef.current.mood).toUpperCase(),
+                        artwork: [
+                            { src: '/cover.jpg', sizes: '512x512', type: 'image/jpeg' }
+                        ]
+                    });
+                }
             } 
         },
         refreshCloudAxioms: async () => {},
@@ -429,16 +432,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 };
                 recorder.start(1000); 
                 setIsRecording(true);
-                toast({ title: "Recording Started", description: "Audio stream is being captured." });
+                toast({ title: "Recording Started" });
             } catch (e) {
-                toast({ variant: "destructive", title: "Recording Failed", description: "Could not initialize recorder." });
+                toast({ variant: "destructive", title: "Recording Failed" });
             }
         },
         stopRecording: () => {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
                 mediaRecorderRef.current.stop();
                 setIsRecording(false);
-                toast({ title: "Recording Stopped", description: "Generating audio file..." });
+                toast({ title: "Recording Stopped" });
             }
         },
         toggleBroadcast: () => { 
@@ -475,14 +478,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         togglePreviewLoop: () => {}
     };
 
-    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.setActionHandler('play', () => api.setIsPlaying(true));
-        navigator.mediaSession.setActionHandler('pause', () => api.setIsPlaying(false));
-        navigator.mediaSession.setActionHandler('stop', () => api.setIsPlaying(false));
-    }
-
     return api;
   }, [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => value.setIsPlaying(true));
+        navigator.mediaSession.setActionHandler('pause', () => value.setIsPlaying(false));
+        navigator.mediaSession.setActionHandler('stop', () => value.setIsPlaying(false));
+    }
+  }, [value]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };
