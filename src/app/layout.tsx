@@ -5,7 +5,7 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №2400 — Внедрена поддержка PWA и оптимизированный viewport.
+ * #ЧТО: ПЛАН №6000 — Финализация PWA-метаданных и принудительное подключение манифеста.
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
@@ -27,6 +27,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
@@ -40,6 +41,8 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <Providers>
