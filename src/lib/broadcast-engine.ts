@@ -1,8 +1,7 @@
-
 /**
- * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.1 — "DOM Integrity Fix".
- * #ЧТО: 1. Добавлено скрытое монтирование аудио-элемента в DOM для iOS/Safari.
- *       2. Внедрен "Silk Start" для маскировки стартовых шумов.
+ * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.2 — "Stutter-Free Protocol".
+ * #ЧТО: ПЛАН №12000 — 1. Добавлена микро-задержка перед play() для стабилизации буфера.
+ *       2. Оптимизирован Silk Start для устранения щелчков.
  */
 
 export class BroadcastEngine {
@@ -28,21 +27,24 @@ export class BroadcastEngine {
         this.audioElement.srcObject = this.stream;
         
         // #ЗАЧЕМ: Принудительное монтирование в DOM для iOS.
-        // Без этого многие мобильные браузеры отключают звук через 30 секунд.
         this.audioElement.style.display = 'none';
         this.audioElement.id = 'ag-broadcast-bridge';
         document.body.appendChild(this.audioElement);
         
-        // 3. Silk Start: Глушим звук перед стартом
+        // 3. Подготовка буфера
         this.audioElement.volume = 0;
         this.audioElement.autoplay = true;
+
+        // #ЗАЧЕМ: ПЛАН №12000. Микро-задержка перед стартом дает браузеру время
+        // проинициализировать медиа-конвейер и наполнить первичный буфер.
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         try {
             await this.audioElement.play();
             console.log('%c[Broadcast] Stream Bridge Playing. Background priority active.', 'color: #32CD32; font-weight: bold;');
             
-            const fadeDuration = 1500; 
-            const steps = 30;
+            const fadeDuration = 2500; // Чуть длиннее фейд для абсолютной мягкости
+            const steps = 50;
             const increment = 1 / steps;
             let currentStep = 0;
 
@@ -76,7 +78,6 @@ export class BroadcastEngine {
         if (this.audioElement) {
             this.audioElement.pause();
             this.audioElement.srcObject = null;
-            // #ЗАЧЕМ: Демонтирование элемента.
             if (this.audioElement.parentNode) {
                 this.audioElement.parentNode.removeChild(this.audioElement);
             }

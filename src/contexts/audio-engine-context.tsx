@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V59.0 — "Volume Calibration Audit".
- * #ЗАЧЕМ: Уточнение баланса акустических инструментов.
- * #ЧТО: ПЛАН №20500 — Снижена громкость Piano (в 3 раза) и Guitar Chords (в 2 раза).
+ * @fileOverview Audio Engine Context V60.0 — "The Silk Start Protocol".
+ * #ЗАЧЕМ: Устранение заиканий при старте бродкаста.
+ * #ЧТО: ПЛАН №12000 — 1. Увеличен стартовый оффсет до 3.5с. 2. Плавный вход мастер-гейна.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -40,18 +40,14 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.45, 
 };
 
-/**
- * #ЗАЧЕМ: Балансировка преампов сэмплеров.
- * #ЧТО: ПЛАН №20500. Piano: 0.6 -> 0.2. Chords: 0.6 -> 0.3.
- */
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0, 
     acoustic: 0.15, 
     electric: 0.30, 
-    piano: 0.2,    // Снижено в 3 раза
+    piano: 0.2,    
     orchestral: 0.29, 
     cs80: 0.1, 
-    chords: 0.3,   // Снижено в 2 раза
+    chords: 0.3,   
     bass: 1.0
 };
 
@@ -309,8 +305,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
         ]);
 
-        // #ЗАЧЕМ: Level 2 — Фоновая дозагрузка всей атмосферной библиотеки.
-        // Это гарантирует богатство звуков без задержки первого такта.
         setTimeout(() => {
             console.log('%c[AudioEngine] Atmosphere Replenishment: Loading Full Spectrum...', 'color: #DA70D6; font-weight: bold;');
             sparklePlayerRef.current?.init(-1);
@@ -327,7 +321,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const now = context.currentTime;
 
                     if (payload.barCount === 0) {
-                        masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, now, 0.05);
+                        // #ЗАЧЕМ: Silk Start - плавный вход мастер-секции в первом такте.
+                        masterGainNodeRef.current?.gain.cancelScheduledValues(now);
+                        masterGainNodeRef.current?.gain.setValueAtTime(0.0001, now);
+                        masterGainNodeRef.current?.gain.exponentialRampToValueAtTime(calibrationGains.master, now + 2.0);
                     }
                     if (payload.totalBars && payload.barCount >= payload.totalBars - 2) {
                         masterGainNodeRef.current?.gain.setTargetAtTime(0.0001, nextBarTimeRef.current, 1.5);
@@ -392,7 +389,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 setIsPlaying(true);
                 stopAllSounds(); 
-                nextBarTimeRef.current = context.currentTime + 1.5;
+                // #ЗАЧЕМ: ПЛАН №12000. Увеличенный запас времени (3.5с) для наполнения системных буферов.
+                nextBarTimeRef.current = context.currentTime + 3.5;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
                 setIsPlaying(false);
