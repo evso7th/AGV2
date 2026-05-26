@@ -5,8 +5,8 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.4 — "Lazy Load Optimized".
- * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки в фоновом режиме.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.5 — "Volume Calibration".
+ * #ЧТО: ПЛАН №20500 — Громкость гитарных аккордов снижена в 2 раза (0.6 -> 0.3).
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -23,7 +23,8 @@ export class GuitarChordsSampler {
         this.output = this.audioContext.createGain();
         
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.6; // #ЗАЧЕМ: Снижено в 2 раза с 1.2 по запросу пользователя.
+        // #ЗАЧЕМ: ПЛАН №20500. Снижение в 2 раза для лучшего баланса микса.
+        this.preamp.gain.value = 0.3; 
         this.preamp.connect(this.output);
         
         this.output.connect(destination);

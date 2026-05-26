@@ -1,10 +1,9 @@
-
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V58.0 — "Full Spectrum Atmosphere".
- * #ЗАЧЕМ: Активация всей библиотеки droplets и sfx без ущерба для скорости старта.
- * #ЧТО: ПЛАН №10000 — Поэтапная инициализация атмосферных модулей.
+ * @fileOverview Audio Engine Context V59.0 — "Volume Calibration Audit".
+ * #ЗАЧЕМ: Уточнение баланса акустических инструментов.
+ * #ЧТО: ПЛАН №20500 — Снижена громкость Piano (в 3 раза) и Guitar Chords (в 2 раза).
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -41,9 +40,19 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.45, 
 };
 
+/**
+ * #ЗАЧЕМ: Балансировка преампов сэмплеров.
+ * #ЧТО: ПЛАН №20500. Piano: 0.6 -> 0.2. Chords: 0.6 -> 0.3.
+ */
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 1.0, acoustic: 0.15, electric: 0.30, piano: 0.6,
-    orchestral: 0.29, cs80: 0.1, chords: 0.6, bass: 1.0
+    master: 1.0, 
+    acoustic: 0.15, 
+    electric: 0.30, 
+    piano: 0.2,    // Снижено в 3 раза
+    orchestral: 0.29, 
+    cs80: 0.1, 
+    chords: 0.3,   // Снижено в 2 раза
+    bass: 1.0
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
