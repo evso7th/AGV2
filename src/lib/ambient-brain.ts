@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V90.0 — "The Landscape Architect".
- * #ЗАЧЕМ: Ударные в амбиенте переведены в режим "Ландшафт".
- * #ЧТО: ПЛАН №9980 — Полное игнорирование аксиом барабанов. Только перкуссия, колокольчики и редкий пульс.
+ * @fileOverview Ambient Brain V90.1 — "The Landscape Architect Verified".
+ * #ЗАЧЕМ: Финализация Текстурного Мозга после серии багфиксов.
+ * #ЧТО: ПЛАН №10100 — Чистка кода и подтверждение стабильности импортов.
  */
 
 import type {
@@ -206,9 +206,6 @@ export class AmbientBrain {
                             endBar: epoch + (selected.bars || 4)
                         });
                     });
-
-                    // #ЗАЧЕМ: Барабанные аксиомы игнорируются в Амбиенте (ПЛАН №9980).
-                    // Мы не заполняем currentDrumAxioms, чтобы не провоцировать их рендер.
 
                     const baseBars = selected.bars || 4;
                     this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
@@ -466,7 +463,7 @@ export class AmbientBrain {
             
             if (epoch >= 4) {
                 bassPhrase = applyDynamicArticulation(bassPhrase, localTension, this.seed + epoch + 50);
-                bassPhrase = applyMicroChronos(bassPhrase, this.seed + 300, localTension);
+                bassPhrase = applyMicroChronos(bassPhrase, this.seed + 200, localTension);
             }
 
             const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna, bassPhrase);
@@ -534,7 +531,6 @@ export class AmbientBrain {
         }
 
         if (hints.drums) {
-            // #ЗАЧЕМ: Барабаны в Амбиенте — это Ландшафт. Аксиомы наследия удалены (ПЛАН №9980).
             events.push(...this.renderSonicLandscape(epoch, localTension));
         }
 
@@ -588,15 +584,10 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Генератор звуковых ландшафтов.
-     * #ЧТО: ПЛАН №9980. Чисто процедурная генерация перкуссии без DNA.
-     */
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
 
-        // 1. Редкий пульс бочки (Кик)
         if (this.random.next() < 0.30) {
             const time = [0, 6][this.random.nextInt(2)]; 
             events.push({
@@ -606,7 +597,6 @@ export class AmbientBrain {
             });
         }
 
-        // 2. Редкий хэт (или его призрак)
         if (this.random.next() < 0.20) {
             const time = [3, 9][this.random.nextInt(2)];
             events.push({
@@ -617,7 +607,6 @@ export class AmbientBrain {
             });
         }
 
-        // 3. Райд / Текстурный металл
         if (this.random.next() < 0.40) {
             events.push({
                 type: 'drum_ride_wetter', note: 51, 
@@ -627,8 +616,6 @@ export class AmbientBrain {
             });
         }
 
-        // 4. Текстурная перкуссия (Колокольчики, трубки, перки)
-        // Плотность ландшафта зависит от Tension
         const landscapeDensity = 2 + this.random.nextInt(Math.floor(tension * 5) + 3);
         for (let i = 0; i < landscapeDensity; i++) {
             const perc = kit.perc[this.random.nextInt(kit.perc.length)];
@@ -696,7 +683,7 @@ export class AmbientBrain {
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
