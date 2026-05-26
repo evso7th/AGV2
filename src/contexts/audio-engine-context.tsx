@@ -1,9 +1,10 @@
+
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V52.0 — "System Identity Normalization".
- * #ЗАЧЕМ: Скрытие технических ID треков от конечного пользователя в системном плеере.
- * #ЧТО: ПЛАН №7400 — 1. Title всегда "AuraGroove". 2. Genre/Mood распределены по полям Artist/Album.
+ * @fileOverview Audio Engine Context V53.0 — "Cover Art Synchronization".
+ * #ЗАЧЕМ: Обеспечение идеального отображения обложки в системном плеере.
+ * #ЧТО: ПЛАН №7500 — Artwork принудительно использует /icon8.png (512x512).
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -304,7 +305,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // #ЗАЧЕМ: ПЛАН №7400. Анонимные метаданные: Title="AuraGroove", Artist=Genre, Album=Mood.
+                // #ЗАЧЕМ: ПЛАН №7500. artwork принудительно указывает на icon8.png 512x512.
                 const currentSessionIdentity = `${payload.genre}-${payload.mood}`;
                 if (currentSessionIdentity !== lastSessionIdentityRef.current) {
                     lastSessionIdentityRef.current = currentSessionIdentity;

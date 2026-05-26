@@ -1,3 +1,4 @@
+
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
@@ -6,10 +7,7 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "window-controls-overlay",
-    "minimal-ui"
-  ],
+  "display_override": ["window-controls-overlay", "minimal-ui"],
   "background_color": "#111111",
   "theme_color": "#111111",
   "orientation": "portrait",

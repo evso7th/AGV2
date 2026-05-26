@@ -1,3 +1,4 @@
+
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
@@ -5,7 +6,7 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №7100 — Обновление иконки на PNG версию для PWA.
+ * #ЧТО: ПЛАН №7500 — Использование icon8.png (512x512) как эталонного ассета.
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
