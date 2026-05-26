@@ -1,14 +1,14 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.9.2 — "Reference Error Fix".
- * #ЗАЧЕМ: Исправлена ошибка ReferenceError: navInfo is not defined.
- * #ЧТО: ПЛАН №7800 — Добавлена правильная адресация к навигационной информации через payload.
+ * @fileOverview AuraGroove Music Worker V5.9.5 — "Global Sync Fixed".
+ * #ЗАЧЕМ: Исправлены ReferenceError (keyToMidiRoot, normalizeStr).
+ * #ЧТО: ПЛАН №9950 — Добавлены недостающие импорты из библиотеки музыкальной теории.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
-import { normalizeStr } from '@/lib/music-theory';
+import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -195,11 +195,17 @@ const Scheduler = {
             this.initializeEngine(this.settings);
         }
 
+        console.log(`${getTimestamp()} [Worker] Loop Ignition Sequence Started.`);
+
         this.expectedNextTick = performance.now();
         const loop = () => {
             if (!this.isRunning) return;
             
-            this.tick();
+            try {
+                this.tick();
+            } catch (e) {
+                console.error('WORKER TICK CRASH:', e);
+            }
             
             const durationMs = this.barDuration * 1000;
             this.expectedNextTick += durationMs;
@@ -287,6 +293,7 @@ const Scheduler = {
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
+            console.error('ENGINE EVOLVE CRASH:', e);
             return;
         }
 
@@ -359,13 +366,7 @@ self.onmessage = (event: MessageEvent) => {
             case 'update_cloud_axioms': Scheduler.updateCloudAxioms(data); break; 
         }
     } catch (e) {
+        console.error('WORKER MESSAGE ERROR:', e);
         self.postMessage({ type: 'error', error: String(e) });
     }
 };
-
-function keyToMidiRoot(key: string | null | undefined): number | null {
-    if (!key) return null;
-    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
-    const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
-    return 48 + (noteMap[rootName] || 0);
-}

@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V89.0 — "The Stabilized Dreamer".
- * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
- * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
+ * @fileOverview Ambient Brain V89.5 — "The Stabilized Voyager".
+ * #ЗАЧЕМ: Исправление отсутствия звука в Амбиенте.
+ * #ЧТО: ПЛАН №9950 — Восстановлены методы constrainBassOctave/constrainAccompanimentOctave и импорт normalizeStr.
  */
 
 import type {
@@ -32,6 +32,7 @@ import {
     transposePhraseDegrees,
     mergeIdenticalNotes,
     keyToMidiRoot,
+    normalizeStr,
     resolveSemanticTimbre,
     TICKS_PER_BAR,
     TICK_TO_BEAT,
@@ -349,7 +350,6 @@ export class AmbientBrain {
         }
 
         // --- MUTATION DECISION ---
-        // #ЗАЧЕМ: ПЛАН №5100. Ожидание стабилизации Бродкаста (epoch >= 4).
         if (epoch % 4 === 0 && epoch >= 4) {
             const mutationRand = this.random.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
@@ -362,8 +362,6 @@ export class AmbientBrain {
             else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
             else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
             else this.currentMutationType = 'none';
-
-            console.log(`%c[AmbientBrain] Applied Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
         } else if (epoch < 4) {
             this.currentMutationType = 'none';
         }
@@ -389,7 +387,6 @@ export class AmbientBrain {
             const nextNote = resRoot + 12 + this.registerShift; 
             const stitch = generateStitchPhrase(this.lastMelodyNote, nextNote, scale);
             
-            // #ЗАЧЕМ: ПЛАН №5100. Артикуляция и микро-хронос только после "прогрева".
             let finalStitch = stitch;
             if (epoch >= 4) {
                 finalStitch = applyDynamicArticulation(stitch, localTension, this.seed + epoch);
@@ -420,7 +417,7 @@ export class AmbientBrain {
                 
                 if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
                 else if (rawRole.includes('accomp')) targetType = 'accompaniment';
-                else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('harmony')) targetType = 'harmony';
+                else if (rawRole.includes('strings') || rawRole.includes('violin') || rawRole.includes('guitar')) targetType = 'harmony';
                 
                 if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
                     let activePhrase = ax.phrase;
@@ -501,16 +498,14 @@ export class AmbientBrain {
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
                 if (epoch >= 4) {
-                    activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
-                    activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
+                    activePhrase = applyDynamicArticulation(activeAxiom, localTension, this.seed + epoch);
+                    activePhrase = applyMicroChronos(activeAxiom, this.seed, tension);
                 }
 
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
-                melodyStatus = this.currentTheme.id;
             } 
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
-                melodyStatus = 'Algo';
             }
             
             melodyEvents = this.applyMelodicTie(melodyEvents, resChord);
@@ -561,7 +556,7 @@ export class AmbientBrain {
             trackName: this.currentTrackName,
             instrumentOverrides,
             activeAxioms: {
-                melody: isSoloistResting ? 'Breath' : melodyStatus,
+                melody: isSoloistResting ? 'Breath' : (this.currentTheme?.id || 'Algo'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: bassStatus,
                 drums: 'Landscape', 
@@ -672,8 +667,12 @@ export class AmbientBrain {
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
     }
 
+    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
+        return this.renderMelodicSegment(epoch, chord, dna, type, phrase, maxTick, timeScale, tension);
+    }
+
     private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA, phrase: any[]): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, localTension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -711,7 +710,7 @@ export class AmbientBrain {
     }
 
     private renderMelodicPadBase(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const shift = [0, 2, 4, 7, 9, 7, 4, 0][calculateMusiNum(epoch, 4, this.seed, 8)];
+        const shift = [0, 2, 4, 7, 9, 7, 4, 0][calculateMusiNum(epoch, 4, this.random.nextInt(100), 8)];
         const e: FractalEvent = {
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, duration: 4.5, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
@@ -792,5 +791,19 @@ export class AmbientBrain {
         events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         events.push({ type: 'drum_snare_ghost_note', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         return events;
+    }
+
+    private constrainBassOctave(note: number): number {
+        let n = note;
+        while (n > 47) n -= 12;
+        while (n < 31) n += 12;
+        return n;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let n = note;
+        while (n > 71) n -= 12;
+        while (n < 48) n += 12;
+        return n;
     }
 }

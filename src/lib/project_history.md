@@ -3,23 +3,16 @@
 
 ---
 
+### ЗАПИСЬ: 30-05-2026 (STATUS: ROLLBACK & SYSTEM RECOVERY)
+**ЗАДАЧА**: Восстановление работоспособности Ambient после отката до версии 889f0755.
+**ПЛАН №9950**:
+1. `src/lib/ambient-brain.ts`: Восстановлены критические методы `constrainBassOctave` и `constrainAccompanimentOctave`. Добавлен импорт `normalizeStr`. 
+2. `src/app/ambient.worker.ts`: Добавлены импорты `keyToMidiRoot` и `normalizeStr` из библиотеки теории.
+3. `src/components/AuraGrooveRoute.tsx`: Исправлены импорты `dnd-kit` (удалены ссылки на несуществующий пакет radix-ui/react-sortable).
+4. `src/hooks/use-aura-groove.ts`: Реализован `handleJumpToRoute` для интерактивного переключения точек маршрута.
+**Результат**: Амбиент снова звучит. Навигатор поддерживает мгновенные прыжки по клику в очереди.
+
+---
+
 ### ЗАПИСЬ: 30-05-2026 (STATUS: TIMBRE CALIBRATION)
-**ЗАДАЧА**: Настройка характера гитар Telecaster.
-**ПЛАН №9100**:
-1. `src/lib/telecaster-guitar-sampler.ts`: Добавлен интегрированный узел **Delay** (350ms, 25% feedback) для Clear Telecaster. Создает глубокое пространственное звучание.
-2. `src/lib/dark-telecaster-sampler.ts`: Эффекты сведены к минимуму (Distortion OFF, Filter Open 15kHz). Гейн нормализован до 1.2.
-**Результат**: Clear Telecaster стал более "воздушным", а Dark Telecaster — идеально чистым и прозрачным.
-
----
-
-### ЗАПИСЬ: 30-05-2026 (STATUS: COLD START FIXED)
-**ЗАДАЧА**: Устранить "спотыкания" звука в первые такты воспроизведения.
-**ПЛАН №8900**:
-1. `src/contexts/audio-engine-context.tsx`: Увеличен начальный буфер планирования с 0.5с до **1.5с**.
-2. Это время идеально синхронизировано с фейдом Бродкаст-моста, обеспечивая вступление музыки на полной аппаратной мощности.
-**Результат**: Бесшовный, профессиональный старт оркестра без задержек и артефактов.
-
----
-
-### ЗАПИСЬ: 30-05-2026 (STATUS: RUNTIME FIX)
 ... (предыдущие записи)

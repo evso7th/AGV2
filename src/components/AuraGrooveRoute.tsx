@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.9 — "Mobile Tactile Queue".
- * #ЧТО: ПЛАН №2310 — Внедрена поддержка touch-dragging через touch-none и оптимизацию сенсоров.
+ * #ЗАЧЕМ: UI AuraGroove V7.9.5 — "Interactive Navigator".
+ * #ЧТО: ПЛАН №9950 — 1. Исправлены импорты dnd-kit. 2. Добавлен Jump Protocol по клику на точку.
  */
 'use client';
 
@@ -55,7 +56,7 @@ const GENRES = [
     { id: 'random', label: '⚡ SURPRISE' }
 ];
 
-const MOODS = [
+const MOOD_S = [
     { id: 'melancholic', label: 'Melancholic' },
     { id: 'dreamy', label: 'Dreamy' },
     { id: 'calm', label: 'Calm' },
@@ -63,23 +64,6 @@ const MOODS = [
     { id: 'dark', label: 'Dark Ritual' },
     { id: 'epic', label: 'Epic Call' },
     { id: 'random', label: '⚡ ANY' }
-];
-
-const MIXER_CHANNELS = [
-    { key: 'master', label: 'M' },
-    { key: 'bass', label: 'B' },
-    { key: 'melody', label: 'Mel' },
-    { key: 'accompaniment', label: 'Acc' },
-    { key: 'harmony', label: 'Har' },
-    { key: 'pianoAccompaniment', label: 'Rh' },
-    { key: 'sparkles', label: 'Sp' },
-    { key: 'sfx', label: 'SFX' },
-    { key: 'drums', label: 'D' }
-];
-
-const EQ_BANDS = [
-  { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
-  { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
 ];
 
 function SimpleVerticalList({ 
@@ -179,32 +163,66 @@ function SortableRouteItem({
     item, 
     isActive, 
     progress,
+    onJump,
     onRemove 
 }: { 
     item: RouteItem, 
     isActive: boolean, 
     progress?: number,
+    onJump: () => void,
     onRemove: (id: string) => void 
 }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
     const style = { transform: CSS.Transform.toString(transform), transition };
     return (
-        <div ref={setNodeRef} style={style} className={cn("flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden", isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent", isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50")}>
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            onClick={(e) => {
+                // Предотвращаем срабатывание при клике на Grip или кнопку удаления
+                const target = e.target as HTMLElement;
+                if (!target.closest('.dnd-grip') && !target.closest('.remove-btn')) {
+                    onJump();
+                }
+            }}
+            className={cn(
+                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer", 
+                isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:bg-muted/50", 
+                isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
+            )}
+        >
             {isActive && progress !== undefined && (<div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20"><div className="h-full bg-primary transition-all duration-1000 ease-linear" style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }} /></div>)}
-            <div className="flex items-center gap-3 overflow-hidden z-10">
+            <div className="flex items-center gap-3 overflow-hidden z-10 pointer-events-none">
                 <div 
                     {...attributes} 
                     {...listeners} 
-                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none"
+                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none dnd-grip pointer-events-auto"
                 >
                     <GripVertical className="h-4 w-4" />
                 </div>
                 <div className="truncate"><div className="text-[11px] font-black uppercase tracking-tight">{item.genre} / {item.mood}</div></div>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" onClick={() => onRemove(item.id)}><X className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10 remove-btn" onClick={(e) => { e.stopPropagation(); onRemove(item.id); }}><X className="h-4 w-4" /></Button>
         </div>
     );
 }
+
+const MIXER_CHANNELS = [
+    { key: 'master', label: 'M' },
+    { key: 'bass', label: 'B' },
+    { key: 'melody', label: 'Mel' },
+    { key: 'accompaniment', label: 'Acc' },
+    { key: 'harmony', label: 'Har' },
+    { key: 'pianoAccompaniment', label: 'Rh' },
+    { key: 'sparkles', label: 'Sp' },
+    { key: 'sfx', label: 'SFX' },
+    { key: 'drums', label: 'D' }
+];
+
+const EQ_BANDS = [
+  { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
+  { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
+];
 
 export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
@@ -280,7 +298,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
                     <div className="bg-card flex flex-col h-full overflow-hidden">
                         <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Mood</Label>
-                        <SimpleVerticalList items={MOODS} value={selectedMood} onChange={setSelectedMood} />
+                        <SimpleVerticalList items={MOOD_S} value={selectedMood} onChange={setSelectedMood} />
                     </div>
                 </div>
 
@@ -315,6 +333,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                                     item={item} 
                                                     isActive={isActive}
                                                     progress={progress}
+                                                    onJump={() => props.handleJumpToRoute(idx)}
                                                     onRemove={props.removeFromRoute}
                                                 />
                                             );

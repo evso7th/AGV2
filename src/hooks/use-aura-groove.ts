@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Хук управления музыкой V10.0 — "Atomic Path Synchronization".
- * #ЗАЧЕМ: Исправление замирания навигатора при изменении порядка очереди.
- * #ЧТО: ПЛАН №2230 — 1. Метод handleUpdatePath. 2. Синхронный пуш настроек перед ресетом. 3. Smart Reorder.
+ * @fileOverview Хук управления музыкой V10.2 — "Atomic Path Synchronization".
+ * #ЗАЧЕМ: Реализация мгновенного переключения точек маршрута.
+ * #ЧТО: ПЛАН №9950 — Внедрен handleJumpToRoute для управления очередью.
  */
 'use client';
 
@@ -59,6 +59,7 @@ export type AuraGrooveProps = {
   handlePlayPause: () => void;
   handleRegenerate: () => void;
   handleUpdatePath: () => void;
+  handleJumpToRoute: (index: number) => void;
   handleToggleRecording: () => void;
   handleToggleBroadcast: () => void;
   handleSaveMasterpiece: () => void;
@@ -564,18 +565,15 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
         setIsRegenerating(true);
         stopAllSounds();
         
-        // #ЗАЧЕМ: ПЛАН №2230. Синхронизация с текущей точкой маршрута при регенерации.
         if (options.isNavigatorMode && activeRouteIndex >= 0 && route[activeRouteIndex]) {
             const item = route[activeRouteIndex];
             const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
             const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
             
-            // Синхронный пуш перед ресетом
             updateSettings({ genre: g, mood: m, seed: Date.now() });
             setGenreState(g);
             setMoodState(m);
             setCurrentSeed(Date.now());
-            console.log(`%c[Navigator] Path Synchronization: ${g}/${m}`, 'color: #4ade80; font-weight: bold;');
         } else {
             setCurrentSeed(Date.now());
         }
@@ -592,7 +590,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
         toast({ title: "System Rebirth" });
     },
     handleUpdatePath: () => {
-        // #ЗАЧЕМ: ПЛАН №2230. Перечитывание очереди и установка на 1-ю позицию.
         if (route.length === 0) return;
         stopAllSounds();
         const nextIndex = 0;
@@ -602,7 +599,6 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
         const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
         const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
         
-        // Синхронный пуш
         updateSettings({ genre: g, mood: m, seed: Date.now() });
         setGenreState(g);
         setMoodState(m);
@@ -614,6 +610,27 @@ export const useAuraGroove = (options: { isNavigatorMode: boolean } = { isNaviga
             setTimeout(() => setEngineIsPlaying(true), 150);
         }
         toast({ title: "Path Updated", description: "Returning to start of route with fresh DNA." });
+    },
+    handleJumpToRoute: (index: number) => {
+        if (index < 0 || index >= route.length) return;
+        stopAllSounds();
+        const item = route[index];
+        setActiveRouteIndex(index);
+        
+        const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
+        const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
+        
+        updateSettings({ genre: g, mood: m, seed: Date.now() });
+        setGenreState(g);
+        setMoodState(m);
+        setCurrentSeed(Date.now());
+        
+        resetWorker();
+        if (isPlaying) {
+            setEngineIsPlaying(false);
+            setTimeout(() => setEngineIsPlaying(true), 150);
+        }
+        toast({ title: "Jumping Route", description: `${g.toUpperCase()} / ${m.toUpperCase()}` });
     },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
     handleToggleBroadcast: () => {
