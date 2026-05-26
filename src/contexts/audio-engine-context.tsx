@@ -1,10 +1,10 @@
+'use client';
 
 /**
- * @fileOverview Audio Engine Context V51.1 — "System Metadata Sync".
- * #ЗАЧЕМ: Исправление отсутствия Genre/Mood в Media Session.
- * #ЧТО: ПЛАН №7300 — 1. album теперь показывает Genre / Mood. 2. Artwork переключен на PNG.
+ * @fileOverview Audio Engine Context V52.0 — "System Identity Normalization".
+ * #ЗАЧЕМ: Скрытие технических ID треков от конечного пользователя в системном плеере.
+ * #ЧТО: ПЛАН №7400 — 1. Title всегда "AuraGroove". 2. Genre/Mood распределены по полям Artist/Album.
  */
-'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useToast } from "@/hooks/use-toast";
@@ -129,7 +129,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  const lastTrackNameRef = useRef<string | null>(null);
+  const lastSessionIdentityRef = useRef<string | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
 
@@ -304,14 +304,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // #ЗАЧЕМ: ПЛАН №7300. Обновление метаданных Media Session при смене трека.
-                if (payload.trackName && payload.trackName !== lastTrackNameRef.current) {
-                    lastTrackNameRef.current = payload.trackName;
+                // #ЗАЧЕМ: ПЛАН №7400. Анонимные метаданные: Title="AuraGroove", Artist=Genre, Album=Mood.
+                const currentSessionIdentity = `${payload.genre}-${payload.mood}`;
+                if (currentSessionIdentity !== lastSessionIdentityRef.current) {
+                    lastSessionIdentityRef.current = currentSessionIdentity;
                     if ('mediaSession' in navigator) {
                         navigator.mediaSession.metadata = new MediaMetadata({
-                            title: payload.trackName.replace(/_/g, ' '),
-                            artist: 'AuraGroove Orchestra',
-                            album: `${payload.genre} / ${payload.mood}`.toUpperCase(),
+                            title: 'AuraGroove',
+                            artist: `${payload.genre}`.toUpperCase(),
+                            album: `${payload.mood}`.toUpperCase(),
                             artwork: [
                                 { src: '/icon8.png', sizes: '512x512', type: 'image/png' }
                             ]
