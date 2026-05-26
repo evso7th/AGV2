@@ -36,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.8 — "Ambient Spacing".
- * #ЧТО: ПЛАН №9100 — Добавлен интегрированный узел Delay для Clear Telecaster.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.9 — "Ambient Space Implemented".
+ * #ЧТО: ПЛАН №9970 — Добавлена цепочка Delay (350ms, 25% fb, 20% mix).
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;

@@ -3,14 +3,14 @@
 
 ---
 
-### ЗАПИСЬ: 30-05-2026 (STATUS: BUGFIX - AMBIENT RUNTIME)
-**ЗАДАЧА**: Устранение ENGINE EVOLVE CRASH: ReferenceError: activeAxiom is not defined.
-**ПЛАН №9960**:
-1. `src/lib/ambient-brain.ts`: Исправлено имя переменной с `activeAxiom` на `activePhrase` в методе `generateBar` при применении мутаций мелодии.
-2. `src/lib/ambient-brain.ts`: Подтверждено наличие методов `constrainBassOctave` и `constrainAccompanimentOctave`.
-**Результат**: Амбиентный движок стабилен, ошибки области видимости устранены.
+### ЗАПИСЬ: 30-05-2026 (STATUS: UPDATE - TIMBRE CALIBRATION)
+**ЗАДАЧА**: Тонкая настройка гитарных тембров для повышения реализма и атмосферности.
+**ПЛАН №9970**:
+1. `src/lib/telecaster-guitar-sampler.ts`: Внедрена цепочка Delay (350ms, 25% feedback, 20% mix) в мастер-секцию. Инструмент стал звучать более объемно.
+2. `src/lib/dark-telecaster-sampler.ts`: Активирована секция Distortion с минимальным значением (amount: 8). Звук приобрел характерное "тело" без потери чистоты.
+**Результат**: Гитары сбалансированы. Telecaster поет в пространстве, Dark Telecaster приобрел благородную сатурацию.
 
 ---
 
-### ЗАПИСЬ: 30-05-2026 (STATUS: ROLLBACK & SYSTEM RECOVERY)
+### ЗАПИСЬ: 30-05-2026 (STATUS: BUGFIX - AMBIENT RUNTIME)
 ... (предыдущие записи)

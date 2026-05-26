@@ -4,8 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.6 — "Pure Clean Calibration".
- * #ЧТО: ПЛАН №9100 — Все эффекты сведены к минимуму. Системный гейн нормализован.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.7 — "Subtle Saturation".
+ * #ЧТО: ПЛАН №9970 — Добавлен минимальный дисторшн (amount: 8) для "тела" звука.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -72,21 +72,22 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2; // Снижено с 4.4 (так как эффекты убраны)
+        this.preamp.gain.value = 1.2; 
 
         this.distortion = this.audioContext.createWaveShaper();
-        this.distortion.curve = null; // Эффект отключен
+        // #ЗАЧЕМ: Совсем чуть-чуть дисторшна для "тела" звука.
+        this.distortion.curve = makeDistortionCurve(8); 
         
         this.compressor = this.audioContext.createDynamicsCompressor();
-        this.compressor.threshold.value = -12; // Минимум компрессии
+        this.compressor.threshold.value = -12; 
         this.compressor.knee.value = 40;
-        this.compressor.ratio.value = 2; // Мягкое ограничение
+        this.compressor.ratio.value = 2; 
         this.compressor.attack.value = 0.01;
         this.compressor.release.value = 0.25;
 
         this.cabinetFilter = this.audioContext.createBiquadFilter();
         this.cabinetFilter.type = 'lowpass';
-        this.cabinetFilter.frequency.value = 15000; // Полностью открытый фильтр
+        this.cabinetFilter.frequency.value = 15000; 
         this.cabinetFilter.Q.value = 0.7;
         
         this.preamp.connect(this.distortion);
@@ -253,8 +254,8 @@ export class DarkTelecasterSampler {
         if (key === 'cutoff' && isFinite(value)) {
             this.cabinetFilter.frequency.setTargetAtTime(value, this.audioContext.currentTime, 0.05);
         } else if (key === 'drive' && isFinite(value)) {
-            if (value < 0.05) this.distortion.curve = null;
-            else this.distortion.curve = makeDistortionCurve(value * 100);
+            if (value < 0.01) this.distortion.curve = null;
+            else this.distortion.curve = makeDistortionCurve(value * 50);
         }
     }
 
