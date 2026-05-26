@@ -1,6 +1,10 @@
 
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
+/**
+ * #ЗАЧЕМ: Полный реестр SFX V6.0.
+ * #ЧТО: ПЛАН №10000 — Все сэмплы из sfx.txt, включая массив голосов и эффектов.
+ */
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
         '/assets/music/sfx/706518__alesiadavina__horror-sound-effect-paranormal-2-vol-003.ogg',
@@ -10,6 +14,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/Agony_Labyrinth.ogg',
         '/assets/music/sfx/Cave_Breath.ogg',
         '/assets/music/sfx/Dark_spell_-_1.ogg',
+        '/assets/music/sfx/770720__richcraftstudios__bat-screech.ogg'
     ],
     laser: [
         '/assets/music/sfx/laser/01_SFX.ogg',
@@ -81,17 +86,12 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/Time_is_the_great_he.ogg',
         '/assets/music/sfx/voice/You_are_pulling_my_l.ogg',
         '/assets/music/sfx/voice/life_is_good_be_happ.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-chirping-near-the-river-2473.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-in-the-jungle-2434.ogg',
-        '/assets/music/sfx/voice/mixkit-fast-small-sweep-transition-166.ogg',
-        '/assets/music/sfx/voice/mixkit-morning-birds-2472.ogg',
-        '/assets/music/sfx/voice/mixkit-sci-fi-robot-speaking-289.ogg',
         '/assets/music/sfx/voice/voice_game-over.ogg',
         '/assets/music/sfx/voice/wazzap_bro_relax.ogg',
         '/assets/music/sfx/voice/you_are_just_another.ogg'
     ],
     bongo: [
-        '/assets/music/sfx/bongo/bongo_ bossa_perc_a.ogg',
+        '/assets/music/sfx/bongo/bongo_%20bossa_perc_a.ogg',
         '/assets/music/sfx/bongo/bongo_bonga_c.ogg',
         '/assets/music/sfx/bongo/bongo_one_shot_90bpm_e_minor.ogg',
     ],
@@ -107,8 +107,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/825579__akelley6__wind-up-sfx.ogg',
         '/assets/music/sfx/825583__akelley6__omnipotent.ogg',
         '/assets/music/sfx/825585__akelley6__quake.ogg',
-        '/assets/music/sfx/825587__akelley6__droplet-sfx.ogg',
-        '/assets/music/sfx/770720__richcraftstudios__bat-screech.ogg'
+        '/assets/music/sfx/825587__akelley6__droplet-sfx.ogg'
     ]
 };
 
@@ -128,7 +127,7 @@ export class SfxSynthManager {
     }
 
     public async init(limitPerCategory: number = -1): Promise<void> {
-        if (this.isFullyInitialized) return;
+        if (this.isFullyInitialized && limitPerCategory === -1) return;
         if (limitPerCategory > 0 && this.isReady) return;
 
         const allCategories = Object.keys(SFX_SAMPLES);
@@ -139,9 +138,16 @@ export class SfxSynthManager {
             if (!this.buffers.has(category)) this.buffers.set(category, []);
             const categoryBuffers = this.buffers.get(category)!;
 
-            const promises = targetUrls.map(url => this.loadSample(url).then(buffer => {
-                if(buffer && !categoryBuffers.includes(buffer)) categoryBuffers.push(buffer);
-            }));
+            const promises = targetUrls.map(async (url) => {
+                // Избегаем дублей при повторных вызовах init()
+                if (categoryBuffers.some(b => (b as any).url === url)) return;
+                
+                const buffer = await this.loadSample(url);
+                if (buffer) {
+                    (buffer as any).url = url;
+                    categoryBuffers.push(buffer);
+                }
+            });
             await Promise.all(promises);
         }
         this.isReady = true;
@@ -167,6 +173,7 @@ export class SfxSynthManager {
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
             if (!samplePool || samplePool.length === 0) return;
+            
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
             source.buffer = buffer;

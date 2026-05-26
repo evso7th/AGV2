@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V51.0 — "The Protected Voyager".
- * #ЗАЧЕМ: Защита Broadcast от замедления через протокол "Safe Warm-up".
- * #ЧТО: ПЛАН №5100 — Мутации и артикуляция активируются только при epoch >= 4.
+ * @fileOverview Psybient Brain V52.0 — "The Atmospheric Voyager".
+ * #ЗАЧЕМ: Реализация динамической плотности атмосферы (ПЛАН №10000).
+ * #ЧТО: Частота Sparkles и SFX теперь привязана к Tension (T). Базовая частота разряжена.
  */
 
 import type {
@@ -266,7 +266,6 @@ export class TranceBrain {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         
-        // #ЗАЧЕМ: ПЛАН №5100. Охранный интервал для Бродкаста.
         if (epoch % 4 === 0 && epoch >= 4) {
             const mutationRand = this.rng.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
@@ -278,8 +277,6 @@ export class TranceBrain {
             else if (mutationRand < mutationThreshold * 0.75) this.currentMutationType = 'retrograde';
             else if (mutationRand < mutationThreshold) this.currentMutationType = 'jitter';
             else this.currentMutationType = 'none';
-
-            console.log(`%c[TranceBrain] Applied Mutation: ${this.currentMutationType.toUpperCase()}`, 'color: #ff00ff; font-weight: bold;');
         } else if (epoch < 4) {
             this.currentMutationType = 'none';
         }
@@ -472,7 +469,7 @@ export class TranceBrain {
                     type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
                     time: t * TICK_TO_BEAT, duration: 0.1, 
                     weight: isStrong ? 0.6 : 0.4, 
-                    technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccate' 
                 });
             }
         }
@@ -553,7 +550,7 @@ export class TranceBrain {
     }
 
     private renderHeritageMelodyRaw(epoch: number, chord: GhostChord, tension: number, phrase: any[]): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -575,7 +572,7 @@ export class TranceBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -595,7 +592,7 @@ export class TranceBrain {
     }
 
     private renderSpecificHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -659,15 +656,31 @@ export class TranceBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: Динамическая плотность атмосферы.
+     * #ЧТО: ПЛАН №10000. Вероятность появления Sparkles и SFX теперь привязана к Tension (T).
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        if (this.rng.chance(25)) {
+        
+        // 1. Sparkles (Droplets) — Прямая зависимость от T.
+        // Диапазон вероятности: 5% (T=0.1) до 20% (T=0.9).
+        const sparkleProb = 5 + (tension * 18);
+        if (this.rng.chance(sparkleProb)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
-            events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', pan: (this.rng.next() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category } });
+            events.push({ 
+                type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, 
+                weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', 
+                pan: (this.rng.next() * 1.8) - 0.9, 
+                params: { mood: this.mood, genre: this.genre, category } 
+            });
         }
-        const breathChance = tension < 0.3 ? 35 : 18;
-        if (this.rng.chance(breathChance)) {
+
+        // 2. SFX (Voices, Lasers) — Прямая зависимость от T.
+        // Диапазон вероятности: 4% (T=0.1) до 15% (T=0.9).
+        const sfxProb = 4 + (tension * 12);
+        if (this.rng.chance(sfxProb)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
                 weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 

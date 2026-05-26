@@ -1,6 +1,10 @@
 
 import type { Genre, Mood } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Полный реестр Droplets V5.0.
+ * #ЧТО: ПЛАН №10000 — Все сэмплы из droplets.txt и sparks.txt.
+ */
 const SPARKLE_SAMPLES = {
     PROMENADE: [
         '/assets/music/promenade_ogg/promenade-1.ogg',
@@ -107,25 +111,25 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/electro/Tubator.ogg',
         '/assets/music/droplets/electro/SalvingPad.ogg',
         '/assets/music/droplets/electro/Coil.ogg',
-        '/assets/music/droplets/electro/Plucker (1).ogg',
+        '/assets/music/droplets/electro/Plucker%20(1).ogg',
         '/assets/music/droplets/electro/NoiseFxB06.ogg',
         '/assets/music/droplets/electro/Plucker.ogg',
         '/assets/music/droplets/electro/CloseA.ogg',
         '/assets/music/droplets/electro/E_Rhythm.ogg',
         '/assets/music/droplets/electro/HousedBass7.ogg',
-        '/assets/music/droplets/electro/Brass Pad.ogg',
-        '/assets/music/droplets/electro/Slow Motion.ogg',
+        '/assets/music/droplets/electro/Brass%20Pad.ogg',
+        '/assets/music/droplets/electro/Slow%20Motion.ogg',
         '/assets/music/droplets/electro/WhooshB.ogg',
-        '/assets/music/droplets/electro/New Rave.ogg',
+        '/assets/music/droplets/electro/New%20Rave.ogg',
         '/assets/music/droplets/electro/Metallix.ogg',
-        '/assets/music/droplets/electro/Deep Sea.ogg',
-        '/assets/music/droplets/electro/Raw Oscillator.ogg',
-        '/assets/music/droplets/electro/Flanged Bells.ogg',
+        '/assets/music/droplets/electro/Deep%20Sea.ogg',
+        '/assets/music/droplets/electro/Raw%20Oscillator.ogg',
+        '/assets/music/droplets/electro/Flanged%20Bells.ogg',
         '/assets/music/droplets/electro/Starter.ogg',
         '/assets/music/droplets/electro/ElectroShock.ogg',
-        '/assets/music/droplets/electro/Electro Train.ogg',
+        '/assets/music/droplets/electro/Electro%20Train.ogg',
         '/assets/music/droplets/electro/MelancholicPad.ogg',
-        '/assets/music/droplets/electro/African Night.ogg',
+        '/assets/music/droplets/electro/African%20Night.ogg',
         '/assets/music/droplets/electro/Barebelli.ogg',
         '/assets/music/droplets/electro/Electricity.ogg',
         '/assets/music/droplets/electro/Triologic.ogg',
@@ -198,8 +202,12 @@ export class SparklePlayer {
         this.gainNode.connect(destination);
     }
 
+    /**
+     * #ЗАЧЕМ: Гибридная инициализация.
+     * #ЧТО: limitPerCategory позволяет быстро загрузить ядро, а затем догрузить остальное.
+     */
     async init(limitPerCategory: number = -1) {
-        if (this.isFullyInitialized) return;
+        if (this.isFullyInitialized && limitPerCategory === -1) return;
         
         try {
             const categories = Object.keys(SPARKLE_SAMPLES) as (keyof typeof SPARKLE_SAMPLES)[];
@@ -212,13 +220,13 @@ export class SparklePlayer {
                 targetUrls.forEach(url => {
                     loadTasks.push(this.loadSample(url).then(buf => {
                         if (!buf) return;
-                        if (cat === 'PROMENADE') this.promenadeBuffers.push(buf);
-                        else if (cat === 'BLUES') this.bluesBuffers.push(buf);
-                        else if (cat === 'ROOT') this.rootBuffers.push(buf);
-                        else if (cat === 'DARK') this.darkBuffers.push(buf);
-                        else if (cat === 'LIGHT') this.lightBuffers.push(buf);
-                        else if (cat === 'ELECTRONIC') this.electronicBuffers.push(buf);
-                        else if (cat === 'AMBIENT_COMMON') this.ambientCommonBuffers.push(buf);
+                        
+                        const targetArray = this.getArrayForCategory(cat);
+                        // Избегаем дублей при повторных вызовах init()
+                        if (!targetArray.some(b => (b as any).url === url)) {
+                             (buf as any).url = url;
+                             targetArray.push(buf);
+                        }
                     }));
                 });
             }
@@ -230,15 +238,25 @@ export class SparklePlayer {
             console.error('[SparklePlayer] Failed to initialize:', e);
         }
     }
+
+    private getArrayForCategory(cat: keyof typeof SPARKLE_SAMPLES): AudioBuffer[] {
+        switch(cat) {
+            case 'PROMENADE': return this.promenadeBuffers;
+            case 'BLUES': return this.bluesBuffers;
+            case 'ROOT': return this.rootBuffers;
+            case 'DARK': return this.darkBuffers;
+            case 'LIGHT': return this.lightBuffers;
+            case 'ELECTRONIC': return this.electronicBuffers;
+            case 'AMBIENT_COMMON': return this.ambientCommonBuffers;
+        }
+    }
     
     private async loadSample(url: string): Promise<AudioBuffer | null> {
         try {
             const response = await fetch(url);
             if (!response.ok) return null;
             const arrayBuffer = await response.arrayBuffer();
-            const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            (buffer as any).url = url; 
-            return buffer;
+            return await this.audioContext.decodeAudioData(arrayBuffer);
         } catch (error) {
             return null;
         }
@@ -249,7 +267,6 @@ export class SparklePlayer {
         let samplePool: AudioBuffer[] = [];
         const rand = Math.random();
 
-        // #ЗАЧЕМ: Поддержка явного указания категорий для расширения разнообразия (ПЛАН №1033).
         const cat = (category || '').toUpperCase();
 
         if (cat === 'PROMENADE_BLUES' && this.bluesBuffers.length > 0) samplePool = this.bluesBuffers;
@@ -260,7 +277,6 @@ export class SparklePlayer {
         else if (cat === 'AMBIENT_COMMON' && this.ambientCommonBuffers.length > 0) samplePool = this.ambientCommonBuffers;
         else if (cat === 'ROOT' && this.rootBuffers.length > 0) samplePool = this.rootBuffers;
         else if (genre === 'psybient') {
-            // Psybient Wide Shuffle: Pick from all available pools if category is generic
             const allValidPools = [
                 this.ambientCommonBuffers, this.lightBuffers, this.electronicBuffers, 
                 this.rootBuffers, this.promenadeBuffers, this.darkBuffers

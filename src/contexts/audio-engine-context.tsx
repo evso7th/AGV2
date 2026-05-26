@@ -1,9 +1,10 @@
+
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V57.0 — "Cold Start Synchronization".
- * #ЗАЧЕМ: Устранение спотыканий в первые 3-4 такта.
- * #ЧТО: ПЛАН №8900 — Стартовое окно расширено до 1.5с (синхронно с фейдом Бродкаста).
+ * @fileOverview Audio Engine Context V58.0 — "Full Spectrum Atmosphere".
+ * #ЗАЧЕМ: Активация всей библиотеки droplets и sfx без ущерба для скорости старта.
+ * #ЧТО: ПЛАН №10000 — Поэтапная инициализация атмосферных модулей.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -298,6 +299,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(false),
             sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
         ]);
+
+        // #ЗАЧЕМ: Level 2 — Фоновая дозагрузка всей атмосферной библиотеки.
+        // Это гарантирует богатство звуков без задержки первого такта.
+        setTimeout(() => {
+            console.log('%c[AudioEngine] Atmosphere Replenishment: Loading Full Spectrum...', 'color: #DA70D6; font-weight: bold;');
+            sparklePlayerRef.current?.init(-1);
+            sfxSynthManagerRef.current?.init(-1);
+        }, 5000);
         
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
@@ -370,14 +379,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     setIsBroadcastActive(true);
                     speakerGainNodeRef.current?.gain.setTargetAtTime(0.0001, context.currentTime, 0.1);
                     hasAutoStartedBroadcastRef.current = true;
-                    console.log('%c[AudioEngine] Sequence-Locked Auto-Ignition: Direct Stream Bridge activated.', 'color: #4ade80; font-weight: bold;');
                 }
 
                 setIsPlaying(true);
                 stopAllSounds(); 
-                // #ЗАЧЕМ: ПЛАН №8900. Буфер 1.5с для синхронизации с фейдом Бродкаста и устранения спотыканий.
                 nextBarTimeRef.current = context.currentTime + 1.5;
-                console.log(`%c[AudioEngine] Start sequence initialized. Scheduled for T+1.5s`, 'color: #DA70D6;');
                 workerRef.current.postMessage({ command: 'start' });
             } else {
                 setIsPlaying(false);
@@ -487,14 +493,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         togglePreviewLoop: () => {}
     };
   }, [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, calibrationGains, voiceLimit, initialize, applyCalibration, setVolumeCallback, stopAllSounds, setVoiceLimit, toast]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
-        navigator.mediaSession.setActionHandler('play', () => value.setIsPlaying(true));
-        navigator.mediaSession.setActionHandler('pause', () => value.setIsPlaying(false));
-        navigator.mediaSession.setActionHandler('stop', () => value.setIsPlaying(false));
-    }
-  }, [value]);
 
   return <AudioEngineContext.Provider value={value}>{children}</AudioEngineContext.Provider>;
 };
