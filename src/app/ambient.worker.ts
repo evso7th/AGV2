@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.9.1 — "Media Session Connectivity".
- * #ЗАЧЕМ: Поле trackName добавлено в payload для трансляции в системный плеер.
- * #ЧТО: ПЛАН №7300 — Исправлен разрыв связи между Воркером и Media Session API.
+ * @fileOverview AuraGroove Music Worker V5.9.2 — "Reference Error Fix".
+ * #ЗАЧЕМ: Исправлена ошибка ReferenceError: navInfo is not defined.
+ * #ЧТО: ПЛАН №7800 — Добавлена правильная адресация к навигационной информации через payload.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -88,7 +88,6 @@ const Scheduler = {
 
     /**
      * #ЗАЧЕМ: Умный выбор Активного Якоря (Anchor) с логикой Shuffle Bag.
-     * #ЧТО: ПЛАН №3310 — Работает в "тишине" между треками.
      */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
@@ -114,8 +113,6 @@ const Scheduler = {
             }
 
             if (this.activeShuffleBag.length === 0) {
-                console.log(`%c${getTimestamp()} [Shuffle Bag] Transition Zone: Refilling and shuffling the pool for ${uiGenre}/${uiMood}...`, 'color: #3b82f6; font-weight: bold;');
-                
                 const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
@@ -279,7 +276,6 @@ const Scheduler = {
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         if (this.barCount >= totalBars) {
-             console.log(`%c${getTimestamp()} [Shuffle Bag] Track Ended. Transitioning in silence...`, 'color: #8b5cf6; font-style: italic;');
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -309,7 +305,7 @@ const Scheduler = {
         const ax = payload.activeAxioms || {};
         const genreMood = `${this.settings.genre.toUpperCase()}/${this.settings.mood.toUpperCase()}`;
         const track = payload.trackName || 'Algorithm';
-        const section = navInfo?.currentPart.name || 'Unknown';
+        const section = payload.navInfo?.currentPart.name || 'Unknown';
         
         const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
@@ -338,7 +334,7 @@ const Scheduler = {
                 lickId: payload.lickId,
                 beautyScore: payload.beautyScore,
                 seed: this.settings.seed,
-                trackName: track // #ЗАЧЕМ: Добавлено для синхронизации с Media Session API.
+                trackName: track
             }
         });
 
