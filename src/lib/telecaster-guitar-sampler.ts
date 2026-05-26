@@ -36,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.7 — "Sharp Pick".
- * #ЧТО: ПЛАН №1695 — Ускорена атака транзиента (5мс) для чистого разделения слоев.
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.8 — "Ambient Spacing".
+ * #ЧТО: ПЛАН №9100 — Добавлен интегрированный узел Delay для Clear Telecaster.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -47,13 +47,38 @@ export class TelecasterGuitarSampler {
     private isLoading = false;
     private preamp: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
+    
+    // FX Nodes
+    private delayNode: DelayNode;
+    private delayFeedback: GainNode;
+    private delayMix: GainNode;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.30; 
+
+        // 1. Создаем цепочку дилея
+        this.delayNode = this.audioContext.createDelay(1.0);
+        this.delayNode.delayTime.value = 0.35; // 350ms
+        
+        this.delayFeedback = this.audioContext.createGain();
+        this.delayFeedback.gain.value = 0.25; // 25% feedback
+        
+        this.delayMix = this.audioContext.createGain();
+        this.delayMix.gain.value = 0.20; // 20% wet mix
+
+        // 2. Маршрутизация (Параллельная)
+        // Dry path
         this.preamp.connect(this.destination);
+        
+        // Wet path
+        this.preamp.connect(this.delayNode);
+        this.delayNode.connect(this.delayFeedback);
+        this.delayFeedback.connect(this.delayNode);
+        this.delayNode.connect(this.delayMix);
+        this.delayMix.connect(this.destination);
     }
 
     public setPreampGain(gain: number) {
@@ -119,7 +144,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                             this.playSingleNote(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
                         }
                     }
                 }
@@ -127,10 +152,14 @@ export class TelecasterGuitarSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean = false) {
-        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
-        if (buffer) {
-            this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7, isTransientMode);
+    private playSingleNote(instrumentOrBuffer: any, noteMidiOrSampleMidi?: number, targetMidi?: number, startTime?: number, velocity?: number, isTransientMode: boolean = false) {
+        if (typeof instrumentOrBuffer === 'object' && 'buffers' in instrumentOrBuffer) {
+            const { buffer, midi: sampleMidi } = this.findBestSample(instrumentOrBuffer, (noteMidiOrSampleMidi as any).midi);
+            if (buffer) {
+                this.playSample(buffer, sampleMidi, (noteMidiOrSampleMidi as any).midi, (targetMidi as any) + ((noteMidiOrSampleMidi as any).time || 0), (noteMidiOrSampleMidi as any).velocity || 0.7, isTransientMode);
+            }
+        } else {
+            this.playSample(instrumentOrBuffer, noteMidiOrSampleMidi!, targetMidi!, startTime!, velocity!, isTransientMode);
         }
     }
     
@@ -148,7 +177,6 @@ export class TelecasterGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: Быстрая атака (5мс) для четкого Pick Strike, не маскирующая синтезатор.
             gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.005, 0.01);
             source.start(startTime);
@@ -189,5 +217,11 @@ export class TelecasterGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() { 
+        this.stopAll(); 
+        this.preamp.disconnect(); 
+        this.delayMix.disconnect();
+        this.delayFeedback.disconnect();
+        this.delayNode.disconnect();
+    }
 }
