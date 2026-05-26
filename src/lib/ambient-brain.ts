@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V89.5 — "The Stabilized Voyager".
- * #ЗАЧЕМ: Исправление отсутствия звука в Амбиенте.
- * #ЧТО: ПЛАН №9950 — Восстановлены методы constrainBassOctave/constrainAccompanimentOctave и импорт normalizeStr.
+ * @fileOverview Ambient Brain V89.6 — "The Reference Integrity Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError: activeAxiom is not defined.
+ * #ЧТО: ПЛАН №9960 — Переменная activeAxiom заменена на корректную activePhrase.
  */
 
 import type {
@@ -498,8 +498,9 @@ export class AmbientBrain {
                 else if (this.currentMutationType === 'transpose_deg') activePhrase = transposePhraseDegrees(activePhrase, this.degreeTransposition);
 
                 if (epoch >= 4) {
-                    activePhrase = applyDynamicArticulation(activeAxiom, localTension, this.seed + epoch);
-                    activePhrase = applyMicroChronos(activeAxiom, this.seed, tension);
+                    // #ЗАЧЕМ: Исправление ReferenceError (activeAxiom -> activePhrase)
+                    activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
+                    activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
                 }
 
                 melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
@@ -560,7 +561,7 @@ export class AmbientBrain {
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
                 bass: bassStatus,
                 drums: 'Landscape', 
-                accompaniment: isAccompResting ? 'Breath' : accStatus,
+                accompaniment: isSoloistResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
                 harmony: usedTargetLayers.has('harmony') ? 'Heritage' : 'Algo',
                 sparkles: 'Spiral',
@@ -672,7 +673,7 @@ export class AmbientBrain {
     }
 
     private renderThemeBass(chord: GhostChord, epoch: number, localTension: number, dna: SuiteDNA, phrase: any[]): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, localTension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
