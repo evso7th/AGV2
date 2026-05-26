@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V51.0 — "System Native Integration".
- * #ЗАЧЕМ: Реализация Media Session API для управления с экрана блокировки.
- * #ЧТО: ПЛАН №4000 — 1. Интеграция метаданных трека. 2. Системные обработчики Play/Pause.
+ * @fileOverview Audio Engine Context V51.1 — "System Metadata Sync".
+ * #ЗАЧЕМ: Исправление отсутствия Genre/Mood в Media Session.
+ * #ЧТО: ПЛАН №7300 — 1. album теперь показывает Genre / Mood. 2. Artwork переключен на PNG.
  */
 'use client';
 
@@ -129,7 +129,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const nextBarTimeRef = useRef<number>(0);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  // #ЗАЧЕМ: Предотвращение лишних обновлений Media Session.
   const lastTrackNameRef = useRef<string | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 });
@@ -233,7 +232,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [calibrationGains.master]);
 
-  // #ЗАЧЕМ: Синхронизация системного состояния воспроизведения.
   useEffect(() => {
       if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
           navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
@@ -306,16 +304,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const beatDur = 60 / bpm;
                 const now = context.currentTime;
 
-                // #ЗАЧЕМ: Обновление метаданных Media Session при смене трека.
+                // #ЗАЧЕМ: ПЛАН №7300. Обновление метаданных Media Session при смене трека.
                 if (payload.trackName && payload.trackName !== lastTrackNameRef.current) {
                     lastTrackNameRef.current = payload.trackName;
                     if ('mediaSession' in navigator) {
                         navigator.mediaSession.metadata = new MediaMetadata({
                             title: payload.trackName.replace(/_/g, ' '),
                             artist: 'AuraGroove Orchestra',
-                            album: (payload.genre || 'Digital DNA').toUpperCase(),
+                            album: `${payload.genre} / ${payload.mood}`.toUpperCase(),
                             artwork: [
-                                { src: '/assets/icon8.jpeg', sizes: '512x512', type: 'image/jpeg' }
+                                { src: '/icon8.png', sizes: '512x512', type: 'image/png' }
                             ]
                         });
                     }
@@ -476,7 +474,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         togglePreviewLoop: () => {}
     };
 
-    // #ЗАЧЕМ: Регистрация системных обработчиков Media Session.
     if (typeof window !== 'undefined' && 'mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => api.setIsPlaying(true));
         navigator.mediaSession.setActionHandler('pause', () => api.setIsPlaying(false));

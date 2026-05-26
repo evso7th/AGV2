@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview AuraGroove Music Worker V5.9 — "Silent Transition Protocol".
- * #ЗАЧЕМ: Перемешивание Shuffle Bag перенесено в зону тишины между треками.
- * #ЧТО: ПЛАН №3310 — Гарантировано отсутствие вычислительной нагрузки во время активной генерации такта.
+ * @fileOverview AuraGroove Music Worker V5.9.1 — "Media Session Connectivity".
+ * #ЗАЧЕМ: Поле trackName добавлено в payload для трансляции в системный плеер.
+ * #ЧТО: ПЛАН №7300 — Исправлен разрыв связи между Воркером и Media Session API.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -162,9 +162,8 @@ const Scheduler = {
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
-        // ВАЖНО: pickActiveAnchor вызывается здесь, до начала игры
         const anchorInfo = this.pickActiveAnchor();
-        const isImprovising = (settings.selectedCompositionIds || []).length === 0;
+        const impro = (settings.selectedCompositionIds || []).length === 0;
 
         const finalSettings = {
             ...settings,
@@ -173,7 +172,7 @@ const Scheduler = {
             activeAnchorRoot: anchorInfo.nativeRoot, 
             sessionLickHistory: this.sessionLickHistory,
             cloudAxioms: this.cloudAxioms,
-            isImprovising: isImprovising
+            isImprovising: impro
         };
 
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
@@ -284,7 +283,7 @@ const Scheduler = {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
-             this.initializeEngine(this.settings); // pickActiveAnchor вызывается внутри
+             this.initializeEngine(this.settings); 
              this.barCount = 0;
         }
 
@@ -310,7 +309,7 @@ const Scheduler = {
         const ax = payload.activeAxioms || {};
         const genreMood = `${this.settings.genre.toUpperCase()}/${this.settings.mood.toUpperCase()}`;
         const track = payload.trackName || 'Algorithm';
-        const section = payload.navInfo?.currentPart.name || 'Unknown';
+        const section = navInfo?.currentPart.name || 'Unknown';
         
         const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
@@ -338,7 +337,8 @@ const Scheduler = {
                 mood: this.settings.mood,
                 lickId: payload.lickId,
                 beautyScore: payload.beautyScore,
-                seed: this.settings.seed
+                seed: this.settings.seed,
+                trackName: track // #ЗАЧЕМ: Добавлено для синхронизации с Media Session API.
             }
         });
 
