@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V91.1 — "The Quiet Architect".
- * #ЗАЧЕМ: Стабилизация атмосферного потока.
- * #ЧТО: ПЛАН №11050 — 1. Блокировка эффектов в первые 12 тактов. 2. Привязка плотности к T.
+ * @fileOverview Ambient Brain V92.0 — "The Protected Architect".
+ * #ЗАЧЕМ: Исправление TypeError и стабилизация атмосферы.
+ * #ЧТО: ПЛАН №11051 — 1. Восстановлены методы constrainOctave. 2. Внедрен "Закон 12 тактов".
  */
 
 import type {
@@ -150,7 +150,7 @@ export class AmbientBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -476,7 +476,7 @@ export class AmbientBrain {
                     activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
                 }
 
-                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale);
+                melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale, localTension);
             } 
             if (melodyEvents.length === 0) {
                 melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
@@ -544,29 +544,29 @@ export class AmbientBrain {
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
-        // ПЛАН №11050: Закон 12 тактов
+        // #ЗАЧЕМ: ПЛАН №11050. Закон 12 тактов - полная тишина во вступлении.
         if (epoch < 12) return [];
 
         const events: FractalEvent[] = [];
 
-        // Разрежение Спарклс: привязка к T
-        const sparkleProb = 0.03 + (tension * 0.09); // от 3% до 12%
+        // #ЗАЧЕМ: Плотность Sparkles теперь зависит от Напряжения (T).
+        const sparkleProb = 0.03 + (tension * 0.09); 
         if (this.random.next() < sparkleProb) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
             events.push({ 
-                type: 'sparkle', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                type: 'sparkle', note: 60, time: (this.random.nextInt(TICKS_PER_BAR)) * TICK_TO_BEAT, 
                 duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', 
                 pan: (this.random.next() * 1.8) - 0.9, 
                 params: { mood: this.mood, genre: this.genre, category } 
             });
         }
 
-        // Разрежение SFX: привязка к T
-        const sfxProb = 0.02 + (tension * 0.06); // от 2% до 8%
+        // #ЗАЧЕМ: Плотность SFX также привязана к T.
+        const sfxProb = 0.02 + (tension * 0.06); 
         if (this.random.next() < sfxProb) {
             events.push({ 
-                type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                type: 'sfx', note: 60, time: (this.random.nextInt(TICKS_PER_BAR)) * TICK_TO_BEAT, 
                 duration: 4.0, weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
                 pan: (this.random.next() * 1.6) - 0.8, 
                 params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } } 
@@ -602,7 +602,7 @@ export class AmbientBrain {
             events.push({
                 type: 'drum_ride_wetter', note: 51, 
                 time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 4.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                duration: 4.5, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato',
                 pan: (this.random.next() * 1.4) - 0.7
             });
         }
@@ -637,7 +637,7 @@ export class AmbientBrain {
 
     private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
         if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+            const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
             const startEpoch = this.soloistBusyUntilBar - totalBars;
             const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
             const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -678,10 +678,6 @@ export class AmbientBrain {
             params: { attack: 1.5, release: 3.5, filterCutoff: 1600 + (tension * 1200), mood: this.mood }
         }));
         return rawEvents.flatMap(e => this.rippleLongNote(e, chord));
-    }
-
-    private renderThemeMelody(chord: GhostChord, epoch: number, tension: number, hints: InstrumentHints, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number): FractalEvent[] {
-        return this.renderMelodicSegment(epoch, chord, dna, type, phrase, maxTick, timeScale, tension);
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
@@ -780,5 +776,14 @@ export class AmbientBrain {
         let stage = Math.min(2, Math.floor((epoch / 150) * 3));
         const atom = GEO_ATLAS[dna.itinerary[stage]];
         if (atom) { this.fog = atom.fog; this.depth = atom.depth; this.registerShift = atom.reg; }
+    }
+
+    // ───── HELPER METHODS ─────
+    private constrainBassOctave(note: number): number {
+        let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n;
+    }
+
+    private constrainAccompanimentOctave(note: number): number {
+        let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n;
     }
 }
