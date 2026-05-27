@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V53.0 — "The Stable Voyager".
+ * @fileOverview Psybient Brain V54.0 — "The Stable Voyager".
  * #ЗАЧЕМ: 1. Мутации раз в 8 тактов. 2. Нормализация Heritage Drums (0.35).
- * #ЧТО: ПЛАН №11000 — Синхронизация логики с Регги.
+ * #ЧТО: ПЛАН №11050 — Реализация Закона 12 тактов и динамической атмосферы (T-linked).
  */
 
 import type {
@@ -267,7 +267,6 @@ export class TranceBrain {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         
         // --- MUTATION DECISION ---
-        // #ЗАЧЕМ: ПЛАН №11000. Мутации раз в 8 тактов.
         if (epoch % 8 === 0 && epoch >= 4) {
             const mutationRand = this.rng.next();
             const mutationThreshold = this.isImprovising ? 0.9 : 0.5;
@@ -368,7 +367,7 @@ export class TranceBrain {
 
         if (!isIntro) {
             this.currentAccompAxioms.forEach(ax => {
-                const role = ax.role.toLowerCase();
+                const role = ax.role.toLowerCase(); 
                 let target: InstrumentPart | null = null;
                 if (role.includes('piano')) target = 'pianoAccompaniment';
                 else if (role.includes('accomp')) target = 'accompaniment';
@@ -510,7 +509,6 @@ export class TranceBrain {
                 events.push({
                     type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
                     duration: 0.1, 
-                    // #ЗАЧЕМ: ПЛАН №11000. Нормализация громкости в Psybient.
                     weight: 0.35, 
                     technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
@@ -555,7 +553,7 @@ export class TranceBrain {
     }
 
     private renderHeritageMelodyRaw(epoch: number, chord: GhostChord, tension: number, phrase: any[]): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -662,8 +660,13 @@ export class TranceBrain {
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: ПЛАН №11050. Закон 12 тактов — полная тишина в начале путешествия.
+        if (epoch < 12) return [];
+
         const events: FractalEvent[] = [];
-        const sparkleProb = 5 + (tension * 18);
+        
+        // #ЗАЧЕМ: Плотность Sparkles теперь зависит от Напряжения (T).
+        const sparkleProb = 3 + (tension * 9); 
         if (this.rng.chance(sparkleProb)) {
             const categories = ['light', 'electronic', 'ambient_common', 'root', 'promenade'];
             const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
@@ -674,7 +677,9 @@ export class TranceBrain {
                 params: { mood: this.mood, genre: this.genre, category } 
             });
         }
-        const sfxProb = 4 + (tension * 12);
+        
+        // #ЗАЧЕМ: Плотность SFX также привязана к T.
+        const sfxProb = 2 + (tension * 6);
         if (this.rng.chance(sfxProb)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
