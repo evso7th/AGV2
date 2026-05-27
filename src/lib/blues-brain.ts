@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V86.0 — "The Relaxed Storyteller".
- * #ЗАЧЕМ: Снижение частоты мутаций до 8 тактов.
- * #ЧТО: ПЛАН №11000 — Интервал мутаций изменен с 4 на 8 тактов.
+ * @fileOverview Blues Brain V86.1 — "The Relaxed Storyteller".
+ * #ЗАЧЕМ: Снижение частоты мутаций до 8 тактов и исправление ReferenceError.
+ * #ЧТО: ПЛАН №11000 — Интервал мутаций изменен с 4 на 8 тактов. ПЛАН №962 — Исправлен role -> rawRole.
  */
 
 import {
@@ -451,8 +451,9 @@ export class BluesBrain {
         this.currentAccompAxioms.forEach((ax) => {
             const rawRole = ax.role.toLowerCase(); 
             let target: InstrumentPart | null = null;
-            if (role.includes('piano')) target = 'pianoAccompaniment';
-            else if (role.includes('accomp')) target = 'accompaniment';
+            // #ЗАЧЕМ: ПЛАН №962. Исправлено role -> rawRole для устранения ReferenceError.
+            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
+            else if (rawRole.includes('accomp')) target = 'accompaniment';
             
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let activePhrase = ax.phrase;
