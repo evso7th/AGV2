@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview AuraGroove Music Worker V5.9.5 — "Global Sync Fixed".
- * #ЗАЧЕМ: Исправлены ReferenceError (keyToMidiRoot, normalizeStr).
- * #ЧТО: ПЛАН №9950 — Добавлены недостающие импорты из библиотеки музыкальной теории.
+ * @fileOverview AuraGroove Music Worker V5.9.6 — "The ID Oracle".
+ * #ЗАЧЕМ: Переход на лаконичное логирование через короткие UID.
+ * #ЧТО: ПЛАН №21100 — Все имена треков и аксиом в логе теперь используют 6-8 символьный суффикс (UID).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -20,15 +19,25 @@ const getTimestamp = () => {
     return `[${h}:${m}:${s}]`;
 };
 
+/**
+ * #ЗАЧЕМ: Извлечение короткого UID (7r10bw) из длинных ID или названий.
+ */
+function toShortId(fullId: string | null | undefined): string {
+    if (!fullId) return '-';
+    // Если это ID нашего формата (с подчеркиванием), берем последний сегмент
+    if (fullId.includes('_')) {
+        return fullId.split('_').pop() || fullId.substring(0, 8);
+    }
+    // Если это просто строка, берем первые 8 символов (или хеш, если нужно)
+    return fullId.length > 8 ? fullId.substring(0, 8) : fullId;
+}
+
 function generateTrueSeed(): number {
     const array = new Uint32Array(1);
     self.crypto.getRandomValues(array);
     return array[0];
 }
 
-/**
- * #ЗАЧЕМ: Универсальный инструмент перемешивания массива (Fisher-Yates).
- */
 function shuffleArray<T>(array: T[]): T[] {
     const next = [...array];
     for (let i = next.length - 1; i > 0; i--) {
@@ -47,12 +56,8 @@ const Scheduler = {
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     expectedNextTick: 0,
-    
-    // --- SHUFFLE BAG STATE ---
     activeShuffleBag: [] as string[],
     currentFilterHash: "",
-
-    // Morphing State
     targetBpm: null as number | null,
     bpmStep: 0,
 
@@ -86,27 +91,21 @@ const Scheduler = {
         return (60 / this.settings.bpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Умный выбор Активного Якоря (Anchor) с логикой Shuffle Bag.
-     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
-        // 1. Ручной режим: ротация по списку пользователя
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
         } 
-        // 2. Автоматический режим: Shuffle Bag логика
         else if (this.cloudAxioms.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
             const newHash = `${uiGenre}_${uiMood}`;
 
-            // Сброс мешка при смене фильтров
             if (this.currentFilterHash !== newHash) {
                 this.activeShuffleBag = [];
                 this.currentFilterHash = newHash;
@@ -155,10 +154,8 @@ const Scheduler = {
 
     initializeEngine(settings: WorkerSettings) {
         this.barCount = 0;
-        
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
-        
         const anchorInfo = this.pickActiveAnchor();
         const impro = (settings.selectedCompositionIds || []).length === 0;
 
@@ -190,29 +187,16 @@ const Scheduler = {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        
-        if (!fractalMusicEngine) {
-            this.initializeEngine(this.settings);
-        }
-
+        if (!fractalMusicEngine) this.initializeEngine(this.settings);
         console.log(`${getTimestamp()} [Worker] Loop Ignition Sequence Started.`);
-
         this.expectedNextTick = performance.now();
         const loop = () => {
             if (!this.isRunning) return;
-            
-            try {
-                this.tick();
-            } catch (e) {
-                console.error('WORKER TICK CRASH:', e);
-            }
-            
+            try { this.tick(); } catch (e) { console.error('WORKER TICK CRASH:', e); }
             const durationMs = this.barDuration * 1000;
             this.expectedNextTick += durationMs;
-            
             const drift = performance.now() - (this.expectedNextTick - durationMs);
             const nextInterval = Math.max(0, durationMs - drift);
-            
             this.loopId = setTimeout(loop, nextInterval);
         };
         loop();
@@ -220,10 +204,7 @@ const Scheduler = {
 
     stop() {
         this.isRunning = false;
-        if (this.loopId) {
-            clearTimeout(this.loopId);
-            this.loopId = null;
-        }
+        if (this.loopId) { clearTimeout(this.loopId); this.loopId = null; }
     },
     
     reset() {
@@ -245,12 +226,8 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           if (filterChanged || genreOrMoodChanged) {
-               this.filterRotationIndex = 0;
-           } else if (seedChanged) {
-               this.filterRotationIndex++;
-           }
-
+           if (filterChanged || genreOrMoodChanged) this.filterRotationIndex = 0;
+           else if (seedChanged) this.filterRotationIndex++;
            this.sessionLickHistory = []; 
            this.barCount = 0; 
            this.initializeEngine(this.settings);
@@ -290,12 +267,7 @@ const Scheduler = {
         }
 
         let payload: any;
-        try {
-            payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
-        } catch (e) {
-            console.error('ENGINE EVOLVE CRASH:', e);
-            return;
-        }
+        try { payload = fractalMusicEngine.evolve(this.barDuration, this.barCount); } catch (e) { console.error('ENGINE EVOLVE CRASH:', e); return; }
 
         if (payload.newBpm && payload.newBpm !== this.settings.bpm && !this.targetBpm) {
             this.settings.bpm = payload.newBpm;
@@ -311,14 +283,17 @@ const Scheduler = {
         const h = payload.instrumentHints || {};
         const ax = payload.activeAxioms || {};
         const genreMood = `${this.settings.genre.toUpperCase()}/${this.settings.mood.toUpperCase()}`;
-        const track = payload.trackName || 'Algorithm';
+        
+        // #ЗАЧЕМ: Сокращаем имя трека до UID.
+        const track = toShortId(payload.trackName || 'Algorithm');
         const section = payload.navInfo?.currentPart.name || 'Unknown';
         
-        const cognitiveStr = `AX: MEL:${ax.melody || '-'} BAS:${ax.bass || '-'} ACC:${ax.accompaniment || '-'} HAR:${ax.harmony || '-'} RHO:${ax.piano || '-'} DRU:${ax.drums || '-'}`;
+        // #ЗАЧЕМ: Все идентификаторы аксиом прогоняем через toShortId.
+        const cognitiveStr = `AX: MEL:${toShortId(ax.melody)} BAS:${toShortId(ax.bass)} ACC:${toShortId(ax.accompaniment)} HAR:${toShortId(ax.harmony)} RHO:${toShortId(ax.piano)} DRU:${toShortId(ax.drums)}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
         console.log(
-            `%c${getTimestamp()} Bar ${this.barCount}%c${mutationLabel}%c | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${payload.narrative || 'Flowing...'}`,
+            `%c${getTimestamp()} Bar ${this.barCount}%c${mutationLabel}%c | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${toShortId(payload.narrative)}`,
             'color: #888;', 
             mutationStyle,
             'color: #888;',
@@ -344,7 +319,6 @@ const Scheduler = {
                 trackName: track
             }
         });
-
         this.barCount++;
     }
 };
