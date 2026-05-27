@@ -133,7 +133,6 @@ const INSTRUMENT_GROUPS = [
   {
     label: 'Electric Guitars',
     color: 'bg-blue-500/10 text-blue-400',
-    // #ЗАЧЕМ: CS80 перемещен сюда по запросу пользователя.
     options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80']
   },
   {
@@ -367,7 +366,12 @@ export default function HypercubeDashboard() {
 
     return Object.entries(groups)
       .filter(([id, licks]) => {
-        const matchesSearch = id.toLowerCase().includes(explorerSearch.toLowerCase());
+        const searchLower = explorerSearch.toLowerCase();
+        // #ЗАЧЕМ: ПЛАН №21100. Расширенный поиск по названию трека ИЛИ по UID любой аксиомы в группе.
+        const matchesName = id.toLowerCase().includes(searchLower);
+        const matchesUid = licks.some(ax => ax.id.toLowerCase().includes(searchLower));
+        const matchesSearch = matchesName || matchesUid;
+        
         const firstLick = licks[0];
         const lickGenres = Array.isArray(firstLick.genre) ? firstLick.genre : [firstLick.genre];
         const lickMoods = Array.isArray(firstLick.mood) ? firstLick.mood : [firstLick.mood];
@@ -754,7 +758,7 @@ export default function HypercubeDashboard() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {filtersActive && <Button variant="ghost" size="sm" onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); }} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>}
-                    <Input placeholder="Search..." className="h-9 w-[180px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
+                    <Input placeholder="Search Track or UID..." className="h-9 w-[180px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                     <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
                     <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
                     {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-2" /> Wipe ({selectedTrackGroups.size})</Button>}
@@ -839,7 +843,7 @@ export default function HypercubeDashboard() {
                                         <td className="p-3 pl-12">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={v => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
-                                          ) : <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge>}
+                                          ) : <div className="flex flex-col gap-0.5"><Badge variant="outline" className="text-[9px] uppercase font-black px-1.5 w-fit">{ax.role}</Badge><span className="text-[8px] font-mono opacity-40 ml-0.5">ID:{ax.id.split('_').pop()}</span></div>}
                                         </td>
                                         <td className="p-3">
                                           {editingAxiomId === ax.id ? (

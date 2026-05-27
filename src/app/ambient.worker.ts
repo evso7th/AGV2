@@ -1,5 +1,5 @@
 /**
- * @fileOverview AuraGroove Music Worker V5.9.6 — "The ID Oracle".
+ * @fileOverview AuraGroove Music Worker V5.9.7 — "The ID Oracle".
  * #ЗАЧЕМ: Переход на лаконичное логирование через короткие UID.
  * #ЧТО: ПЛАН №21100 — Все имена треков и аксиом в логе теперь используют 6-8 символьный суффикс (UID).
  */
@@ -20,15 +20,16 @@ const getTimestamp = () => {
 };
 
 /**
- * #ЗАЧЕМ: Извлечение короткого UID (7r10bw) из длинных ID или названий.
+ * #ЗАЧЕМ: Извлечение короткого UID (например, 7r10bw) из длинных ID или названий.
  */
 function toShortId(fullId: string | null | undefined): string {
     if (!fullId) return '-';
-    // Если это ID нашего формата (с подчеркиванием), берем последний сегмент
+    // Если это ID нашего формата (с подчеркиванием), берем последний сегмент (хэш)
     if (fullId.includes('_')) {
-        return fullId.split('_').pop() || fullId.substring(0, 8);
+        const parts = fullId.split('_');
+        return parts[parts.length - 1] || fullId.substring(0, 8);
     }
-    // Если это просто строка, берем первые 8 символов (или хеш, если нужно)
+    // Если это просто строка, берем первые 8 символов
     return fullId.length > 8 ? fullId.substring(0, 8) : fullId;
 }
 
@@ -288,7 +289,7 @@ const Scheduler = {
         const track = toShortId(payload.trackName || 'Algorithm');
         const section = payload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: Все идентификаторы аксиом прогоняем через toShortId.
+        // #ЗАЧЕМ: Все идентификаторы аксиом прогоняем через toShortId для компактности лога.
         const cognitiveStr = `AX: MEL:${toShortId(ax.melody)} BAS:${toShortId(ax.bass)} ACC:${toShortId(ax.accompaniment)} HAR:${toShortId(ax.harmony)} RHO:${toShortId(ax.piano)} DRU:${toShortId(ax.drums)}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
