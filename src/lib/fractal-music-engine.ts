@@ -55,9 +55,9 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.3 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление отсутствия звука в Регги.
- * #ЧТО: ПЛАН №1138 — Добавлена передача cloudAxioms в ReggaeBrain.
+ * @fileOverview Fractal Music Engine V44.4 — "Heritage Link Restored".
+ * #ЗАЧЕМ: Исправление отсутствия связи с Наследием при старте.
+ * #ЧТО: ПЛАН №21050 — Мозги получают cloudAxioms сразу при создании в initialize().
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -153,6 +153,7 @@ export class FractalMusicEngine {
     const anchor = this.config.activeAnchorId;
     const useH = this.config.useHeritage;
 
+    // #ЗАЧЕМ: ПЛАН №21050. Прямая передача cloudAxioms сразу после создания Мозга.
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
         this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
@@ -162,7 +163,6 @@ export class FractalMusicEngine {
         this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        // #ЗАЧЕМ: Восстановление связи Reggae с Облаком (ПЛАН №1138)
         this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
         this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null;
     } else {
