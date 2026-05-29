@@ -1,9 +1,10 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V60.1 — "Balanced Silk Start".
- * #ЗАЧЕМ: Оптимизация времени ожидания перед стартом.
- * #ЧТО: ПЛАН №12010 — Начальное смещение (nextBarTimeRef) скорректировано до 2.0с.
+ * @fileOverview Audio Engine Context V60.2 — "The Silent Curtain".
+ * #ЗАЧЕМ: Устранение хрипов на холодном старте через прогрев пулов в тишине.
+ * #ЧТО: ПЛАН №12020 — 1. Мастер-гейн сброшен в 0.0001 для тактов 0 и 1.
+ *       2. Плавный вход (Silk Start) перенесен на начало Bar 2.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -319,12 +320,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const bpm = payload.actualBpm || 72;
                     const beatDur = 60 / bpm;
                     const now = context.currentTime;
+                    const barStartTime = nextBarTimeRef.current;
 
-                    if (payload.barCount === 0) {
-                        // #ЗАЧЕМ: Silk Start - плавный вход мастер-секции в первом такте.
-                        masterGainNodeRef.current?.gain.cancelScheduledValues(now);
-                        masterGainNodeRef.current?.gain.setValueAtTime(0.0001, now);
-                        masterGainNodeRef.current?.gain.exponentialRampToValueAtTime(calibrationGains.master, now + 2.0);
+                    if (payload.barCount === 2) {
+                        // #ЗАЧЕМ: ПЛАН №12020. "Тихий занавес" - плавный вход после прогрева Bar 0/1.
+                        masterGainNodeRef.current?.gain.cancelScheduledValues(barStartTime);
+                        masterGainNodeRef.current?.gain.setValueAtTime(0.0001, barStartTime);
+                        masterGainNodeRef.current?.gain.exponentialRampToValueAtTime(calibrationGains.master, barStartTime + 2.0);
                     }
                     if (payload.totalBars && payload.barCount >= payload.totalBars - 2) {
                         masterGainNodeRef.current?.gain.setTargetAtTime(0.0001, nextBarTimeRef.current, 1.5);
@@ -389,7 +391,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                 setIsPlaying(true);
                 stopAllSounds(); 
-                // #ЗАЧЕМ: ПЛАН №12010. Смещение планировщика оптимизировано до 2.0с для более быстрого старта.
+                
+                // #ЗАЧЕМ: ПЛАН №12020. Сброс громкости перед "прогревочными" тактами.
+                masterGainNodeRef.current?.gain.setValueAtTime(0.0001, context.currentTime);
+
                 nextBarTimeRef.current = context.currentTime + 2.0;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
