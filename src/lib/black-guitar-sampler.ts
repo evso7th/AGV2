@@ -82,7 +82,7 @@ export class BlackGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.5; // Повышено (было 0.15)
+        this.preamp.gain.value = 0.75; // Optimized for clarity
         this.preamp.connect(this.destination);
     }
 

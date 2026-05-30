@@ -3,21 +3,15 @@
 
 ---
 
-### ЗАПИСЬ: 04-06-2026 (STATUS: DISTORTION CORE FIXED — ПЛАН №22500)
-**ЗАДАЧА**: Исправление ReferenceError: makeMuff is not defined в гитарном движке.
-**РЕШЕНИЕ**: В файл `instrument-factory.ts` добавлены пропущенные функции `makeMuff` и `makeVintageDistortion` для генерации кривых WaveShaper.
-**РЕЗУЛЬТАТ**: Гитарные пресеты (Shine On, Muff Lead) инициализируются корректно, ошибка загрузки синтезатора устранена.
-
----
-
-### ЗАПИСЬ: 04-06-2026 (STATUS: IDEMPOTENT IGNITION — ПЛАН №12050)
-**ЗАДАЧА**: Устранение двойного старта инициализации и дублирования логов мэппинга.
+### ЗАПИСЬ: 04-06-2026 (STATUS: SAMPLER PARK CALIBRATED — ПЛАН №22700)
+**ЗАДАЧА**: Проверка и калибровка всех гитарных сэмплеров (Telecaster, CS80, Black Acoustic, Dark Telecaster).
 **РЕШЕНИЕ**: 
-1. В `AudioEngineProvider` внедрен `initLockRef` (Mutex), блокирующий конкурентные вызовы `initialize`.
-2. В `getBlueprint` добавлена проверка `lastLoggedRequest` для очистки консоли от повторяющихся сообщений.
-**РЕЗУЛЬТАТ**: Чистый старт системы без лишнего шума в консоли и лишней нагрузки на CPU при инициализации.
+1. Исправлена критическая ошибка в `DarkTelecasterSampler`, которая обрывала ноты через 50мс.
+2. Внедрена поддержка `isTransientMode` в Dark Telecaster для корректной работы с Aria Transient Logic.
+3. Проведена нормализация уровней предусиления (`preamp.gain`) во всем парке: CS80 (0.45), Telecaster (0.8), Black Acoustic (0.75).
+**РЕЗУЛЬТАТ**: Лид-инструменты звучат сбалансированно, дефекты воспроизведения в Dark-режиме устранены.
 
 ---
 
-### ЗАПИСЬ: 03-06-2026 (STATUS: CRITICAL ROLLBACK TO 8be8f912)
+### ЗАПИСЬ: 04-06-2026 (STATUS: DISTORTION CORE FIXED — ПЛАН №22500)
 ... (предыдущие записи)

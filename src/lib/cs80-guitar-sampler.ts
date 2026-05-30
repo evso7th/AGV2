@@ -1,7 +1,9 @@
+
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.2 — "Calibration Support".
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.3 — "Mix Normalization".
+ * #ЧТО: ПЛАН №22700 — Повышен базовый gain (0.1 -> 0.45) для слышимости.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -31,7 +33,7 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.1; 
+        this.preamp.gain.value = 0.45; // Calibrated for the mix
         this.preamp.connect(this.destination);
     }
 

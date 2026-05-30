@@ -36,8 +36,8 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.9 — "Ambient Space Implemented".
- * #ЧТО: ПЛАН №22600 — Повышен базовый gain для слышимости мелодии.
+ * #ЗАЧЕМ: Сэмплер Telecaster V5.0 — "Mix Harmonization".
+ * #ЧТО: ПЛАН №22700 — Повышен базовый gain (0.6 -> 0.8) для сочного лида.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -57,7 +57,7 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.60; // Повышено (было 0.30)
+        this.preamp.gain.value = 0.80; // Optimized for Lead Presence
 
         // 1. Создаем цепочку дилея
         this.delayNode = this.audioContext.createDelay(1.0);
@@ -144,7 +144,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSingleNote(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                             this.playSingleNote(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
                         }
                     }
                 }

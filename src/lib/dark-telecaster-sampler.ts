@@ -4,8 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.7 — "Subtle Saturation".
- * #ЧТО: ПЛАН №9970 — Добавлен минимальный дисторшн (amount: 8) для "тела" звука.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.8 — "The Voice Restoration".
+ * #ЧТО: ПЛАН №22700 — 1. Исправлено обрезание нот (удален stop 0.05). 2. Добавлен Transient Mode.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -72,10 +72,9 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 1.2; 
+        this.preamp.gain.value = 0.8; // Calibrated for the mix
 
         this.distortion = this.audioContext.createWaveShaper();
-        // #ЗАЧЕМ: Совсем чуть-чуть дисторшна для "тела" звука.
         this.distortion.curve = makeDistortionCurve(8); 
         
         this.compressor = this.audioContext.createDynamicsCompressor();
@@ -87,7 +86,7 @@ export class DarkTelecasterSampler {
 
         this.cabinetFilter = this.audioContext.createBiquadFilter();
         this.cabinetFilter.type = 'lowpass';
-        this.cabinetFilter.frequency.value = 15000; 
+        this.cabinetFilter.frequency.value = 4500; // Realistic cabinet roll-off
         this.cabinetFilter.Q.value = 0.7;
         
         this.preamp.connect(this.distortion);
@@ -145,15 +144,15 @@ export class DarkTelecasterSampler {
         }
     }
     
-    public schedule(notes: Note[], time: number, tempo: number = 120) {
+    public schedule(notes: Note[], time: number, tempo: number = 120, isTransientMode: boolean = false) {
         const instrument = this.instruments.get('darkTelecaster');
         if (!this.isInitialized || !instrument) return;
 
         notes.forEach(note => {
-            if (note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
+            if (!isTransientMode && note.technique && (note.technique.startsWith('F_') || note.technique.startsWith('S_'))) {
                 this.playPattern(instrument, note, time, tempo);
             } else {
-                this.playSingleNote(instrument, note, time);
+                this.playSingleNote(instrument, note, time, isTransientMode);
             }
         });
     }
@@ -162,14 +161,14 @@ export class DarkTelecasterSampler {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
         if (!patternData) {
-            this.playSingleNote(instrument, note, barStartTime);
+            this.playSingleNote(instrument, note, barStartTime, false);
             return;
         }
 
         const voicingName = note.params?.voicingName || 'E7_open';
         const voicing = BLUES_GUITAR_VOICINGS[voicingName];
         if (!voicing) {
-            this.playSingleNote(instrument, note, barStartTime);
+            this.playSingleNote(instrument, note, barStartTime, false);
             return;
         }
 
@@ -185,7 +184,7 @@ export class DarkTelecasterSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
                         }
                     }
                 }
@@ -193,14 +192,14 @@ export class DarkTelecasterSampler {
         }
     }
 
-    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
         const noteStartTime = startTime + (note.time || 0);
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7);
+        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7, isTransientMode);
     }
     
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean) {
         if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
             return;
         }
@@ -215,11 +214,17 @@ export class DarkTelecasterSampler {
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
-        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
-        source.start(startTime);
-        source.stop(startTime + 0.05);
+        if (isTransientMode) {
+            gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.005, 0.01);
+            source.start(startTime);
+            source.stop(startTime + 0.06);
+        } else {
+            gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
+            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+            source.start(startTime);
+        }
         
         this.activeSources.add(source);
         source.onended = () => {
