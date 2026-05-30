@@ -2,9 +2,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V60.4 — "The Lookahead Shield".
- * #ЗАЧЕМ: Увеличение буфера для стабильности в фоне.
- * #ЧТО: ПЛАН №22400 — 1. Буфер поднят до 2.0с. 2. Оптимизирован worker.onmessage.
+ * @fileOverview Audio Engine Context V60.5 — "The Audible Lead Fix".
+ * #ЗАЧЕМ: Исправление отсутствия мелодии.
+ * #ЧТО: ПЛАН №22600 — Проброс barCount во все менеджеры для стабильной смены пресетов.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -43,12 +43,12 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0, 
-    acoustic: 0.15, 
-    electric: 0.30, 
-    piano: 0.2,    
-    orchestral: 0.29, 
-    cs80: 0.1, 
-    chords: 0.3,   
+    acoustic: 0.45, // Повышено (было 0.15)
+    electric: 0.60, // Повышено (было 0.30)
+    piano: 0.4,    
+    orchestral: 0.35, 
+    cs80: 0.15, 
+    chords: 0.5,   
     bass: 1.0
 };
 
@@ -330,8 +330,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     }
 
                     if (drumMachineRef.current) drumMachineRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);
-                    if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.bass);
-                    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.melody);
+                    // #ЗАЧЕМ: ПЛАН №22600. Передача barCount для стабильности смены инструментов.
+                    if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.bass, payload.barCount);
+                    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.melody, payload.barCount);
                     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.barCount, payload.instrumentHints?.accompaniment);
                     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm, payload.instrumentHints?.harmony);
                     if (pianoAccompanimentManagerRef.current) pianoAccompanimentManagerRef.current.schedule(payload.events, nextBarTimeRef.current, bpm);

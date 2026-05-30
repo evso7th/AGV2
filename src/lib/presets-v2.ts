@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №2050): Decaying Blanket. Сустейн снижен, добавлен длительный Decay для естественного затухания.
+// #ОБНОВЛЕНО (ПЛАН №22600): Lead Restoration. Громкость гитар и органов поднята для слышимости.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -19,7 +19,6 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.95 }
     ],
     noise: { on: true, gain: 0.01 },
-    // #ЗАЧЕМ: ПЛАН №2050. Уход от бесконечного сустейна. Спад до 50% за 4 секунды.
     adsr: { a: 0.4, d: 4.0, s: 0.5, r: 2.0 }, 
     lpf: { cutoff: 1100, q: 0.8, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.2, amount: 0, target: 'filter' },
@@ -31,7 +30,7 @@ export const V2_PRESETS = {
   synth_ambient_pad_lush: { // Velvet Lush Pad -> Now "Decaying Velvet Blanket"
     type: 'synth',
     name: 'Velvet Lush Pad',
-    volume: 0.6,
+    volume: 0.65,
     comp: { threshold: -20, ratio: 3, attack: 0.005, release: 0.2, makeup: 5 },
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.5 }, 
@@ -39,7 +38,6 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 1.0 } 
     ],
     noise: { on: true, gain: 0.02 },
-    // #ЗАЧЕМ: Глубокое погружение с последующим откатом до 40% громкости.
     adsr: { a: 0.6, d: 6.0, s: 0.4, r: 3.0 }, 
     lpf: { cutoff: 850, q: 0.7, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.1, amount: 0, target: 'filter' },
@@ -58,7 +56,6 @@ export const V2_PRESETS = {
       { type: 'triangle', detune: 0, octave: -2, gain: 0.65 } 
     ],
     noise: { on: true, gain: 0.04 },
-    // #ЗАЧЕМ: Полное затухание в 0 за 12 секунд. Звук "умирает" сам.
     adsr: { a: 1.0, d: 12.0, s: 0.0, r: 4.0 }, 
     lpf: { cutoff: 400, q: 0.9, mode: '24dB' }, 
     lfo: { shape: 'sine', rate: 0.05, amount: 0, target: 'filter' },
@@ -74,7 +71,7 @@ export const V2_PRESETS = {
   ep_rhodes_warm: {
     type: 'synth',
     name: 'Warm Velvet Rhodes',
-    volume: 0.8, 
+    volume: 0.75, 
     osc: [
       { type: 'sine', detune: 0, octave: 0, gain: 0.65 },
       { type: 'triangle', detune: 0, octave: 1, gain: 0.12 }, 
@@ -95,7 +92,7 @@ export const V2_PRESETS = {
   guitar_clean: {
     type: 'guitar',
     name: 'Clean Velvet Guitar',
-    volume: 0.7,
+    volume: 0.75,
     osc: { width: 0.42, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
     pickup: { cutoff: 4500 },
     drive: { type: 'soft', amount: 0.1 },
@@ -107,10 +104,10 @@ export const V2_PRESETS = {
     reverbMix: 0.2
   },
 
-  guitar_shineOn: { // #ЗАЧЕМ: ПЛАН №2110. Тембр Shine On теперь 100% копия Muff Lead.
+  guitar_shineOn: { 
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.175, 
+    volume: 0.68, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 2900 },
     drive: { type: 'muff', amount: 0.6 },
@@ -125,7 +122,7 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    volume: 0.175, 
+    volume: 0.68, 
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 2900 },
     drive: { type: 'muff', amount: 0.6 },
@@ -144,7 +141,7 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Depth',
-    volume: 0.4, 
+    volume: 0.65, 
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], 
     keyClick: 0.003,
     adsr: { a: 0.15, d: 0.2, s: 0.9, r: 2.0 },
@@ -156,7 +153,7 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Velvet Jazz B3',
-    volume: 0.4, 
+    volume: 0.65, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
     lpf: 1400, 
     hpf: 90,
@@ -170,7 +167,7 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Warm Jimmy smith',
-    volume: 0.4, 
+    volume: 0.65, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 2200, 
     hpf: 100,
@@ -183,7 +180,7 @@ export const V2_PRESETS = {
   organ_prog: {
     type: 'organ',
     name: 'Mellow Prog Organ',
-    volume: 0.4, 
+    volume: 0.65, 
     drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
     lpf: 2600, 
     adsr: { a: 0.006, d: 0.1, s: 0.95, r: 1.0 },
@@ -195,7 +192,7 @@ export const V2_PRESETS = {
   reggae_organ: {
     type: 'organ',
     name: 'Velvet Bubbler',
-    volume: 0.4,
+    volume: 0.65,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
     lpf: 1400, 
     adsr: { a: 0.008, d: 0.1, s: 0.0, r: 0.15 }, 

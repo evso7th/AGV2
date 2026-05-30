@@ -37,7 +37,7 @@ type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster V4.9 — "Ambient Space Implemented".
- * #ЧТО: ПЛАН №9970 — Добавлена цепочка Delay (350ms, 25% fb, 20% mix).
+ * #ЧТО: ПЛАН №22600 — Повышен базовый gain для слышимости мелодии.
  */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
@@ -57,7 +57,7 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.30; 
+        this.preamp.gain.value = 0.60; // Повышено (было 0.30)
 
         // 1. Создаем цепочку дилея
         this.delayNode = this.audioContext.createDelay(1.0);
@@ -195,11 +195,11 @@ export class TelecasterGuitarSampler {
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
-        const availableMidiNotes = Array.from(instrument.buffers.keys());
-        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
-        const closestMidi = availableMidiNotes.reduce((prev, curr) => 
+        const availableMidis = Array.from(instrument.buffers.keys());
+        if (availableMidis.length === 0) return { buffer: null, midi: targetMidi };
+        const closestMidi = availableMidis.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
-        , availableMidiNotes[0]);
+        , availableMidis[0]);
         return { buffer: instrument.buffers.get(closestMidi) ?? null, midi: closestMidi };
     }
     

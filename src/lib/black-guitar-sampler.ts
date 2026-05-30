@@ -82,7 +82,7 @@ export class BlackGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15; 
+        this.preamp.gain.value = 0.5; // Повышено (было 0.15)
         this.preamp.connect(this.destination);
     }
 
@@ -214,7 +214,6 @@ export class BlackGuitarSampler {
         gainNode.gain.setValueAtTime(0, startTime);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №1695. Острая атака транзиента (5мс) для отделения от синтезатора.
             gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.005, 0.01);
             source.start(startTime);

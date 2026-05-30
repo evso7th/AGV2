@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №2021 — Транзиенты Shine On унифицированы с Muff Lead (используют Black Acoustic).
+ * #ЧТО: ПЛАН №22600 — Исправлена чехарда со сменой инструментов. Теперь параметр barCount используется для стабильности.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -121,6 +121,9 @@ export class MelodySynthManagerV2 {
             finalHint = this.partName === 'bass' ? 'bass_jazz_warm' : 'telecaster';
         }
 
+        // #ЗАЧЕМ: Стабилизация смены инструментов.
+        // #ЧТО: Смена пресета происходит ТОЛЬКО на границах 4-тактных фраз (barCount % 4 === 0) 
+        // или если текущий инструмент выключен. Это предотвращает тишину из-за постоянной перезагрузки.
         if (finalHint !== this.activePresetName && !this.isChangingInstrument) {
             const isPhraseBoundary = barCount % 4 === 0;
             if (notesToPlay.length === 0 || isPhraseBoundary || this.activePresetName === 'none') {
@@ -154,12 +157,12 @@ export class MelodySynthManagerV2 {
         }
         
         if (!this.synth) {
+            // Если синтезатор еще грузится, используем Telecaster как временный подхват
             if (this.partName === 'melody') this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo);
             return;
         }
         
         // Aria Transient Logic
-        // #ЗАЧЕМ: ПЛАН №2021. Shine On и Muff Lead используют транзиенты Black Acoustic для органичности.
         if (currentActive === 'guitar_shineOn' || currentActive === 'guitar_muffLead') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
