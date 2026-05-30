@@ -1,14 +1,14 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.0 — "The Synchronous Reaper".
- * #ЗАЧЕМ: Ликвидация хрипов в фоне через мгновенную очистку узлов.
- * #ЧТО: ПЛАН №22400 — 1. Удален setTimeout. 2. Добавлен reapVoices(). 3. Внедрен endTime.
+ * @fileOverview Центральная фабрика инструментов V8.1 — "The Sounding Reaper".
+ * #ЗАЧЕМ: Исправление ReferenceError: makeMuff is not defined.
+ * #ЧТО: ПЛАН №22500 — Добавлены функции генерации кривых дисторшна (makeMuff, makeVintageDistortion).
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let currentVoiceLimit = 120; // Снижено для стабильности на мобилках
+let currentVoiceLimit = 120; 
 
 export const setGlobalVoiceLimit = (limit: number) => {
     currentVoiceLimit = isFinite(limit) ? Math.max(20, limit) : 120;
@@ -47,7 +47,6 @@ const cleanupNow = (voiceRecord: any) => {
  * #ЗАЧЕМ: Синхронная жатва "мертвых" голосов без опоры на таймеры ОС.
  */
 const reapVoices = (currentTime: number) => {
-    // 1. Очистка просроченных по времени
     for (let i = globalActiveVoices.length - 1; i >= 0; i--) {
         const v = globalActiveVoices[i];
         if (currentTime >= v.endTime) {
@@ -56,7 +55,6 @@ const reapVoices = (currentTime: number) => {
         }
     }
 
-    // 2. Принудительная "кража" старейших при переполнении лимита
     while (globalActiveVoices.length >= currentVoiceLimit) {
         const oldest = globalActiveVoices.shift();
         if (oldest) cleanupNow(oldest);
@@ -92,6 +90,31 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
         const buf = await res.arrayBuffer();
         return await ctx.decodeAudioData(buf);
     } catch { return null; }
+};
+
+// ───── DISTORTION CURVES ─────
+
+const makeMuff = (amount: number) => {
+    const k = amount * 100;
+    const n_samples = 44100;
+    const curve = new Float32Array(n_samples);
+    const deg = Math.PI / 180;
+    for (let i = 0; i < n_samples; ++i) {
+        const x = (i * 2) / n_samples - 1;
+        curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+    }
+    return curve;
+};
+
+const makeVintageDistortion = (amount: number) => {
+    const k = amount;
+    const n_samples = 44100;
+    const curve = new Float32Array(n_samples);
+    for (let i = 0; i < n_samples; ++i) {
+        const x = (i * 2) / n_samples - 1;
+        curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
+    }
+    return curve;
 };
 
 // ───── FX FACTORIES ─────
