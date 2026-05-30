@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview AuraGroove Music Worker V5.9.7 — "The ID Oracle".
- * #ЗАЧЕМ: Переход на лаконичное логирование через короткие UID.
- * #ЧТО: ПЛАН №21100 — Все имена треков и аксиом в логе теперь используют 6-8 символьный суффикс (UID).
+ * @fileOverview AuraGroove Music Worker V5.9.8 — "The Indexed Composer".
+ * #ЗАЧЕМ: Реализация Bucketing (индексации) для ускорения поиска по базе.
+ * #ЧТО: ПЛАН №22400 — 1. Добавлен AxiomIndex. 2. Оптимизирован loop.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -19,17 +20,12 @@ const getTimestamp = () => {
     return `[${h}:${m}:${s}]`;
 };
 
-/**
- * #ЗАЧЕМ: Извлечение короткого UID (например, 7r10bw) из длинных ID или названий.
- */
 function toShortId(fullId: string | null | undefined): string {
     if (!fullId) return '-';
-    // Если это ID нашего формата (с подчеркиванием), берем последний сегмент (хэш)
     if (fullId.includes('_')) {
         const parts = fullId.split('_');
         return parts[parts.length - 1] || fullId.substring(0, 8);
     }
-    // Если это просто строка, берем первые 8 символов
     return fullId.length > 8 ? fullId.substring(0, 8) : fullId;
 }
 
@@ -54,6 +50,10 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxioms: [] as any[], 
+    
+    // #ЗАЧЕМ: Индекс для мгновенного доступа к DNA по категориям.
+    axiomBuckets: new Map<string, any[]>(),
+    
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     expectedNextTick: 0,
@@ -116,16 +116,11 @@ const Scheduler = {
                 const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
                                        (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
 
-                const matchingAxioms = this.cloudAxioms.filter(ax => {
-                    if (ax.ignored === true) return false;
-                    const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                    const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                    const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                    return genres.includes(uiGenre) && (moods.includes(uiMood) || commons.includes(commonMoodFilter));
-                });
+                // #ЗАЧЕМ: Используем заранее проиндексированные корзины.
+                const bucketKey = `${uiGenre}_${commonMoodFilter}`;
+                const matchingAxioms = this.axiomBuckets.get(bucketKey) || [];
 
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                
                 if (uniqueIds.length > 0) {
                     this.activeShuffleBag = shuffleArray(uniqueIds);
                 }
@@ -239,6 +234,26 @@ const Scheduler = {
 
     updateCloudAxioms(axioms: any[]) {
         this.cloudAxioms = axioms || [];
+        
+        // #ЗАЧЕМ: Процесс индексации (Bucketing). 
+        // Раскладываем данные по полкам для мгновенного поиска в горячем цикле.
+        this.axiomBuckets.clear();
+        for (let i = 0; i < this.cloudAxioms.length; i++) {
+            const ax = this.cloudAxioms[i];
+            if (ax.ignored === true) continue;
+            
+            const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+            const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+            
+            for (let g = 0; g < genres.length; g++) {
+                for (let c = 0; c < commons.length; c++) {
+                    const key = `${genres[g]}_${commons[c]}`;
+                    if (!this.axiomBuckets.has(key)) this.axiomBuckets.set(key, []);
+                    this.axiomBuckets.get(key)!.push(ax);
+                }
+            }
+        }
+
         if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxioms.length > 0) {
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
@@ -275,32 +290,21 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
-        const mutType = payload.mutationType || 'none';
-        const mutationLabel = mutType !== 'none' ? ` [MUT: ${mutType.toUpperCase()}]` : '';
-        const mutationStyle = mutType !== 'none' 
-            ? 'color: #ff00ff; font-weight: bold; background: #222; padding: 0 4px; border-radius: 2px;' 
-            : 'color: #888;';
-
         const h = payload.instrumentHints || {};
         const ax = payload.activeAxioms || {};
         const genreMood = `${this.settings.genre.toUpperCase()}/${this.settings.mood.toUpperCase()}`;
         
-        // #ЗАЧЕМ: Сокращаем имя трека до UID.
         const track = toShortId(payload.trackName || 'Algorithm');
         const section = payload.navInfo?.currentPart.name || 'Unknown';
         
-        // #ЗАЧЕМ: Все идентификаторы аксиом прогоняем через toShortId для компактности лога.
         const cognitiveStr = `AX: MEL:${toShortId(ax.melody)} BAS:${toShortId(ax.bass)} ACC:${toShortId(ax.accompaniment)} HAR:${toShortId(ax.harmony)} RHO:${toShortId(ax.piano)} DRU:${toShortId(ax.drums)}`;
         const ensembleStr = `TIM: MEL:${h.melody || '-'} BAS:${h.bass || '-'} ACC:${h.accompaniment || '-'} HAR:${h.harmony || '-'} RHO:${h.pianoAccompaniment || '-'} DRU:${h.drums || 'kit'}`;
 
         console.log(
-            `%c${getTimestamp()} Bar ${this.barCount}%c${mutationLabel}%c | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr} | %c${toShortId(payload.narrative)}`,
+            `%c${getTimestamp()} Bar ${this.barCount} | ${section} | ${track} | ${genreMood} | T:${payload.tension.toFixed(2)} | %c${cognitiveStr} | %c${ensembleStr}`,
             'color: #888;', 
-            mutationStyle,
-            'color: #888;',
             'color: #4ade80; font-weight: bold;',
-            'color: #DA70D6; font-size: 10px;',
-            'color: #ADD8E6; font-style: italic;'
+            'color: #DA70D6; font-size: 10px;'
         );
 
         self.postMessage({ 

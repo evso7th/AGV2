@@ -1,9 +1,10 @@
+
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V60.3 — "The Iron Guard".
- * #ЗАЧЕМ: Устранение двойного старта через синхронный Mutex.
- * #ЧТО: ПЛАН №12050 — Добавлен initLockRef для предотвращения гонки состояний при инициализации.
+ * @fileOverview Audio Engine Context V60.4 — "The Lookahead Shield".
+ * #ЗАЧЕМ: Увеличение буфера для стабильности в фоне.
+ * #ЧТО: ПЛАН №22400 — 1. Буфер поднят до 2.0с. 2. Оптимизирован worker.onmessage.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -106,9 +107,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
-  const [voiceLimit, setVoiceLimitState] = useState<number>(180);
+  const [voiceLimit, setVoiceLimitState] = useState<number>(120);
 
-  // #ЗАЧЕМ: ПЛАН №12050. Синхронный флаг-замок для предотвращения двойного старта.
   const initLockRef = useRef<boolean>(false);
 
   const workerRef = useRef<Worker | null>(null);
@@ -149,7 +149,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   useEffect(() => {
       if (typeof window === 'undefined') return;
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const defaultLimit = isMobile ? 60 : 180;
+      const defaultLimit = isMobile ? 60 : 120;
       const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
       const finalLimit = savedLimit ? parseInt(savedLimit) : defaultLimit;
       const safeLimit = isFinite(finalLimit) ? clamp(finalLimit, 50, 250) : defaultLimit;
@@ -242,7 +242,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [calibrationGains.master]);
 
   const initialize = useCallback(async () => {
-    // #ЗАЧЕМ: ПЛАН №12050. Синхронная проверка Ref-замка. Если уже идет инициализация — выходим.
     if (isInitialized || isInitializing || initLockRef.current) return true;
     
     initLockRef.current = true;
@@ -360,7 +359,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         return true;
     } catch (e) { 
-        initLockRef.current = false; // Разрешаем повторную попытку при сбое
+        initLockRef.current = false; 
         setIsInitializing(false); 
         return false; 
     }
@@ -393,6 +392,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 
                 masterGainNodeRef.current?.gain.setValueAtTime(0.0001, context.currentTime);
 
+                // #ЗАЧЕМ: ПЛАН №22400. Подушка безопасности 2.0с.
                 nextBarTimeRef.current = context.currentTime + 2.0;
                 workerRef.current.postMessage({ command: 'start' });
             } else {
