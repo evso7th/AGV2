@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint, Genre, Mood } from '@/types/music';
 
 // --- Static Imports for All Blueprints ---
@@ -73,7 +72,7 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
     },
     reggae: {
         melancholic: MelancholicReggaeBlueprint,
-        dark: MelancholicReggaeBlueprint, // Fallbacks for MVP
+        dark: MelancholicReggaeBlueprint, 
         calm: MelancholicReggaeBlueprint,
         dreamy: MelancholicReggaeBlueprint,
         joyful: MelancholicReggaeBlueprint,
@@ -91,6 +90,9 @@ export const BRIDGE_LIBRARY: Partial<Record<Mood, MusicBlueprint>> = {
     anxious: AnxiousBridgeBlueprint,
 };
 
+// #ЗАЧЕМ: ПЛАН №12050. Кэш для предотвращения дублирования логов мэппинга.
+let lastLoggedRequest = "";
+
 /**
  * #ЗАЧЕМ: Возвращает БП моста для конкретного настроения.
  */
@@ -99,16 +101,20 @@ export function getBridgeBlueprint(mood: Mood): MusicBlueprint {
 }
 
 export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
-    console.log(`%c[Mapping] Requesting: ${genre}/${mood}`, 'color: #00FF7F; font-weight: bold;');
+    const currentRequest = `${genre}/${mood}`;
+    
+    // Логируем только если запрос изменился
+    if (currentRequest !== lastLoggedRequest) {
+        console.log(`%c[Mapping] Requesting: ${currentRequest}`, 'color: #00FF7F; font-weight: bold;');
+        lastLoggedRequest = currentRequest;
+    }
     
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];
     if (genreBlueprints && genreBlueprints[mood]) {
         const bp = genreBlueprints[mood]!;
-        console.log(`%c[Mapping] Success: ${bp.name} (${bp.id})`, 'color: #32CD32;');
         return bp;
     }
     
-    console.warn(`[Mapping] Fallback triggered for ${genre}/${mood}. Using Ambient.`);
     const fallbackBlueprint = BLUEPRINT_LIBRARY['ambient']?.[mood];
     if (fallbackBlueprint) return fallbackBlueprint;
     

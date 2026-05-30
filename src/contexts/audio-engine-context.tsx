@@ -1,10 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Audio Engine Context V60.2 — "The Silent Curtain".
- * #ЗАЧЕМ: Устранение хрипов на холодном старте через прогрев пулов в тишине.
- * #ЧТО: ПЛАН №12020 — 1. Мастер-гейн сброшен в 0.0001 для тактов 0 и 1.
- *       2. Плавный вход (Silk Start) перенесен на начало Bar 2.
+ * @fileOverview Audio Engine Context V60.3 — "The Iron Guard".
+ * #ЗАЧЕМ: Устранение двойного старта через синхронный Mutex.
+ * #ЧТО: ПЛАН №12050 — Добавлен initLockRef для предотвращения гонки состояний при инициализации.
  */
 
 import React, { createContext, useContext, useState, useRef, useCallback, useEffect, useMemo } from 'react';
@@ -108,6 +107,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
   const [voiceLimit, setVoiceLimitState] = useState<number>(180);
+
+  // #ЗАЧЕМ: ПЛАН №12050. Синхронный флаг-замок для предотвращения двойного старта.
+  const initLockRef = useRef<boolean>(false);
 
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -240,14 +242,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [calibrationGains.master]);
 
   const initialize = useCallback(async () => {
-    if (isInitialized) return true;
-    if (isInitializing) return new Promise<boolean>((resolve) => {
-        const check = setInterval(() => {
-            if (isInitialized) { clearInterval(check); resolve(true); }
-        }, 100);
-    });
-
+    // #ЗАЧЕМ: ПЛАН №12050. Синхронная проверка Ref-замка. Если уже идет инициализация — выходим.
+    if (isInitialized || isInitializing || initLockRef.current) return true;
+    
+    initLockRef.current = true;
     setIsInitializing(true);
+
     try {
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ 
             sampleRate: 44100,
@@ -319,11 +319,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (type === 'SCORE_READY' && payload) {
                     const bpm = payload.actualBpm || 72;
                     const beatDur = 60 / bpm;
-                    const now = context.currentTime;
                     const barStartTime = nextBarTimeRef.current;
 
                     if (payload.barCount === 2) {
-                        // #ЗАЧЕМ: ПЛАН №12020. "Тихий занавес" - плавный вход после прогрева Bar 0/1.
                         masterGainNodeRef.current?.gain.cancelScheduledValues(barStartTime);
                         masterGainNodeRef.current?.gain.setValueAtTime(0.0001, barStartTime);
                         masterGainNodeRef.current?.gain.exponentialRampToValueAtTime(calibrationGains.master, barStartTime + 2.0);
@@ -362,6 +360,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitializing(false);
         return true;
     } catch (e) { 
+        initLockRef.current = false; // Разрешаем повторную попытку при сбое
         setIsInitializing(false); 
         return false; 
     }
@@ -392,7 +391,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 setIsPlaying(true);
                 stopAllSounds(); 
                 
-                // #ЗАЧЕМ: ПЛАН №12020. Сброс громкости перед "прогревочными" тактами.
                 masterGainNodeRef.current?.gain.setValueAtTime(0.0001, context.currentTime);
 
                 nextBarTimeRef.current = context.currentTime + 2.0;
