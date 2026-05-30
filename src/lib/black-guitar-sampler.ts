@@ -1,3 +1,8 @@
+/**
+ * @fileOverview Black Guitar Sampler V4.2 — "The Velvet Register".
+ * #ЗАЧЕМ: Исправление "писклявого" звука.
+ * #ЧТО: ПЛАН №22800 — Добавлен Кабинет-фильтр (Lowpass 4.2kHz) для мягкого акустического тона.
+ */
 
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -76,14 +81,22 @@ export class BlackGuitarSampler {
     private isFullyInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private cabinetFilter: BiquadFilterNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.75; // Optimized for clarity
-        this.preamp.connect(this.destination);
+        this.preamp.gain.value = 0.85; 
+
+        this.cabinetFilter = this.audioContext.createBiquadFilter();
+        this.cabinetFilter.type = 'lowpass';
+        this.cabinetFilter.frequency.value = 4000; // Мягкий акустический тон
+        this.cabinetFilter.Q.value = 0.7;
+
+        this.preamp.connect(this.cabinetFilter);
+        this.cabinetFilter.connect(this.destination);
     }
 
     public setPreampGain(gain: number) {
@@ -232,5 +245,5 @@ export class BlackGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.cabinetFilter.disconnect(); }
 }

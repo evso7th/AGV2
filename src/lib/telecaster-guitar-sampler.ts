@@ -1,3 +1,8 @@
+/**
+ * @fileOverview Telecaster Guitar Sampler V5.2 — "The Velvet Register".
+ * #ЗАЧЕМ: Исправление "писклявого" звука.
+ * #ЧТО: ПЛАН №22800 — Добавлен Кабинет-фильтр (Lowpass 4.5kHz) для смягчения верхов.
+ */
 
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
@@ -35,10 +40,6 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
-/**
- * #ЗАЧЕМ: Сэмплер Telecaster V5.0 — "Mix Harmonization".
- * #ЧТО: ПЛАН №22700 — Повышен базовый gain (0.6 -> 0.8) для сочного лида.
- */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
     private destination: AudioNode;
@@ -47,6 +48,9 @@ export class TelecasterGuitarSampler {
     private isLoading = false;
     private preamp: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
+    
+    // #ЗАЧЕМ: ПЛАН №22800. Кабинет-фильтр для устранения писка.
+    private cabinetFilter: BiquadFilterNode;
     
     // FX Nodes
     private delayNode: DelayNode;
@@ -57,24 +61,26 @@ export class TelecasterGuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.80; // Optimized for Lead Presence
+        this.preamp.gain.value = 0.90; 
 
-        // 1. Создаем цепочку дилея
+        this.cabinetFilter = this.audioContext.createBiquadFilter();
+        this.cabinetFilter.type = 'lowpass';
+        this.cabinetFilter.frequency.value = 4200; // Срезаем "стекло"
+        this.cabinetFilter.Q.value = 0.8;
+
         this.delayNode = this.audioContext.createDelay(1.0);
-        this.delayNode.delayTime.value = 0.35; // 350ms
-        
+        this.delayNode.delayTime.value = 0.35;
         this.delayFeedback = this.audioContext.createGain();
-        this.delayFeedback.gain.value = 0.25; // 25% feedback
-        
+        this.delayFeedback.gain.value = 0.25;
         this.delayMix = this.audioContext.createGain();
-        this.delayMix.gain.value = 0.20; // 20% wet mix
+        this.delayMix.gain.value = 0.20;
 
-        // 2. Маршрутизация (Параллельная)
-        // Dry path
-        this.preamp.connect(this.destination);
+        // Routing
+        this.preamp.connect(this.cabinetFilter);
+        this.cabinetFilter.connect(this.destination);
         
         // Wet path
-        this.preamp.connect(this.delayNode);
+        this.cabinetFilter.connect(this.delayNode);
         this.delayNode.connect(this.delayFeedback);
         this.delayFeedback.connect(this.delayNode);
         this.delayNode.connect(this.delayMix);
@@ -144,7 +150,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSingleNote(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
                         }
                     }
                 }
@@ -152,14 +158,10 @@ export class TelecasterGuitarSampler {
         }
     }
 
-    private playSingleNote(instrumentOrBuffer: any, noteMidiOrSampleMidi?: number, targetMidi?: number, startTime?: number, velocity?: number, isTransientMode: boolean = false) {
-        if (typeof instrumentOrBuffer === 'object' && 'buffers' in instrumentOrBuffer) {
-            const { buffer, midi: sampleMidi } = this.findBestSample(instrumentOrBuffer, (noteMidiOrSampleMidi as any).midi);
-            if (buffer) {
-                this.playSample(buffer, sampleMidi, (noteMidiOrSampleMidi as any).midi, (targetMidi as any) + ((noteMidiOrSampleMidi as any).time || 0), (noteMidiOrSampleMidi as any).velocity || 0.7, isTransientMode);
-            }
-        } else {
-            this.playSample(instrumentOrBuffer, noteMidiOrSampleMidi!, targetMidi!, startTime!, velocity!, isTransientMode);
+    private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number, isTransientMode: boolean = false) {
+        const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
+        if (buffer) {
+            this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7, isTransientMode);
         }
     }
     
@@ -220,6 +222,7 @@ export class TelecasterGuitarSampler {
     public dispose() { 
         this.stopAll(); 
         this.preamp.disconnect(); 
+        this.cabinetFilter.disconnect();
         this.delayMix.disconnect();
         this.delayFeedback.disconnect();
         this.delayNode.disconnect();

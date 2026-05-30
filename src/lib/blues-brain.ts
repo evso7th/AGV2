@@ -1,7 +1,7 @@
 /**
- * @fileOverview Blues Brain V87.0 — "The Zero-Allocation Oracle".
- * #ЗАЧЕМ: Полное соответствие Плану №22400.
- * #ЧТО: 1. Оптимизация горячих циклов (for вместо .filter). 2. Кэширование декомпрессии.
+ * @fileOverview Blues Brain V88.0 — "The Velvet Register".
+ * #ЗАЧЕМ: Исправление "писклявого" звука.
+ * #ЧТО: ПЛАН №22800 — Мелодия опускается на 1 октаву (с +12 до +0).
  */
 
 import {
@@ -93,6 +93,8 @@ export class BluesBrain {
   private degreeTransposition: number = 0;
   private currentMutationType: string = 'none';
 
+  private readonly MELODY_CEILING = 84;
+
   constructor(
       seed: number, mood: Mood, sessionLickHistory?: string[], cloudAxioms?: any[], 
       selectedCompositionIds?: string[], activeAnchorId?: string | null, genre?: string, useHeritage: boolean = true
@@ -149,6 +151,7 @@ export class BluesBrain {
           for (let i = 0; i < poolToUse.length; i++) {
               const ax = poolToUse[i];
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+              const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
               const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
               if (axGenres.includes('blues') && axCommons.includes(commonMoodFilter)) filteredPool.push(ax);
           }
@@ -215,6 +218,9 @@ export class BluesBrain {
       this.currentTrackName = 'Algo'; this.soloistBusyUntilBar = epoch + 4;
       return undefined;
   }
+
+  private constrainBassOctave(note: number): number { let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
+  private constrainAccompanimentOctave(note: number): number { let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
       if (e.duration < 3.9) return [e]; 
@@ -358,6 +364,7 @@ export class BluesBrain {
             
             activeAxiom = applyDynamicArticulation(activeAxiom, tension, this.seed + epoch);
             activeAxiom = applyMicroChronos(activeAxiom, this.seed, tension);
+            // #ЗАЧЕМ: ПЛАН №22800. Опускаем на 1 октаву (с +12 до +0).
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
             melodyStatus = this.currentLickId;
         }
@@ -403,7 +410,8 @@ export class BluesBrain {
 
   private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
       const events: FractalEvent[] = [];
-      const root = chord.rootNote + 12; const scale = [0, 3, 5, 6, 7, 10]; 
+      const root = chord.rootNote; // #ЗАЧЕМ: ПЛАН №22800. Удален +12.
+      const scale = [0, 3, 5, 6, 7, 10]; 
       const noteCount = calculateMusiNum(epoch, 3, this.seed, 3) + 1;
       const ticks = [0, 3, 6, 9].sort(() => this.random.next() - 0.5).slice(0, noteCount);
       ticks.forEach(t => {
@@ -431,8 +439,9 @@ export class BluesBrain {
     for (let i = 0; i < phrase.length; i++) {
         const n = phrase[i];
         if (n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)) {
+            // #ЗАЧЕМ: ПЛАН №22800. Опускаем на 12 полутонов.
             const e: FractalEvent = {
-                type: type as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+                type: type as any, note: Math.min(chord.rootNote + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, weight: 0.75,
                 technique: n.tech as Technique, dynamics: 'p', phrasing: 'legato'
             };

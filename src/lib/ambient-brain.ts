@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V93.0 — "The Zero-Allocation Architect".
- * #ЗАЧЕМ: Полное соответствие Плану №22400.
- * #ЧТО: 1. Замена .filter().map() на циклы for. 2. Использование кэшированных декомпрессированных фраз.
+ * @fileOverview Ambient Brain V94.0 — "The Velvet Register".
+ * #ЗАЧЕМ: Исправление "писклявого" звука.
+ * #ЧТО: ПЛАН №22800 — Опускание мелодии на 1 октаву для естественного звучания.
  */
 
 import type {
@@ -68,7 +68,7 @@ export class AmbientBrain {
     private soloistRestingUntilBar: number = -1;
     private bridgeUntilBar: number = -1;
 
-    private readonly MELODY_CEILING = 72;
+    private readonly MELODY_CEILING = 72; // C5 - Standard Lead Ceiling
     private readonly BASS_FLOOR = 31;
     private readonly BASS_CEILING = 47;
 
@@ -442,6 +442,7 @@ export class AmbientBrain {
                     activePhrase = applyDynamicArticulation(activePhrase, localTension, this.seed + epoch);
                     activePhrase = applyMicroChronos(activePhrase, this.seed, tension);
                 }
+                // #ЗАЧЕМ: ПЛАН №22800. Опускаем на 12 полутонов.
                 melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activePhrase, this.currentThemeMaxTick, this.currentTimeScale, localTension);
                 melodyStatus = this.currentTheme.id;
             } else {
@@ -576,8 +577,9 @@ export class AmbientBrain {
         for (let i = 0; i < phrase.length; i++) {
             const n = phrase[i];
             if (n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)) {
+                // #ЗАЧЕМ: ПЛАН №22800. Понижаем базовый регистр с +24 до +12.
                 const e: FractalEvent = {
-                    type: type as any, note: Math.min(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+                    type: type as any, note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                     time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, weight: 0.7,
                     technique: n.tech as Technique, dynamics: 'p', phrasing: 'legato', params: { attack: 1.5, release: 3.5 }
                 };
@@ -614,7 +616,8 @@ export class AmbientBrain {
     }
 
     private renderMelodicPadBase(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const e: FractalEvent = { type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING), time: 0, duration: 4.5, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
+        // #ЗАЧЕМ: ПЛАН №22800. Понижаем базовый регистр с +24 до +12.
+        const e: FractalEvent = { type: 'melody', note: Math.min(resChord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING), time: 0, duration: 4.5, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato' };
         return this.rippleLongNote(e, resChord);
     }
 
