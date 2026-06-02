@@ -1,14 +1,14 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.6 — "Dynamic Voice Limit".
- * #ЗАЧЕМ: Управление производительностью через лимит активных голосов.
- * #ЧТО: ПЛАН №1650 — Замена статической константы на динамическую переменную с сеттером.
+ * @fileOverview Центральная фабрика инструментов V6.7 — "Smooth Voice Stealing".
+ * #ЗАЧЕМ: Устранение щелчков при переполнении лимита голосов.
+ * #ЧТО: ПЛАН №1655 — Внедрен микро-фейд (60мс) для "украденных" голосов.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 150; // Дефолтное значение
+let globalVoiceLimit = 150; 
 
 /**
  * #ЗАЧЕМ: Динамическое изменение лимита голосов из AudioEngineContext.
@@ -17,7 +17,7 @@ export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
         globalVoiceLimit = limit;
         console.log(`%c[InstrumentFactory] Voice Limit set to: ${limit}`, 'color: #facc15; font-weight: bold;');
-        enforceVoiceLimit(); // Сразу чистим лишнее, если лимит уменьшился
+        enforceVoiceLimit(); 
     }
 };
 
@@ -49,10 +49,45 @@ const deepCleanup = (voiceRecord: any) => {
     if (idx !== -1) globalActiveVoices.splice(idx, 1);
 };
 
+/**
+ * #ЗАЧЕМ: Протокол мягкого вытеснения голосов (Voice Stealing).
+ * #ЧТО: При переполнении лимита самый старый голос затухает за 60мс вместо обрыва.
+ */
 const enforceVoiceLimit = () => {
     while (globalActiveVoices.length > globalVoiceLimit) {
         const oldest = globalActiveVoices.shift();
-        if (oldest) deepCleanup(oldest);
+        if (oldest) {
+            const voiceNode = oldest.voiceState?.node;
+            
+            // Если голос еще жив и не очищен, запускаем мягкое затухание
+            if (voiceNode && !oldest.cleaned) {
+                const now = voiceNode.context.currentTime;
+                const stealFadeOut = 0.06; // 60мс для исключения щелчков
+                
+                try {
+                    voiceNode.gain.cancelScheduledValues(now);
+                    // Используем setTargetAtTime для максимально естественной кривой затухания
+                    voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
+                    
+                    // Планируем остановку всех генераторов этого голоса в конце фейда
+                    if (oldest.nodes) {
+                        oldest.nodes.forEach((n: any) => {
+                            if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                                try { n.stop(now + stealFadeOut + 0.01); } catch(e){}
+                            }
+                        });
+                    }
+                    
+                    // Окончательная очистка аппаратных ресурсов после завершения звука
+                    setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 50);
+                } catch (e) {
+                    // Если что-то пошло не так с контекстом, чистим немедленно
+                    deepCleanup(oldest);
+                }
+            } else {
+                deepCleanup(oldest);
+            }
+        }
     }
 };
 
@@ -268,7 +303,6 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
     const activeVoiceRecords = new Set<any>();
 
     const comp = ctx.createDynamicsCompressor();
-    // #ЗАЧЕМ: Полный байпас сатурации.
     const satNode = ctx.createWaveShaper(); satNode.curve = null; 
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass';
@@ -357,13 +391,9 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
 const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reverb: ConvolverNode, instrumentGain: GainNode, expressionGain: GainNode) => {
     let currentPreset = { ...preset };
     
-    // #ЗАЧЕМ: Увеличение Headroom для предотвращения клиппинга.
-    // #ОБНОВЛЕНО (ПЛАН №1602): Системная громкость органов уменьшена в 2 раза.
     const organSum = ctx.createGain(); organSum.gain.value = 0.175; 
     
     const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 60; 
-    
-    // #ЗАЧЕМ: Принудительный байпас сатурации.
     const satNode = ctx.createWaveShaper(); satNode.curve = null; 
     
     const filt = ctx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = currentPreset.lpf ?? 1600;
@@ -383,8 +413,6 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
         const real = new Float32Array(17), imag = new Float32Array(17);
         const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
         drawbars.forEach((v, i) => { if (v > 0) real[indices[i]] = v / 8; });
-        // #ЗАЧЕМ: disableNormalization: false гарантирует, что амплитуда волны не превысит 1.0.
-        // Это убирает "песок" на уровне источника.
         return ctx.createPeriodicWave(real, imag, { disableNormalization: false });
     };
     let wave = getWave(currentPreset.drawbars || [8,0,8,0,0,0,0,0,0]);
@@ -399,7 +427,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             vibG.connect(osc.detune); osc.connect(voiceGain); osc.start(when);
             
             const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.setValueAtTime(f / 2, when);
-            const subG = ctx.createGain(); subG.gain.value = 0.25; // Снижена громкость суб-низа
+            const subG = ctx.createGain(); subG.gain.value = 0.25; 
             sub.connect(subG).connect(voiceGain); sub.start(when); 
             
             const nodes: AudioNode[] = [voiceGain, osc, sub, subG];
