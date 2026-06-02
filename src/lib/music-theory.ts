@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.8 — "Psybient Standard".
+ * @fileOverview Universal Music Theory Utilities V4.9 — "Dynamic Guitar Extension".
  */
 
 import type { 
@@ -47,6 +47,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
+ * #ОБНОВЛЕНО (ПЛАН №25): Добавлены динамические гитарные группы.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -63,13 +64,13 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    // #ЗАЧЕМ: ПЛАН №1150. Принудительное разрешение рояля для канала Piano.
-    // Это предотвращает глобальное мапирование 'piano' -> 'ep_rhodes_warm' для этого канала.
+    // ─── Piano Channel Specific ───
     if (part === 'pianoAccompaniment') {
         if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
         if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
     }
 
+    // ─── Dynamic Groups (Pads & Organs) ───
     if (clean === 'dynamicorgan') {
         if (tension < 0.4) return 'organ_prog';
         if (tension < 0.75) return 'organ_soft_jazz';
@@ -79,6 +80,41 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         if (tension < 0.4) return 'synth'; 
         if (tension < 0.75) return 'synth_ambient_pad_lush';
         return 'synth_cave_pad';
+    }
+
+    // ─── Dynamic Groups (Guitars) [PLAN №25] ───
+    if (clean === 'dyntelecs80black') {
+        if (tension < 0.4) return 'telecaster';
+        if (tension < 0.75) return 'cs80';
+        return 'blackAcoustic';
+    }
+    if (clean === 'dynblackcs80tele') {
+        if (tension < 0.4) return 'blackAcoustic';
+        if (tension < 0.75) return 'cs80';
+        return 'telecaster';
+    }
+    if (clean === 'dyntelecs80shine') {
+        if (tension < 0.4) return 'telecaster';
+        if (tension < 0.75) return 'cs80';
+        return 'guitar_shineOn';
+    }
+    if (clean === 'dyntelecs80muff') {
+        if (tension < 0.4) return 'telecaster';
+        if (tension < 0.75) return 'cs80';
+        return 'guitar_muffLead';
+    }
+    if (clean === 'dynblackcs80shine') {
+        if (tension < 0.4) return 'blackAcoustic';
+        if (tension < 0.75) return 'cs80';
+        return 'guitar_shineOn';
+    }
+    if (clean === 'dynblackcs80muff') {
+        if (tension < 0.4) return 'blackAcoustic';
+        if (tension < 0.75) return 'cs80';
+        return 'guitar_muffLead';
+    }
+    if (clean === 'dynshinemuff') {
+        return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
     }
 
     const v2Keys = Object.keys(V2_PRESETS);

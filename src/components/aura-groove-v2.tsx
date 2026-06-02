@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.8 — "Expert Mode Domain".
- * #ЧТО: ПЛАН №1235 — Добавлена кнопка возврата в Navigator (/home).
+ * #ЗАЧЕМ: UI AuraGroove V3.9 — "Dynamic Guitar Update".
+ * #ЧТО: ПЛАН №25 — Добавлены динамические гитарные группы в словарь имен.
  */
 'use client';
 
@@ -169,7 +169,15 @@ export function AuraGrooveV2({
     'bass_jazz_warm': 'Warm Jazz Bass',
     'blackAcoustic': 'Black Acoustic',
     'reggae': 'Roots Reggae',
-    'psybient': 'Psy-Ambient'
+    'psybient': 'Psy-Ambient',
+    // Dynamic Guitars
+    'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
+    'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
+    'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
+    'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
+    'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
+    'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
+    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {
@@ -396,7 +404,7 @@ export function AuraGrooveV2({
       {/* Content */}
       <main className="flex-grow overflow-hidden flex flex-col">
         <Tabs defaultValue="composition" className="w-full h-full flex flex-col">
-          <TabsList className="grid w-full grid-cols-3 h-8 shrink-0">
+          <TabsList className="grid grid-cols-3 h-8 shrink-0">
             <TabsTrigger value="composition" className="text-xs">Composition</TabsTrigger>
             <TabsTrigger value="instruments" className="text-xs">Instruments</TabsTrigger>
             <TabsTrigger value="samples" className="text-xs">Samples</TabsTrigger>
@@ -613,7 +621,7 @@ export function AuraGrooveV2({
                       <div className="p-2 border rounded-md bg-background/30 border-primary/10">
                           <div className="flex justify-between items-center mb-1">
                               <Label className="font-semibold flex items-center gap-1.5 text-sm"><Sparkles className="h-4 w-4"/>Sparkles</Label>
-                              <Switch checked={textureSettings.sparkles.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sparkles', c)} disabled={isInitializing}/>
+                              <Switch checked={textureSettings.sparkles.enabled} onCheckedChange={(checked) => handleTextureEnabledChange('sparkles', checked)} disabled={isInitializing}/>
                           </div>
                           <div className="flex items-center gap-2">
                               <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3 inline-block mr-1"/>Volume</Label>
@@ -642,7 +650,6 @@ export function AuraGrooveV2({
                           </div>
                           <div className="flex items-center gap-2">
                               <Label className="text-xs text-muted-foreground"><Speaker className="h-3 w-3"/> Vol</Label>
-                              {/* #ЗАЧЕМ: ПЛАН №1605. Использование handleVolumeChange для физического управления громкостью барабанов. */}
                               <Slider value={[drumSettings.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('drums', v[0])} disabled={isInitializing || drumSettings.pattern === 'none'}/>
                           </div>
                            <div className="flex items-center gap-2 pt-2"><Label className="text-xs text-muted-foreground"><Speaker className="h-4 w-4"/> Kick</Label><Slider value={[drumSettings.kickVolume]} max={1.5} step={0.05} onValueChange={(v) => setDrumSettings(d => ({...d, kickVolume: v[0]}))} disabled={isInitializing || drumSettings.pattern === 'none'}/></div>

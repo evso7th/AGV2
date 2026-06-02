@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -143,6 +144,18 @@ const INSTRUMENT_GROUPS = [
     options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar']
   },
   {
+    label: "⚡ Dynamic Guitars",
+    options: [
+        'dyn_tele_cs80_black',
+        'dyn_black_cs80_tele',
+        'dyn_tele_cs80_shine',
+        'dyn_tele_cs80_muff',
+        'dyn_black_cs80_shine',
+        'dyn_black_cs80_muff',
+        'dyn_shine_muff'
+    ]
+  },
+  {
     label: "Others",
     options: ['ep_rhodes_warm', 'cs80', 'theremin', 'piano', 'violin', 'flute', 'none']
   }
@@ -188,7 +201,15 @@ const DISPLAY_NAMES: Record<string, string> = {
     'bass_slap': 'Slap Funk Bass',
     'bass_cs80': 'CS80 Hybrid Bass',
     'none': 'No Override',
-    'psybient': 'Psy-Ambient'
+    'psybient': 'Psy-Ambient',
+    // Dynamic Guitars
+    'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
+    'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
+    'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
+    'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
+    'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
+    'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
+    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -502,7 +523,7 @@ export default function HypercubeDashboard() {
                 nativeBpm: ax.nativeBpm || ax.bpm || null,
                 nativeKey: ax.nativeKey || ax.key || 'C',
                 nativeScale: ax.nativeScale || ax.scale || 'dorian',
-                timeSignature: ax.timeSignature || ax.ts || '4/4',
+                preferredInstrument: ax.preferredInstrument || null,
                 ignored: ax.ignored ?? false
             };
         };
@@ -712,8 +733,8 @@ export default function HypercubeDashboard() {
                                             <SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" /></div>
-                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={editGenreValue} placeholder="Genres" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={editMoodValue} placeholder="Moods" className="w-full" /></div>
                                   </div>
                                   <div className="flex gap-2 pt-1">
                                     <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editScaleValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
