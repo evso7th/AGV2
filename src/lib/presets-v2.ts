@@ -91,9 +91,8 @@ export const V2_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Cathedral Depth',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
-    drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], // Убраны пронзительные высокие
+    drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], 
     keyClick: 0.003,
     adsr: { a: 0.15, d: 0.2, s: 0.9, r: 2.0 },
     lpf: 1600, 
@@ -104,7 +103,6 @@ export const V2_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Velvet Jazz B3',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
     lpf: 1400, 
@@ -119,7 +117,6 @@ export const V2_PRESETS = {
   organ_jimmy_smith: {
     type: 'organ',
     name: 'Warm Jimmy smith',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 8, 8, 0, 0, 0, 0, 0, 0], 
     lpf: 2200, 
@@ -133,7 +130,6 @@ export const V2_PRESETS = {
   organ_prog: {
     type: 'organ',
     name: 'Mellow Prog Organ',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4, 
     drawbars: [8, 8, 8, 6, 0, 0, 0, 0, 0],
     lpf: 2600, 
@@ -146,7 +142,6 @@ export const V2_PRESETS = {
   reggae_organ: {
     type: 'organ',
     name: 'Velvet Bubbler',
-    // #ОБНОВЛЕНО (ПЛАН №1602): Громкость пресета уменьшена в 2 раза.
     volume: 0.4,
     drawbars: [8, 8, 0, 0, 0, 0, 0, 0, 0],
     lpf: 1400, 
@@ -157,7 +152,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (Calibration Plan №8 / Refinement Plan №10 / Normalization Plan №11 / Evolution Plan №14)
+  // GUITAR (Calibration Plan №8 / Normalization Plan №11 / Evolution Plan №14 / Headroom Plan №15)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -178,32 +173,32 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    // #ОБНОВЛЕНО (ПЛАН №14): Тональная эволюция. Soft Drive + High-res filter.
-    volume: 0.19, 
-    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.22 },
+    // #ОБНОВЛЕНО (ПЛАН №15): Увеличение Headroom. Снижен внутренний гейн осцилляторов и укорочен релиз.
+    volume: 0.13, 
+    osc: { width: 0.46, detune: 5, mainGain: 0.55, detGain: 0.12, subGain: 0.15 },
     pickup: { cutoff: 3800 },
     drive: { type: 'soft', amount: 0.25 },
-    comp: { threshold: -16, ratio: 2.5, makeup: 2 },
+    comp: { threshold: -16, ratio: 2.5, makeup: 0 }, // Убран лишний Makeup
     post: { lpf: 3600 },
     chorus: { on: true, mix: 0.32 },
     delay: { on: true, time: 0.4, fb: 0.32, mix: 0.28 },
-    adsr: { a: 0.006, d: 0.35, s: 0.72, r: 1.8 },
+    adsr: { a: 0.006, d: 0.35, s: 0.72, r: 1.2 }, // Короткий релиз для предотвращения гула
     reverbMix: 0.24
   },
 
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    // #ОБНОВЛЕНО (ПЛАН №14): Тональная эволюция. Dense Muff Fuzz + Middle Focus.
-    volume: 0.25,
-    osc: { width: 0.45, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.24 },
+    // #ОБНОВЛЕНО (ПЛАН №15): Увеличение Headroom. Системная очистка от перегруза при полифонии.
+    volume: 0.18,
+    osc: { width: 0.45, detune: 7, mainGain: 0.45, detGain: 0.15, subGain: 0.18 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.82 },
-    comp: { threshold: -22, ratio: 5, makeup: 4 },
+    comp: { threshold: -22, ratio: 5, makeup: 1 }, 
     post: { lpf: 3800 },
     chorus: { on: true, mix: 0.18 },
     delay: { on: true, time: 0.38, fb: 0.26, mix: 0.18 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 2.0 },
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.4 },
     reverbMix: 0.18
   },
 
