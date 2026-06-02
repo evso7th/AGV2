@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.1 — "System Capacity Update".
- * #ЧТО: ПЛАН №1650 — Добавлена кнопка и модальное окно для управления лимитом голосов (Zap).
+ * #ЗАЧЕМ: UI AuraGroove V6.2 — "Touch Navigation Update".
+ * #ЧТО: ПЛАН №3 — Оптимизация TouchSensor для корректной работы DND на мобильных устройствах.
  */
 'use client';
 
@@ -199,7 +199,7 @@ function SortableRouteItem({
                 <div 
                     {...attributes} 
                     {...listeners} 
-                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors"
+                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none"
                 >
                     <GripVertical className="h-4 w-4" />
                 </div>
@@ -234,10 +234,23 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isCapacityDialogOpen, setIsCapacityDialogOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
 
+    // #ЗАЧЕМ: Тюнинг сенсоров для мобильного опыта (ПЛАН №3).
+    // #ЧТО: Добавлена задержка в 250мс для TouchSensor, чтобы не блокировать скролл.
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        useSensor(PointerSensor, { 
+            activationConstraint: { 
+                distance: 8 
+            } 
+        }),
+        useSensor(TouchSensor, { 
+            activationConstraint: { 
+                delay: 250, 
+                tolerance: 5 
+            } 
+        }),
+        useSensor(KeyboardSensor, { 
+            coordinateGetter: sortableKeyboardCoordinates 
+        })
     );
 
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
