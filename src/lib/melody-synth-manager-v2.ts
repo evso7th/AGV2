@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -11,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1608 — Внедрение Aria Lite для баса (0.15с нахлеста).
+ * #ЧТО: ПЛАН №1 — Донор транзиентов для guitar_shineOn изменен на Black Acoustic.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,8 +103,6 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1608. Aria Lite для баса. 
-            // 0.15с достаточно для сохранения релиза без создания гула.
             const extraDuration = this.partName === 'melody' ? 0.45 : 0.15;
             return { 
                 midi: e.note, 
@@ -161,9 +158,10 @@ export class MelodySynthManagerV2 {
         }
         
         // Aria Transient Logic
-        if (currentActive === 'guitar_shineOn' || currentActive === 'synth' || currentActive === 'organ') {
+        // #ЗАЧЕМ: ПЛАН №1. guitar_shineOn теперь получает транзиент от акустики.
+        if (currentActive === 'synth' || currentActive === 'organ') {
             this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
-        } else if (currentActive === 'guitar_muffLead') {
+        } else if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
