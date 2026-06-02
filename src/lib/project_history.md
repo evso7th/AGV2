@@ -3,6 +3,17 @@
 
 ---
 
+### ЗАПИСЬ: 16-03-2026 (ПЛАН №23: INSTRUMENT SELECTOR REORGANIZATION)
+**СОБЫТИЕ**: Группировка списка инструментов в DNA Auditor по семантическим категориям.
+**ПРИЧИНА**: Повышение удобства работы с большим количеством тембров в Dashboard.
+**ИЗМЕНЕНИЯ**: 
+1. В `src/app/hypercube-dashboard/page.tsx` добавлена константа `INSTRUMENT_GROUPS`.
+2. Инструменты разделены на группы: Pads, Organs, Basses, Sampled Guitars, Electric Guitars и Others.
+3. В интерфейсе селектора `preferredInstrument` внедрены компоненты `SelectGroup` и `SelectLabel`.
+**ИТОГ**: Список инструментов стал структурированным и интуитивно понятным.
+
+---
+
 ### ЗАПИСЬ: 16-03-2026 (ПЛАН №22: MUFF LEAD CHARACTER DEFINITION)
 **СОБЫТИЕ**: Активация эффектов Drive и Delay для Muff Lead.
 **ПРИЧИНА**: Формирование уникального тембра гитары с певучим сустейном.

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -42,7 +41,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -118,15 +117,35 @@ const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian'
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-const INSTRUMENT_OPTIONS = [
-    'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'ep_rhodes_warm', 
-    'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ',
-    'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80', 'theremin', 'mellotron',
-    'bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 
-    'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 
-    'bass_rock_pick', 'bass_slap', 'bass_cs80',
-    'blackAcoustic', 'telecaster', 'darkTelecaster', 'piano', 'violin', 'flute', 'guitarChords',
-    'dynamicOrgan', 'dynamicPad', 'none'
+const INSTRUMENT_GROUPS = [
+  {
+    label: "Pads",
+    options: ['synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'dynamicPad', 'mellotron']
+  },
+  {
+    label: "Organs",
+    options: ['organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ', 'dynamicOrgan']
+  },
+  {
+    label: "Basses",
+    options: [
+      'bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 
+      'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 
+      'bass_rock_pick', 'bass_slap', 'bass_cs80'
+    ]
+  },
+  {
+    label: "Sampled Guitars",
+    options: ['blackAcoustic', 'guitarChords']
+  },
+  {
+    label: "Electric Guitars",
+    options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar']
+  },
+  {
+    label: "Others",
+    options: ['ep_rhodes_warm', 'cs80', 'theremin', 'piano', 'violin', 'flute', 'none']
+  }
 ];
 
 const DISPLAY_NAMES: Record<string, string> = {
@@ -458,7 +477,7 @@ export default function HypercubeDashboard() {
             const repaired = repairLegacyPhrase(phrase);
             
             let maxTick = 0;
-            for (let i = 0; i < repaired.length; i += 4) {
+            for (let i = 0; i < repaired.length; i ...4) {
                 const end = (repaired[i] || 0) + (repaired[i+1] || 0);
                 if (end > maxTick) maxTick = end;
             }
@@ -739,7 +758,16 @@ export default function HypercubeDashboard() {
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={v => setEditAxiomData({...editAxiomData, preferredInstrument: v === 'none' ? null : v})}>
                                               <SelectTrigger className="h-7 text-[10px] uppercase font-black w-32"><SelectValue /></SelectTrigger>
-                                              <SelectContent>{INSTRUMENT_OPTIONS.map(i => <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>)}</SelectContent>
+                                              <SelectContent>
+                                                {INSTRUMENT_GROUPS.map(group => (
+                                                  <SelectGroup key={group.label}>
+                                                    <SelectLabel className="text-[9px] uppercase font-black opacity-40 px-2 py-1.5">{group.label}</SelectLabel>
+                                                    {group.options.map(i => (
+                                                      <SelectItem key={i} value={i} className="text-[10px] font-black">{DISPLAY_NAMES[i] || i}</SelectItem>
+                                                    ))}
+                                                  </SelectGroup>
+                                                ))}
+                                              </SelectContent>
                                             </Select>
                                           ) : (
                                             ax.preferredInstrument ? <Badge variant="secondary" className="bg-accent/10 text-accent text-[9px] font-black px-1.5">{DISPLAY_NAMES[String(ax.preferredInstrument)] || String(ax.preferredInstrument).toUpperCase()}</Badge> : <span className="text-[9px] opacity-30 font-black">BP DEFAULT</span>
