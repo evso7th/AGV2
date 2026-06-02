@@ -477,7 +477,7 @@ export default function HypercubeDashboard() {
             const repaired = repairLegacyPhrase(phrase);
             
             let maxTick = 0;
-            for (let i = 0; i < repaired.length; i ...4) {
+            for (let i = 0; i < repaired.length; i += 4) {
                 const end = (repaired[i] || 0) + (repaired[i+1] || 0);
                 if (end > maxTick) maxTick = end;
             }
