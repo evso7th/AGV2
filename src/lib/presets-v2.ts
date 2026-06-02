@@ -157,7 +157,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (Calibration Plan №8 / Refinement Plan №10)
+  // GUITAR (Calibration Plan №8 / Refinement Plan №10 / Normalization Plan №11)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -178,10 +178,9 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    // #ОБНОВЛЕНО (ПЛАН №10): Громкость снижена для устранения перегруза.
-    volume: 0.48, 
+    // #ОБНОВЛЕНО (ПЛАН №11): Громкость снижена в 2.5 раза (0.48 / 2.5 ≈ 0.19)
+    volume: 0.19, 
     osc: { width: 0.44, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    // #ОБНОВЛЕНО (ПЛАН №10): Срезан "песок" на высоких частотах.
     pickup: { cutoff: 3100 },
     drive: { type: 'soft', amount: 0.14 },
     comp: { threshold: -22, ratio: 5, attack: 0.003, release: 0.5, makeup: 1.5 },
@@ -195,7 +194,8 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    volume: 0.62,
+    // #ОБНОВЛЕНО (ПЛАН №11): Громкость снижена в 2.5 раза (0.62 / 2.5 ≈ 0.25)
+    volume: 0.25,
     osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
     pickup: { cutoff: 3200 },
     drive: { type: 'muff', amount: 0.75 },
