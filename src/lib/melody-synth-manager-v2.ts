@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1 — Донор транзиентов для guitar_shineOn изменен на Black Acoustic.
+ * #ЧТО: ПЛАН №19 — Транзиенты удалены с органов и пэдов. Оставлены только для электрогитар.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -158,10 +158,8 @@ export class MelodySynthManagerV2 {
         }
         
         // Aria Transient Logic
-        // #ЗАЧЕМ: ПЛАН №1. guitar_shineOn теперь получает транзиент от акустики.
-        if (currentActive === 'synth' || currentActive === 'organ') {
-            this.telecasterSampler.schedule(notesToPlay, barStartTime, tempo, true);
-        } else if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
+        // #ЗАЧЕМ: ПЛАН №19. Транзиенты удалены с органов и пэдов. Оставлены только для электрогитар.
+        if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
         
