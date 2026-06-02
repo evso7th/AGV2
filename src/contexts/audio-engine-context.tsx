@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.5 — "Dynamic Resource Management".
- * #ЗАЧЕМ: Управление лимитом голосов синтеза.
- * #ЧТО: ПЛАН №1650 — Добавлена поддержка voiceLimit с авто-детектированием устройства.
+ * @fileOverview Audio Engine Context V40.6 — "Media Session Integration".
+ * #ЗАЧЕМ: Поддержка системного управления и отображения метаданных (Media Session API).
+ * #ЧТО: ПЛАН №7 — Добавлена синхронизация с ОС (Album, Title, Play/Pause handlers).
  */
 'use client';
 
@@ -225,6 +225,25 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setGlobalVoiceLimit(limit);
   }, []);
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №7. Обновление системных метаданных Media Session.
+   */
+  const updateMediaSessionMetadata = useCallback((genre?: string, mood?: string) => {
+    if (!('mediaSession' in navigator)) return;
+
+    const g = (genre || settingsRef.current?.genre || 'ambient').toUpperCase();
+    const m = (mood || settingsRef.current?.mood || 'melancholic').toUpperCase();
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: `${g} / ${m}`,
+      artist: 'AuraGroove',
+      album: 'The Infinite Take Orchestra',
+      artwork: [
+        { src: '/assets/icon8.jpeg', sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+  }, []);
+
   useEffect(() => {
       const load = () => {
           const saved = localStorage.getItem('AuraGroove_TimbreOverrides');
@@ -333,6 +352,45 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
+  /**
+   * #ЗАЧЕМ: Центральный контроллер воспроизведения.
+   */
+  const handleTogglePlay = useCallback(async (playing: boolean) => {
+      const context = audioContextRef.current; 
+      if (!context || !workerRef.current) return;
+      
+      if (playing) { 
+          if (context.state === 'suspended') await context.resume(); 
+          setIsPlayingState(true); 
+          masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05); 
+          stopAllSounds(); 
+          nextBarTimeRef.current = context.currentTime + 0.5; 
+          workerRef.current.postMessage({ command: 'start' }); 
+          
+          if ('mediaSession' in navigator) {
+              navigator.mediaSession.playbackState = 'playing';
+              updateMediaSessionMetadata();
+          }
+      } else { 
+          setIsPlayingState(false); 
+          masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01); 
+          workerRef.current.postMessage({ command: 'stop' }); 
+          stopAllSounds(); 
+          
+          if ('mediaSession' in navigator) {
+              navigator.mediaSession.playbackState = 'paused';
+          }
+      }
+  }, [calibrationGains.master, stopAllSounds, updateMediaSessionMetadata]);
+
+  // #ЗАЧЕМ: Регистрация системных обработчиков Media Session.
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.setActionHandler('play', () => handleTogglePlay(true));
+        navigator.mediaSession.setActionHandler('pause', () => handleTogglePlay(false));
+    }
+  }, [handleTogglePlay]);
+
   const initialize = useCallback(async () => {
     if (isInitialized || initializationInFlightRef.current) return true;
     initializationInFlightRef.current = true; setIsInitializing(true);
@@ -424,12 +482,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     <AudioEngineContext.Provider value={{
         isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
         analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit,
-        setIsPlaying: async (playing) => {
-            const context = audioContextRef.current; if (!context || !workerRef.current) return;
-            if (playing) { if (context.state === 'suspended') await context.resume(); setIsPlayingState(true); masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, context.currentTime, 0.05); stopAllSounds(); nextBarTimeRef.current = context.currentTime + 0.5; workerRef.current.postMessage({ command: 'start' }); }
-            else { setIsPlayingState(false); masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01); workerRef.current.postMessage({ command: 'stop' }); stopAllSounds(); }
+        setIsPlaying: handleTogglePlay,
+        updateSettings: (s) => { 
+            if (workerRef.current) { 
+                settingsRef.current = { ...settingsRef.current, ...s } as any; 
+                workerRef.current.postMessage({ command: 'update_settings', data: s }); 
+                if (isPlaying) {
+                    if (s.genre || s.mood || s.selectedCompositionIds) {
+                        syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds);
+                    }
+                    if (s.genre || s.mood) updateMediaSessionMetadata(s.genre, s.mood);
+                }
+            } 
         },
-        updateSettings: (s) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s } as any; workerRef.current.postMessage({ command: 'update_settings', data: s }); if (isPlaying && (s.genre || s.mood || s.selectedCompositionIds)) syncContextDNA(settingsRef.current!.genre, settingsRef.current!.mood, settingsRef.current!.selectedCompositionIds); } },
         refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
         setVolume: setVolumeCallback, 
         setInstrument: async (part, name) => { if (!isInitialized) return; const preset = typeof name === 'string' ? getEffectivePreset(name) : name; if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
