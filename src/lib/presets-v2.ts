@@ -201,7 +201,7 @@ export const V2_PRESETS = {
     post: { lpf: 3500 },
     chorus: { on: true, mix: 0.15 },
     delay: { on: true, time: 0.38, fb: 0.3, mix: 0.2 },
-    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 2.0 },
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 2.0 },
     reverbMix: 0.18
   },
 
@@ -298,6 +298,18 @@ export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
     lead: 'synth_lead',
     pad: 'synth_ambient_pad',
     bass: 'bass_jazz'
+};
+
+/**
+ * #ЗАЧЕМ: ПЛАН №9. Сопоставление старых имен басовых пресетов с новыми.
+ */
+export const BASS_PRESET_MAP: Record<string, string> = {
+    classicBass: 'bass_jazz_warm',
+    glideBass: 'bass_ambient',
+    ambientDrone: 'bass_ambient_dark',
+    resonantGliss: 'bass_trance_acid',
+    hypnoticDrone: 'bass_ambient',
+    livingRiff: 'bass_house'
 };
 
 // ═══════════════════════════════════════════════════════════════════════════

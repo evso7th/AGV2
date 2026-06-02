@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.7 — "Smooth Voice Stealing".
- * #ЗАЧЕМ: Устранение щелчков при переполнении лимита голосов.
- * #ЧТО: ПЛАН №1655 — Внедрен микро-фейд (60мс) для "украденных" голосов.
+ * @fileOverview Центральная фабрика инструментов V6.8 — "Bass Sovereignty Update".
+ * #ЗАЧЕМ: Защита басовых линий от прерывания при Voice Stealing.
+ * #ЧТО: ПЛАН №9 — Алгоритм кражи голосов теперь пропускает записи с типом 'bass'.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -51,25 +51,29 @@ const deepCleanup = (voiceRecord: any) => {
 
 /**
  * #ЗАЧЕМ: Протокол мягкого вытеснения голосов (Voice Stealing).
- * #ЧТО: При переполнении лимита самый старый голос затухает за 60мс вместо обрыва.
+ * #ЧТО: ПЛАН №9 — Теперь игнорирует басовые голоса.
  */
 const enforceVoiceLimit = () => {
     while (globalActiveVoices.length > globalVoiceLimit) {
-        const oldest = globalActiveVoices.shift();
+        // Ищем старейший голос, который НЕ является басом
+        let targetIndex = globalActiveVoices.findIndex(v => v.type !== 'bass');
+        
+        // Если все голоса — басы (крайне редкий случай), или не нашли не-басовый голос, выходим.
+        // Мы НЕ трогаем бас согласно распоряжению.
+        if (targetIndex === -1) break;
+
+        const oldest = globalActiveVoices.splice(targetIndex, 1)[0];
         if (oldest) {
             const voiceNode = oldest.voiceState?.node;
             
-            // Если голос еще жив и не очищен, запускаем мягкое затухание
             if (voiceNode && !oldest.cleaned) {
                 const now = voiceNode.context.currentTime;
-                const stealFadeOut = 0.06; // 60мс для исключения щелчков
+                const stealFadeOut = 0.06;
                 
                 try {
                     voiceNode.gain.cancelScheduledValues(now);
-                    // Используем setTargetAtTime для максимально естественной кривой затухания
                     voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
                     
-                    // Планируем остановку всех генераторов этого голоса в конце фейда
                     if (oldest.nodes) {
                         oldest.nodes.forEach((n: any) => {
                             if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
@@ -78,10 +82,8 @@ const enforceVoiceLimit = () => {
                         });
                     }
                     
-                    // Окончательная очистка аппаратных ресурсов после завершения звука
                     setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 50);
                 } catch (e) {
-                    // Если что-то пошло не так с контекстом, чистим немедленно
                     deepCleanup(oldest);
                 }
             } else {
@@ -116,7 +118,7 @@ const loadIR = async (ctx: AudioContext, url: string | null): Promise<AudioBuffe
     if (!url) return null;
     try {
         const res = await fetch(url);
-        if (!res.ok) return null;
+        if (!response.ok) return null;
         const buf = await res.arrayBuffer();
         return await ctx.decodeAudioData(buf);
     } catch { return null; }
@@ -349,7 +351,7 @@ const buildSynthEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-            const record = { nodes, voiceState, cleaned: false };
+            const record = { nodes, voiceState, cleaned: false, type: 'synth' };
             
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
@@ -433,7 +435,7 @@ const buildOrganEngine = (ctx: AudioContext, preset: any, master: GainNode, reve
             const nodes: AudioNode[] = [voiceGain, osc, sub, subG];
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-            const record = { nodes, voiceState, cleaned: false };
+            const record = { nodes, voiceState, cleaned: false, type: 'organ' };
             
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
@@ -483,7 +485,7 @@ const buildBassEngine = (ctx: AudioContext, preset: any, master: GainNode, rever
             });
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-            const record = { nodes, voiceState, cleaned: false };
+            const record = { nodes, voiceState, cleaned: false, type: 'bass' };
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
             const safeDuration = isFinite(duration as number) ? (duration as number) : 1.0;
@@ -556,7 +558,7 @@ const buildGuitarEngine = (ctx: AudioContext, preset: any, master: GainNode, rev
             osc.connect(g).connect(voiceGain); osc.start(when);
             const adsr = getADSR(currentPreset);
             const voiceState = triggerAttack(ctx, voiceGain, when, adsr.a, adsr.d, adsr.s, velocity);
-            const record = { nodes: [voiceGain, osc, g], voiceState, cleaned: false };
+            const record = { nodes: [voiceGain, osc, g], voiceState, cleaned: false, type: 'guitar' };
             globalActiveVoices.push(record);
             activeVoiceRecords.add(record);
             const safeDuration = duration && isFinite(duration) ? duration : 1.0;
