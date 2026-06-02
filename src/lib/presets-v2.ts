@@ -157,7 +157,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (Calibration Plan №8 / Refinement Plan №10 / Normalization Plan №11)
+  // GUITAR (Calibration Plan №8 / Refinement Plan №10 / Normalization Plan №11 / Evolution Plan №14)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -178,31 +178,31 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    // #ОБНОВЛЕНО (ПЛАН №11): Громкость снижена в 2.5 раза (0.48 / 2.5 ≈ 0.19)
+    // #ОБНОВЛЕНО (ПЛАН №14): Тональная эволюция. Soft Drive + High-res filter.
     volume: 0.19, 
-    osc: { width: 0.44, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3100 },
-    drive: { type: 'soft', amount: 0.14 },
-    comp: { threshold: -22, ratio: 5, attack: 0.003, release: 0.5, makeup: 1.5 },
-    post: { lpf: 3400 },
-    chorus: { on: true, mix: 0.4 },
-    delay: { on: true, time: 0.5, fb: 0.4, mix: 0.35 },
-    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.8 },
-    reverbMix: 0.22
+    osc: { width: 0.46, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.22 },
+    pickup: { cutoff: 3800 },
+    drive: { type: 'soft', amount: 0.25 },
+    comp: { threshold: -16, ratio: 2.5, makeup: 2 },
+    post: { lpf: 3600 },
+    chorus: { on: true, mix: 0.32 },
+    delay: { on: true, time: 0.4, fb: 0.32, mix: 0.28 },
+    adsr: { a: 0.006, d: 0.35, s: 0.72, r: 1.8 },
+    reverbMix: 0.24
   },
 
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    // #ОБНОВЛЕНО (ПЛАН №11): Громкость снижена в 2.5 раза (0.62 / 2.5 ≈ 0.25)
+    // #ОБНОВЛЕНО (ПЛАН №14): Тональная эволюция. Dense Muff Fuzz + Middle Focus.
     volume: 0.25,
-    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    osc: { width: 0.45, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.24 },
     pickup: { cutoff: 3200 },
-    drive: { type: 'muff', amount: 0.75 },
-    comp: { threshold: -25, ratio: 8, attack: 0.005, release: 0.3, makeup: 6 },
-    post: { lpf: 3500 },
-    chorus: { on: true, mix: 0.15 },
-    delay: { on: true, time: 0.38, fb: 0.3, mix: 0.2 },
+    drive: { type: 'muff', amount: 0.82 },
+    comp: { threshold: -22, ratio: 5, makeup: 4 },
+    post: { lpf: 3800 },
+    chorus: { on: true, mix: 0.18 },
+    delay: { on: true, time: 0.38, fb: 0.26, mix: 0.18 },
     adsr: { a: 0.008, d: 0.5, s: 0.65, r: 2.0 },
     reverbMix: 0.18
   },
