@@ -79,9 +79,10 @@ export const V2_PRESETS = {
     name: 'Shine On Lead (Naked)',
     volume: 0.19, 
     osc: { width: 0.46 }, 
-    drive: { amount: 0 }, // ВЫКЛЮЧЕНО ДЛЯ ТЕСТА
+    drive: { amount: 0 }, 
     post: { lpf: 3600 },
-    adsr: { a: 0.006, d: 0.35, s: 0.72, r: 0.7 }, 
+    // #ЗАЧЕМ: Возврат длинного сустейна и релиза (ПЛАН №20).
+    adsr: { a: 0.006, d: 0.35, s: 0.85, r: 2.2 }, 
     reverbMix: 0
   },
 
@@ -90,7 +91,7 @@ export const V2_PRESETS = {
     name: 'Muff Lead (Naked)',
     volume: 0.25,
     osc: { width: 0.45 },
-    drive: { amount: 0 }, // ВЫКЛЮЧЕНО ДЛЯ ТЕСТА
+    drive: { amount: 0 }, 
     post: { lpf: 3800 },
     adsr: { a: 0.008, d: 0.5, s: 0.65, r: 0.8 },
     reverbMix: 0
