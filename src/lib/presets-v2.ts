@@ -62,7 +62,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (NAKED TEST MODE - PLAN №18)
+  // GUITAR (LEGION ARCHITECTURE ACTIVE)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -76,26 +76,26 @@ export const V2_PRESETS = {
 
   guitar_shineOn: {
     type: 'guitar',
-    name: 'Shine On Lead (Naked)',
+    name: 'Shine On Lead',
     volume: 0.19, 
     osc: { width: 0.46 }, 
-    drive: { amount: 0 }, 
+    drive: { type: 'soft', amount: 0.25 }, 
     post: { lpf: 3600 },
-    // #ЗАЧЕМ: Возврат длинного сустейна и релиза (ПЛАН №20).
     adsr: { a: 0.006, d: 0.35, s: 0.85, r: 2.2 }, 
-    // #ЗАЧЕМ: ПЛАН №21. Добавление мягкого дилея.
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0
   },
 
   guitar_muffLead: {
     type: 'guitar',
-    name: 'Muff Lead (Naked)',
+    name: 'Muff Lead (Warm Grit)',
     volume: 0.25,
     osc: { width: 0.45 },
-    drive: { amount: 0 }, 
-    post: { lpf: 3800 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 0.8 },
+    // #ЗАЧЕМ: ПЛАН №22. Включение дисторшна и дилея для Muff Lead.
+    drive: { type: 'muff', amount: 0.4 }, 
+    post: { lpf: 3200 },
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.2 },
+    delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0
   },
 
