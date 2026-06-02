@@ -154,50 +154,163 @@ export const V2_PRESETS = {
     keyClick: 0.006,
     leslie: { mode: 'slow', slow: 0.7, fast: 6.2, accel: 0.7 },
     reverbMix: 0.12
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GUITAR (Calibration Plan №8)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  guitar_clean: {
+    type: 'guitar',
+    name: 'Clean Guitar',
+    volume: 0.7,
+    osc: { width: 0.42, detune: 3, mainGain: 0.85, detGain: 0.15, subGain: 0.2 },
+    pickup: { cutoff: 4500 },
+    drive: { type: 'soft', amount: 0.1 },
+    comp: { threshold: -16, ratio: 2.5, makeup: 2 },
+    post: { lpf: 6000 },
+    chorus: { on: true, mix: 0.25 },
+    delay: { on: true, time: 0.25, fb: 0.2, mix: 0.15 },
+    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 1.2 },
+    reverbMix: 0.2
+  },
+
+  guitar_shineOn: {
+    type: 'guitar',
+    name: 'Shine On Lead',
+    volume: 0.68,
+    osc: { width: 0.44, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
+    pickup: { cutoff: 3600 },
+    drive: { type: 'soft', amount: 0.25 },
+    comp: { threshold: -22, ratio: 5, attack: 0.003, release: 0.5, makeup: 4 },
+    post: { lpf: 4200 },
+    chorus: { on: true, mix: 0.4 },
+    delay: { on: true, time: 0.5, fb: 0.4, mix: 0.35 },
+    adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.8 },
+    reverbMix: 0.22
+  },
+
+  guitar_muffLead: {
+    type: 'guitar',
+    name: 'Muff Lead',
+    volume: 0.62,
+    osc: { width: 0.5, detune: 7, mainGain: 0.8, detGain: 0.2, subGain: 0.3 },
+    pickup: { cutoff: 3200 },
+    drive: { type: 'muff', amount: 0.75 },
+    comp: { threshold: -25, ratio: 8, attack: 0.005, release: 0.3, makeup: 6 },
+    post: { lpf: 3500 },
+    chorus: { on: true, mix: 0.15 },
+    delay: { on: true, time: 0.38, fb: 0.3, mix: 0.2 },
+    adsr: { a: 0.008, d: 0.5, s: 0.8, r: 2.0 },
+    reverbMix: 0.18
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ELECTRIC PIANO (Rhodes-style via Synth)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  ep_rhodes: {
+    type: 'synth',
+    name: 'Warm Rhodes',
+    volume: 0.68,
+    osc: [
+      { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
+      { type: 'triangle', octave: 1, detune: 0, gain: 0.15 },
+      { type: 'sine', octave: 1, detune: 0, gain: 0.08 }
+    ],
+    noise: { on: false, gain: 0 },
+    adsr: { a: 0.008, d: 0.3, s: 0.65, r: 0.9 },
+    lpf: { cutoff: 3200, q: 0.8, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 0, amount: 0, target: 'filter' },
+    comp: { threshold: -16, ratio: 3, makeup: 4 },
+    chorus: { on: true, rate: 0.25, depth: 0.005, mix: 0.22 },
+    delay: { on: true, time: 0.28, fb: 0.15, hc: 4000, mix: 0.12 },
+    reverbMix: 0.18
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MELLOTRON-STYLE (via Synth)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  mellotron_strings: {
+    type: 'synth',
+    name: 'Mellotron Strings',
+    volume: 0.65,
+    osc: [
+      { type: 'sawtooth', octave: 0, detune: -5, gain: 0.45 },
+      { type: 'sawtooth', octave: 0, detune: 5, gain: 0.45 },
+      { type: 'sawtooth', octave: -1, detune: 0, gain: 0.35 }
+    ],
+    noise: { on: true, gain: 0.02 },
+    adsr: { a: 0.35, d: 0.6, s: 0.7, r: 1.2 },
+    lpf: { cutoff: 3000, q: 1.2, mode: '24dB' },
+    lfo: { shape: 'sine', rate: 4.5, amount: 4, target: 'pitch' },
+    comp: { threshold: -18, ratio: 3, makeup: 5 },
+    chorus: { on: true, rate: 0.3, depth: 0.006, mix: 0.4 },
+    delay: { on: true, time: 0.3, fb: 0.2, hc: 4000, mix: 0.15 },
+    reverbMix: 0.3
+  },
+
+  mellotron_flute: {
+    type: 'synth',
+    name: 'Mellotron Flute',
+    volume: 0.68,
+    osc: [
+      { type: 'sine', octave: 0, detune: 0, gain: 0.85 },
+      { type: 'triangle', octave: 1, detune: 2, gain: 0.2 }
+    ],
+    noise: { on: true, gain: 0.06 },
+    adsr: { a: 0.05, d: 0.15, s: 0.8, r: 0.3 },
+    lpf: { cutoff: 7000, q: 0.7, mode: '12dB' },
+    lfo: { shape: 'sine', rate: 5, amount: 2, target: 'pitch' },
+    comp: { threshold: -15, ratio: 2, makeup: 4 },
+    chorus: { on: false },
+    delay: { on: true, time: 0.15, fb: 0.1, hc: 5000, mix: 0.1 },
+    reverbMix: 0.15
   }
-};
+
+} as const;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TYPE HELPERS
+// ═══════════════════════════════════════════════════════════════════════════
 
 export type PresetName = keyof typeof V2_PRESETS;
 export type PresetConfig = typeof V2_PRESETS[PresetName];
 
+// ═══════════════════════════════════════════════════════════════════════════
+// V1 -> V2 MAPPING
+// ═══════════════════════════════════════════════════════════════════════════
+
 export const V1_TO_V2_PRESET_MAP: Record<string, PresetName> = {
-  synth: 'synth',
-  organ: 'organ',
-  ambientPad: 'synth_ambient_pad_lush',
-  piano: 'ep_rhodes_warm',
-  rhodes: 'ep_rhodes_warm',
-  acousticGuitar: 'blackAcoustic' as any 
+    synth: 'synth',
+    organ: 'organ',
+    mellotron: 'mellotron_strings',
+    theremin: 'theremin',
+    electricGuitar: 'guitar_shineOn',
+    ambientPad: 'synth_ambient_pad_lush',
+    acousticGuitar: 'guitar_clean',
+    strings: 'mellotron_strings',
+    choir: 'mellotron_strings',
+    flute: 'mellotron_flute',
+    rhodes: 'ep_rhodes',
+    piano: 'ep_rhodes',
+    lead: 'synth_lead',
+    pad: 'synth_ambient_pad',
+    bass: 'bass_jazz'
 };
 
-export const BASS_PRESET_MAP: Record<string, keyof typeof BASS_PRESETS> = {
-    bass: 'bass_reggae',
-    classicBass: 'bass_rock_pick',
-    glideBass: 'bass_ambient',
-    ambientDrone: 'bass_ambient_dark',
-    resonantGliss: 'bass_trance_acid',
-    hypnoticDrone: 'bass_ambient',
-    linkRiff: 'bass_slap',
-    bass_jazz_warm: 'bass_jazz_warm',
-    bass_jazz_fretless: 'bass_jazz_fretless',
-    bass_blues: 'bass_blues',
-    bass_ambient: 'bass_ambient',
-    bass_ambient_dark: 'bass_ambient_dark',
-    bass_trance: 'bass_house',
-    bass_trance_acid: 'bass_trance_acid',
-    bass_reggae: 'bass_reggae',
-    bass_dub: 'bass_dub',
-    bass_house: 'bass_house',
-    bass_808: 'bass_808',
-    bass_deep_house: 'bass_deep_house',
-    bottom_heavy: 'bass_ambient_dark',
-    rockBass: 'bass_rock_pick',
-    slapBass: 'bass_slap',
-    cs80: 'bass_cs80' 
-};
+// ═══════════════════════════════════════════════════════════════════════════
+// HELPER FUNCTION
+// ═══════════════════════════════════════════════════════════════════════════
 
 export function getPreset(name: string): PresetConfig {
-  if (name in V2_PRESETS) {
-    return V2_PRESETS[name as PresetName];
-  }
-  return V2_PRESETS.synth;
+    if (name in V2_PRESETS) {
+        return V2_PRESETS[name as PresetName];
+    }
+    if (name in V1_TO_V2_PRESET_MAP) {
+        return V2_PRESETS[V1_TO_V2_PRESET_MAP[name]];
+    }
+    console.warn(`[Presets] Unknown: "${name}", using "synth"`);
+    return V2_PRESETS.synth;
 }
