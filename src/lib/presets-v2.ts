@@ -152,7 +152,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (Calibration Plan №8 / Normalization Plan №11 / Evolution Plan №14 / Headroom Plan №15 / Decay Plan №16)
+  // GUITAR (Ensemble Sovereignty Protocol - Plan №17)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -173,33 +173,35 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    // #ОБНОВЛЕНО (ПЛАН №16): Снижен релиз и фидбек дилея для устранения хрипов на хвостах.
-    volume: 0.12, 
-    osc: { width: 0.46, detune: 5, mainGain: 0.55, detGain: 0.12, subGain: 0.15 },
+    // #ОБНОВЛЕНО (ПЛАН №17): Радикальное снижение гейна и отключение фазера для чистоты полифонии.
+    volume: 0.13, 
+    osc: { width: 0.46, detune: 5, mainGain: 0.35, detGain: 0.1, subGain: 0.1 }, // Хэдрум для наслоения
     pickup: { cutoff: 3800 },
-    drive: { type: 'soft', amount: 0.25 },
+    drive: { type: 'soft', amount: 0.20 }, // Еще мягче
     comp: { threshold: -16, ratio: 2.5, makeup: 0 }, 
-    post: { lpf: 3600 },
-    chorus: { on: true, mix: 0.32 },
-    delay: { on: true, time: 0.4, fb: 0.22, mix: 0.28 },
-    adsr: { a: 0.006, d: 0.35, s: 0.72, r: 0.8 }, // Сокращен релиз до 0.8с
-    reverbMix: 0.20
+    post: { lpf: 3400 }, // Более узкий фильтр для удаления песка
+    chorus: { on: true, mix: 0.15 }, // Снижена глубина модуляции
+    phaser: { on: false, mix: 0 },   // Устранение "паразитного вибрато"
+    delay: { on: true, time: 0.4, fb: 0.18, mix: 0.25 },
+    adsr: { a: 0.006, d: 0.3, s: 0.7, r: 0.6 }, // Короткий хвост
+    reverbMix: 0.18
   },
 
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead',
-    // #ОБНОВЛЕНО (ПЛАН №16): Сокращение длительности звучания для предотвращения перегруза хвостов.
-    volume: 0.14,
-    osc: { width: 0.45, detune: 7, mainGain: 0.45, detGain: 0.15, subGain: 0.18 },
+    // #ОБНОВЛЕНО (ПЛАН №17): Изоляция гармоник и строгий контроль затухания.
+    volume: 0.15,
+    osc: { width: 0.45, detune: 7, mainGain: 0.32, detGain: 0.1, subGain: 0.12 },
     pickup: { cutoff: 3200 },
-    drive: { type: 'muff', amount: 0.82 },
-    comp: { threshold: -22, ratio: 5, makeup: 1 }, 
-    post: { lpf: 3800 },
-    chorus: { on: true, mix: 0.18 },
-    delay: { on: true, time: 0.38, fb: 0.18, mix: 0.18 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 0.9 }, // Сокращен релиз до 0.9с
-    reverbMix: 0.15
+    drive: { type: 'muff', amount: 0.75 },
+    comp: { threshold: -22, ratio: 5, makeup: 0.5 }, 
+    post: { lpf: 3200 }, // Жесткий срез песка
+    chorus: { on: false, mix: 0 }, 
+    phaser: { on: false, mix: 0 },
+    delay: { on: true, time: 0.38, fb: 0.15, mix: 0.15 },
+    adsr: { a: 0.008, d: 0.4, s: 0.6, r: 0.7 }, // Короткий хвост
+    reverbMix: 0.12
   },
 
   // ─────────────────────────────────────────────────────────────────────────
