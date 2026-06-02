@@ -157,7 +157,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (Calibration Plan №8)
+  // GUITAR (Calibration Plan №8 / Refinement Plan №10)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -178,12 +178,14 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.68,
+    // #ОБНОВЛЕНО (ПЛАН №10): Громкость снижена для устранения перегруза.
+    volume: 0.48, 
     osc: { width: 0.44, detune: 5, mainGain: 0.85, detGain: 0.18, subGain: 0.25 },
-    pickup: { cutoff: 3600 },
-    drive: { type: 'soft', amount: 0.25 },
-    comp: { threshold: -22, ratio: 5, attack: 0.003, release: 0.5, makeup: 4 },
-    post: { lpf: 4200 },
+    // #ОБНОВЛЕНО (ПЛАН №10): Срезан "песок" на высоких частотах.
+    pickup: { cutoff: 3100 },
+    drive: { type: 'soft', amount: 0.14 },
+    comp: { threshold: -22, ratio: 5, attack: 0.003, release: 0.5, makeup: 1.5 },
+    post: { lpf: 3400 },
     chorus: { on: true, mix: 0.4 },
     delay: { on: true, time: 0.5, fb: 0.4, mix: 0.35 },
     adsr: { a: 0.006, d: 0.35, s: 0.6, r: 1.8 },
