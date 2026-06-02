@@ -1,14 +1,25 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V6.5 — "Crystal Clarity Standard".
- * #ЗАЧЕМ: Полное устранение "песка" и цифровых искажений в органах.
- * #ЧТО: ПЛАН №1601 — Внедрена нормализация волн и расширен Headroom.
+ * @fileOverview Центральная фабрика инструментов V6.6 — "Dynamic Voice Limit".
+ * #ЗАЧЕМ: Управление производительностью через лимит активных голосов.
+ * #ЧТО: ПЛАН №1650 — Замена статической константы на динамическую переменную с сеттером.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-const GLOBAL_VOICE_LIMIT = 500; 
+let globalVoiceLimit = 150; // Дефолтное значение
+
+/**
+ * #ЗАЧЕМ: Динамическое изменение лимита голосов из AudioEngineContext.
+ */
+export const setGlobalVoiceLimit = (limit: number) => {
+    if (isFinite(limit) && limit > 0) {
+        globalVoiceLimit = limit;
+        console.log(`%c[InstrumentFactory] Voice Limit set to: ${limit}`, 'color: #facc15; font-weight: bold;');
+        enforceVoiceLimit(); // Сразу чистим лишнее, если лимит уменьшился
+    }
+};
 
 export const globalAllNotesOff = () => {
     [...globalActiveVoices].forEach(v => deepCleanup(v));
@@ -39,7 +50,7 @@ const deepCleanup = (voiceRecord: any) => {
 };
 
 const enforceVoiceLimit = () => {
-    while (globalActiveVoices.length > GLOBAL_VOICE_LIMIT) {
+    while (globalActiveVoices.length > globalVoiceLimit) {
         const oldest = globalActiveVoices.shift();
         if (oldest) deepCleanup(oldest);
     }

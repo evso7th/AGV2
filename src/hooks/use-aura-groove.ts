@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.5 — "Strict Navigator Algorithm".
- * #ЧТО: ПЛАН №1640 — Приоритет маршрута, сброс на старт при нажатии Play, бесконечная ротация.
+ * #ЗАЧЕМ: Хук управления музыкой V8.6 — "Dynamic Resource Control".
+ * #ЧТО: ПЛАН №1650 — Добавлено управление voiceLimit.
  */
 'use client';
 
@@ -81,6 +81,8 @@ export type AuraGrooveProps = {
   setGenre: (genre: Genre) => void;
   introBars: number;
   setIntroBars: (bars: number) => void;
+  voiceLimit: number;
+  setVoiceLimit: (limit: number) => void;
   // --- Route Specific ---
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
@@ -116,7 +118,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying: setEngineIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains
+    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -164,24 +166,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const lastBarCountRef = useRef(-1);
 
-  // --- Initial Load ---
   useEffect(() => {
       if (typeof window === 'undefined') return;
-      
       const savedJourneys = localStorage.getItem(SAVED_JOURNEYS_KEY);
       if (savedJourneys) { try { setSavedRoutes(JSON.parse(savedJourneys)); } catch (e) {} }
-
       const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
-      if (lastRoute) {
-          try { 
-              const parsed = JSON.parse(lastRoute);
-              setRoute(parsed);
-          } catch (e) {}
-      }
-
+      if (lastRoute) { try { setRoute(JSON.parse(lastRoute)); } catch (e) {} }
       const savedEq = localStorage.getItem(EQ_PRESETS_KEY);
       if (savedEq) { try { setEqPresets(JSON.parse(savedEq)); } catch (e) {} }
-
       const savedMixer = localStorage.getItem(MIXER_PRESETS_KEY);
       if (savedMixer) { try { setMixerPresets(JSON.parse(savedMixer)); } catch (e) {} }
   }, []);
@@ -232,7 +224,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       const preset = mixerPresets.find(p => p.id === id);
       if (preset) {
           const v = preset.values;
-          
           setVolume('bass', v.bass);
           setVolume('melody', v.melody);
           setVolume('accompaniment', v.accompaniment);
@@ -257,7 +248,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sparkles: { ...prev.sparkles, volume: v.sparkles },
               sfx: { ...prev.sfx, volume: v.sfx }
           }));
-
           toast({ title: "Mixer Preset Loaded", description: preset.name });
       }
   };
@@ -269,9 +259,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   useEffect(() => {
-      if (route.length > 0) {
-          localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(route));
-      }
+      if (route.length > 0) { localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(route)); }
   }, [route]);
 
   const saveRoute = (name: string) => {
@@ -318,35 +306,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => { initialize(); }, [initialize]);
 
-  /**
-   * #ЗАЧЕМ: Реализация Navigator Routing V2.5 (ПЛАН №1640).
-   * #ЧТО: Бесконечная циклическая ротация или Shuffle.
-   */
   const handleRouteTransition = useCallback(() => {
       if (route.length === 0) return;
-
       let nextIndex = 0;
       if (isShuffle) {
           if (route.length > 1) {
               let newIdx;
-              do {
-                  newIdx = Math.floor(Math.random() * route.length);
-              } while (newIdx === activeRouteIndex);
+              do { newIdx = Math.floor(Math.random() * route.length); } while (newIdx === activeRouteIndex);
               nextIndex = newIdx;
-          } else {
-              nextIndex = 0;
-          }
-      } else {
-          nextIndex = (activeRouteIndex + 1) % route.length;
-      }
-
+          } else { nextIndex = 0; }
+      } else { nextIndex = (activeRouteIndex + 1) % route.length; }
       setActiveRouteIndex(nextIndex);
       applyRouteItem(route[nextIndex]);
-      
-      toast({
-          title: "Navigator: Next Station",
-          description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}`
-      });
+      toast({ title: "Navigator: Next Station", description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}` });
   }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
 
   useEffect(() => {
@@ -358,7 +330,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setBpm(payload.actualBpm);
             setCurrentBar(payload.barCount);
             if (payload.totalBars) setTotalBars(payload.totalBars);
-            
             const currentBarNum = payload.barCount;
             if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0) {
                 handleRouteTransition();
@@ -388,11 +359,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => {
           const idx = prev.findIndex(it => it.id === id);
           const next = prev.filter(it => it.id !== id);
-          if (idx === activeRouteIndex) {
-              setActiveRouteIndex(-1);
-          } else if (idx < activeRouteIndex) {
-              setActiveRouteIndex(activeRouteIndex - 1);
-          }
+          if (idx === activeRouteIndex) { setActiveRouteIndex(-1); } 
+          else if (idx < activeRouteIndex) { setActiveRouteIndex(activeRouteIndex - 1); }
           return next;
       });
   };
@@ -417,15 +385,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
           const oldIndex = prev.findIndex(item => item.id === activeId);
           const newIndex = prev.findIndex(item => item.id === overId);
           const next = arrayMove(prev, oldIndex, newIndex);
-          
-          if (activeRouteIndex === oldIndex) {
-              setActiveRouteIndex(newIndex);
-          } else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) {
-              setActiveRouteIndex(activeRouteIndex - 1);
-          } else if (activeRouteIndex < oldIndex && activeRouteIndex >= newIndex) {
-              setActiveRouteIndex(activeRouteIndex + 1);
-          }
-          
+          if (activeRouteIndex === oldIndex) { setActiveRouteIndex(newIndex); } 
+          else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) { setActiveRouteIndex(activeRouteIndex - 1); } 
+          else if (activeRouteIndex < oldIndex && activeRouteIndex >= newIndex) { setActiveRouteIndex(activeRouteIndex + 1); }
           return next;
       });
   };
@@ -498,17 +460,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            // #ЗАЧЕМ: ПЛАН №1640. Строгий алгоритм Навигатора.
-            // Если выбран хоть один элемент маршрута - играем ТОЛЬКО маршрут и именно с ПЕРВОГО элемента.
-            if (route.length > 0) {
-                setActiveRouteIndex(0);
-                applyRouteItem(route[0]);
-            }
-            lastBarCountRef.current = -1;
-            setEngineIsPlaying(true);
-        } else {
-            setEngineIsPlaying(false);
-        }
+            if (route.length > 0) { setActiveRouteIndex(0); applyRouteItem(route[0]); }
+            lastBarCountRef.current = -1; setEngineIsPlaying(true);
+        } else { setEngineIsPlaying(false); }
     },
     handleRegenerate: () => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
@@ -533,6 +487,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     timerSettings, handleTimerDurationChange: (m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
+    voiceLimit, setVoiceLimit,
     route, addToRoute, removeFromRoute, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
