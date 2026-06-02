@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.2 — "Strict Heritage Uniqueness".
- * #ЗАЧЕМ: Гарантия уникальности треков при ротации маршрута.
- * #ЧТО: ПЛАН №1630 — Увеличен буфер истории до 100 треков, внедрен строгий фильтр кандидатов.
+ * @file AuraGroove Music Worker V5.3 — "Silent Bridge Update".
+ * #ЗАЧЕМ: Подавление спама системных сообщений Monospace (shortCuts).
+ * #ЧТО: ПЛАН №6 — Явный игнор и поглощение IDE-событий.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -66,25 +66,21 @@ const Scheduler = {
     } as WorkerSettings,
 
     get barDuration() { 
-        return (60 / this.settings.bpm) * 4; 
+        // #ЗАЧЕМ: Защита от нулевого или отрицательного BPM, ведущего к спаму.
+        const safeBpm = Math.max(30, this.settings.bpm || 75);
+        return (60 / safeBpm) * 4; 
     },
 
-    /**
-     * #ЗАЧЕМ: Строгий выбор уникального Якоря.
-     * #ЧТО: ПЛАН №1630. Исключение повторов треков-доноров.
-     */
     pickActiveAnchor(): { id: string | null, nativeRoot: number | null } {
         if (!this.settings.useHeritage) return { id: null, nativeRoot: null }; 
 
         const manualFilter = this.settings.selectedCompositionIds || [];
         let pickedId: string | null = null;
 
-        // Режим 1: Ручной выбор (DNA Locked)
         if (manualFilter.length > 0) {
             const idx = this.filterRotationIndex % manualFilter.length;
             pickedId = manualFilter[idx];
         } 
-        // Режим 2: Автоматический выбор (Infinite DNA Random with strict uniqueness)
         else if (this.cloudAxiomPool.length > 0) {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
@@ -102,13 +98,9 @@ const Scheduler = {
 
             if (matchingAxioms.length > 0) {
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => ax.compositionId)));
-                
-                // #ЗАЧЕМ: Исключаем проигранные треки (Буфер увеличен до 100 для 5-цикловой гарантии).
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
-                
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
                 
-                // Если пул был пуст и мы сбросили фильтр — очищаем старую историю для этой категории
                 if (freshCandidates.length === 0) {
                     this.playedTrackHistory = this.playedTrackHistory.filter(id => !uniqueIds.includes(id));
                 }
@@ -120,7 +112,6 @@ const Scheduler = {
         if (pickedId) {
             if (!this.playedTrackHistory.includes(pickedId)) {
                 this.playedTrackHistory.push(pickedId);
-                // #ЗАЧЕМ: Лимит 100 треков обеспечивает уникальность на протяжении как минимум 5 циклов маршрута.
                 if (this.playedTrackHistory.length > 100) this.playedTrackHistory.shift();
                 self.postMessage({ type: 'HISTORY_UPDATE', payload: this.playedTrackHistory });
             }
@@ -244,7 +235,6 @@ const Scheduler = {
     tick() {
         if (!this.isRunning || !fractalMusicEngine) return;
 
-        // BPM Morphing Logic
         if (this.targetBpm !== null) {
             this.settings.bpm += this.bpmStep;
             if (Math.abs(this.settings.bpm - this.targetBpm) < 0.5) {
@@ -254,13 +244,10 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
         }
 
-        // --- INFINITE DNA ROTATION ---
-        // Если сюита закончилась, переключаемся на следующий трек
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         if (this.barCount >= totalBars) {
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
-             // #ЗАЧЕМ: ПЛАН №1630. Новый сид гарантирует свежую рандомизацию при выборе следующего трека.
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
@@ -303,7 +290,7 @@ const Scheduler = {
             payload: {
                 events: payload.events,
                 instrumentHints: h,
-                barDuration: (60 / this.settings.bpm) * 4,
+                barDuration: this.barDuration,
                 barCount: this.barCount,
                 totalBars: totalBars,
                 actualBpm: Math.round(this.settings.bpm),
@@ -318,6 +305,9 @@ const Scheduler = {
 };
 
 self.onmessage = (event: MessageEvent) => {
+    // #ЗАЧЕМ: ПЛАН №6. Явное поглощение системных сообщений Monospace IDE.
+    if (event.data?.type === 'shortCuts') return;
+    
     if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
     try {
