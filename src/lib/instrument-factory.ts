@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.0 — "Архитектура ЛЕГИОН".
+ * @fileOverview Центральная фабрика инструментов V7.1 — "Архитектура ЛЕГИОН".
  * #ЗАЧЕМ: Полное устранение интермодуляционных искажений ("грязи") при наслоении нот.
- * #ЧТО: ПЛАН №18 — Каждая нота теперь является независимым голосом со своей цепочкой FX.
- *       Голос создается при noteOn и полностью уничтожается после завершения release.
+ * #ЧТО: ПЛАН №21 — Добавлена поддержка Delay (задержки) в цепочку эффектов независимого голоса.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -171,7 +170,7 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     // 3. Цепочка эффектов ГОЛОСА (Изолированная!)
     let chainHead: AudioNode = voiceGain;
 
-    // Distortion (только если amount > 0)
+    // Distortion
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
         shaper.curve = preset.drive.type === 'muff' ? makeMuff(preset.drive.amount) : makeSoftDrive(preset.drive.amount);
@@ -189,6 +188,25 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     chainHead.connect(filter);
     chainHead = filter;
     nodes.push(filter);
+
+    // #ЗАЧЕМ: ПЛАН №21. Дилей внутри ГОЛОСА для изоляции хвостов.
+    if (preset.delay?.mix > 0.01) {
+        const delayNode = ctx.createDelay(2.0);
+        delayNode.delayTime.setValueAtTime(preset.delay.time || 0.4, now);
+        
+        const feedback = ctx.createGain();
+        feedback.gain.setValueAtTime(preset.delay.fb || 0.3, now);
+        
+        const delayMix = ctx.createGain();
+        delayMix.gain.setValueAtTime(preset.delay.mix, now);
+        
+        chainHead.connect(delayNode);
+        delayNode.connect(feedback);
+        feedback.connect(delayNode);
+        delayNode.connect(delayMix);
+        delayMix.connect(output);
+        nodes.push(delayNode, feedback, delayMix);
+    }
 
     // Подключение к общему выходу инструмента
     chainHead.connect(output);
