@@ -1,11 +1,11 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.6 — "Dynamic Resource Control".
- * #ЧТО: ПЛАН №1650 — Добавлено управление voiceLimit.
+ * #ЗАЧЕМ: Хук управления музыкой V8.7 — "Resilient Route Navigation".
+ * #ЧТО: ПЛАН №2 — Переход на ID-based tracking для стабильного изменения маршрута во время игры.
  */
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { 
     DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
@@ -154,7 +154,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
   const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
   const [route, setRoute] = useState<RouteItem[]>([]);
-  const [activeRouteIndex, setActiveRouteIndex] = useState(-1);
+  
+  // #ЗАЧЕМ: ПЛАН №2. Отслеживание по ID вместо индекса для стабильности маршрута.
+  const [activeRouteItemId, setActiveRouteItemId] = useState<string | null>(null);
+  
+  const activeRouteIndex = useMemo(() => 
+    route.findIndex(it => it.id === activeRouteItemId), 
+    [route, activeRouteItemId]
+  );
+
   const [isShuffle, setShuffle] = useState(false);
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
@@ -283,6 +291,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setGenreState(g); 
     setMoodState(m); 
     setCurrentSeed(Date.now());
+    setActiveRouteItemId(item.id); // Фиксируем ID
   }, []);
 
   const loadRoute = (saved: SavedRoute) => {
@@ -293,7 +302,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
           status: 'pending'
       }));
       setRoute(items);
-      setActiveRouteIndex(0);
       applyRouteItem(items[0]);
       toast({ title: "Journey Loaded", description: saved.name });
   };
@@ -309,16 +317,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const handleRouteTransition = useCallback(() => {
       if (route.length === 0) return;
       let nextIndex = 0;
+      const currentIndex = activeRouteIndex;
+      
       if (isShuffle) {
           if (route.length > 1) {
               let newIdx;
-              do { newIdx = Math.floor(Math.random() * route.length); } while (newIdx === activeRouteIndex);
+              do { newIdx = Math.floor(Math.random() * route.length); } while (newIdx === currentIndex);
               nextIndex = newIdx;
           } else { nextIndex = 0; }
-      } else { nextIndex = (activeRouteIndex + 1) % route.length; }
-      setActiveRouteIndex(nextIndex);
+      } else { 
+          nextIndex = (currentIndex + 1) % route.length; 
+      }
+      
       applyRouteItem(route[nextIndex]);
-      toast({ title: "Navigator: Next Station", description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}` });
+      toast({ 
+        title: "Journey Progression", 
+        description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}` 
+      });
   }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
 
   useEffect(() => {
@@ -331,6 +346,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setCurrentBar(payload.barCount);
             if (payload.totalBars) setTotalBars(payload.totalBars);
             const currentBarNum = payload.barCount;
+            // Переход на следующую станцию при завершении сюиты (бар 0 после завершения предыдущей)
             if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0) {
                 handleRouteTransition();
             }
@@ -356,13 +372,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   };
 
   const removeFromRoute = (id: string) => {
-      setRoute(prev => {
-          const idx = prev.findIndex(it => it.id === id);
-          const next = prev.filter(it => it.id !== id);
-          if (idx === activeRouteIndex) { setActiveRouteIndex(-1); } 
-          else if (idx < activeRouteIndex) { setActiveRouteIndex(activeRouteIndex - 1); }
-          return next;
-      });
+      if (id === activeRouteItemId && isPlaying) {
+          handleRouteTransition();
+      }
+      setRoute(prev => prev.filter(it => it.id !== id));
   };
 
   const moveRouteItem = (id: string, direction: 'up' | 'down') => {
@@ -373,8 +386,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
           if (nextIdx < 0 || nextIdx >= prev.length) return prev;
           const n = [...prev];
           [n[idx], n[nextIdx]] = [n[nextIdx], n[idx]];
-          if (activeRouteIndex === idx) setActiveRouteIndex(nextIdx);
-          else if (activeRouteIndex === nextIdx) setActiveRouteIndex(idx);
           return n;
       });
   };
@@ -384,11 +395,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => {
           const oldIndex = prev.findIndex(item => item.id === activeId);
           const newIndex = prev.findIndex(item => item.id === overId);
-          const next = arrayMove(prev, oldIndex, newIndex);
-          if (activeRouteIndex === oldIndex) { setActiveRouteIndex(newIndex); } 
-          else if (activeRouteIndex > oldIndex && activeRouteIndex <= newIndex) { setActiveRouteIndex(activeRouteIndex - 1); } 
-          else if (activeRouteIndex < oldIndex && activeRouteIndex >= newIndex) { setActiveRouteIndex(activeRouteIndex + 1); }
-          return next;
+          return arrayMove(prev, oldIndex, newIndex);
       });
   };
 
@@ -460,7 +467,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: async () => {
         if (!isInitialized) return;
         if (!isPlaying) {
-            if (route.length > 0) { setActiveRouteIndex(0); applyRouteItem(route[0]); }
+            if (route.length > 0 && activeRouteIndex === -1) { 
+                applyRouteItem(route[0]); 
+            }
             lastBarCountRef.current = -1; setEngineIsPlaying(true);
         } else { setEngineIsPlaying(false); }
     },
