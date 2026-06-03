@@ -44,7 +44,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@radix-ui/react-sortable';
+} from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const GENRES = [
