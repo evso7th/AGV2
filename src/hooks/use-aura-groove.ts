@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.7 — "Resilient Route Navigation".
- * #ЧТО: ПЛАН №2 — Переход на ID-based tracking для стабильного изменения маршрута во время игры.
+ * #ЗАЧЕМ: Хук управления музыкой V8.8 — "Path & DNA Control Update".
+ * #ЧТО: ПЛАН №29 — Добавлены методы refreshRoute и управления DNA.
  */
 'use client';
 
@@ -87,6 +87,7 @@ export type AuraGrooveProps = {
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
+  refreshRoute: () => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
   reorderRoute: (activeId: string, overId: string) => void;
   saveRoute: (name: string) => void;
@@ -155,7 +156,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
   const [route, setRoute] = useState<RouteItem[]>([]);
   
-  // #ЗАЧЕМ: ПЛАН №2. Отслеживание по ID вместо индекса для стабильности маршрута.
   const [activeRouteItemId, setActiveRouteItemId] = useState<string | null>(null);
   
   const activeRouteIndex = useMemo(() => 
@@ -291,7 +291,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setGenreState(g); 
     setMoodState(m); 
     setCurrentSeed(Date.now());
-    setActiveRouteItemId(item.id); // Фиксируем ID
+    setActiveRouteItemId(item.id); 
   }, []);
 
   const loadRoute = (saved: SavedRoute) => {
@@ -336,6 +336,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
 
+  const refreshRouteAction = useCallback(() => {
+    const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
+    if (lastRoute) {
+        try {
+            const parsed = JSON.parse(lastRoute);
+            setRoute(parsed);
+            refreshCloudAxioms();
+            toast({ title: "Path Refreshed", description: "Route and DNA pool synchronized." });
+        } catch (e) {}
+    }
+  }, [refreshCloudAxioms, toast]);
+
   useEffect(() => {
     const worker = getWorker();
     if (!worker) return;
@@ -346,7 +358,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setCurrentBar(payload.barCount);
             if (payload.totalBars) setTotalBars(payload.totalBars);
             const currentBarNum = payload.barCount;
-            // Переход на следующую станцию при завершении сюиты (бар 0 после завершения предыдущей)
             if (currentBarNum === 0 && lastBarCountRef.current > 0 && isPlaying && activeRouteIndex >= 0 && route.length > 0) {
                 handleRouteTransition();
             }
@@ -497,7 +508,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
     voiceLimit, setVoiceLimit,
-    route, addToRoute, removeFromRoute, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
+    route, addToRoute, removeFromRoute, refreshRoute: refreshRouteAction, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,

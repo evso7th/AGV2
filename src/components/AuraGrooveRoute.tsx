@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.2 — "Touch Navigation Update".
- * #ЧТО: ПЛАН №3 — Оптимизация TouchSensor для корректной работы DND на мобильных устройствах.
+ * #ЗАЧЕМ: UI AuraGroove V6.3 — "Path & DNA Control Update".
+ * #ЧТО: ПЛАН №29 — Добавлены кнопки Refresh Path и DNA Toggle в футер.
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap
+    GripVertical, Zap, Dna
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -234,8 +234,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isCapacityDialogOpen, setIsCapacityDialogOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
 
-    // #ЗАЧЕМ: Тюнинг сенсоров для мобильного опыта (ПЛАН №3).
-    // #ЧТО: Добавлена задержка в 250мс для TouchSensor, чтобы не блокировать скролл.
     const sensors = useSensors(
         useSensor(PointerSensor, { 
             activationConstraint: { 
@@ -362,82 +360,63 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                 <footer className="p-4 bg-background/80 backdrop-blur-sm border-t border-primary/10 flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40">
                     <div className="flex gap-1">
-                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                        <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
+                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10" title="Spectrum"><Activity className="h-5 w-5" /></Button>
+                        <Button variant="outline" size="icon" onClick={props.refreshRoute} className="h-10 w-10" title="Refresh Path & DNA"><RefreshCw className="h-5 w-5 text-primary" /></Button>
+                        <Button 
+                            variant={props.useHeritage ? "default" : "outline"} 
+                            size="icon" 
+                            onClick={() => props.setUseHeritage(!props.useHeritage)} 
+                            className={cn("h-10 w-10", !props.useHeritage && "opacity-40")}
+                            title={props.useHeritage ? "DNA Active" : "DNA Off"}
+                        >
+                            <Dna className="h-5 w-5" />
+                        </Button>
+                    </div>
+
+                    <div className="flex gap-1 items-center">
+                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
+                        
+                        <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" className="h-10 w-10"><Zap className="h-5 w-5 text-primary" /></Button>
+                                <Button variant="outline" className={cn("h-10 min-w-[100px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
+                                    <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
+                                </Button>
                             </DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20 shadow-2xl">
+                            <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                                 <DialogHeader>
                                     <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                        <Zap className="h-5 w-5" /> Synthesis Capacity
+                                        <Timer className="h-5 w-5" /> Sleep Timer
                                     </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50">Global Max Voices Limit</DialogDescription>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
                                 </DialogHeader>
-                                <div className="space-y-6 py-6">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex justify-between items-center">
-                                            <Label className="text-[10px] font-black uppercase opacity-60 tracking-widest">Max Voices</Label>
-                                            <span className="text-xs font-mono font-bold text-primary px-2 py-1 bg-primary/10 rounded">{props.voiceLimit}</span>
-                                        </div>
+                                <div className="space-y-8 py-6">
+                                    <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
+                                        <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
                                         <Slider
-                                            value={[props.voiceLimit]}
-                                            min={50}
-                                            max={250}
-                                            step={10}
-                                            onValueChange={(v) => props.setVoiceLimit(v[0])}
+                                            value={[props.timerSettings.duration / 60]}
+                                            min={0}
+                                            max={30}
+                                            step={5}
+                                            onValueChange={(v) => props.handleTimerDurationChange(v[0])}
+                                            disabled={props.timerSettings.isActive}
                                         />
-                                        <p className="text-[9px] text-muted-foreground leading-relaxed italic">
-                                            Higher values enrich sound density but increase CPU load. Recommended: 60 for Mobile, 150+ for Desktop.
-                                        </p>
+                                        <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
                                     </div>
+                                    <Button
+                                        onClick={() => {
+                                            props.handleToggleTimer();
+                                            if (!props.timerSettings.isActive) setIsTimerDialogOpen(false);
+                                        }}
+                                        disabled={props.timerSettings.duration === 0}
+                                        variant={props.timerSettings.isActive ? 'destructive' : 'default'}
+                                        className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
+                                    >
+                                        {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
+                                    </Button>
                                 </div>
                             </DialogContent>
                         </Dialog>
                     </div>
-
-                    <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
-                    
-                    <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className={cn("h-10 min-w-[100px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
-                                <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
-                            <DialogHeader>
-                                <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                    <Timer className="h-5 w-5" /> Sleep Timer
-                                </DialogTitle>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-8 py-6">
-                                <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
-                                    <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
-                                    <Slider
-                                        value={[props.timerSettings.duration / 60]}
-                                        min={0}
-                                        max={30}
-                                        step={5}
-                                        onValueChange={(v) => props.handleTimerDurationChange(v[0])}
-                                        disabled={props.timerSettings.isActive}
-                                    />
-                                    <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
-                                </div>
-                                <Button
-                                    onClick={() => {
-                                        props.handleToggleTimer();
-                                        if (!props.timerSettings.isActive) setIsTimerDialogOpen(false);
-                                    }}
-                                    disabled={props.timerSettings.duration === 0}
-                                    variant={props.timerSettings.isActive ? 'destructive' : 'default'}
-                                    className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
-                                >
-                                    {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
-                                </Button>
-                            </div>
-                        </DialogContent>
-                    </Dialog>
                 </footer>
             </div>
 
