@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Blues Brain V76.2 — "Hierarchy Sovereignty Restore".
+ * @fileOverview Blues Brain V76.3 — "Ripple & Harmony Update".
  * #ЗАЧЕМ: Исправление игнорирования Блюпринтов (CS80/BlackAcoustic).
  * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения в пользу иерархии hints.
+ * #ОБНОВЛЕНО (PLAN #28): Внедрен протокол Harmonic Ripple для оживления длинных нот.
  */
 
 import {
@@ -202,6 +203,52 @@ export class BluesBrain {
       }
   }
 
+  /**
+   * #ЗАЧЕМ: Протокол ряби для Блюза (PLAN #28).
+   */
+  private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+    if (e.duration < 3.5) return [e]; 
+
+    const rippled: FractalEvent[] = [];
+    const isMinor = chord.chordType === 'minor';
+    const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
+    
+    const numChunks = Math.ceil(e.duration / 1.5); 
+    const chunkDur = e.duration / numChunks;
+    const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+
+    for (let i = 0; i < numChunks; i++) {
+        let note: number;
+        if (i === 0) {
+            note = e.note;
+        } else {
+            const seedOffset = Math.floor(e.time * 12);
+            const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
+            note = baseOctaveMidi + ripplePool[idx];
+        }
+
+        const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+        let finalNote = note;
+        
+        if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
+        else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
+        else finalNote = this.constrainAccompanimentOctave(note);
+
+        rippled.push({
+            ...e,
+            note: finalNote,
+            time: e.time + (i * chunkDur),
+            duration: chunkDur * 1.15,
+            params: { 
+                ...e.params, 
+                attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
+                release: 2.5 
+            }
+        });
+    }
+    return rippled;
+  }
+
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
       this.currentAxiom = [];
       this.currentBassAxiom = [];
@@ -358,12 +405,11 @@ export class BluesBrain {
     if (bassEvents.length > 0) {
         bassStatus = this.currentBassAxiom.length > 0 ? 'Sibling DNA' : (tension > 0.7 ? 'Walking Bass' : 'Riff Bass');
     }
-    events.push(...bassEvents);
+    events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord)));
 
     const usedTargetLayers = new Set<string>();
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
-    // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
@@ -379,7 +425,7 @@ export class BluesBrain {
                 const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
                 if (rendered.length > 0) {
                     if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
-                    events.push(...rendered);
+                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
                     usedTargetLayers.add(targetType);
                 }
             }
@@ -388,7 +434,7 @@ export class BluesBrain {
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
             adaptiveAcc.forEach(e => e.pan = 0.1);
-            events.push(...adaptiveAcc);
+            events.push(...adaptiveAcc.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add('accompaniment');
         }
     }
@@ -412,14 +458,14 @@ export class BluesBrain {
         }
 
         melodyEvents.forEach(e => e.pan = -0.15);
-        events.push(...melodyEvents);
+        events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
     }
 
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
         const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
         if (pResult.events.length > 0) {
             pResult.events.forEach(e => e.pan = 0.2);
-            events.push(...pResult.events);
+            events.push(...pResult.events.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add('pianoAccompaniment');
         }
     }
@@ -428,7 +474,7 @@ export class BluesBrain {
         this.selectHarmonyInstrument(epoch, tension, false);
         const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
         harmonyEvents.forEach(e => e.pan = 0.35);
-        events.push(...harmonyEvents);
+        events.push(...harmonyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
     }
 
     const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';

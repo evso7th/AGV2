@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V4.1 — "Hierarchy Sovereignty Restore".
+ * @fileOverview Reggae Brain V4.2 — "Breathing Riddim Update".
  * #ЗАЧЕМ: Исправление игнорирования Блюпринтов в Регги.
  * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения. Внедрена поддержка Axiom preferredInstrument.
+ * #ОБНОВЛЕНО (PLAN #28): Внедрен протокол Harmonic Ripple для оживления длинных нот.
  */
 
 import type {
@@ -95,6 +96,52 @@ export class ReggaeBrain {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
         return (epoch - startEpoch) % totalBars;
+    }
+
+    /**
+     * #ЗАЧЕМ: Протокол ряби для Регги (PLAN #28).
+     */
+    private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+        if (e.duration < 3.5) return [e]; 
+
+        const rippled: FractalEvent[] = [];
+        const isMinor = chord.chordType === 'minor';
+        const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
+        
+        const numChunks = Math.ceil(e.duration / 1.5); 
+        const chunkDur = e.duration / numChunks;
+        const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+
+        for (let i = 0; i < numChunks; i++) {
+            let note: number;
+            if (i === 0) {
+                note = e.note;
+            } else {
+                const seedOffset = Math.floor(e.time * 12);
+                const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
+                note = baseOctaveMidi + ripplePool[idx];
+            }
+
+            const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+            let finalNote = note;
+            
+            if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
+            else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
+            else finalNote = this.constrainAccompanimentOctave(note);
+
+            rippled.push({
+                ...e,
+                note: finalNote,
+                time: e.time + (i * chunkDur),
+                duration: chunkDur * 1.15,
+                params: { 
+                    ...e.params, 
+                    attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
+                    release: 2.5 
+                }
+            });
+        }
+        return rippled;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -200,7 +247,6 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: Применение preferredInstrument из ДНК для канала мелодии.
         if (this.currentPreferredInstrument && hints.melody) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
         }
@@ -217,9 +263,9 @@ export class ReggaeBrain {
         // 2. BASS
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-                events.push(...this.renderHeritageBass(epoch, resChord, tension));
+                events.push(...this.renderHeritageBass(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
             } else {
-                events.push(...this.renderGenerativeBass(epoch, resChord, tension));
+                events.push(...this.renderGenerativeBass(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
             }
         }
 
@@ -236,7 +282,7 @@ export class ReggaeBrain {
             else if (role.includes('harmony') || role.includes('strings') || role.includes('guitar')) { target = 'harmony'; harmonyAxiomId = ax.id; }
 
             if (target && hints[target] && !usedLayers.has(target)) {
-                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
+                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension).flatMap(e => this.rippleLongNote(e, resChord)));
                 usedLayers.add(target);
                 
                 if (ax.preferredInstrument) {
@@ -247,7 +293,7 @@ export class ReggaeBrain {
 
         // Generative Harmony Fallback (Guitar Chords Skank)
         if (hints.harmony && !usedLayers.has('harmony')) {
-            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
+            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension).flatMap(e => this.rippleLongNote(e, resChord)));
             usedLayers.add('harmony');
             harmonyAxiomId = 'Generative Skank';
         }
@@ -256,31 +302,30 @@ export class ReggaeBrain {
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, events.filter(e => e.type === 'melody'));
             if (p.events.length > 0) {
-                events.push(...p.events);
+                events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord)));
                 usedLayers.add('pianoAccompaniment');
                 pianoAxiomId = p.style;
             }
         }
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
-            events.push(...this.renderGenerativePad(resChord, tension));
+            events.push(...this.renderGenerativePad(resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
         }
 
         // 4. MELODY
         let activeMelLick = 'none';
         if (hints.melody) {
+            let melEvents: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                const heritageMelody = this.renderHeritageMelody(epoch, resChord, tension);
-                if (heritageMelody.length > 0) {
-                    events.push(...heritageMelody);
-                    activeMelLick = this.currentTheme.id;
-                }
+                melEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                if (melEvents.length > 0) activeMelLick = this.currentTheme.id;
             }
             
             if (activeMelLick === 'none') {
-                events.push(...this.renderGapFiller(epoch, resChord, tension));
+                melEvents = this.renderGapFiller(epoch, resChord, tension);
                 activeMelLick = 'Gap-Filler';
             }
+            events.push(...melEvents.flatMap(e => this.rippleLongNote(e, resChord)));
         }
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
@@ -317,7 +362,7 @@ export class ReggaeBrain {
                 type: 'melody',
                 note: Math.min(note, this.MELODY_CEILING),
                 time: t * TICK_TO_BEAT,
-                duration: (1.5 * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                duration: (1.5 * TICK_TO_BEAT) * 1.25, 
                 weight: 0.7 + (tension * 0.2),
                 technique: tension > 0.4 ? 'vb' : 'pick',
                 dynamics: 'p',
@@ -338,7 +383,7 @@ export class ReggaeBrain {
                     type: 'harmony',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 0.5 * TICK_TO_BEAT, // Short skank
+                    duration: 0.5 * TICK_TO_BEAT, 
                     weight: 0.45 + (tension * 0.1),
                     technique: 'hit',
                     dynamics: 'p',
@@ -361,7 +406,7 @@ export class ReggaeBrain {
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, // Aria Overlap
+                duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 0.85 + (tension * 0.1),
                 technique: useVibrato ? 'vb' as Technique : 'pick', 
                 dynamics: 'mf', phrasing: 'legato'

@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.1 — "Архитектура ЛЕГИОН".
- * #ЗАЧЕМ: Полное устранение интермодуляционных искажений ("грязи") при наслоении нот.
- * #ЧТО: ПЛАН №21 — Добавлена поддержка Delay (задержки) в цепочку эффектов независимого голоса.
+ * @fileOverview Центральная фабрика инструментов V7.2 — "Legion & Soft Highs".
+ * #ЗАЧЕМ: Реализация Отрицательного Кейтрекинга (PLAN #28).
+ * #ЧТО: Динамическое смягчение фильтра для высоких нот органов и пэдов.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -183,13 +183,26 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     // Filter
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = preset.post?.lpf || preset.lpf?.cutoff || preset.lpf || 2000;
-    filter.Q.value = preset.lpf?.q || 0.7;
+    const baseCutoff = preset.post?.lpf || preset.lpf?.cutoff || preset.lpf || 2000;
+    const baseQ = preset.lpf?.q || 0.7;
+
+    // #ЗАЧЕМ: Negative Keytracking (PLAN #28).
+    // Устраняем пронзительность высоких нот путем снижения частоты среза и резонанса выше C4 (60).
+    let finalCutoff = baseCutoff;
+    let finalQ = baseQ;
+    if (midi > 60 && (type === 'organ' || type === 'synth')) {
+        const semitonesAbove = midi - 60;
+        finalCutoff = baseCutoff * Math.pow(0.95, semitonesAbove); // ~5% срез на полутон
+        finalQ = baseQ * Math.pow(0.97, semitonesAbove);       // Смягчение резонанса
+    }
+
+    filter.frequency.value = finalCutoff;
+    filter.Q.value = finalQ;
     chainHead.connect(filter);
     chainHead = filter;
     nodes.push(filter);
 
-    // #ЗАЧЕМ: ПЛАН №21. Дилей внутри ГОЛОСА для изоляции хвостов.
+    // Delay
     if (preset.delay?.mix > 0.01) {
         const delayNode = ctx.createDelay(2.0);
         delayNode.delayTime.setValueAtTime(preset.delay.time || 0.4, now);
