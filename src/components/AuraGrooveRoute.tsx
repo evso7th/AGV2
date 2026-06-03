@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.6 — "Polyphony Control Restoration".
- * #ЧТО: ПЛАН №32 — Удален доступ к Expert Mode, возвращен контроль лимита голосов и добавлен инфо-бэдж в шапку.
+ * #ЗАЧЕМ: UI AuraGroove V6.7 — "Voice Badge Design Overhaul".
+ * #ЧТО: ПЛАН №34 — Рестайлинг бэджа: тёмный шрифт, светлый фон, перекрытие буквы A.
  */
 'use client';
 
@@ -304,10 +304,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="flex flex-row items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
                         >
                             <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
-                            <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                    <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
-                                    <Badge variant="outline" className="h-4 px-1 text-[8px] font-mono opacity-50 border-primary/20">
+                            <div className="flex flex-col relative">
+                                <div className="relative">
+                                    <h1 className="text-lg font-bold text-primary tracking-tighter relative z-0">AuraGroove</h1>
+                                    <Badge 
+                                        variant="outline" 
+                                        className="absolute left-[0.5px] bottom-[-4px] z-10 h-3.5 px-1 text-[9px] font-mono font-black border-none bg-purple-200 text-purple-950 flex items-center justify-center min-w-[20px] shadow-sm"
+                                    >
                                         {props.voiceLimit}
                                     </Badge>
                                 </div>
