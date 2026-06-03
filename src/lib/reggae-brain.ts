@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.2 — "Breathing Riddim Update".
- * #ЗАЧЕМ: Исправление игнорирования Блюпринтов в Регги.
- * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения. Внедрена поддержка Axiom preferredInstrument.
- * #ОБНОВЛЕНО (PLAN #28): Внедрен протокол Harmonic Ripple для оживления длинных нот.
+ * @fileOverview Reggae Brain V4.3 — "Heritage Connectivity Restoration".
+ * #ЗАЧЕМ: Исправление потери связи с облаком.
+ * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
  */
 
 import type {
@@ -82,12 +81,16 @@ export class ReggaeBrain {
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
+        const wasEmpty = this.cloudAxioms.length === 0;
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         
-        if (this.soloistBusyUntilBar === -1) this.soloistBusyUntilBar = 0;
+        // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
+        if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
+            this.soloistBusyUntilBar = -1;
+        }
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
@@ -98,9 +101,6 @@ export class ReggaeBrain {
         return (epoch - startEpoch) % totalBars;
     }
 
-    /**
-     * #ЗАЧЕМ: Протокол ряби для Регги (PLAN #28).
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.5) return [e]; 
 
@@ -164,7 +164,8 @@ export class ReggaeBrain {
             const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('reggae') && (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter);
+                const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
+                return axGenres.includes('reggae') && axCommons.includes(commonMoodFilter);
             });
         }
 
@@ -208,10 +209,14 @@ export class ReggaeBrain {
                     }
 
                     const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accompSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
+                    accompSiblings.forEach(ax => {
+                        this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
+                    });
 
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
+                    drumSiblings.forEach(ax => { 
+                        this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }); 
+                    });
 
                     const baseBars = selected.bars || 4;
                     this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
@@ -291,14 +296,12 @@ export class ReggaeBrain {
             }
         });
 
-        // Generative Harmony Fallback (Guitar Chords Skank)
         if (hints.harmony && !usedLayers.has('harmony')) {
             events.push(...this.renderGenerativeHarmony(resChord, epoch, tension).flatMap(e => this.rippleLongNote(e, resChord)));
             usedLayers.add('harmony');
             harmonyAxiomId = 'Generative Skank';
         }
 
-        // Generative Piano Fallback (Rhodes Bubbling)
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, events.filter(e => e.type === 'melody'));
             if (p.events.length > 0) {
@@ -377,7 +380,7 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        [3, 9].forEach(t => { // Beats 2 and 4 (Skank)
+        [3, 9].forEach(t => { 
             intervals.forEach(interval => {
                 events.push({
                     type: 'harmony',

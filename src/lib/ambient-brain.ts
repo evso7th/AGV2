@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V76.1 — "Ripple Standard Alignment".
- * #ЗАЧЕМ: Устранение застоя в звуке. Длинные ноты больше не тянутся статично.
- * #ЧТО: ПЛАН №1615 — Автоматическое дробление длинных нот на переливы в терции/квинты.
- * #ОБНОВЛЕНО (PLAN #28): Понижен порог активации ряби до 3.5 долей.
+ * @fileOverview Ambient Brain V76.2 — "Heritage Connectivity Restoration".
+ * #ЗАЧЕМ: Исправление потери связи с облаком.
+ * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
  */
 
 import type {
@@ -111,13 +110,20 @@ export class AmbientBrain {
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
+        const wasEmpty = this.cloudAxioms.length === 0;
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
+
+        // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
+        if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
+            this.soloistBusyUntilBar = -1;
+        }
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+        if (totalBars <= 0) return 0;
         if (this.isImprovising) {
             return calculateMusiNum(epoch, 11, this.seed, totalBars);
         }
@@ -192,7 +198,7 @@ export class AmbientBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('accomp') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ 
                             phrase: decompressCompactPhrase(ax.phrase), 
@@ -233,20 +239,13 @@ export class AmbientBrain {
         return undefined;
     }
 
-    /**
-     * #ЗАЧЕМ: Протокол "Harmonic Ripple" (ПЛАН №1615).
-     * #ЧТО: Оживление длинных нот (> 3.5 долей) переливами в терцию, квинту и сексту.
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.5) return [e]; 
 
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
-        
-        // #ЗАЧЕМ: Выбор интервалов: терция, квинта, секста (и малая септима для красок).
         const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
         
-        // Разбиваем длинную ноту на чанки по 1.5 доли для создания ритмического дыхания.
         const numChunks = Math.ceil(e.duration / 1.5); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
@@ -254,9 +253,8 @@ export class AmbientBrain {
         for (let i = 0; i < numChunks; i++) {
             let note: number;
             if (i === 0) {
-                note = e.note; // Первая доля всегда сохраняет оригинал
+                note = e.note; 
             } else {
-                // Оживляем последующие доли через детерминированный выбор гармоник
                 const seedOffset = Math.floor(e.time * 12);
                 const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
                 note = baseOctaveMidi + ripplePool[idx];
@@ -265,7 +263,6 @@ export class AmbientBrain {
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             let finalNote = note;
             
-            // Применяем стандартные ограничения регистра
             if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
             else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
             else finalNote = this.constrainAccompanimentOctave(note);
@@ -274,10 +271,9 @@ export class AmbientBrain {
                 ...e,
                 note: finalNote,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.15, // Небольшой нахлест для плавности
+                duration: chunkDur * 1.15,
                 params: { 
                     ...e.params, 
-                    // #ЗАЧЕМ: Смягчение атаки для переливов (кроме первой ноты).
                     attack: i === 0 ? (e.params?.attack || 1.5) : 0.8,
                     release: 2.5 
                 }
@@ -585,7 +581,7 @@ export class AmbientBrain {
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         return barNotes.map(n => {
-            const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb';
+            const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
             
             return {
                 type: type as any,
@@ -723,7 +719,7 @@ export class AmbientBrain {
                 note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), 
                 time: t * TICK_TO_BEAT, 
                 duration: 3.0 * TICK_TO_BEAT, 
-                weight: 0.6, 
+                weight: 0.7, 
                 technique: 'pick', 
                 dynamics: 'p', 
                 phrasing: 'legato' 
@@ -763,7 +759,7 @@ export class AmbientBrain {
             note: 36, 
             time: 0, 
             duration: 0.1, 
-            weight: 0.7, 
+            weight: 0.8, 
             technique: 'hit', 
             dynamics: 'p', 
             phrasing: 'staccato' 

@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.3 — "Ripple & Harmony Update".
- * #ЗАЧЕМ: Исправление игнорирования Блюпринтов (CS80/BlackAcoustic).
- * #ЧТО: ПЛАН №1645 — Удалены жесткие переопределения в пользу иерархии hints.
- * #ОБНОВЛЕНО (PLAN #28): Внедрен протокол Harmonic Ripple для оживления длинных нот.
+ * @fileOverview Blues Brain V76.4 — "Heritage Connectivity Restoration".
+ * #ЗАЧЕМ: Исправление потери связи с облаком.
+ * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
  */
 
 import {
@@ -176,15 +175,22 @@ export class BluesBrain {
   }
 
   public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean, isImprovising?: boolean) {
+      const wasEmpty = !this.config.cloudAxioms || this.config.cloudAxioms.length === 0;
       this.config.cloudAxioms = axioms;
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
       if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
       if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
+
+      // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
+      if (wasEmpty && this.config.cloudAxioms.length > 0 && this.config.useHeritage) {
+          this.soloistBusyUntilBar = -1;
+      }
   }
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
+      if (totalBars <= 0) return 0;
       if (this.config.isImprovising) {
           return calculateMusiNum(epoch, 7, this.seed, totalBars);
       }
@@ -203,9 +209,6 @@ export class BluesBrain {
       }
   }
 
-  /**
-   * #ЗАЧЕМ: Протокол ряби для Блюза (PLAN #28).
-   */
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
     if (e.duration < 3.5) return [e]; 
 

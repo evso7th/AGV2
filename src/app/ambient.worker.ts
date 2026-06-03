@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.3 — "Silent Bridge Update".
- * #ЗАЧЕМ: Подавление спама системных сообщений Monospace (shortCuts).
- * #ЧТО: ПЛАН №6 — Явный игнор и поглощение IDE-событий.
+ * @file AuraGroove Music Worker V5.4 — "Heritage Connectivity Update".
+ * #ЗАЧЕМ: Исправление потери связи с облачными аксиомами при поздней загрузке.
+ * #ЧТО: ПЛАН №35 — Принудительная инициализация при первом получении данных.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -66,7 +66,6 @@ const Scheduler = {
     } as WorkerSettings,
 
     get barDuration() { 
-        // #ЗАЧЕМ: Защита от нулевого или отрицательного BPM, ведущего к спаму.
         const safeBpm = Math.max(30, this.settings.bpm || 75);
         return (60 / safeBpm) * 4; 
     },
@@ -224,8 +223,12 @@ const Scheduler = {
     },
 
     updateCloudAxioms(axioms: any[]) {
+        const wasEmpty = this.cloudAxiomPool.length === 0;
         this.cloudAxiomPool = axioms || [];
-        if (this.barCount === 0 && !fractalMusicEngine && this.cloudAxiomPool.length > 0) {
+        
+        // #ЗАЧЕМ: Если мы в режиме Heritage, но движок запустился пустым,
+        // нужно немедленно переинициализироваться при поступлении данных.
+        if (wasEmpty && this.cloudAxiomPool.length > 0 && this.settings.useHeritage) {
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
             fractalMusicEngine.updateConfig({ cloudAxioms: axioms } as any);
@@ -305,7 +308,6 @@ const Scheduler = {
 };
 
 self.onmessage = (event: MessageEvent) => {
-    // #ЗАЧЕМ: ПЛАН №6. Явное поглощение системных сообщений Monospace IDE.
     if (event.data?.type === 'shortCuts') return;
     
     if (!event.data || !event.data.command) return;
