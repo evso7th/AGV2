@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.0 — "Preset Stewardship Update".
- * #ЧТО: ПЛАН №30 — Добавлена блокировка автомикса при активном пользовательском пресете и функции обновления пресетов.
+ * #ЗАЧЕМ: Хук управления музыкой V9.1 — "Preset Persistence Update".
+ * #ЧТО: ПЛАН №31 — Добавлено сохранение ID активных пресетов в localStorage для надежного обновления.
  */
 'use client';
 
@@ -23,6 +22,8 @@ const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
 const TRACK_HISTORY_KEY = 'AuraGroove_TrackHistory';
 const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
 const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
+const ACTIVE_EQ_ID_KEY = 'AuraGroove_ActiveEqPresetId';
+const ACTIVE_MIXER_ID_KEY = 'AuraGroove_ActiveMixerPresetId';
 
 export type PresetItem = { id: string; name: string; values: any };
 
@@ -194,6 +195,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (savedEq) { try { setEqPresets(JSON.parse(savedEq)); } catch (e) {} }
       const savedMixer = localStorage.getItem(MIXER_PRESETS_KEY);
       if (savedMixer) { try { setMixerPresets(JSON.parse(savedMixer)); } catch (e) {} }
+      
+      const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
+      if (activeMixerId) setActiveMixerPresetId(activeMixerId);
+      const activeEqId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
+      if (activeEqId) setActiveEqPresetId(activeEqId);
   }, []);
 
   const saveEqPreset = (name: string) => {
@@ -202,6 +208,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setEqPresets(updated);
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
       setActiveEqPresetId(newPreset.id);
+      localStorage.setItem(ACTIVE_EQ_ID_KEY, newPreset.id);
       toast({ title: "EQ Preset Saved" });
   };
 
@@ -219,12 +226,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
           setEqSettings(preset.values);
           preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
           setActiveEqPresetId(id);
+          localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
           toast({ title: "EQ Preset Loaded", description: preset.name });
       }
   };
 
   const deleteEqPreset = (id: string) => {
-      if (id === activeEqPresetId) setActiveEqPresetId(null);
+      if (id === activeEqPresetId) {
+          setActiveEqPresetId(null);
+          localStorage.removeItem(ACTIVE_EQ_ID_KEY);
+      }
       const updated = eqPresets.filter(p => p.id !== id);
       setEqPresets(updated);
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
@@ -249,6 +260,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setMixerPresets(updated);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
       setActiveMixerPresetId(newPreset.id);
+      localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
       toast({ title: "Mixer Preset Saved" });
   };
 
@@ -290,12 +302,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sfx: { ...prev.sfx, volume: v.sfx }
           }));
           setActiveMixerPresetId(id);
+          localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
           toast({ title: "Mixer Preset Loaded", description: preset.name });
       }
   };
 
   const deleteMixerPreset = (id: string) => {
-      if (id === activeMixerPresetId) setActiveMixerPresetId(null);
+      if (id === activeMixerPresetId) {
+          setActiveMixerPresetId(null);
+          localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+      }
       const updated = mixerPresets.filter(p => p.id !== id);
       setMixerPresets(updated);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
@@ -303,6 +319,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const resetMixerToSystem = () => {
     setActiveMixerPresetId(null);
+    localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
     applyAutoMix();
     toast({ title: "Switched to System Default" });
   };

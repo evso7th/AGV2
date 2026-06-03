@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.4 — "Preset Stewardship Update".
- * #ЧТО: ПЛАН №30 — Добавлена индикация активного пресета и кнопка Update в менеджеры.
+ * #ЗАЧЕМ: UI AuraGroove V6.5 — "Preset Visibility & Guidance".
+ * #ЧТО: ПЛАН №31 — Улучшена видимость кнопок обновления и добавлена текстовая подсказка.
  */
 'use client';
 
@@ -160,8 +159,9 @@ function PresetManager({
                     <Save className="h-3.5 w-3.5" />
                 </Button>
                 {activeId && onUpdate && (
-                    <Button size="sm" variant="secondary" onClick={onUpdate} className="h-8 px-3" title="Update Current">
+                    <Button size="sm" variant="secondary" onClick={onUpdate} className="h-8 px-4 gap-2 font-black uppercase text-[10px]" title="Overwrite Current">
                         <SaveAll className="h-3.5 w-3.5" />
+                        Save Changes
                     </Button>
                 )}
             </div>
