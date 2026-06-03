@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V40.6 — "Media Session Integration".
- * #ЗАЧЕМ: Поддержка системного управления и отображения метаданных (Media Session API).
- * #ЧТО: ПЛАН №7 — Добавлена синхронизация с ОС (Album, Title, Play/Pause handlers).
+ * @fileOverview Audio Engine Context V40.7 — "Dynamic Capacity Defaults".
+ * #ЗАЧЕМ: Оптимизация производительности под разные типы устройств.
+ * #ЧТО: ПЛАН №33 — Установлены дефолты: 120 голосов для Mobile, 256 для PC.
  */
 'use client';
 
@@ -119,7 +119,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
-  const [voiceLimit, setVoiceLimitState] = useState(150);
+  // #ЗАЧЕМ: ПЛАН №33. Дефолтный лимит 256 (для PC).
+  const [voiceLimit, setVoiceLimitState] = useState(256);
 
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -213,9 +214,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, calibrationGains, applyCalibration]);
 
   useEffect(() => {
-    // #ЗАЧЕМ: Автоматическое определение лимита голосов по типу устройства.
+    // #ЗАЧЕМ: ПЛАН №33. Автоматическое определение лимита голосов.
+    // 120 для мобильных устройств, 256 для десктопа.
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const defaultLimit = isMobile ? 60 : 150;
+    const defaultLimit = isMobile ? 120 : 256;
     setVoiceLimitState(defaultLimit);
     setGlobalVoiceLimit(defaultLimit);
   }, []);

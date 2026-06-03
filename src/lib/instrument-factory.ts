@@ -1,14 +1,13 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.2 — "Legion & Soft Highs".
- * #ЗАЧЕМ: Реализация Отрицательного Кейтрекинга (PLAN #28).
- * #ЧТО: Динамическое смягчение фильтра для высоких нот органов и пэдов.
+ * @fileOverview Центральная фабрика инструментов V7.3 — "Global Capacity Default".
+ * #ЗАЧЕМ: ПЛАН №33 — Обновление лимита по умолчанию до 256.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 150; 
+let globalVoiceLimit = 256; // #ЗАЧЕМ: ПЛАН №33. Дефолт для PC.
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
