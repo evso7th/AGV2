@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.7 — "Voice Badge Design Overhaul".
- * #ЧТО: ПЛАН №34 — Рестайлинг бэджа: тёмный шрифт, светлый фон, перекрытие буквы A.
+ * #ЗАЧЕМ: UI AuraGroove V6.8 — "Interactive Route Jump".
+ * #ЧТО: ПЛАН №36 — Карточки маршрута теперь кликабельны для мгновенного перехода.
  */
 'use client';
 
@@ -187,12 +187,14 @@ function SortableRouteItem({
     item, 
     isActive, 
     progress,
-    onRemove 
+    onRemove,
+    onSelect // #ЗАЧЕМ: Проброс выбора для ручного перехода.
 }: { 
     item: RouteItem, 
     isActive: boolean, 
     progress?: number,
-    onRemove: (id: string) => void 
+    onRemove: (id: string) => void,
+    onSelect: (id: string) => void
 }) {
     const {
         attributes,
@@ -212,9 +214,10 @@ function SortableRouteItem({
         <div 
             ref={setNodeRef} 
             style={style} 
+            onClick={() => !isActive && onSelect(item.id)} // #ЗАЧЕМ: ПЛАН №36. Переход при клике на неактивный элемент.
             className={cn(
-                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden",
-                isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent",
+                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
+                isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:border-primary/20",
                 isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
             )}
         >
@@ -227,11 +230,12 @@ function SortableRouteItem({
                 </div>
             )}
 
-            <div className="flex items-center gap-3 overflow-hidden z-10">
+            <div className="flex items-center gap-3 overflow-hidden z-10 pointer-events-none">
                 <div 
                     {...attributes} 
                     {...listeners} 
-                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none"
+                    onClick={(e) => e.stopPropagation()} // #ЗАЧЕМ: Предотвращаем запуск воспроизведения при захвате.
+                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none pointer-events-auto"
                 >
                     <GripVertical className="h-4 w-4" />
                 </div>
@@ -245,7 +249,7 @@ function SortableRouteItem({
                 variant="ghost" 
                 size="icon" 
                 className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
-                onClick={() => onRemove(item.id)}
+                onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} // #ЗАЧЕМ: Удаление не должно запускать пункт.
             >
                 <X className="h-4 w-4" />
             </Button>
@@ -385,6 +389,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                                 isActive={isActive}
                                                 progress={progress}
                                                 onRemove={props.removeFromRoute}
+                                                onSelect={props.selectRouteItem}
                                             />
                                         );
                                     })}

@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: Хук управления музыкой V9.1 — "Preset Persistence Update".
- * #ЧТО: ПЛАН №31 — Добавлено сохранение ID активных пресетов в localStorage для надежного обновления.
+ * #ЗАЧЕМ: Хук управления музыкой V10.0 — "Manual Route Jump".
+ * #ЧТО: ПЛАН №36 — Добавлен метод selectRouteItem для мгновенного переключения и перезапуска с 0 такта.
  */
 'use client';
 
@@ -88,6 +88,7 @@ export type AuraGrooveProps = {
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
+  selectRouteItem: (id: string) => void; // NEW: ПЛАН №36
   refreshRoute: () => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
   reorderRoute: (activeId: string, overId: string) => void;
@@ -447,6 +448,25 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => prev.filter(it => it.id !== id));
   };
 
+  // #ЗАЧЕМ: ПЛАН №36. Ручное переключение точки маршрута.
+  const selectRouteItem = useCallback((id: string) => {
+      const item = route.find(it => it.id === id);
+      if (!item) return;
+
+      // Принудительная остановка для чистого старта с 0 такта
+      setEngineIsPlaying(false);
+      
+      // Небольшая задержка для завершения текущих процессов в воркере
+      setTimeout(() => {
+          applyRouteItem(item);
+          setEngineIsPlaying(true);
+          toast({ 
+              title: "Manual Journey Jump", 
+              description: `Jumping to: ${item.genre.toUpperCase()} / ${item.mood.toUpperCase()}` 
+          });
+      }, 50);
+  }, [route, applyRouteItem, setEngineIsPlaying, toast]);
+
   const moveRouteItem = (id: string, direction: 'up' | 'down') => {
       setRoute(prev => {
           const idx = prev.findIndex(it => it.id === id);
@@ -577,7 +597,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood, genre, setGenre, introBars, setIntroBars,
     voiceLimit, setVoiceLimit,
-    route, addToRoute, removeFromRoute, refreshRoute: refreshRouteAction, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
+    route, addToRoute, removeFromRoute, selectRouteItem, refreshRoute: refreshRouteAction, moveRouteItem, reorderRoute, saveRoute, loadRoute, deleteSavedRoute, savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
