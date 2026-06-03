@@ -12,16 +12,8 @@ import { getFirestore } from 'firebase/firestore';
  */
 export function initializeFirebase() {
   if (!getApps().length) {
-    let firebaseApp;
-    try {
-      // Попытка инициализации через окружение Firebase App Hosting
-      firebaseApp = initializeApp();
-    } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
+    // Прямая инициализация с использованием конфига для избежания ошибок при сборке
+    const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
   return getSdks(getApp());
