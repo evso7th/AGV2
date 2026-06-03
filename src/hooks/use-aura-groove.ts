@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V8.8 — "Path & DNA Control Update".
- * #ЧТО: ПЛАН №29 — Добавлены методы refreshRoute и управления DNA.
+ * #ЗАЧЕМ: Хук управления музыкой V9.0 — "Preset Stewardship Update".
+ * #ЧТО: ПЛАН №30 — Добавлена блокировка автомикса при активном пользовательском пресете и функции обновления пресетов.
  */
 'use client';
 
@@ -103,15 +103,20 @@ export type AuraGrooveProps = {
   setShowAdvancedUI: (val: boolean) => void;
   currentBar: number;
   totalBars: number;
-  // --- Preset Specific ---
+  // --- Preset Stewardship ---
   eqPresets: PresetItem[];
+  activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
+  updateActiveEqPreset: () => void;
   loadEqPreset: (id: string) => void;
   deleteEqPreset: (id: string) => void;
   mixerPresets: PresetItem[];
+  activeMixerPresetId: string | null;
   saveMixerPreset: (name: string) => void;
+  updateActiveMixerPreset: () => void;
   loadMixerPreset: (id: string) => void;
   deleteMixerPreset: (id: string) => void;
+  resetMixerToSystem: () => void;
 };
 
 export const useAuraGroove = (): AuraGrooveProps => {
@@ -167,8 +172,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRepeat, setRepeat] = useState(false);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  
+  // --- Preset States ---
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
+  const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
+  const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
+
   const [currentBar, setCurrentBar] = useState(0);
   const [totalBars, setTotalBars] = useState(144);
 
@@ -191,7 +201,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
       const updated = [...eqPresets, newPreset];
       setEqPresets(updated);
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+      setActiveEqPresetId(newPreset.id);
       toast({ title: "EQ Preset Saved" });
+  };
+
+  const updateActiveEqPreset = () => {
+    if (!activeEqPresetId) return;
+    const updated = eqPresets.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p);
+    setEqPresets(updated);
+    localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
+    toast({ title: "EQ Preset Updated" });
   };
 
   const loadEqPreset = (id: string) => {
@@ -199,33 +218,47 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (preset) {
           setEqSettings(preset.values);
           preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
+          setActiveEqPresetId(id);
           toast({ title: "EQ Preset Loaded", description: preset.name });
       }
   };
 
   const deleteEqPreset = (id: string) => {
+      if (id === activeEqPresetId) setActiveEqPresetId(null);
       const updated = eqPresets.filter(p => p.id !== id);
       setEqPresets(updated);
       localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
   };
 
+  const getMixerValues = useCallback(() => ({
+    bass: instrumentSettings.bass.volume,
+    melody: instrumentSettings.melody.volume,
+    accompaniment: instrumentSettings.accompaniment.volume,
+    harmony: instrumentSettings.harmony.volume,
+    pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+    drums: drumSettings.volume,
+    sparkles: textureSettings.sparkles.volume,
+    sfx: textureSettings.sfx.volume,
+    master: calibrationGains.master
+  }), [instrumentSettings, drumSettings, textureSettings, calibrationGains.master]);
+
   const saveMixerPreset = (name: string) => {
-      const values = {
-          bass: instrumentSettings.bass.volume,
-          melody: instrumentSettings.melody.volume,
-          accompaniment: instrumentSettings.accompaniment.volume,
-          harmony: instrumentSettings.harmony.volume,
-          pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
-          drums: drumSettings.volume,
-          sparkles: textureSettings.sparkles.volume,
-          sfx: textureSettings.sfx.volume,
-          master: calibrationGains.master
-      };
+      const values = getMixerValues();
       const newPreset: PresetItem = { id: `mixer-${Date.now()}`, name, values };
       const updated = [...mixerPresets, newPreset];
       setMixerPresets(updated);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+      setActiveMixerPresetId(newPreset.id);
       toast({ title: "Mixer Preset Saved" });
+  };
+
+  const updateActiveMixerPreset = () => {
+    if (!activeMixerPresetId) return;
+    const values = getMixerValues();
+    const updated = mixerPresets.map(p => p.id === activeMixerPresetId ? { ...p, values } : p);
+    setMixerPresets(updated);
+    localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+    toast({ title: "Mixer Preset Updated" });
   };
 
   const loadMixerPreset = (id: string) => {
@@ -256,14 +289,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sparkles: { ...prev.sparkles, volume: v.sparkles },
               sfx: { ...prev.sfx, volume: v.sfx }
           }));
+          setActiveMixerPresetId(id);
           toast({ title: "Mixer Preset Loaded", description: preset.name });
       }
   };
 
   const deleteMixerPreset = (id: string) => {
+      if (id === activeMixerPresetId) setActiveMixerPresetId(null);
       const updated = mixerPresets.filter(p => p.id !== id);
       setMixerPresets(updated);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
+  };
+
+  const resetMixerToSystem = () => {
+    setActiveMixerPresetId(null);
+    applyAutoMix();
+    toast({ title: "Switched to System Default" });
   };
 
   useEffect(() => {
@@ -410,8 +451,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   };
 
+  /**
+   * #ЗАЧЕМ: Применение автоматического баланса жанра.
+   * #ЧТО: ПЛАН №30 — Добавлена блокировка, если активен пользовательский пресет.
+   */
   const applyAutoMix = useCallback(() => {
       if (!isInitialized) return;
+      
+      // #ЗАЧЕМ: Если пользователь загрузил свои настройки, система не должна их перетирать.
+      if (activeMixerPresetId) {
+          console.log(`[AutoMix] Blocked: User Preset "${activeMixerPresetId}" is active.`);
+          return;
+      }
+
       const masterGenreMix = GENRE_MASTER_MIX[genre];
       const blueprint = getBlueprint(genre, mood);
       const moodOverrideMix = blueprint.soundMix || {};
@@ -427,9 +479,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
       if (finalMix.sparkles !== undefined) { setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); }
       if (finalMix.sfx !== undefined) { setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); }
-  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled]);
+  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled, activeMixerPresetId]);
 
-  useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized]);
+  useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized, applyAutoMix]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -512,7 +564,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
-    eqPresets, saveEqPreset, loadEqPreset, deleteEqPreset,
-    mixerPresets, saveMixerPreset, loadMixerPreset, deleteMixerPreset
+    // --- Preset Stewardship ---
+    eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem
   };
 };

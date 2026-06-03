@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.3 — "Path & DNA Control Update".
- * #ЧТО: ПЛАН №29 — Добавлены кнопки Refresh Path и DNA Toggle в футер.
+ * #ЗАЧЕМ: UI AuraGroove V6.4 — "Preset Stewardship Update".
+ * #ЧТО: ПЛАН №30 — Добавлена индикация активного пресета и кнопка Update в менеджеры.
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap, Dna
+    GripVertical, Zap, Dna, SaveAll, RotateCcw
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -44,7 +44,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from '@radix-ui/react-sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 const GENRES = [
@@ -118,29 +118,61 @@ function SimpleVerticalList({
 
 function PresetManager({ 
     presets, 
+    activeId,
     onSave, 
+    onUpdate,
     onLoad, 
     onDelete, 
-    title 
+    title,
+    onReset
 }: { 
     presets: PresetItem[], 
+    activeId: string | null,
     onSave: (name: string) => void, 
+    onUpdate?: () => void,
     onLoad: (id: string) => void, 
     onDelete: (id: string) => void,
-    title: string
+    title: string,
+    onReset?: () => void
 }) {
     const [name, setName] = useState("");
+    const activePreset = presets.find(p => p.id === activeId);
+
     return (
         <div className="space-y-4 pt-4 border-t border-primary/10 mt-4">
-            <Label className="text-[10px] font-black uppercase opacity-50 tracking-widest">{title} Presets</Label>
-            <div className="flex gap-2">
-                <Input placeholder="Preset Name" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background" />
-                <Button size="sm" onClick={() => { if(name.trim()){ onSave(name); setName(""); }}} className="h-8 px-3"><Save className="h-3.5 w-3.5" /></Button>
+            <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase opacity-50 tracking-widest">{title} Control</Label>
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={cn("text-[8px] font-black uppercase", activeId ? "text-primary border-primary/30" : "opacity-40")}>
+                        {activeId ? activePreset?.name : "System Default"}
+                    </Badge>
+                    {onReset && (
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onReset} title="Reset to System">
+                            <RotateCcw className="h-3 w-3" />
+                        </Button>
+                    )}
+                </div>
             </div>
+            
+            <div className="flex gap-2">
+                <Input placeholder="New Name" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background" />
+                <Button size="sm" onClick={() => { if(name.trim()){ onSave(name); setName(""); }}} className="h-8 px-3" title="Save New">
+                    <Save className="h-3.5 w-3.5" />
+                </Button>
+                {activeId && onUpdate && (
+                    <Button size="sm" variant="secondary" onClick={onUpdate} className="h-8 px-3" title="Update Current">
+                        <SaveAll className="h-3.5 w-3.5" />
+                    </Button>
+                )}
+            </div>
+            
             <ScrollArea className="h-32">
                 <div className="space-y-1">
                     {presets.map(p => (
-                        <div key={p.id} className="flex items-center justify-between p-1.5 rounded bg-muted/30 border border-transparent hover:border-primary/20 group">
+                        <div key={p.id} className={cn(
+                            "flex items-center justify-between p-1.5 rounded border transition-all group",
+                            p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
+                        )}>
                             <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow" onClick={() => onLoad(p.id)}>{p.name}</span>
                             <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
@@ -428,7 +460,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         const vol = ch.key === 'master' ? props.calibrationGains.master : (ch.key === 'drums' ? props.drumSettings.volume : (['sparkles','sfx'].includes(ch.key) ? (props.textureSettings as any)[ch.key].volume : (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5));
                         return (<div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group"><span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span><Slider orientation="vertical" value={[vol]} max={ch.key === 'master' ? 1.5 : 1.0} step={0.01} onValueChange={v => { if(ch.key === 'master') props.handleCalibrationChange('master', v[0]); else props.handleVolumeChange(ch.key as any, v[0]); }} className="h-full" /><span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span></div>);
                     })}</div>
-                    <PresetManager title="Mixer" presets={props.mixerPresets} onSave={props.saveMixerPreset} onLoad={props.loadMixerPreset} onDelete={props.deleteMixerPreset} />
+                    <PresetManager 
+                        title="Mixer" 
+                        presets={props.mixerPresets} 
+                        activeId={props.activeMixerPresetId}
+                        onSave={props.saveMixerPreset} 
+                        onUpdate={props.updateActiveMixerPreset}
+                        onLoad={props.loadMixerPreset} 
+                        onDelete={props.deleteMixerPreset} 
+                        onReset={props.resetMixerToSystem}
+                    />
                 </DialogContent>
             </Dialog>
 
@@ -436,7 +477,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> Equalizer</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings[index] > 0 ? '+' : ''}{props.eqSettings[index].toFixed(1)}</span><Slider value={[props.eqSettings[index]]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
-                    <PresetManager title="EQ" presets={props.eqPresets} onSave={props.saveEqPreset} onLoad={props.loadEqPreset} onDelete={props.deleteEqPreset} />
+                    <PresetManager 
+                        title="EQ" 
+                        presets={props.eqPresets} 
+                        activeId={props.activeEqPresetId}
+                        onSave={props.saveEqPreset} 
+                        onUpdate={props.updateActiveEqPreset}
+                        onLoad={props.loadEqPreset} 
+                        onDelete={props.deleteEqPreset} 
+                    />
                 </DialogContent>
             </Dialog>
 
