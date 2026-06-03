@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v33.0 — Controlled Dualism).
- * #ЧТО: ПЛАН №989 — Регулировка вероятности Рояля (pianoProbability) в каждой части.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v34.0 — Transition Reform).
+ * #ЧТО: ПЛАН №27 — Сокращение переходов до 4 тактов. Бас + Ударные + случайный 3-й инструмент.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -27,7 +27,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
     structure: {
         totalDuration: { preferredBars: 160 },
         parts: [
-            // --- 1. INTRO ---
+            // --- 1. INTRO (6% = ~10 bars) ---
             {
                 id: 'INTRO', name: 'BirthLottery', duration: { percent: 6 }, 
                 layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -42,14 +42,13 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                     bass: { techniques: [{ value: 'walking', weight: 1.0 }] },
                     accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
                     melody: { source: 'blues_solo', register: { preferred: 'low' }, timeScale: 1 },
-                    // #ЗАЧЕМ: Минимум рояля в интро.
                     pianoAccompaniment: { timeScale: 1, pianoProbability: 0.1 }
                 },
                 bundles: [{ id: 'INTRO_B', name: 'Birth', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
-            // --- 2. MAIN 1 (The Theme) ---
+            // --- 2. MAIN 1 (The Theme) (20% = 32 bars) ---
             {
                 id: 'MAIN_1', name: 'Theme Arrival', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -67,19 +66,32 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 3. BRIDGE 1 (Morph) ---
+            // --- 3. BRIDGE 1 (4 bars) ---
             {
-                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 3 }, 
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 2.5 }, 
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 100 },
+                        instrumentation: {
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass', weight: 1.0 }] },
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
+                            melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
+                            accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+                        }
+                    }
+                ],
                 instrumentRules: { 
-                    accompaniment: { density: { min: 0.2, max: 0.4 } },
-                    pianoAccompaniment: { pianoProbability: 0.5 } // Повышенный рояль на мосту
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }] },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.3 } }
                 },
                 bundles: [{ id: 'B1_B', name: 'Crossing', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
-            // --- 4. MAIN 2 (Dialogue) ---
+            // --- 4. MAIN 2 (Dialogue) (20% = 32 bars) ---
             {
                 id: 'MAIN_2', name: 'The Dialogue', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -97,15 +109,32 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 5. BRIDGE 2 ---
+            // --- 5. BRIDGE 2 (4 bars) ---
             {
-                id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 2.5 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 100 },
+                        instrumentation: {
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass', weight: 1.0 }] },
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
+                            melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
+                            accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+                        }
+                    }
+                ],
+                instrumentRules: { 
+                    bass: { techniques: [{ value: 'pedal', weight: 1.0 }] },
+                    drums: { pattern: 'ambient_beat' }
+                },
                 bundles: [{ id: 'B2_B', name: 'Breath', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
-            // --- 6. MAIN 3 (Deep Inversion) ---
+            // --- 6. MAIN 3 (Deep Inversion) (20% = 32 bars) ---
             {
                 id: 'MAIN_3', name: 'Introspection', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -123,15 +152,28 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 7. BRIDGE 3 ---
+            // --- 7. BRIDGE 3 (4 bars) ---
             {
-                id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 2.5 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 100 },
+                        instrumentation: {
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass', weight: 1.0 }] },
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
+                            melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
+                            accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+                        }
+                    }
+                ],
                 bundles: [{ id: 'B3_B', name: 'Rise', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
-            // --- 8. MAIN 4 (The Peak) ---
+            // --- 8. MAIN 4 (The Peak) (20% = 32 bars) ---
             {
                 id: 'MAIN_4', name: 'The Final Climax', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -143,23 +185,36 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },
                     melody: { source: 'blues_solo', density: { min: 0.8, max: 1.0 }, timeScale: 1 },
-                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.6 } // Пик рояля
+                    pianoAccompaniment: { timeScale: 1, pianoProbability: 0.6 }
                 },
                 bundles: [{ id: 'M4_B', name: 'The Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
-            // --- 9. BRIDGE 4 ---
+            // --- 9. BRIDGE 4 (4 bars) ---
             {
-                id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 3 },
-                layers: { bass: true, accompaniment: true, melody: true, drums: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
+                id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 2.5 },
+                layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                stagedInstrumentation: [
+                    {
+                        duration: { percent: 100 },
+                        instrumentation: {
+                            bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass', weight: 1.0 }] },
+                            drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
+                            melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
+                            accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
+                        }
+                    }
+                ],
                 bundles: [{ id: 'B4_B', name: 'Dissolve', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
 
             // --- 10. OUTRO ---
             {
-                id: 'OUTRO', name: 'Final Breath', duration: { percent: 4 }, 
+                id: 'OUTRO', name: 'Final Breath', duration: { percent: 5 }, 
                 layers: { bass: true, accompaniment: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
