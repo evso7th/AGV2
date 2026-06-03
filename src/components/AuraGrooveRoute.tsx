@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.5 — "Preset Visibility & Guidance".
- * #ЧТО: ПЛАН №31 — Улучшена видимость кнопок обновления и добавлена текстовая подсказка.
+ * #ЗАЧЕМ: UI AuraGroove V6.6 — "Polyphony Control Restoration".
+ * #ЧТО: ПЛАН №32 — Удален доступ к Expert Mode, возвращен контроль лимита голосов и добавлен инфо-бэдж в шапку.
  */
 'use client';
 
@@ -10,7 +10,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap, Dna, SaveAll, RotateCcw
+    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -304,7 +304,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="flex flex-row items-center gap-2 cursor-pointer hover:opacity-80 transition-all"
                         >
                             <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={32} height={32} className="rounded-full" />
-                            <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-1.5">
+                                    <h1 className="text-lg font-bold text-primary tracking-tighter">AuraGroove</h1>
+                                    <Badge variant="outline" className="h-4 px-1 text-[8px] font-mono opacity-50 border-primary/20">
+                                        {props.voiceLimit}
+                                    </Badge>
+                                </div>
+                            </div>
                         </div>
                         <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-6 font-black uppercase tracking-widest shadow-lg">
                             {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
@@ -406,7 +413,39 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
 
                     <div className="flex gap-1 items-center">
-                        <Button variant="ghost" size="icon" onClick={() => router.push('/aura-groove')} className="h-10 w-10 opacity-20 hover:opacity-100 transition-opacity"><Cog className="h-4 w-4" /></Button>
+                        <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" size="icon" className="h-10 w-10" title="Voice Limit">
+                                    <Layers className="h-4 w-4" />
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+                                <DialogHeader>
+                                    <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
+                                        <Layers className="h-5 w-5" /> Polyphony Control
+                                    </DialogTitle>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Global active voice limit</DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-8 py-6">
+                                    <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
+                                        <Label className="text-right text-[10px] font-black uppercase opacity-50">Limit</Label>
+                                        <Slider
+                                            value={[props.voiceLimit]}
+                                            min={32}
+                                            max={256}
+                                            step={8}
+                                            onValueChange={(v) => props.setVoiceLimit(v[0])}
+                                        />
+                                        <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.voiceLimit}</span>
+                                    </div>
+                                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                                        <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
+                                            Lower limit saves CPU on mobile. Higher limit provides richer tails.
+                                        </p>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                         
                         <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                             <DialogTrigger asChild>
