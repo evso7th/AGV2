@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: Хук управления музыкой V10.0 — "Manual Route Jump".
- * #ЧТО: ПЛАН №36 — Добавлен метод selectRouteItem для мгновенного переключения и перезапуска с 0 такта.
+ * #ЗАЧЕМ: Хук управления музыкой V10.1 — "State Persistence & Extended Capacity".
+ * #ЧТО: ПЛАН №58 — Автоматическая загрузка настроек при старте. Исправлены функции маршрутов.
  */
 'use client';
 
@@ -88,7 +89,7 @@ export type AuraGrooveProps = {
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
-  selectRouteItem: (id: string) => void; // NEW: ПЛАН №36
+  selectRouteItem: (id: string) => void; 
   refreshRoute: () => void;
   moveRouteItem: (id: string, direction: 'up' | 'down') => void;
   reorderRoute: (activeId: string, overId: string) => void;
@@ -175,7 +176,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   
-  // --- Preset States ---
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
   const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
@@ -203,6 +203,60 @@ export const useAuraGroove = (): AuraGrooveProps => {
       if (activeEqId) setActiveEqPresetId(activeEqId);
   }, []);
 
+  const loadEqPreset = useCallback((id: string) => {
+      const preset = eqPresets.find(p => p.id === id);
+      if (preset) {
+          setEqSettings(preset.values);
+          preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
+          setActiveEqPresetId(id);
+          localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
+      }
+  }, [eqPresets, setEQGain]);
+
+  const loadMixerPreset = useCallback((id: string) => {
+      const preset = mixerPresets.find(p => p.id === id);
+      if (preset) {
+          const v = preset.values;
+          setVolume('bass', v.bass);
+          setVolume('melody', v.melody);
+          setVolume('accompaniment', v.accompaniment);
+          setVolume('harmony', v.harmony);
+          setVolume('pianoAccompaniment', v.pianoAccompaniment);
+          setVolume('drums', v.drums);
+          setVolume('sparkles', v.sparkles);
+          setVolume('sfx', v.sfx);
+          setCalibrationGain('master', v.master);
+
+          setInstrumentSettings(prev => ({
+              ...prev,
+              bass: { ...prev.bass, volume: v.bass },
+              melody: { ...prev.melody, volume: v.melody },
+              accompaniment: { ...prev.accompaniment, volume: v.accompaniment },
+              harmony: { ...prev.harmony, volume: v.harmony },
+              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment }
+          }));
+          setDrumSettings(prev => ({ ...prev, volume: v.drums }));
+          setTextureSettings(prev => ({
+              ...prev,
+              sparkles: { ...prev.sparkles, volume: v.sparkles },
+              sfx: { ...prev.sfx, volume: v.sfx }
+          }));
+          setActiveMixerPresetId(id);
+          localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
+      }
+  }, [mixerPresets, setVolume, setCalibrationGain]);
+
+  // #ЗАЧЕМ: ПЛАН №58. Авто-применение настроек при готовности движка.
+  useEffect(() => {
+      if (isInitialized) {
+          const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
+          if (activeMixerId) loadMixerPreset(activeMixerId);
+
+          const activeEqId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
+          if (activeEqId) loadEqPreset(activeEqId);
+      }
+  }, [isInitialized, loadMixerPreset, loadEqPreset]);
+
   const saveEqPreset = (name: string) => {
       const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
       const updated = [...eqPresets, newPreset];
@@ -219,17 +273,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setEqPresets(updated);
     localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(updated));
     toast({ title: "EQ Preset Updated" });
-  };
-
-  const loadEqPreset = (id: string) => {
-      const preset = eqPresets.find(p => p.id === id);
-      if (preset) {
-          setEqSettings(preset.values);
-          preset.values.forEach((val: number, idx: number) => setEQGain(idx, val));
-          setActiveEqPresetId(id);
-          localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
-          toast({ title: "EQ Preset Loaded", description: preset.name });
-      }
   };
 
   const deleteEqPreset = (id: string) => {
@@ -274,40 +317,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: "Mixer Preset Updated" });
   };
 
-  const loadMixerPreset = (id: string) => {
-      const preset = mixerPresets.find(p => p.id === id);
-      if (preset) {
-          const v = preset.values;
-          setVolume('bass', v.bass);
-          setVolume('melody', v.melody);
-          setVolume('accompaniment', v.accompaniment);
-          setVolume('harmony', v.harmony);
-          setVolume('pianoAccompaniment', v.pianoAccompaniment);
-          setVolume('drums', v.drums);
-          setVolume('sparkles', v.sparkles);
-          setVolume('sfx', v.sfx);
-          setCalibrationGain('master', v.master);
-
-          setInstrumentSettings(prev => ({
-              ...prev,
-              bass: { ...prev.bass, volume: v.bass },
-              melody: { ...prev.melody, volume: v.melody },
-              accompaniment: { ...prev.accompaniment, volume: v.accompaniment },
-              harmony: { ...prev.harmony, volume: v.harmony },
-              pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment }
-          }));
-          setDrumSettings(prev => ({ ...prev, volume: v.drums }));
-          setTextureSettings(prev => ({
-              ...prev,
-              sparkles: { ...prev.sparkles, volume: v.sparkles },
-              sfx: { ...prev.sfx, volume: v.sfx }
-          }));
-          setActiveMixerPresetId(id);
-          localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
-          toast({ title: "Mixer Preset Loaded", description: preset.name });
-      }
-  };
-
   const deleteMixerPreset = (id: string) => {
       if (id === activeMixerPresetId) {
           setActiveMixerPresetId(null);
@@ -344,6 +353,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
       toast({ title: "Journey Saved", description: name });
   };
 
+  const deleteSavedRoute = (id: string) => {
+      const updated = savedRoutes.filter(r => r.id !== id);
+      setSavedRoutes(updated);
+      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
+  };
+
   const applyRouteItem = useCallback((item: RouteItem) => {
     const g = item.genre === 'random' ? (['ambient', 'psybient', 'blues', 'reggae'] as Genre[])[Math.floor(Math.random() * 4)] : item.genre;
     const m = item.mood === 'random' ? (['melancholic', 'dreamy', 'joyful', 'calm'] as Mood[])[Math.floor(Math.random() * 4)] : item.mood;
@@ -365,12 +380,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       toast({ title: "Journey Loaded", description: saved.name });
   };
 
-  const deleteSavedRoute = (id: string) => {
-      const updated = savedRoutes.filter(r => r.id !== id);
-      setSavedRoutes(updated);
-      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(updated));
-  };
-
   useEffect(() => { initialize(); }, [initialize]);
 
   const handleRouteTransition = useCallback(() => {
@@ -389,11 +398,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       }
       
       applyRouteItem(route[nextIndex]);
-      toast({ 
-        title: "Journey Progression", 
-        description: `Moving to ${route[nextIndex].genre.toUpperCase()} / ${route[nextIndex].mood.toUpperCase()}` 
-      });
-  }, [activeRouteIndex, route, isShuffle, applyRouteItem, toast]);
+  }, [activeRouteIndex, route, isShuffle, applyRouteItem]);
 
   const refreshRouteAction = useCallback(() => {
     const lastRoute = localStorage.getItem(CURRENT_ROUTE_KEY);
@@ -402,7 +407,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             const parsed = JSON.parse(lastRoute);
             setRoute(parsed);
             refreshCloudAxioms();
-            toast({ title: "Path Refreshed", description: "Route and DNA pool synchronized." });
+            toast({ title: "Path Refreshed" });
         } catch (e) {}
     }
   }, [refreshCloudAxioms, toast]);
@@ -448,22 +453,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setRoute(prev => prev.filter(it => it.id !== id));
   };
 
-  // #ЗАЧЕМ: ПЛАН №36. Ручное переключение точки маршрута.
   const selectRouteItem = useCallback((id: string) => {
       const item = route.find(it => it.id === id);
       if (!item) return;
-
-      // Принудительная остановка для чистого старта с 0 такта
       setEngineIsPlaying(false);
-      
-      // Небольшая задержка для завершения текущих процессов в воркере
       setTimeout(() => {
           applyRouteItem(item);
           setEngineIsPlaying(true);
-          toast({ 
-              title: "Manual Journey Jump", 
-              description: `Jumping to: ${item.genre.toUpperCase()} / ${item.mood.toUpperCase()}` 
-          });
+          toast({ title: "Journey Jumped", description: `${item.genre} / ${item.mood}` });
       }, 50);
   }, [route, applyRouteItem, setEngineIsPlaying, toast]);
 
@@ -488,18 +485,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   };
 
-  /**
-   * #ЗАЧЕМ: Применение автоматического баланса жанра.
-   * #ЧТО: ПЛАН №30 — Добавлена блокировка, если активен пользовательский пресет.
-   */
   const applyAutoMix = useCallback(() => {
-      if (!isInitialized) return;
-      
-      // #ЗАЧЕМ: Если пользователь загрузил свои настройки, система не должна их перетирать.
-      if (activeMixerPresetId) {
-          console.log(`[AutoMix] Blocked: User Preset "${activeMixerPresetId}" is active.`);
-          return;
-      }
+      if (!isInitialized || activeMixerPresetId) return;
 
       const masterGenreMix = GENRE_MASTER_MIX[genre];
       const blueprint = getBlueprint(genre, mood);

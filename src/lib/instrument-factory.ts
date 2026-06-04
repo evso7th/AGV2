@@ -1,13 +1,13 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.3 — "Global Capacity Default".
- * #ЗАЧЕМ: ПЛАН №33 — Обновление лимита по умолчанию до 256.
+ * @fileOverview Центральная фабрика инструментов V7.4 — "Extended Capacity Protocol".
+ * #ЗАЧЕМ: ПЛАН №58 — Увеличение верхней границы голосов до 512.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 256; // #ЗАЧЕМ: ПЛАН №33. Дефолт для PC.
+let globalVoiceLimit = 512; // #ЗАЧЕМ: ПЛАН №58. Расширенная граница для мощных систем.
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
@@ -186,13 +186,12 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     const baseQ = preset.lpf?.q || 0.7;
 
     // #ЗАЧЕМ: Negative Keytracking (PLAN #28).
-    // Устраняем пронзительность высоких нот путем снижения частоты среза и резонанса выше C4 (60).
     let finalCutoff = baseCutoff;
     let finalQ = baseQ;
     if (midi > 60 && (type === 'organ' || type === 'synth')) {
         const semitonesAbove = midi - 60;
-        finalCutoff = baseCutoff * Math.pow(0.95, semitonesAbove); // ~5% срез на полутон
-        finalQ = baseQ * Math.pow(0.97, semitonesAbove);       // Смягчение резонанса
+        finalCutoff = baseCutoff * Math.pow(0.95, semitonesAbove); 
+        finalQ = baseQ * Math.pow(0.97, semitonesAbove);      
     }
 
     filter.frequency.value = finalCutoff;

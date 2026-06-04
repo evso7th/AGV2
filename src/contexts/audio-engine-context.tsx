@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V40.7 — "Dynamic Capacity Defaults".
- * #ЗАЧЕМ: Оптимизация производительности под разные типы устройств.
- * #ЧТО: ПЛАН №33 — Установлены дефолты: 120 голосов для Mobile, 256 для PC.
+ * @fileOverview Audio Engine Context V40.8 — "User Persistence Reform".
+ * #ЗАЧЕМ: ПЛАН №58 — Поддержка 512 голосов и сохранение настроек пользователя.
  */
 'use client';
 
@@ -119,8 +118,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
-  // #ЗАЧЕМ: ПЛАН №33. Дефолтный лимит 256 (для PC).
-  const [voiceLimit, setVoiceLimitState] = useState(256);
+  // #ЗАЧЕМ: ПЛАН №58. Расширенная граница 512 для PC.
+  const [voiceLimit, setVoiceLimitState] = useState(512);
 
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -214,22 +213,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, calibrationGains, applyCalibration]);
 
   useEffect(() => {
-    // #ЗАЧЕМ: ПЛАН №33. Автоматическое определение лимита голосов.
-    // 120 для мобильных устройств, 256 для десктопа.
+    // #ЗАЧЕМ: ПЛАН №58. Автоматическая загрузка сохраненного лимита.
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const defaultLimit = isMobile ? 120 : 256;
-    setVoiceLimitState(defaultLimit);
-    setGlobalVoiceLimit(defaultLimit);
+    const savedLimit = localStorage.getItem('AuraGroove_VoiceLimit');
+    
+    let targetLimit: number;
+    if (savedLimit) {
+        targetLimit = parseInt(savedLimit);
+    } else {
+        targetLimit = isMobile ? 120 : 512;
+    }
+    
+    setVoiceLimitState(targetLimit);
+    setGlobalVoiceLimit(targetLimit);
   }, []);
 
   const setVoiceLimit = useCallback((limit: number) => {
       setVoiceLimitState(limit);
       setGlobalVoiceLimit(limit);
+      localStorage.setItem('AuraGroove_VoiceLimit', limit.toString());
   }, []);
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №7. Обновление системных метаданных Media Session.
-   */
   const updateMediaSessionMetadata = useCallback((genre?: string, mood?: string) => {
     if (!('mediaSession' in navigator)) return;
 
@@ -354,9 +358,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
-  /**
-   * #ЗАЧЕМ: Центральный контроллер воспроизведения.
-   */
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; 
       if (!context || !workerRef.current) return;
@@ -385,7 +386,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }
   }, [calibrationGains.master, stopAllSounds, updateMediaSessionMetadata]);
 
-  // #ЗАЧЕМ: Регистрация системных обработчиков Media Session.
   useEffect(() => {
     if ('mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => handleTogglePlay(true));

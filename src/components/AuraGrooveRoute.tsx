@@ -1,6 +1,7 @@
+
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.8 — "Interactive Route Jump".
- * #ЧТО: ПЛАН №36 — Карточки маршрута теперь кликабельны для мгновенного перехода.
+ * #ЗАЧЕМ: UI AuraGroove V6.9 — "Extended Polyphony Monitor".
+ * #ЧТО: ПЛАН №58 — Слайдер лимита голосов расширен до 512.
  */
 'use client';
 
@@ -188,7 +189,7 @@ function SortableRouteItem({
     isActive, 
     progress,
     onRemove,
-    onSelect // #ЗАЧЕМ: Проброс выбора для ручного перехода.
+    onSelect 
 }: { 
     item: RouteItem, 
     isActive: boolean, 
@@ -214,7 +215,7 @@ function SortableRouteItem({
         <div 
             ref={setNodeRef} 
             style={style} 
-            onClick={() => !isActive && onSelect(item.id)} // #ЗАЧЕМ: ПЛАН №36. Переход при клике на неактивный элемент.
+            onClick={() => !isActive && onSelect(item.id)} 
             className={cn(
                 "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
                 isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:border-primary/20",
@@ -234,7 +235,7 @@ function SortableRouteItem({
                 <div 
                     {...attributes} 
                     {...listeners} 
-                    onClick={(e) => e.stopPropagation()} // #ЗАЧЕМ: Предотвращаем запуск воспроизведения при захвате.
+                    onClick={(e) => e.stopPropagation()} 
                     className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none pointer-events-auto"
                 >
                     <GripVertical className="h-4 w-4" />
@@ -249,7 +250,7 @@ function SortableRouteItem({
                 variant="ghost" 
                 size="icon" 
                 className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
-                onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} // #ЗАЧЕМ: Удаление не должно запускать пункт.
+                onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} 
             >
                 <X className="h-4 w-4" />
             </Button>
@@ -440,7 +441,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         <Slider
                                             value={[props.voiceLimit]}
                                             min={32}
-                                            max={256}
+                                            max={512}
                                             step={8}
                                             onValueChange={(v) => props.setVoiceLimit(v[0])}
                                         />
