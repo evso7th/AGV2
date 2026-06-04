@@ -8,8 +8,8 @@ import { SamplerPlayer } from './sampler-player';
 import { PIANO_SAMPLES } from './samples';
 
 /**
- * #ЗАЧЕМ: Реформа пианиста V2.0 (ПЛАН №988).
- * #ЧТО: Поддержка дуализма (Rhodes/Acoustic) согласно правилу №18.
+ * #ЗАЧЕМ: Реформа пианиста V2.1 — "Eternal Rhodes".
+ * #ЧТО: ПЛАН №59 — Добавлена щедрая задержка для сохранения хвостов Rhodes.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -35,7 +35,7 @@ export class PianoAccompanimentManager {
             // 1. Load Synth Rhodes
             this.rhodesInstrument = await buildMultiInstrument(this.audioContext, {
                 type: 'synth',
-                preset: V2_PRESETS.ep_rhodes_warm,
+                preset: V2_PRESETS.ep_rhodes,
                 output: this.destination
             });
 
@@ -65,7 +65,8 @@ export class PianoAccompanimentManager {
         const notes: Note[] = filteredEvents.map(e => ({
             midi: e.note,
             time: e.time * beatDuration,
-            duration: e.duration * beatDuration,
+            // #ЗАЧЕМ: ПЛАН №59. Добавляем 3 секунды сустейна, чтобы хвосты Rhodes не обрывались.
+            duration: (e.duration * beatDuration) + 3.0, 
             velocity: e.weight
         }));
 

@@ -1,13 +1,28 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.4 — "Extended Capacity Protocol".
- * #ЗАЧЕМ: ПЛАН №58 — Увеличение верхней границы голосов до 512.
+ * @fileOverview Центральная фабрика инструментов V7.5 — "Eternal Tail Protocol".
+ * #ЗАЧЕМ: ПЛАН №59 — Приоритетная защита хвостов аккомпанемента и Rhodes.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 512; // #ЗАЧЕМ: ПЛАН №58. Расширенная граница для мощных систем.
+let globalVoiceLimit = 512;
+
+/**
+ * Веса приоритета для "кражи" голосов. 
+ * Чем выше вес, тем позже голос будет принесен в жертву.
+ */
+const STEAL_PRIORITY: Record<string, number> = {
+    'sparkle': 0,
+    'sfx': 0,
+    'melody': 1,
+    'drums': 1,
+    'accompaniment': 2,
+    'harmony': 2,
+    'bass': 3,
+    'pianoAccompaniment': 4 // Rhodes защищен максимально
+};
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
@@ -45,32 +60,43 @@ const deepCleanup = (voiceRecord: any) => {
     if (idx !== -1) globalActiveVoices.splice(idx, 1);
 };
 
+/**
+ * #ЗАЧЕМ: ПЛАН №59. Умная очистка переполненного буфера голосов.
+ * #ЧТО: Сначала убиваем "мусорные" слои (sparkles, sfx), бережем основу.
+ */
 const enforceVoiceLimit = () => {
-    while (globalActiveVoices.length > globalVoiceLimit) {
-        let targetIndex = globalActiveVoices.findIndex(v => v.type !== 'bass');
-        if (targetIndex === -1) break;
+    if (globalActiveVoices.length <= globalVoiceLimit) return;
 
-        const oldest = globalActiveVoices.splice(targetIndex, 1)[0];
-        if (oldest) {
-            const voiceNode = oldest.voiceState?.node;
-            if (voiceNode && !oldest.cleaned) {
-                const now = voiceNode.context.currentTime;
-                const stealFadeOut = 0.05;
-                try {
-                    voiceNode.gain.cancelScheduledValues(now);
-                    voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
-                    if (oldest.nodes) {
-                        oldest.nodes.forEach((n: any) => {
-                            if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                                try { n.stop(now + stealFadeOut + 0.01); } catch(e){}
-                            }
-                        });
-                    }
-                    setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 50);
-                } catch (e) { deepCleanup(oldest); }
-            } else { deepCleanup(oldest); }
-        }
-    }
+    // Сортируем: сначала те, у кого ниже приоритет, затем самые старые
+    const voicesToConsider = [...globalActiveVoices].sort((a, b) => {
+        const prioA = STEAL_PRIORITY[a.type] ?? 1;
+        const prioB = STEAL_PRIORITY[b.type] ?? 1;
+        if (prioA !== prioB) return prioA - prioB;
+        return a.startTime - b.startTime;
+    });
+
+    const toKillCount = globalActiveVoices.length - globalVoiceLimit;
+    const targets = voicesToConsider.slice(0, toKillCount);
+
+    targets.forEach(oldest => {
+        const voiceNode = oldest.voiceState?.node;
+        if (voiceNode && !oldest.cleaned) {
+            const now = voiceNode.context.currentTime;
+            const stealFadeOut = 0.05;
+            try {
+                voiceNode.gain.cancelScheduledValues(now);
+                voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
+                if (oldest.nodes) {
+                    oldest.nodes.forEach((n: any) => {
+                        if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                            try { n.stop(now + stealFadeOut + 0.01); } catch(e){}
+                        }
+                    });
+                }
+                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 50);
+            } catch (e) { deepCleanup(oldest); }
+        } else { deepCleanup(oldest); }
+    });
 };
 
 // ───── HELPERS ─────
@@ -113,22 +139,16 @@ const makeSoftDrive = (amount = 0.2) => {
 
 // ───── VOICE INSTANTIATION ─────
 
-/**
- * Основная логика независимого голоса.
- * Создает изолированную цепочку FX для каждой ноты.
- */
 const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, output: AudioNode, midi: number, when: number, velocity: number, duration: number) => {
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset);
     const now = Math.max(when, ctx.currentTime);
     
-    // 1. Узел огибающей и громкости ноты
     const voiceGain = ctx.createGain();
     voiceGain.gain.value = 0;
     
     const nodes: AudioNode[] = [voiceGain];
     
-    // 2. Генераторы (Осцилляторы)
     if (type === 'guitar') {
         const width = preset.osc?.width || 0.45;
         const real = new Float32Array(32), imag = new Float32Array(32);
@@ -166,10 +186,8 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
         });
     }
 
-    // 3. Цепочка эффектов ГОЛОСА (Изолированная!)
     let chainHead: AudioNode = voiceGain;
 
-    // Distortion
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
         shaper.curve = preset.drive.type === 'muff' ? makeMuff(preset.drive.amount) : makeSoftDrive(preset.drive.amount);
@@ -179,13 +197,11 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
         nodes.push(shaper);
     }
 
-    // Filter
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     const baseCutoff = preset.post?.lpf || preset.lpf?.cutoff || preset.lpf || 2000;
     const baseQ = preset.lpf?.q || 0.7;
 
-    // #ЗАЧЕМ: Negative Keytracking (PLAN #28).
     let finalCutoff = baseCutoff;
     let finalQ = baseQ;
     if (midi > 60 && (type === 'organ' || type === 'synth')) {
@@ -200,17 +216,13 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     chainHead = filter;
     nodes.push(filter);
 
-    // Delay
     if (preset.delay?.mix > 0.01) {
         const delayNode = ctx.createDelay(2.0);
         delayNode.delayTime.setValueAtTime(preset.delay.time || 0.4, now);
-        
         const feedback = ctx.createGain();
         feedback.gain.setValueAtTime(preset.delay.fb || 0.3, now);
-        
         const delayMix = ctx.createGain();
         delayMix.gain.setValueAtTime(preset.delay.mix, now);
-        
         chainHead.connect(delayNode);
         delayNode.connect(feedback);
         feedback.connect(delayNode);
@@ -219,10 +231,8 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
         nodes.push(delayNode, feedback, delayMix);
     }
 
-    // Подключение к общему выходу инструмента
     chainHead.connect(output);
 
-    // 4. Запуск ADSR
     const peak = velocity * 0.8;
     voiceGain.gain.setValueAtTime(0.0001, now);
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
@@ -231,12 +241,11 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     const noteOffTime = now + duration;
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, Math.max(adsr.r / 3, 0.001));
 
-    // 5. Регистрация для очистки
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // Авто-удаление после завершения звука
-    const totalLife = duration + adsr.r * 5;
+    // #ЗАЧЕМ: Увеличенное время жизни для хвостов.
+    const totalLife = duration + adsr.r * 10;
     setTimeout(() => deepCleanup(record), totalLife * 1000 + 100);
 
     nodes.forEach(n => {
@@ -269,7 +278,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     
     let currentPreset = { ...preset };
     
-    // Общие узлы для всех голосов инструмента
     const instrumentGain = ctx.createGain(); 
     instrumentGain.gain.value = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
     
@@ -284,16 +292,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     return {
         connect: (dest) => limiter.connect(dest || output),
         disconnect: () => {
-            globalActiveVoices.filter(v => v.type === type).forEach(v => deepCleanup(v));
+            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
             [instrumentGain, expressionGain, panner, limiter].forEach(n => { try { n.disconnect(); } catch(e){} });
         },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0) => {
             enforceVoiceLimit();
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration);
         },
-        noteOff: () => {}, // Release обрабатывается автоматически в Legion
+        noteOff: () => {}, 
         allNotesOff: () => {
-            globalActiveVoices.filter(v => v.type === type).forEach(v => deepCleanup(v));
+            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
         },
         setPreset: (p) => { currentPreset = { ...p }; instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05); },
         setParam: () => {},

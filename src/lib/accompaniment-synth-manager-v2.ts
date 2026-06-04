@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1000 — Исправлена блокировка звука при смене пресета.
+ * #ЧТО: ПЛАН №59 — Значительное увеличение extraDuration для защиты "хвостов" пэдов и органов.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -87,17 +87,20 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / tempo;
         const filtered = events.filter(e => e.type === 'accompaniment');
 
-        const notesToPlay = filtered.map(e => ({
-            midi: e.note,
-            time: e.time * beatDuration,
-            duration: e.duration * beatDuration,
-            velocity: e.weight,
-            technique: e.technique,
-            pan: e.pan,
-            params: e.params
-        }));
+        const notesToPlay = filtered.map(e => {
+            // #ЗАЧЕМ: ПЛАН №59. Увеличение виртуального сустейна для аккомпанемента до 3 секунд.
+            const extraDuration = 3.0; 
+            return {
+                midi: e.note,
+                time: e.time * beatDuration,
+                duration: (e.duration * beatDuration) + extraDuration,
+                velocity: e.weight,
+                technique: e.technique,
+                pan: e.pan,
+                params: e.params
+            };
+        });
 
-        // #ЗАЧЕМ: Фоновая смена инструмента без блокировки текущего такта.
         if (instrumentHint && instrumentHint !== this.activePresetName && !this.isChangingInstrument) {
             const mappedHint = V1_TO_V2_PRESET_MAP[instrumentHint] || instrumentHint;
             if (mappedHint !== this.activePresetName) {
@@ -119,7 +122,6 @@ export class AccompanimentSynthManagerV2 {
             return;
         }
 
-        // Если новый инструмент еще не загружен, пытаемся играть на старом.
         if (!this.instrument) return;
 
         notesToPlay.forEach(note => {

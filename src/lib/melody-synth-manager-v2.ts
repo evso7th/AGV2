@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №19 — Транзиенты удалены с органов и пэдов. Оставлены только для электрогитар.
+ * #ЧТО: ПЛАН №59 — Значительное увеличение extraDuration для предотвращения "проглатывания" хвостов.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -103,7 +104,8 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            const extraDuration = this.partName === 'melody' ? 0.45 : 0.15;
+            // #ЗАЧЕМ: ПЛАН №59. Увеличение виртуальной длительности (Gate) для сохранения резонанса.
+            const extraDuration = this.partName === 'melody' ? 2.5 : 1.2; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -157,8 +159,6 @@ export class MelodySynthManagerV2 {
             return;
         }
         
-        // Aria Transient Logic
-        // #ЗАЧЕМ: ПЛАН №19. Транзиенты удалены с органов и пэдов. Оставлены только для электрогитар.
         if (currentActive === 'guitar_muffLead' || currentActive === 'guitar_shineOn') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo, true);
         }
