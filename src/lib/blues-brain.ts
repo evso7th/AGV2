@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V76.4 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление потери связи с облаком.
- * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
+ * @fileOverview Blues Brain V77.0 — "Rhythmic Cohesion Update".
+ * #ЗАЧЕМ: Избавление от статичных 1-нотных гудений в аккомпанементе.
+ * #ЧТО: ПЛАН №60 — Внедрение "Organ Chops" и "Jazz Echoes" для пианиста.
  */
 
 import {
@@ -183,7 +183,6 @@ export class BluesBrain {
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
       if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
 
-      // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
       if (wasEmpty && this.config.cloudAxioms.length > 0 && this.config.useHeritage) {
           this.soloistBusyUntilBar = -1;
       }
@@ -650,21 +649,82 @@ export class BluesBrain {
       }));
   }
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №60. Реформа блюзового аккомпанемента.
+   * #ЧТО: Замена статичного гудения на ритмические "Organ Chops".
+   */
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = this.constrainAccompanimentOctave(chord.rootNote + 12 + calculateMusiNum(epoch, 3, this.seed, 12) + this.currentTransposition + this.microTransposition);
-    return [{ type: 'accompaniment', note: root, time: 0, duration: 4.0, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+    const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
+    const isMinor = chord.chordType === 'minor';
+    const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 10]; 
+    const events: FractalEvent[] = [];
+
+    // Shuffle comping pattern (backbeats + syncopated pushes)
+    const pattern = [3, 9];
+    if (calculateMusiNum(epoch, 5, this.seed, 100) < 30) pattern.push(10.5); 
+
+    pattern.forEach(t => {
+        intervals.forEach((interval, i) => {
+            events.push({
+                type: 'accompaniment',
+                note: this.constrainAccompanimentOctave(root + interval),
+                time: t * TICK_TO_BEAT,
+                duration: 0.75 * TICK_TO_BEAT, 
+                weight: 0.45 + (tension * 0.1),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato',
+                params: { attack: 0.015, release: 1.2 }
+            });
+        });
+    });
+    return events;
   }
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №60. Интеллектуальный пианист.
+   * #ЧТО: Переход от дубляжа к "Jazz Echoes" (ответным фразам).
+   */
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = [];
-      if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
-      const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
-      melodyEvents.forEach((m, i) => {
-          if (i % 2 === 0) {
-              events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + thirdInterval), weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', params: { ...m.params, release: 2.5 } });
-          }
-      });
-      return { events, style: "Shadow (Thirds)" };
+      const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
+      const scale = [0, 2, 3, 4, 7, 9, 10]; 
+
+      if (melodyEvents.length > 0) {
+          // Shadow mode: Follow melody with thirds/fifths but more audible weight
+          const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
+          melodyEvents.forEach((m, i) => {
+              if (i % 2 === 0) {
+                  events.push({ 
+                      ...m, type: 'pianoAccompaniment', 
+                      note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
+                      weight: 0.65, // Increased weight for audibility
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
+                      params: { ...m.params, release: 2.5 } 
+                  });
+              }
+          });
+          return { events, style: "Shadow Support" };
+      } else {
+          // Fill mode: Play subtle jazz responses in melody gaps
+          [1.5, 4.5, 7.5, 10.5].forEach((t, i) => {
+              if (calculateMusiNum(epoch + i, 7, this.seed, 100) < 40) {
+                  const degIdx = calculateMusiNum(epoch + i, 11, this.seed, scale.length);
+                  events.push({
+                      type: 'pianoAccompaniment',
+                      note: this.constrainAccompanimentOctave(root + scale[degIdx]),
+                      time: t * TICK_TO_BEAT,
+                      duration: 0.5 * TICK_TO_BEAT,
+                      weight: 0.58,
+                      technique: 'hit',
+                      dynamics: 'p',
+                      phrasing: 'staccato',
+                      params: { attack: 0.01, release: 3.0 }
+                  });
+              }
+          });
+          return { events, style: "Jazz Echoes" };
+      }
   }
 
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
@@ -681,7 +741,7 @@ export class BluesBrain {
       return events;
   }
 
-  private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'guitarChords' | 'violin'): FractalEvent[] {
+  private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
       const rootMidi = currentChord.rootNote + this.currentTransposition + this.microTransposition;
       const rootName = MIDI_NOTE_NAMES[rootMidi % 12] || 'C';
       const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : '');

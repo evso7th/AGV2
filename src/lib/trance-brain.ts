@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V47.1 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление потери связи с облаком.
- * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
+ * @fileOverview Psybient Brain V48.0 — "Rhythmic Pulse Reform".
+ * #ЗАЧЕМ: Устранение бесконечных "завываний" пэдов в энергичных Psybient треках.
+ * #ЧТО: ПЛАН №60 — Внедрение динамического сайдчейна и ритмической сегментации текстур.
  */
 
 import type {
@@ -92,7 +92,6 @@ export class TranceBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
 
-        // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
         if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
             this.soloistBusyUntilBar = -1;
         }
@@ -139,23 +138,26 @@ export class TranceBrain {
         }
 
         if (filteredPool.length > 0) {
+            // #ЗАЧЕМ: ПЛАН №60. Строгий ролевой фильтр.
+            // Запрет использовать "accomp_piano" из DNA как "melody", если есть настоящие "melody".
             let basePool = filteredPool.filter(ax => ax.role === 'melody');
             if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
             if (basePool.length > 0) {
+                if (!effectiveAnchor) {
+                    const firstChoice = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                    this.sessionAnchorId = normalizeStr(firstChoice.compositionId);
+                    effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                }
+
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const suitePlayhead = epoch % (maxDonorBars || 144);
+                
                 let selected: any = null;
-
-                if (this.isImprovising) {
-                    if (!effectiveAnchor) {
-                        const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
-                        effectiveAnchor = this.sessionAnchorId;
-                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
-                    }
-                    selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
+                if (this.config.isImprovising) {
+                    selected = basePool[calculateMusiNum(this.seed, 17, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
                     selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
@@ -181,7 +183,7 @@ export class TranceBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                     });
@@ -234,7 +236,7 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        if (this.currentPreferredInstrument && hints.melody) {
+        if (this.currentPreferredInstrument && hints.melody && !isIntro) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
 
@@ -501,7 +503,7 @@ export class TranceBrain {
                 time: n.t * TICK_TO_BEAT, 
                 duration: (n.d * TICK_TO_BEAT) * 1.25, 
                 weight: 0.9, 
-                technique: useVibrato ? 'vb' as Technique : 'pick', 
+                technique: useVibrato ? 'vb' as Technique : ('pick' as Technique), 
                 dynamics: 'mf', 
                 phrasing: 'legato'
             };
@@ -517,7 +519,8 @@ export class TranceBrain {
             if (i % 3 === 0) {
                 events.push({
                     ...m, type: 'pianoAccompaniment', note: m.note + thirdInterval,
-                    weight: 0.35, technique: 'hit', phrasing: 'staccato', params: { ...m.params, release: 2.5 }
+                    weight: 0.68, // Increased for audibility
+                    technique: 'hit', phrasing: 'staccato', params: { ...m.params, release: 2.5 }
                 });
             }
         });
@@ -525,15 +528,37 @@ export class TranceBrain {
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 3.2, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №60. Ритмические пэды для Psybient.
+     * #ЧТО: Замена статичной ноты на пульсирующий сайдчейн-рисунок.
+     */
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const isMinor = chord.chordType === 'minor';
-        return (isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11]).map((interval, i) => ({
-            type: 'accompaniment', note: chord.rootNote + 12 + interval, time: 0.1, duration: 3.8, weight: 0.6, technique: 'swell',
-            dynamics: 'p', phrasing: 'legato', pan: (i % 2 === 0 ? -0.6 : 0.6), params: { attack: 1.0, release: 2.0, gainCurve: [1.0, 0.1, 0.9, 0.2, 1.0, 0.3, 1.0] }
-        }));
+        const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
+        const events: FractalEvent[] = [];
+
+        // Pulse every beat with a gap for breathing
+        [0, 1, 2, 3].forEach(t => {
+            intervals.forEach((interval, i) => {
+                events.push({
+                    type: 'accompaniment', 
+                    note: chord.rootNote + 12 + interval + this.spiralTransposition, 
+                    time: t, 
+                    duration: 0.75, // 0.25 gap
+                    weight: 0.6 - (i * 0.05), 
+                    technique: 'swell',
+                    dynamics: 'p', 
+                    phrasing: 'legato', 
+                    pan: (i % 2 === 0 ? -0.6 : 0.6), 
+                    params: { attack: 0.1, release: 0.4, gainCurve: [1.0, 0.1, 0.9, 0.2, 1.0, 0.3, 1.0] }
+                });
+            });
+        });
+        
+        return events;
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {

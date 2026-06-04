@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V76.2 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление потери связи с облаком.
- * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
+ * @fileOverview Ambient Brain V77.0 — "Pulsing Textures Update".
+ * #ЗАЧЕМ: Избавление от статичных пэдов в Psybient и Ambient.
+ * #ЧТО: ПЛАН №60 — Декларативное "дыхание" пэдов и ритмический пульс.
  */
 
 import type {
@@ -22,9 +22,6 @@ import type {
 import {
     calculateMusiNum,
     DEGREE_TO_SEMITONE,
-    pickWeightedDeterministic,
-    GEO_ATLAS,
-    LIGHT_ATLAS,
     decompressCompactPhrase,
     normalizePhraseGroup,
     invertPhrase,
@@ -116,7 +113,6 @@ export class AmbientBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
 
-        // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
         if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
             this.soloistBusyUntilBar = -1;
         }
@@ -198,7 +194,7 @@ export class AmbientBrain {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
                     }
 
-                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     accompSiblings.forEach(ax => {
                         this.currentAccompAxioms.push({ 
                             phrase: decompressCompactPhrase(ax.phrase), 
@@ -274,7 +270,7 @@ export class AmbientBrain {
                 duration: chunkDur * 1.15,
                 params: { 
                     ...e.params, 
-                    attack: i === 0 ? (e.params?.attack || 1.5) : 0.8,
+                    attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
                     release: 2.5 
                 }
             });
@@ -456,8 +452,8 @@ export class AmbientBrain {
 
         return {
             events, tension: localTension, beautyScore: 0.5,
-            mutationType: this.currentMutationType, newBpm,
             trackName: this.currentTrackName,
+            mutationType: this.currentMutationType, newBpm,
             instrumentOverrides,
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
@@ -624,13 +620,17 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №60. "Дышащие" пэды.
+     * #ЧТО: Сокращение длительности с 4.0 до 3.1 для создания ритмических пауз.
+     */
     private renderPad(chord: GhostChord, epoch: number, name: string, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         return [{
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 4.0, 
+            time: 0, duration: 3.1, // Breathing gap
             weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 3.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
+            params: { attack: 1.5, release: 2.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
         }];
     }
 
@@ -639,16 +639,37 @@ export class AmbientBrain {
         return [{
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, 
-            duration: 4.5, 
+            duration: 3.2, 
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
+            params: { attack: 1.5, release: 2.5, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         }];
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №60. Конверсивный пианист.
+     * #ЧТО: Более слышимый и живой аккомпанемент.
+     */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
 
-        if (melodyEvents.length === 0) return { events: [], style: 'Waiting' };
+        if (melodyEvents.length === 0) {
+            // Fill mode: Conversational drops
+            const root = chord.rootNote + 12;
+            const steps = [0, 4, 7, 11, 14];
+            if (calculateMusiNum(epoch, 7, this.seed, 100) < 45) {
+                const noteIdx = calculateMusiNum(epoch, 3, this.seed, steps.length);
+                events.push({
+                    type: 'pianoAccompaniment',
+                    note: this.constrainAccompanimentOctave(root + steps[noteIdx]),
+                    time: 1.5 * TICK_TO_BEAT,
+                    duration: 2.0,
+                    weight: 0.58, // Increased for audibility
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                    params: { attack: 0.01, release: 3.0 }
+                });
+            }
+            return { events, style: 'Echo Drops' };
+        }
 
         const isMinor = chord.chordType === 'minor';
         const thirdInterval = isMinor ? 3 : 4;
@@ -659,7 +680,7 @@ export class AmbientBrain {
                     ...m,
                     type: 'pianoAccompaniment',
                     note: this.constrainAccompanimentOctave(m.note + thirdInterval),
-                    weight: 0.25,
+                    weight: 0.62, // Increased
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato',
@@ -668,7 +689,7 @@ export class AmbientBrain {
             }
         });
 
-        return { events, style: "Shadow (Thirds)" };
+        return { events, style: "Melodic Shadow" };
     }
 
     private renderGenerativeHarmony(resChord: GhostChord, epoch: number, localTension: number, timbre?: string): FractalEvent[] {
@@ -677,8 +698,8 @@ export class AmbientBrain {
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         
         return (timbre === 'guitarChords') 
-            ? [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }]
-            : [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood } }];
+            ? [{ type: 'harmony', note: note, time: 0, duration: 3.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }]
+            : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.5, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
@@ -730,7 +751,7 @@ export class AmbientBrain {
             type: 'accompaniment', 
             note: this.constrainAccompanimentOctave(root + 12), 
             time: 0, 
-            duration: 4.25, 
+            duration: 3.5, 
             weight: 0.3, 
             technique: 'swell', 
             dynamics: 'p', 
@@ -744,7 +765,7 @@ export class AmbientBrain {
                 type: 'melody', 
                 note: root + 24, 
                 time: 1.5, 
-                duration: 3.125, 
+                duration: 3.0, 
                 weight: 0.5, 
                 technique: 'swell', 
                 dynamics: 'p', 
