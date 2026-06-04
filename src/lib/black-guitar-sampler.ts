@@ -3,6 +3,22 @@ import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
+/**
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.7 — "Plan #39: Body Resonance".
+ * #ЧТО: Добавлен резонансный фильтр (220 Гц) и сатурация для имитации деревянного корпуса.
+ */
+
+function makeAcousticWarmthCurve() {
+    const n = 44100;
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        // Мягкая сатурация для нижней середины
+        curve[i] = Math.tanh(x * 1.1) / Math.tanh(1.1);
+    }
+    return curve;
+}
+
 type VelocityLayer = 'p' | 'mf' | 'f';
 
 interface NamedBuffer {
@@ -75,15 +91,39 @@ export class BlackGuitarSampler {
     public isInitialized = false;
     private isFullyInitialized = false;
     private isLoading = false;
+
     private preamp: GainNode;
+    private bodyFilter: BiquadFilterNode;
+    private saturation: WaveShaperNode;
+    private toneFilter: BiquadFilterNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
+
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.15; 
-        this.preamp.connect(this.destination);
+
+        // Имитация резонанса корпуса (Body)
+        this.bodyFilter = this.audioContext.createBiquadFilter();
+        this.bodyFilter.type = 'peaking';
+        this.bodyFilter.frequency.value = 220;
+        this.bodyFilter.Q.value = 1.2;
+        this.bodyFilter.gain.value = 3.5;
+
+        this.saturation = this.audioContext.createWaveShaper();
+        this.saturation.curve = makeAcousticWarmthCurve();
+
+        this.toneFilter = this.audioContext.createBiquadFilter();
+        this.toneFilter.type = 'lowpass';
+        this.toneFilter.frequency.value = 5500;
+        this.toneFilter.Q.value = 0.5;
+
+        this.preamp.connect(this.bodyFilter);
+        this.bodyFilter.connect(this.saturation);
+        this.saturation.connect(this.toneFilter);
+        this.toneFilter.connect(this.destination);
     }
 
     public setPreampGain(gain: number) {
@@ -215,7 +255,6 @@ export class BlackGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №1020. Синхронизация с атакой синтезатора (22мс).
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
             source.start(startTime);
             source.stop(startTime + 0.05);

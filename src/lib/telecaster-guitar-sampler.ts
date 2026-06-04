@@ -3,6 +3,22 @@ import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
+/**
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.7 — "Plan #38: Hybrid Warmth".
+ * #ЧТО: Внедрена имитация аналогового тракта (Saturation + Tone Filter).
+ */
+
+function makeWarmthCurve() {
+    const n = 44100;
+    const curve = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+        const x = (i / (n - 1)) * 2 - 1;
+        // Мягкое ламповое насыщение
+        curve[i] = Math.tanh(x * 1.2) / Math.tanh(1.2);
+    }
+    return curve;
+}
+
 const TELECASTER_SAMPLES: Record<string, string> = {
     'c6': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_C6.ogg',
     'b5': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_B5.ogg',
@@ -35,25 +51,37 @@ const TELECASTER_SAMPLES: Record<string, string> = {
 
 type SamplerInstrument = { buffers: Map<number, AudioBuffer>; };
 
-/**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.6 — "Power Boosted".
- * #ЧТО: ПЛАН №1598 — Системная громкость увеличена в 2 раза (0.30).
- */
 export class TelecasterGuitarSampler {
     private audioContext: AudioContext;
     private destination: AudioNode;
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private isLoading = false;
+
     private preamp: GainNode;
+    private saturation: WaveShaperNode;
+    private toneFilter: BiquadFilterNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
+
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.30; // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 0.15.
-        this.preamp.connect(this.destination);
+        this.preamp.gain.value = 0.30; 
+
+        this.saturation = this.audioContext.createWaveShaper();
+        this.saturation.curve = makeWarmthCurve();
+        this.saturation.oversample = '4x';
+
+        this.toneFilter = this.audioContext.createBiquadFilter();
+        this.toneFilter.type = 'lowpass';
+        this.toneFilter.frequency.value = 3800; // Убираем песок
+        this.toneFilter.Q.value = 0.7;
+
+        this.preamp.connect(this.saturation);
+        this.saturation.connect(this.toneFilter);
+        this.toneFilter.connect(this.destination);
     }
 
     public setPreampGain(gain: number) {
