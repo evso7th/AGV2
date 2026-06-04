@@ -4,8 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V4.5 — "Power Boosted".
- * #ЧТО: ПЛАН №1598 — Системная громкость увеличена в 2 раза (4.4).
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.0 — "Refined Overdrive".
+ * #ЧТО: ПЛАН №51 (Restored) — Замена фузза на мягкий овердрайв, гейн 0.08.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -38,17 +38,17 @@ const TELECASTER_SAMPLES: Record<string, string> = {
     'e2': '/assets/acoustic_guitar_samples/telecaster/TELECASTER_E2.ogg',
 };
 
-function makeDistortionCurve(amount: number) {
-  const k = isFinite(amount) ? amount : 50;
+function makeOverdriveCurve(amount: number) {
+  const k = amount * 10;
   const n_samples = 44100;
   const curve = new Float32Array(n_samples);
   const deg = Math.PI / 180;
   for (let i = 0; i < n_samples; ++i ) {
     const x = i * 2 / n_samples - 1;
-    curve[i] = ( 3 + k ) * x * 20 * deg / ( Math.PI + k * Math.abs(x) );
+    curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
   }
   return curve;
-};
+}
 
 type SamplerInstrument = {
     buffers: Map<number, AudioBuffer>;
@@ -62,9 +62,8 @@ export class DarkTelecasterSampler {
     private isLoading = false;
 
     private preamp: GainNode;
-    private distortion: WaveShaperNode;
-    private compressor: DynamicsCompressorNode;
-    private cabinetFilter: BiquadFilterNode;
+    private overdrive: WaveShaperNode;
+    private toneFilter: BiquadFilterNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -72,28 +71,20 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 4.4; // #ЗАЧЕМ: ПЛАН №1598. Удвоено с 2.2.
+        this.preamp.gain.value = 0.08; 
 
-        this.distortion = this.audioContext.createWaveShaper();
-        this.distortion.curve = makeDistortionCurve(600); 
-        this.distortion.oversample = '4x';
-        
-        this.compressor = this.audioContext.createDynamicsCompressor();
-        this.compressor.threshold.value = -35; 
-        this.compressor.knee.value = 20;
-        this.compressor.ratio.value = 10;
-        this.compressor.attack.value = 0.005;
-        this.compressor.release.value = 0.4;
+        this.overdrive = this.audioContext.createWaveShaper();
+        this.overdrive.curve = makeOverdriveCurve(0.42);
+        this.overdrive.oversample = '4x';
 
-        this.cabinetFilter = this.audioContext.createBiquadFilter();
-        this.cabinetFilter.type = 'lowpass';
-        this.cabinetFilter.frequency.value = 3200;
-        this.cabinetFilter.Q.value = 0.7;
+        this.toneFilter = this.audioContext.createBiquadFilter();
+        this.toneFilter.type = 'lowpass';
+        this.toneFilter.frequency.value = 3600;
+        this.toneFilter.Q.value = 0.7;
         
-        this.preamp.connect(this.distortion);
-        this.distortion.connect(this.cabinetFilter);
-        this.cabinetFilter.connect(this.compressor);
-        this.compressor.connect(this.destination);
+        this.preamp.connect(this.overdrive);
+        this.overdrive.connect(this.toneFilter);
+        this.toneFilter.connect(this.destination);
     }
 
     public setPreampGain(gain: number) {
@@ -110,27 +101,20 @@ export class DarkTelecasterSampler {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
 
-        if (this.instruments.has(instrumentName)) {
-            this.isLoading = false;
-            return true;
-        }
-
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const arrayBuffer = await response.arrayBuffer();
                 return await this.audioContext.decodeAudioData(arrayBuffer);
             };
             
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
-                if (midi === null) return;
-                try {
+                if (midi) {
                     const buffer = await loadSample(url);
                     loadedBuffers.set(midi, buffer);
-                } catch(e) { console.error(`Error loading sample for ${key}`, e); }
+                }
             });
 
             await Promise.all(notePromises);
@@ -139,7 +123,6 @@ export class DarkTelecasterSampler {
             this.isLoading = false;
             return true;
         } catch (error) {
-            console.error(`[DarkTelecasterSampler] Failed:`, error);
             this.isLoading = false;
             return false;
         }
@@ -161,17 +144,11 @@ export class DarkTelecasterSampler {
     private playPattern(instrument: SamplerInstrument, note: Note, barStartTime: number, tempo: number) {
         const patternName = note.technique as string;
         const patternData = GUITAR_PATTERNS[patternName];
-        if (!patternData) {
-            this.playSingleNote(instrument, note, barStartTime);
-            return;
-        }
+        if (!patternData) return;
 
         const voicingName = note.params?.voicingName || 'E7_open';
         const voicing = BLUES_GUITAR_VOICINGS[voicingName];
-        if (!voicing) {
-            this.playSingleNote(instrument, note, barStartTime);
-            return;
-        }
+        if (!voicing) return;
 
         const beatDuration = 60 / tempo;
         const ticksPerBeat = 3;
@@ -196,28 +173,24 @@ export class DarkTelecasterSampler {
     private playSingleNote(instrument: SamplerInstrument, note: Note, startTime: number) {
         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, note.midi);
         if (!buffer) return;
-        const noteStartTime = startTime + (note.time || 0);
-        this.playSample(buffer, sampleMidi, note.midi, noteStartTime, note.velocity || 0.7);
+        this.playSample(buffer, sampleMidi, note.midi, startTime + (note.time || 0), note.velocity || 0.7);
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        if (!isFinite(startTime) || !isFinite(velocity) || !isFinite(targetMidi) || !isFinite(sampleMidi)) {
-            return;
-        }
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
-        source.connect(gainNode);
-        gainNode.connect(this.preamp);
+        source.connect(gainNode).connect(this.preamp);
 
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        
         gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+
         source.start(startTime);
         source.stop(startTime + 0.05);
         
@@ -245,17 +218,7 @@ export class DarkTelecasterSampler {
         const noteMap: Record<string, number> = {
             'c': 0, 'c#': 1, 'db': 1, 'd': 2, 'd#': 3, 'eb': 3, 'e': 4, 'f': 5, 'f#': 6, 'gb': 6, 'g': 7, 'g#': 8, 'ab': 8, 'a': 9, 'a#': 10, 'bb': 10, 'b': 11
         };
-        const noteValue = noteMap[name];
-        if (noteValue === undefined) return null;
-        return 12 * octave + noteValue;
-    }
-
-    public setParam(key: string, value: any) {
-        if (key === 'cutoff' && isFinite(value)) {
-            this.cabinetFilter.frequency.setTargetAtTime(value, this.audioContext.currentTime, 0.05);
-        } else if (key === 'drive' && isFinite(value)) {
-            this.distortion.curve = makeDistortionCurve(value);
-        }
+        return 12 * octave + noteMap[name];
     }
 
     public stopAll() {

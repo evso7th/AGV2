@@ -1,3 +1,4 @@
+
 import type { BassPreset } from './instrument-factory';
 
 
@@ -30,14 +31,14 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_jazz_warm: {
         type: 'bass' as const,
         name: 'Jazz Upright',
-        // #ЗАЧЕМ: Устранение гула. Бас стал более округлым и тихим.
         volume: 0.55, 
         osc: [ 
             { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, 
             { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
         ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
-        adsr: { a: 0.03, d: 0.5, s: 0.6, r: 0.4 },
+        // #ЗАЧЕМ: Естественное затухание щипка (Decay 2.8, Sustain 0.05).
+        adsr: { a: 0.03, d: 2.8, s: 0.05, r: 0.4 },
         filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
         filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
@@ -103,22 +104,6 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
         reverbMix: 0.08
-    },
-    bass_ambient: {
-        type: 'bass' as const,
-        name: 'Ambient Sub',
-        volume: 0.55,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
-        adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },
-        filter: { type: 'lowpass' as const, cutoff: 350, q: 0.5, keyTrack: 0.1 },
-        filterEnv: { on: false, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
-        drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
-        comp: { threshold: -20, ratio: 2, attack: 0.02, release: 0.3, makeup: 2 },
-        eq: { lowShelf: { freq: 60, gain: 3 }, mid: { freq: 400, q: 0.8, gain: -5 }, highShelf: { freq: 1500, gain: -10 } },
-        stringNoise: { on: false, type: 'finger' as const, amount: 0 },
-        chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.15 },
-        delay: { on: true, time: 0.6, fb: 0.4, mix: 0.1, hc: 1200 },
-        reverbMix: 0.2
     },
     bass_ambient_dark: {
         type: 'bass' as const,
