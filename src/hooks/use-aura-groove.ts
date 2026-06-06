@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V12.0 — "Journey Engine Synchronization".
- * #ЗАЧЕМ: Исправление ситуации "в очереди блюз, а играет амбиент".
- * #ЧТО: ПЛАН №94 — Авто-переключение настроек при прогрессии маршрута.
+ * @fileOverview Music Control Hook V12.1 — "Terminal Silence Update".
+ * #ЗАЧЕМ: Гарантированная остановка музыки при навигации.
+ * #ЧТО: ПЛАН №96 — handleGoHome теперь async и дожидается остановки движка.
  */
 'use client';
 
@@ -66,6 +66,8 @@ export type AuraGrooveProps = {
   useHeritage: boolean; 
   setUseHeritage: (value: boolean) => void;
   handleGoHome: () => void;
+  setIsPlaying: (playing: boolean) => void;
+  stopAllSounds: () => void;
   isEqModalOpen: boolean;
   setIsEqModalOpen: (isOpen: boolean) => void;
   eqSettings: number[];
@@ -172,7 +174,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const prevBarRef = useRef(0);
 
   // --- 1. SYNC ROUTE ITEM TO ENGINE STATE ---
-  // #ЗАЧЕМ: Когда в очереди меняется элемент, нужно обновить жанр и настроение.
   useEffect(() => {
     if (activeRouteItemId) {
         const activeItem = route.find(it => it.id === activeRouteItemId);
@@ -184,7 +185,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [activeRouteItemId, route]);
 
   // --- 2. JOURNEY AUTO-PROGRESSION ---
-  // #ЗАЧЕМ: Когда такт сбрасывается в 0, значит трек кончился -> идем дальше.
   useEffect(() => {
     if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
         const nextIndex = activeRouteIndex + 1;
@@ -306,13 +306,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId]);
 
-  const resetMixerToSystem = useCallback(() => {
-      setActiveMixerPresetId(null);
-      localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
-      applyAutoMix();
-      setCalibrationGain('master', 1.0);
-  }, [applyAutoMix, setCalibrationGain]);
-
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -343,7 +336,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
-    handleGoHome: useCallback(() => { setIsPlaying(false); stopAllSounds(); router.push('/'); }, [setIsPlaying, stopAllSounds, router]),
+    handleGoHome: useCallback(async () => { 
+        if (isPlaying) {
+            await setIsPlaying(false); 
+        }
+        stopAllSounds(); 
+        router.push('/'); 
+    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
+    setIsPlaying,
+    stopAllSounds,
+    handleGoHome: useCallback(async () => { 
+        if (isPlaying) {
+            await setIsPlaying(false); 
+        }
+        stopAllSounds(); 
+        router.push('/'); 
+    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
     isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, 
     handleEqChange: useCallback((idx: number, val: number) => { const n = [...eqSettings]; n[idx] = val; setEqSettings(n); setEQGain(idx, val); }, [eqSettings, setEQGain]),
     isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
@@ -436,6 +444,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }, [activeMixerPresetId, instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), 
     loadMixerPreset, 
     deleteMixerPreset: useCallback((id) => setMixerPresets(prev => prev.filter(p => p.id !== id)), []),
-    resetMixerToSystem
+    resetMixerToSystem: useCallback(() => {
+        setActiveMixerPresetId(null);
+        localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+        // Реактивный сброс громкостей произойдет через applyAutoMix в useEffect
+        setCalibrationGain('master', 1.0);
+    }, [setCalibrationGain])
   };
 };
