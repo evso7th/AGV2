@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.1 — "Dynamic Group Expansion".
+ * @fileOverview Universal Music Theory Utilities V5.2 — "Dynamic Piano Extension".
  */
 
 import type { 
@@ -47,7 +47,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №87): Добавлены новые динамические группы баса и гитар.
+ * #ОБНОВЛЕНО (ПЛАН №88): Добавлены динамические группы для Piano/Rhodes.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -144,6 +144,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
     if (clean === 'dynbassambientcs80') {
         return tension < 0.6 ? 'bass_ambient' : 'bass_cs80';
+    }
+
+    // ─── Dynamic Groups (Piano) ───
+    if (clean === 'dynrhodespiano') {
+        return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
+    }
+    if (clean === 'dynpianorhodes') {
+        return tension < 0.6 ? 'piano' : 'ep_rhodes_warm';
     }
 
     const v2Keys = Object.keys(V2_PRESETS);

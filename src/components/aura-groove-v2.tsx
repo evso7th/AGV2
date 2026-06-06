@@ -1,6 +1,7 @@
+
 /**
  * #ЗАЧЕМ: UI AuraGroove V4.0 — "Dynamic Group Expansion".
- * #ЧТО: ПЛАН №87 — Добавлены новые динамические группы в словарь имен.
+ * #ЧТО: ПЛАН №88 — Добавлены динамические группы пианиста.
  */
 'use client';
 
@@ -156,6 +157,22 @@ export function AuraGrooveV2({
     'neuro_f_matrix': 'Neuro F-Matrix',
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
+    'organ_jimmy_smith': 'Jimmy Smith B3',
+    'organ_prog': 'Prog Rock B3',
+    'reggae_organ': 'Roots Bubbler B3',
+    'dynamicOrgan': '⚡ DYNAMIC ORGAN',
+    'synth': 'Emerald Pad',
+    'synth_ambient_pad_lush': 'Lush Pad',
+    'synth_cave_pad': 'Cave Pad (Dark)',
+    'dynamicPad': '⚡ DYNAMIC PAD',
+    'theremin': 'Vocal Theremin',
+    'mellotron': 'Majestic Strings',
+    'mellotron_flute_intimate': 'Intimate Flute',
+    'guitar_shineOn': 'Shine On Guitar',
+    'guitar_muffLead': 'Muff Lead',
+    'reggae_guitar': 'Roots Skank Guitar',
+    'organ': 'Cathedral Organ',
+    'organ_soft_jazz': 'Soft Jazz Organ',
     'synth': 'Emerald Pad',
     'theremin': 'Vocal Theremin',
     'mellotron': 'Majestic Strings',
@@ -184,7 +201,10 @@ export function AuraGrooveV2({
     'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
     'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
     'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
-    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub'
+    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
+    // Dynamic Piano
+    'dyn_rhodes_piano': '⚡ Rhodes → Piano',
+    'dyn_piano_rhodes': '⚡ Piano → Rhodes'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {
@@ -542,7 +562,7 @@ export function AuraGrooveV2({
                     <div className="flex items-center gap-2">
                          <Button
                             onClick={handleToggleTimer}
-                            disabled={isInitializing || timerSettings.duration === 0}
+                            disabled={isInitializing || timerSettings.isActive}
                             variant={timerSettings.isActive ? 'destructive' : 'secondary'}
                             className="flex-grow h-8 text-[10px] uppercase font-black"
                         >

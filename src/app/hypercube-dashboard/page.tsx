@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -167,6 +168,13 @@ const INSTRUMENT_GROUPS = [
     ]
   },
   {
+    label: "⚡ Dynamic Piano",
+    options: [
+      'dyn_rhodes_piano',
+      'dyn_piano_rhodes'
+    ]
+  },
+  {
     label: "Others",
     options: ['ep_rhodes_warm', 'cs80', 'theremin', 'piano', 'violin', 'flute', 'none']
   }
@@ -228,7 +236,10 @@ const DISPLAY_NAMES: Record<string, string> = {
     'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
     'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
     'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
-    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub'
+    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
+    // Dynamic Piano
+    'dyn_rhodes_piano': '⚡ Rhodes → Piano',
+    'dyn_piano_rhodes': '⚡ Piano → Rhodes'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
