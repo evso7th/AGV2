@@ -122,7 +122,7 @@ export class TranceBrain {
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
-        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
+        const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];

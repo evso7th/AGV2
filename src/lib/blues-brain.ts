@@ -419,16 +419,16 @@ export class BluesBrain {
     if (!isSoloistResting) {
         this.currentAccompAxioms.forEach((ax) => {
             const rawRole = ax.role.toLowerCase(); 
-            let targetType: InstrumentPart | null = null;
-            if (rawRole.includes('piano')) targetType = 'pianoAccompaniment';
-            else if (rawRole.includes('accomp')) targetType = 'accompaniment';
+            let target: InstrumentPart | null = null;
+            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
+            else if (rawRole.includes('accomp')) target = 'accompaniment';
             
-            if (targetType && hints[targetType] && !usedTargetLayers.has(targetType)) {
-                const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, targetType, dna, tension);
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
+                const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, target, dna, tension);
                 if (rendered.length > 0) {
-                    if (ax.preferredInstrument) instrumentOverrides[targetType] = resolveSemanticTimbre(ax.preferredInstrument, tension, targetType, 'blues');
+                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
                     events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
-                    usedTargetLayers.add(targetType);
+                    usedTargetLayers.add(target);
                 }
             }
         });
