@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.4 — "Continuous Flow Protocol".
- * #ЗАЧЕМ: Исправление остановки музыки в конце маршрута.
- * #ЧТО: ПЛАН №107 — Авто-переход в Free Flow или зацикливание вместо Pause.
+ * @fileOverview Music Control Hook V13.5 — "Eternal Journey Protocol".
+ * #ЗАЧЕМ: Реализация бесконечного автономного воспроизведения.
+ * #ЧТО: ПЛАН №107.1 — Repeat ON по умолчанию, исправлено зацикливание маршрута.
  */
 'use client';
 
@@ -166,7 +166,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [route, setRoute] = useState<RouteItem[]>([]);
   const [activeRouteItemId, setActiveRouteItemId] = useState<string | null>(null);
   const [isShuffle, setShuffle] = useState(false);
-  const [isRepeat, setRepeat] = useState(false);
+  // #ЗАЧЕМ: Repeat ON по умолчанию (ПЛАН №107.1).
+  const [isRepeat, setRepeat] = useState(true);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
@@ -237,18 +238,20 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route]);
 
-  // --- 3. JOURNEY AUTO-PROGRESSION (FIXED - PLAN №107) ---
+  // --- 3. JOURNEY AUTO-PROGRESSION (FIXED - PLAN №107.1) ---
   useEffect(() => {
     if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
         const nextIndex = activeRouteIndex + 1;
+        
         if (nextIndex < route.length) {
             setActiveRouteItemId(route[nextIndex].id);
             toast({ title: "Next Chapter", description: `Transitioning to ${route[nextIndex].genre} / ${route[nextIndex].mood}` });
         } else if (isRepeat) {
+            // #ЗАЧЕМ: Бесшовный цикл. Если маршрут закончился — возвращаемся в начало.
             setActiveRouteItemId(route[0].id);
             toast({ title: "Journey Loop", description: "Returning to the start of the path." });
         } else {
-            // #ЗАЧЕМ: Не останавливаем музыку, а переходим в Free Flow.
+            // Если повтор выключен вручную — переходим в свободный режим.
             setActiveRouteItemId(null);
             toast({ title: "Journey Complete", description: "Transitioning to Free Flow mode." });
         }
