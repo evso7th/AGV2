@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V44.0 — "Heritage Sync Restoration".
- * #ЗАЧЕМ: Исправление потери связи с наследием. 
- * #ЧТО: ПЛАН №95 — Внедрен onSnapshot для реактивной доставки DNA в воркер.
+ * @fileOverview Audio Engine Context V45.0 — "Broadcast Echo Mitigation".
+ * #ЗАЧЕМ: Исправление эха (задвоения звука) в режиме Radio.
+ * #ЧТО: ПЛАН №97 — Приглушение прямого выхода на динамики при активном Broadcast Bridge.
  */
 'use client';
 
@@ -242,16 +242,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №95. Принудительная отправка аксиом в воркер.
-   */
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
       const rawAxioms = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-      
-      // Отправляем в воркер
       workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
 
       const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
@@ -273,17 +268,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [db]);
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №95. Реактивный слушатель DNA.
-   */
   useEffect(() => {
     if (isInitialized && db && workerRef.current) {
-        console.log('%c[AudioEngine] Heritage Direct Sync Active', 'color: #4ade80;');
         const unsubscribe = onSnapshot(collection(db, 'heritage_axioms'), (snapshot) => {
             const rawAxioms = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
             workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
             
-            // Также обновляем метаданные для UI
             const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
             rawAxioms.forEach(data => {
                 const compId = data.compositionId;
@@ -311,11 +301,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current; if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         if (!masterGainNodeRef.current) {
-            masterGainNodeRef.current = context.createGain(); samplersMasterGainRef.current = context.createGain(); speakerGainNodeRef.current = context.createGain();
-            analyserNodeRef.current = context.createAnalyser(); analyserNodeRef.current.fftSize = 512;
-            samplersMasterGainRef.current.connect(masterGainNodeRef.current); masterGainNodeRef.current.connect(analyserNodeRef.current);
-            analyserNodeRef.current.connect(speakerGainNodeRef.current); speakerGainNodeRef.current.connect(context.destination);
-            const recDest = context.createMediaStreamDestination(); masterGainNodeRef.current.connect(recDest); recDestRef.current = recDest;
+            masterGainNodeRef.current = context.createGain(); 
+            samplersMasterGainRef.current = context.createGain(); 
+            speakerGainNodeRef.current = context.createGain();
+            speakerGainNodeRef.current.gain.value = 1.0; 
+            
+            analyserNodeRef.current = context.createAnalyser(); 
+            analyserNodeRef.current.fftSize = 512;
+            
+            samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
+            masterGainNodeRef.current.connect(analyserNodeRef.current);
+            analyserNodeRef.current.connect(speakerGainNodeRef.current); 
+            speakerGainNodeRef.current.connect(context.destination);
+            
+            const recDest = context.createMediaStreamDestination(); 
+            masterGainNodeRef.current.connect(recDest); 
+            recDestRef.current = recDest;
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
@@ -359,7 +360,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { toast({ variant: "destructive", title: "Audio Error" }); return false; }
-  }, [toast, scheduleEvents, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains]);
+  }, [toast, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains, scheduleEvents]);
 
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; if (!context || !workerRef.current) return;
@@ -422,13 +423,23 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       previewInstrumentRef.current?.setPreset(p);
   }, []);
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №97. Устранение эха в режиме Radio.
+   * #ЧТО: Приглушение физических динамиков при включении бродкаста.
+   */
   const toggleBroadcastCallback = useCallback(() => {
-      if (broadcastEngineRef.current && audioContextRef.current) {
+      if (broadcastEngineRef.current && audioContextRef.current && speakerGainNodeRef.current) {
+          const now = audioContextRef.current.currentTime;
           if (isBroadcastActive) {
+              // Возвращаемся к обычным колонкам
               broadcastEngineRef.current.stop();
+              speakerGainNodeRef.current.gain.setTargetAtTime(1.0, now, 0.05);
               setIsBroadcastActive(false);
           } else {
+              // Переключаемся на Radio Bridge
               broadcastEngineRef.current.start();
+              // #ЗАЧЕМ: Приглушаем динамики, так как звук будет идти через <audio> элемент моста с лагом.
+              speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }
       }
