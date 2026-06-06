@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V48.0 — "Metadata Synchronization".
- * #ЗАЧЕМ: Доставка названия DNA-трека из воркера в системный интерфейс ОС.
- * #ЧТО: ПЛАН №103 — Добавлено состояние currentTrackName.
+ * @fileOverview Audio Engine Context V49.0 — "Vinyl Transition Protocol".
+ * #ЗАЧЕМ: Реализация эстетической и технической паузы между пьесами.
+ * #ЧТО: ПЛАН №99 — 2-секундный переход со звуком винила.
  */
 'use client';
 
@@ -236,18 +236,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const playTransitionSound = useCallback(() => {
       if (!audioContextRef.current || !transitionBufferRef.current || !transitionGainRef.current) return;
       
+      const now = audioContextRef.current.currentTime;
       console.log('%c[Chronos] Playing Vinyl Transition...', 'color: #a855f7; font-weight: bold;');
       
       const source = audioContextRef.current.createBufferSource();
       source.buffer = transitionBufferRef.current;
       source.connect(transitionGainRef.current);
-      source.start();
+      source.start(now);
       
-      const now = audioContextRef.current.currentTime;
-      masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master * 0.3, now, 0.5);
+      // #ЗАЧЕМ: Приглушение основной музыки на время перехода (2 сек).
+      masterGainNodeRef.current?.gain.cancelScheduledValues(now);
+      masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master * 0.25, now, 0.4);
+      
       setTimeout(() => {
-          if(audioContextRef.current) masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current.currentTime, 0.5);
-      }, 1500);
+          if(audioContextRef.current) {
+              const resumeNow = audioContextRef.current.currentTime;
+              masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, resumeNow, 0.6);
+          }
+      }, 1800);
   }, [calibrationGains.master]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
@@ -382,12 +388,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                     setCurrentBar(payload.barCount);
                     setTotalBars(payload.totalBars);
-                    // #ЗАЧЕМ: Обновление имени трека для метаданных ОС
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
                     
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
                     
+                    // #ЗАЧЕМ: CHRONOS RESYNC (ПЛАН №98). Если Bar 0 или дрейф > 100мс, подтягиваем время.
                     if (payload.barCount === 0 || scheduleTime < now - 0.1) {
                          scheduleTime = now + 0.15; 
                     }
@@ -400,6 +406,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
                 } else if (type === 'SUITE_TRANSITION') {
+                    // #ЗАЧЕМ: Реакция на конец сюиты (ПЛАН №99).
                     playTransitionSound();
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }

@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.8 — "Log Stylization Update".
- * #ЗАЧЕМ: Выделение нарратива светло-фиолетовым цветом для удобства аудита.
- * #ЧТО: ПЛАН №104 — Множественные стили %c в console.log.
+ * @file AuraGroove Music Worker V5.9 — "Vinyl Transition Protocol".
+ * #ЗАЧЕМ: Добавление паузы 2 сек между пьесами для инициализации новой ДНК.
+ * #ЧТО: ПЛАН №99 — tick() возвращает 2000мс при смене сюиты.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -239,6 +239,7 @@ const Scheduler = {
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
+        // #ЗАЧЕМ: Проверка конца сюиты для запуска перехода (ПЛАН №99).
         if (this.barCount >= totalBars) {
              self.postMessage({ type: 'SUITE_TRANSITION' });
              this.filterRotationIndex++;
@@ -246,6 +247,7 @@ const Scheduler = {
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
+             // Возвращаем 2000мс для паузы перед Bar 0 новой пьесы.
              return 2000; 
         }
 
@@ -275,7 +277,7 @@ const Scheduler = {
             `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
             `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
             'color: #888;',
-            'color: #c084fc;', // Light purple (Tailwind purple-400)
+            'color: #c084fc;', 
             'color: #888;'
         );
 
@@ -290,7 +292,7 @@ const Scheduler = {
                 actualBpm: Math.round(this.settings.bpm),
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
-                trackName: track, // #ЗАЧЕМ: Метаданные для Media Session
+                trackName: track,
                 sectionName: sectionName
             }
         });
