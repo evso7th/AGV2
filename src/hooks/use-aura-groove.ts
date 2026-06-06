@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Хук управления музыкой V10.1 — "State Persistence & Extended Capacity".
- * #ЧТО: ПЛАН №58 — Автоматическая загрузка настроек при старте. Исправлены функции маршрутов.
+ * #ЗАЧЕМ: Хук управления музыкой V10.2 — "Imperial Mixing Persistence".
+ * #ЧТО: ПЛАН №89 — Фиксация микшера и автозагрузка пресетов.
  */
 'use client';
 
@@ -85,7 +85,6 @@ export type AuraGrooveProps = {
   setIntroBars: (bars: number) => void;
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
-  // --- Route Specific ---
   route: RouteItem[];
   addToRoute: (genre: Genre | 'random', mood: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
@@ -106,7 +105,6 @@ export type AuraGrooveProps = {
   setShowAdvancedUI: (val: boolean) => void;
   currentBar: number;
   totalBars: number;
-  // --- Preset Stewardship ---
   eqPresets: PresetItem[];
   activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
@@ -246,16 +244,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
       }
   }, [mixerPresets, setVolume, setCalibrationGain]);
 
-  // #ЗАЧЕМ: ПЛАН №58. Авто-применение настроек при готовности движка.
+  // #ЗАЧЕМ: ПЛАН №89. Авто-применение настроек при готовности движка.
   useEffect(() => {
       if (isInitialized) {
           const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
-          if (activeMixerId) loadMixerPreset(activeMixerId);
+          if (activeMixerId) {
+             const found = mixerPresets.find(p => p.id === activeMixerId);
+             if (found) loadMixerPreset(activeMixerId);
+          }
 
           const activeEqId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
-          if (activeEqId) loadEqPreset(activeEqId);
+          if (activeEqId) {
+             const found = eqPresets.find(p => p.id === activeEqId);
+             if (found) loadEqPreset(activeEqId);
+          }
       }
-  }, [isInitialized, loadMixerPreset, loadEqPreset]);
+  }, [isInitialized, mixerPresets, eqPresets, loadMixerPreset, loadEqPreset]);
 
   const saveEqPreset = (name: string) => {
       const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
@@ -326,6 +330,27 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setMixerPresets(updated);
       localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(updated));
   };
+
+  const applyAutoMix = useCallback(() => {
+      // #ЗАЧЕМ: ПЛАН №89. Если активен пресет — не меняем микс.
+      if (!isInitialized || activeMixerPresetId) return;
+
+      // Используем только глобальный микс жанра, игнорируя локальные Блюпринты.
+      const finalMix = GENRE_MASTER_MIX[genre]; 
+      if (!finalMix) return;
+
+      const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
+      parts.forEach(part => {
+          const vol = finalMix[part];
+          if (vol !== undefined) {
+              setVolume(part, vol);
+              setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: vol } }));
+          }
+      });
+      if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
+      if (finalMix.sparkles !== undefined) { setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); }
+      if (finalMix.sfx !== undefined) { setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); }
+  }, [isInitialized, genre, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled, activeMixerPresetId]);
 
   const resetMixerToSystem = () => {
     setActiveMixerPresetId(null);
@@ -485,26 +510,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       });
   };
 
-  const applyAutoMix = useCallback(() => {
-      if (!isInitialized || activeMixerPresetId) return;
-
-      const masterGenreMix = GENRE_MASTER_MIX[genre];
-      const blueprint = getBlueprint(genre, mood);
-      const moodOverrideMix = blueprint.soundMix || {};
-      const finalMix: SoundMix = { ...masterGenreMix, ...moodOverrideMix };
-      const parts: (keyof InstrumentSettings)[] = ['bass', 'melody', 'accompaniment', 'harmony', 'pianoAccompaniment'];
-      parts.forEach(part => {
-          const vol = finalMix[part];
-          if (vol !== undefined) {
-              setVolume(part, vol);
-              setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: vol } }));
-          }
-      });
-      if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
-      if (finalMix.sparkles !== undefined) { setVolume('sparkles', textureSettings.sparkles.enabled ? finalMix.sparkles : 0); setTextureSettings(prev => ({ ...prev, sparkles: { ...prev.sparkles, volume: finalMix.sparkles! } })); }
-      if (finalMix.sfx !== undefined) { setVolume('sfx', textureSettings.sfx.enabled ? finalMix.sfx : 0); setTextureSettings(prev => ({ ...prev, sfx: { ...prev.sfx, volume: finalMix.sfx! } })); }
-  }, [isInitialized, genre, mood, setVolume, textureSettings.sparkles.enabled, textureSettings.sfx.enabled, activeMixerPresetId]);
-
   useEffect(() => { applyAutoMix(); }, [genre, mood, isInitialized, applyAutoMix]);
 
   useEffect(() => {
@@ -588,7 +593,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars,
-    // --- Preset Stewardship ---
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem
   };
