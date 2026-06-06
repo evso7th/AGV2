@@ -307,9 +307,9 @@ export function AuraGrooveV2({
                                         <Mic2 className="h-4 w-4" /> Ensemble Mixer
                                     </h3>
                                     <div className="flex gap-8 h-full pb-12">
-                                        {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).concat(['drums', 'sparkles', 'sfx'] as any).map((partKey) => {
+                                        {(['bass', 'melody', 'accompaniment', 'pianoAccompaniment', 'harmony', 'drums', 'sparkles', 'sfx'] as const).map((partKey) => {
                                             const isPart = partKey in instrumentSettings;
-                                            const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey] || drumSettings;
+                                            const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey as any] || drumSettings;
                                             
                                             let instrumentList: string[] = [];
                                             if (partKey === 'bass') instrumentList = bassInstrumentList;
@@ -366,7 +366,7 @@ export function AuraGrooveV2({
                                                         <Label className="text-[10px] font-black uppercase text-center block text-muted-foreground group-hover:text-primary transition-colors truncate w-full">
                                                             <span className="flex items-center justify-center gap-2">
                                                                 {getPartIcon(partKey as string)}
-                                                                {partKey === 'pianoAccompaniment' ? 'Rhodes' : partKey}
+                                                                {partKey === 'pianoAccompaniment' ? 'Rhodes' : (partKey === 'harmony' ? 'RTM' : partKey)}
                                                             </span>
                                                         </Label>
                                                     </div>
@@ -579,7 +579,7 @@ export function AuraGrooveV2({
                                 <DialogHeader>
                                     <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight">
                                         <Activity className="h-5 w-5" /> Spectrum Analyzer
-                                    </DialogTitle>
+                                    </Activity>
                                     <DialogDescription className="text-[10px] font-bold uppercase tracking-widest opacity-70">Real-time Frequency Distribution</DialogDescription>
                                 </DialogHeader>
                                 <div className="py-4 h-[350px]">
@@ -690,3 +690,4 @@ export function AuraGrooveV2({
     </div>
   );
 }
+

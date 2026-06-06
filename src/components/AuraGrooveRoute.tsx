@@ -70,6 +70,7 @@ const MIXER_CHANNELS = [
     { key: 'melody', label: 'LEAD' },
     { key: 'accompaniment', label: 'KEYB' },
     { key: 'pianoAccompaniment', label: 'PIANO' },
+    { key: 'harmony', label: 'RTM' },
     { key: 'sparkles', label: 'SP' },
     { key: 'sfx', label: 'SFX' },
     { key: 'drums', label: 'DRM' }
@@ -522,7 +523,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
                 <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> Equalizer</DialogTitle></DialogHeader>
-                    <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings[index] > 0 ? '+' : ''}{props.eqSettings[index].toFixed(1)}</span><Slider value={[props.eqSettings[index]]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
+                    <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
                         presets={props.eqPresets} 
@@ -541,3 +542,4 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
+
