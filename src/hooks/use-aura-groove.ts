@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Хук управления музыкой V10.5 — "Infinite Loop Mitigation".
- * #ЗАЧЕМ: Устранение ошибки рекурсивного рендеринга и исправление импортов.
- * #ЧТО: ПЛАН №92 — Тотальный useCallback и исправление typo в dnd-kit.
+ * @fileOverview Music Control Hook V11.0 — "Ignition Stability Protocol".
+ * #ЗАЧЕМ: Исправление нерабочей кнопки Play и тотальная мемоизация.
+ * #ЧТО: ПЛАН №93 — handlePlayPause теперь инициирует initialize().
  */
 'use client';
 
@@ -125,7 +125,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
-    setTextureSettings: setEngineTextureSettings, toggleBroadcast, getWorker, startRecording, stopRecording,
+    setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
     setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit
   } = useAudioEngine(); 
   
@@ -155,8 +155,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [currentSeed, setCurrentSeed] = useState<number>(() => Date.now());
   const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
   const [isRegenerating, setIsRegenerating] = useState(false);
-  const [isWarmingUp, setIsWarmingUp] = useState(false);
-  const [warmUpTimeLeft, setWarmUpTimeLeft] = useState(0);
   const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
   const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
   const [route, setRoute] = useState<RouteItem[]>([]);
@@ -169,8 +167,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
   const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
-  const [currentBar, setCurrentBar] = useState(0);
-  const [totalBars, setTotalBars] = useState(144);
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
 
@@ -242,10 +238,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
           const vol = finalMix[part];
           if (vol !== undefined) {
               setVolume(part, vol);
-              setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part], volume: vol } }));
+              setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: vol } }));
           }
       });
-      if (finalMix.drums !== undefined) { setVolume('drums', finalMix.drums); setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); }
+      if (finalMix.drums !== undefined) { 
+        setVolume('drums', finalMix.drums); 
+        setDrumSettings(prev => ({ ...prev, volume: finalMix.drums! })); 
+      }
   }, [isInitialized, genre, setVolume, activeMixerPresetId]);
 
   useEffect(() => { applyAutoMix(); }, [genre, isInitialized, applyAutoMix]);
@@ -265,28 +264,50 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  const handleVolumeChange = useCallback((part: any, value: number) => {
-    setVolume(part, value);
-    if (part in instrumentSettings) { 
-        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } })); 
+  const handlePlayPause = useCallback(async () => { 
+    if (!isInitialized) {
+        const success = await initialize();
+        if (success) {
+            setIsPlaying(true);
+        }
+    } else {
+        setIsPlaying(!isPlaying);
     }
-    else if (part === 'drums') { setDrumSettings(prev => ({ ...prev, volume: value })); }
-    else if (part === 'sparkles' || part === 'sfx') { setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); }
-  }, [setVolume, instrumentSettings]);
+  }, [isInitialized, isPlaying, initialize, setIsPlaying]);
+
+  const resetMixerToSystem = useCallback(() => {
+      setActiveMixerPresetId(null);
+      localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+      applyAutoMix();
+      setCalibrationGain('master', 1.0);
+  }, [applyAutoMix, setCalibrationGain]);
 
   return {
-    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp, warmUpTimeLeft,
-    loadingText: isInitializing ? 'Initializing...' : 'Ready',
+    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
+    loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
     clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
-    handlePlayPause: useCallback(() => { if (!isInitialized) return; setIsPlaying(!isPlaying); }, [isInitialized, isPlaying, setIsPlaying]),
+    handlePlayPause,
     handleRegenerate: useCallback(() => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); }, []),
     handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
     handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
     handleSaveMasterpiece: useCallback(() => {}, []),
-    drumSettings, setDrumSettings, instrumentSettings, setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
-    handleBassTechniqueChange: useCallback(() => {}, []), handleVolumeChange, textureSettings, 
+    drumSettings, setDrumSettings, 
+    instrumentSettings, 
+    setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
+    handleBassTechniqueChange: useCallback(() => {}, []), 
+    handleVolumeChange: useCallback((part: any, value: number) => {
+        setVolume(part, value);
+        if (part in instrumentSettings) { 
+            setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } })); 
+        } else if (part === 'drums') { 
+            setDrumSettings(prev => ({ ...prev, volume: value })); 
+        } else if (part === 'sparkles' || part === 'sfx') { 
+            setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as 'sparkles' | 'sfx'], volume: value } })); 
+        }
+    }, [setVolume, instrumentSettings]),
+    textureSettings, 
     handleTextureEnabledChange: useCallback((part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})), []),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
@@ -299,12 +320,77 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleToggleTimer: useCallback(() => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })), []),
     mood, setMood: setMoodState, genre, setGenre: setGenreState, introBars, setIntroBars,
     voiceLimit, setVoiceLimit,
-    route, addToRoute: useCallback((g, m) => setRoute(prev => [...prev, { id: `route-${Date.now()}`, genre: g, mood: m, status: 'pending' }]), []), removeFromRoute: useCallback((id) => setRoute(prev => prev.filter(it => it.id !== id)), []), selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), refreshRoute: useCallback(() => refreshCloudAxioms(), [refreshCloudAxioms]), moveRouteItem: useCallback(() => {}, []), reorderRoute: useCallback((a, o) => setRoute(p => arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o))), []), saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]), loadRoute: useCallback((s) => { const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre, mood: it.mood, status: 'pending' as const })); setRoute(i); if (i.length > 0) setActiveRouteItemId(i[0].id); }, []), deleteSavedRoute: useCallback((id) => setSavedRoutes(p => p.filter(r => r.id !== id)), []), savedRoutes,
+    route, 
+    addToRoute: useCallback((g, m) => {
+        const id = `route-${Date.now()}`;
+        setRoute(prev => [...prev, { id, genre: g, mood: m, status: 'pending' }]);
+    }, []), 
+    removeFromRoute: useCallback((id) => setRoute(prev => prev.filter(it => it.id !== id)), []), 
+    selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), 
+    refreshRoute: useCallback(() => refreshCloudAxioms(), [refreshCloudAxioms]), 
+    moveRouteItem: useCallback(() => {}, []), 
+    reorderRoute: useCallback((a, o) => setRoute(p => arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o))), []), 
+    saveRoute: useCallback((name) => { 
+        const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; 
+        const u = [n, ...savedRoutes]; 
+        setSavedRoutes(u); 
+        localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); 
+    }, [route, savedRoutes]), 
+    loadRoute: useCallback((s) => { 
+        const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre, mood: it.mood, status: 'pending' as const })); 
+        setRoute(i); if (i.length > 0) setActiveRouteItemId(i[0].id); 
+    }, []), 
+    deleteSavedRoute: useCallback((id) => {
+        const u = savedRoutes.filter(r => r.id !== id);
+        setSavedRoutes(u);
+        localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u));
+    }, [savedRoutes]), 
+    savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
-    currentBar, totalBars,
-    eqPresets, activeEqPresetId, saveEqPreset: useCallback((name) => { const n = { id: `eq-${Date.now()}`, name, values: [...eqSettings] }; const u = [...eqPresets, n]; setEqPresets(u); localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(u)); }, [eqSettings, eqPresets]), updateActiveEqPreset: useCallback(() => { if (!activeEqPresetId) return; const u = eqPresets.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p); setEqPresets(u); localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(u)); }, [activeEqPresetId, eqSettings, eqPresets]), loadEqPreset, deleteEqPreset: useCallback((id) => setEqPresets(prev => prev.filter(p => p.id !== id)), []),
-    mixerPresets, activeMixerPresetId, saveMixerPreset: useCallback((name) => { const v = { bass: instrumentSettings.bass.volume, melody: instrumentSettings.melody.volume, accompaniment: instrumentSettings.accompaniment.volume, harmony: instrumentSettings.harmony.volume, pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume, drums: drumSettings.volume, sparkles: textureSettings.sparkles.volume, sfx: textureSettings.sfx.volume, master: calibrationGains.master }; const n = { id: `mix-${Date.now()}`, name, values: v }; const u = [...mixerPresets, n]; setMixerPresets(u); localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(u)); }, [instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), updateActiveMixerPreset: useCallback(() => { if (!activeMixerPresetId) return; const v = { bass: instrumentSettings.bass.volume, melody: instrumentSettings.melody.volume, accompaniment: instrumentSettings.accompaniment.volume, harmony: instrumentSettings.harmony.volume, pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume, drums: drumSettings.volume, sparkles: textureSettings.sparkles.volume, sfx: textureSettings.sfx.volume, master: calibrationGains.master }; const u = mixerPresets.map(p => p.id === activeMixerPresetId ? { ...p, values: v } : p); setMixerPresets(u); localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(u)); }, [activeMixerPresetId, instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), loadMixerPreset, deleteMixerPreset: useCallback((id) => setMixerPresets(prev => prev.filter(p => p.id !== id)), []),
-    resetMixerToSystem: useCallback(() => { setActiveMixerPresetId(null); localStorage.removeItem(ACTIVE_MIXER_ID_KEY); applyAutoMix(); }, [applyAutoMix])
+    currentBar: 0, totalBars: 144,
+    eqPresets, activeEqPresetId, 
+    saveEqPreset: useCallback((name) => { 
+        const n = { id: `eq-${Date.now()}`, name, values: [...eqSettings] }; 
+        const u = [...eqPresets, n]; 
+        setEqPresets(u); 
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(u)); 
+    }, [eqSettings, eqPresets]), 
+    updateActiveEqPreset: useCallback(() => { 
+        if (!activeEqPresetId) return; 
+        const u = eqPresets.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p); 
+        setEqPresets(u); 
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(u)); 
+    }, [activeEqPresetId, eqSettings, eqPresets]), 
+    loadEqPreset, 
+    deleteEqPreset: useCallback((id) => setEqPresets(prev => prev.filter(p => p.id !== id)), []),
+    mixerPresets, activeMixerPresetId, 
+    saveMixerPreset: useCallback((name) => { 
+        const v = { 
+            bass: instrumentSettings.bass.volume, melody: instrumentSettings.melody.volume, 
+            accompaniment: instrumentSettings.accompaniment.volume, harmony: instrumentSettings.harmony.volume, 
+            pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume, drums: drumSettings.volume, 
+            sparkles: textureSettings.sparkles.volume, sfx: textureSettings.sfx.volume, master: calibrationGains.master 
+        }; 
+        const n = { id: `mix-${Date.now()}`, name, values: v }; 
+        const u = [...mixerPresets, n]; 
+        setMixerPresets(u); 
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(u)); 
+    }, [instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), 
+    updateActiveMixerPreset: useCallback(() => { 
+        if (!activeMixerPresetId) return; 
+        const v = { 
+            bass: instrumentSettings.bass.volume, melody: instrumentSettings.melody.volume, 
+            accompaniment: instrumentSettings.accompaniment.volume, harmony: instrumentSettings.harmony.volume, 
+            pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume, drums: drumSettings.volume, 
+            sparkles: textureSettings.sparkles.volume, sfx: textureSettings.sfx.volume, master: calibrationGains.master 
+        }; 
+        const u = mixerPresets.map(p => p.id === activeMixerPresetId ? { ...p, values: v } : p); 
+        setMixerPresets(u); 
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(u)); 
+    }, [activeMixerPresetId, instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), 
+    loadMixerPreset, 
+    deleteMixerPreset: useCallback((id) => setMixerPresets(prev => prev.filter(p => p.id !== id)), []),
+    resetMixerToSystem
   };
 };

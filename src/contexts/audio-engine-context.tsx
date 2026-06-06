@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V41.0 — "Referential Integrity Update".
- * #ЗАЧЕМ: Устранение ошибки "Maximum update depth exceeded" через мемоизацию.
- * #ЧТО: ПЛАН №92 — useCallback для всех методов и useMemo для объекта контекста.
+ * @fileOverview Audio Engine Context V42.0 — "Engine Ignition Stability".
+ * #ЗАЧЕМ: Исправление нерабочей кнопки Play и устранение рекурсивных рендеров.
+ * #ЧТО: ПЛАН №93 — Стабилизация всех методов через useCallback.
  */
 'use client';
 
@@ -29,8 +29,6 @@ import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.50,            
@@ -361,20 +359,53 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setIsPreviewLooping(loopingRef.current);
   }, []);
 
+  const playRawEventsCallback = useCallback((events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => {
+      if(audioContextRef.current) scheduleEvents(events, audioContextRef.current.currentTime + 0.1, tempo || 72, 0, instrumentHints);
+  }, [scheduleEvents]);
+
+  const updateSettingsCallback = useCallback((s: Partial<WorkerSettings>) => {
+      if (workerRef.current) {
+          settingsRef.current = { ...settingsRef.current, ...s } as any;
+          workerRef.current.postMessage({ command: 'update_settings', data: s });
+      }
+  }, []);
+
+  const updatePreviewPresetCallback = useCallback((p: any) => {
+      previewInstrumentRef.current?.setPreset(p);
+  }, []);
+
+  const toggleBroadcastCallback = useCallback(() => {
+      if (broadcastEngineRef.current && audioContextRef.current) {
+          if (isBroadcastActive) {
+              broadcastEngineRef.current.stop();
+              setIsBroadcastActive(false);
+          } else {
+              broadcastEngineRef.current.start();
+              setIsBroadcastActive(true);
+          }
+      }
+  }, [isBroadcastActive]);
+
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
       analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit,
       setIsPlaying: handleTogglePlay,
-      updateSettings: (s: Partial<WorkerSettings>) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s } as any; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
+      updateSettings: updateSettingsCallback,
       refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, startRecording: () => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecording(true); }, stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
-      toggleBroadcast: () => { if (broadcastEngineRef.current && audioContextRef.current) { if (isBroadcastActive) { broadcastEngineRef.current.stop(); setIsBroadcastActive(false); } else { broadcastEngineRef.current.start(); setIsBroadcastActive(true); } } }, 
-      playRawEvents: (e: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(e, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
-      stopAllSounds, startPreview, stopPreview, updatePreviewPreset: (p: any) => previewInstrumentRef.current?.setPreset(p), togglePreviewLoop
-  }), [isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, setVolumeCallback, calibrationGains, setCalibrationGain, startPreview, stopPreview, togglePreviewLoop, scheduleEvents, getEffectivePreset]);
+      toggleBroadcast: toggleBroadcastCallback, 
+      playRawEvents: playRawEventsCallback,
+      stopAllSounds, startPreview, stopPreview, updatePreviewPreset: updatePreviewPresetCallback, togglePreviewLoop
+  }), [
+      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, 
+      availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, 
+      setVolumeCallback, calibrationGains, setCalibrationGain, startPreview, stopPreview, togglePreviewLoop, 
+      playRawEventsCallback, updateSettingsCallback, updatePreviewPresetCallback, toggleBroadcastCallback, 
+      stopAllSounds, getEffectivePreset
+  ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
 };
