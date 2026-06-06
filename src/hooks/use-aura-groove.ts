@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.3 — "Masterpiece Interaction Restoration".
- * #ЗАЧЕМ: Возврат функциональности лайков для пополнения облачного генофонда.
- * #ЧТО: ПЛАН №106 — Реализован метод handleSaveMasterpiece.
+ * @fileOverview Music Control Hook V13.4 — "Continuous Flow Protocol".
+ * #ЗАЧЕМ: Исправление остановки музыки в конце маршрута.
+ * #ЧТО: ПЛАН №107 — Авто-переход в Free Flow или зацикливание вместо Pause.
  */
 'use client';
 
@@ -237,7 +237,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route]);
 
-  // --- 3. JOURNEY AUTO-PROGRESSION ---
+  // --- 3. JOURNEY AUTO-PROGRESSION (FIXED - PLAN №107) ---
   useEffect(() => {
     if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
         const nextIndex = activeRouteIndex + 1;
@@ -246,8 +246,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
             toast({ title: "Next Chapter", description: `Transitioning to ${route[nextIndex].genre} / ${route[nextIndex].mood}` });
         } else if (isRepeat) {
             setActiveRouteItemId(route[0].id);
+            toast({ title: "Journey Loop", description: "Returning to the start of the path." });
         } else {
-            setIsPlaying(false);
+            // #ЗАЧЕМ: Не останавливаем музыку, а переходим в Free Flow.
+            setActiveRouteItemId(null);
+            toast({ title: "Journey Complete", description: "Transitioning to Free Flow mode." });
         }
     }
     prevBarRef.current = currentBar;
