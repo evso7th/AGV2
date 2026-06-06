@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V45.0 — "Broadcast Echo Mitigation".
- * #ЗАЧЕМ: Исправление эха (задвоения звука) в режиме Radio.
- * #ЧТО: ПЛАН №97 — Приглушение прямого выхода на динамики при активном Broadcast Bridge.
+ * @fileOverview Audio Engine Context V46.0 — "Chronos Resync Protocol".
+ * #ЗАЧЕМ: Исправление тишины при переходе между пьесами.
+ * #ЧТО: ПЛАН №98 — Автоматическая подтяжка времени планирования к реальности при Bar 0.
  */
 'use client';
 
@@ -341,10 +341,29 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
+                    const ctx = audioContextRef.current;
+                    if (!ctx) return;
+
                     setCurrentBar(payload.barCount);
                     setTotalBars(payload.totalBars);
-                    scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
-                    nextBarTimeRef.current += payload.barDuration;
+                    
+                    // #ЗАЧЕМ: ПЛАН №98. Ресинхронизация Chronos.
+                    // Если мы переходим к новой пьесе (Bar 0) или отстаем от реальности,
+                    // принудительно "подтягиваем" время планирования к реальности.
+                    let scheduleTime = nextBarTimeRef.current;
+                    const now = ctx.currentTime;
+                    
+                    if (payload.barCount === 0 || scheduleTime < now - 0.1) {
+                         const drift = now - scheduleTime;
+                         if (drift > 0.05) {
+                             console.log(`%c[Chronos] Drift detected: ${drift.toFixed(3)}s. Resyncing...`, 'color: #fbbf24; font-weight: bold;');
+                         }
+                         scheduleTime = now + 0.15; // 150ms буфер для стабильности
+                    }
+
+                    scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
+                    nextBarTimeRef.current = scheduleTime + payload.barDuration;
+
                     if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
@@ -423,22 +442,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       previewInstrumentRef.current?.setPreset(p);
   }, []);
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №97. Устранение эха в режиме Radio.
-   * #ЧТО: Приглушение физических динамиков при включении бродкаста.
-   */
   const toggleBroadcastCallback = useCallback(() => {
       if (broadcastEngineRef.current && audioContextRef.current && speakerGainNodeRef.current) {
           const now = audioContextRef.current.currentTime;
           if (isBroadcastActive) {
-              // Возвращаемся к обычным колонкам
               broadcastEngineRef.current.stop();
               speakerGainNodeRef.current.gain.setTargetAtTime(1.0, now, 0.05);
               setIsBroadcastActive(false);
           } else {
-              // Переключаемся на Radio Bridge
               broadcastEngineRef.current.start();
-              // #ЗАЧЕМ: Приглушаем динамики, так как звук будет идти через <audio> элемент моста с лагом.
               speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }
