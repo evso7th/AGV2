@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.7 — "Media Metadata Hub".
- * #ЗАЧЕМ: Передача метаданных DNA для Web Media Session API.
- * #ЧТО: ПЛАН №103 — Добавлены trackName и sectionName в SCORE_READY.
+ * @file AuraGroove Music Worker V5.8 — "Log Stylization Update".
+ * #ЗАЧЕМ: Выделение нарратива светло-фиолетовым цветом для удобства аудита.
+ * #ЧТО: ПЛАН №104 — Множественные стили %c в console.log.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -272,8 +272,10 @@ const Scheduler = {
 
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
-            `  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
-            `  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
+            `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
+            `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
+            'color: #888;',
+            'color: #c084fc;', // Light purple (Tailwind purple-400)
             'color: #888;'
         );
 
