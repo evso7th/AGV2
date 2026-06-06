@@ -1,8 +1,6 @@
-
 /**
- * @fileOverview Psybient Brain V48.0 — "Rhythmic Pulse Reform".
- * #ЗАЧЕМ: Устранение бесконечных "завываний" пэдов в энергичных Psybient треках.
- * #ЧТО: ПЛАН №60 — Внедрение динамического сайдчейна и ритмической сегментации текстур.
+ * @fileOverview Psybient Brain V48.1 — "State Fix".
+ * #ЗАЧЕМ: Исправление ошибок доступа к свойствам.
  */
 
 import type {
@@ -122,7 +120,7 @@ export class TranceBrain {
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
-        const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
+        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool: any[] = [];
@@ -138,8 +136,6 @@ export class TranceBrain {
         }
 
         if (filteredPool.length > 0) {
-            // #ЗАЧЕМ: ПЛАН №60. Строгий ролевой фильтр.
-            // Запрет использовать "accomp_piano" из DNA как "melody", если есть настоящие "melody".
             let basePool = filteredPool.filter(ax => ax.role === 'melody');
             if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
@@ -156,7 +152,7 @@ export class TranceBrain {
                 const suitePlayhead = epoch % (maxDonorBars || 144);
                 
                 let selected: any = null;
-                if (this.config.isImprovising) {
+                if (this.isImprovising) {
                     selected = basePool[calculateMusiNum(this.seed, 17, epoch, basePool.length)];
                 } else {
                     const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
@@ -466,7 +462,7 @@ export class TranceBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -478,7 +474,7 @@ export class TranceBrain {
     }
 
     private renderSpecificHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;

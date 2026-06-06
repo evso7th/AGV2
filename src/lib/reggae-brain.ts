@@ -1,8 +1,6 @@
-
 /**
- * @fileOverview Reggae Brain V4.3 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление потери связи с облаком.
- * #ЧТО: ПЛАН №35 — Сброс busy-таймеров при обновлении пула аксиом.
+ * @fileOverview Reggae Brain V4.4 — "State Fix".
+ * #ЗАЧЕМ: Исправление ошибок доступа к свойствам.
  */
 
 import type {
@@ -87,7 +85,6 @@ export class ReggaeBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         
-        // #ЗАЧЕМ: Если мы были в режиме генерации, нужно немедленно попытаться подхватить Наследие.
         if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
             this.soloistBusyUntilBar = -1;
         }

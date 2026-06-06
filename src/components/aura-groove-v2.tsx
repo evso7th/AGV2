@@ -1,6 +1,7 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.1 — "Syntax & Integrity Fix".
- * #ЧТО: ПЛАН №108 — Исправлена ошибка Unexpected token div, очищены дубликаты в displayNames.
+ * @fileOverview UI AuraGroove V4.2 — "Structure & Syntax Integrity".
+ * #ЗАЧЕМ: Исправление критической ошибки компиляции и очистка структуры.
+ * #ЧТО: ПЛАН №108 — Вынос логики за пределы компонента, исправление баланса скобок.
  */
 'use client';
 
@@ -34,6 +35,8 @@ import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { SpectrumAnalyzer } from "@/components/SpectrumAnalyzer";
 
+// ───── CONSTANTS ─────
+
 const EQ_BANDS = [
   { freq: '60', label: '60' }, { freq: '125', label: '125' }, { freq: '250', label: '250' },
   { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
@@ -66,6 +69,52 @@ const MOOD_COLOR_CLASSES: Record<MoodCategory, string> = {
 
 const AVAILABLE_GENRES: Genre[] = ['psybient', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 const AVAILABLE_MOODS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
+
+const DISPLAY_NAMES: Record<string, string> = {
+    'guitarChords': 'Acoustic Chords',
+    'neuro_f_matrix': 'Neuro F-Matrix',
+    'organ': 'Cathedral Organ',
+    'organ_soft_jazz': 'Soft Jazz Organ',
+    'organ_jimmy_smith': 'Jimmy Smith B3',
+    'organ_prog': 'Prog Rock B3',
+    'reggae_organ': 'Roots Bubbler B3',
+    'dynamicOrgan': '⚡ DYNAMIC ORGAN',
+    'synth': 'Emerald Pad',
+    'synth_ambient_pad_lush': 'Lush Pad',
+    'synth_cave_pad': 'Cave Pad (Dark)',
+    'dynamicPad': '⚡ DYNAMIC PAD',
+    'theremin': 'Vocal Theremin',
+    'mellotron': 'Majestic Strings',
+    'mellotron_flute_intimate': 'Intimate Flute',
+    'guitar_shineOn': 'Shine On Guitar',
+    'guitar_muffLead': 'Muff Lead',
+    'reggae_guitar': 'Roots Skank Guitar',
+    'piano': 'Rhodes EPiano',
+    'violin': 'Solo Violin',
+    'flute': 'Silver Flute',
+    'bass_jazz_warm': 'Warm Jazz Bass',
+    'blackAcoustic': 'Black Acoustic',
+    'reggae': 'Roots Reggae',
+    'psybient': 'Psy-Ambient',
+    'dyn_tele_dark': '⚡ Tele → Dark Tele',
+    'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
+    'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
+    'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
+    'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
+    'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
+    'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
+    'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
+    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
+    'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
+    'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
+    'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
+    'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
+    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
+    'dyn_rhodes_piano': '⚡ Rhodes → Piano',
+    'dyn_piano_rhodes': '⚡ Piano → Rhodes'
+};
+
+// ───── HELPERS ─────
 
 function MultiSelector<T extends string>({
   options,
@@ -108,25 +157,41 @@ function MultiSelector<T extends string>({
   );
 }
 
-export function AuraGrooveV2({
-  isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
-  setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
-  bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
-  isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
-  isCalibrationModalOpen, setIsCalibrationModalOpen, calibrationGains, handleCalibrationChange,
-  timerSettings, handleTimerDurationChange, handleToggleTimer,
-  composerControlsInstruments, setComposerControlsInstruments,
-  useHeritage, setUseHeritage,
-  mood, setMood, genre, setGenre, isRegenerating,
-  availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms
-}: AuraGrooveProps) {
+function getPartIcon(part: string) {
+    switch(part) {
+        case 'bass': return <Waves className="h-4 w-4"/>;
+        case 'melody': return <GitBranch className="h-4 w-4"/>;
+        case 'accompaniment': return <Piano className="h-4 w-4"/>;
+        case 'harmony': return <Waves className="h-4 w-4"/>;
+        case 'pianoAccompaniment': return <Piano className="h-4 w-4"/>;
+        case 'drums': return <Drum className="h-4 w-4"/>;
+        case 'sparkles': return <Sparkles className="h-4 w-4"/>;
+        case 'sfx': return <Sprout className="h-4 w-4"/>;
+        default: return <Music className="h-4 w-4"/>;
+    }
+}
+
+// ───── MAIN COMPONENT ─────
+
+export function AuraGrooveV2(props: AuraGrooveProps) {
+  const {
+    isPlaying, isInitializing, isRecording, isBroadcastActive, handlePlayPause, handleRegenerate, handleToggleRecording, handleToggleBroadcast, handleSaveMasterpiece, drumSettings, setDrumSettings, instrumentSettings,
+    setInstrumentSettings, handleVolumeChange, textureSettings, handleTextureEnabledChange,
+    bpm, handleBpmChange, score, handleScoreChange, density, setDensity, handleGoHome,
+    isEqModalOpen, setIsEqModalOpen, eqSettings, handleEqChange,
+    isCalibrationModalOpen, setIsCalibrationModalOpen, calibrationGains, handleCalibrationChange,
+    timerSettings, handleTimerDurationChange, handleToggleTimer,
+    composerControlsInstruments, setComposerControlsInstruments,
+    useHeritage, setUseHeritage,
+    mood, setMood, genre, setGenre, isRegenerating,
+    availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms
+  } = props;
 
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [filterSearchText, setFilterSearchText] = useState("");
   const [showSelectedOnly, setShowSelectedOnly] = useState(false);
-  
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
   const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
@@ -150,50 +215,6 @@ export function AuraGrooveV2({
     ? ['ambient', 'psybient', 'blues', 'reggae']
     : ['psybient', 'ambient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'blues', 'celtic'];
 
-  const displayNames: Record<string, string> = {
-    'guitarChords': 'Acoustic Chords',
-    'neuro_f_matrix': 'Neuro F-Matrix',
-    'organ': 'Cathedral Organ',
-    'organ_soft_jazz': 'Soft Jazz Organ',
-    'organ_jimmy_smith': 'Jimmy Smith B3',
-    'organ_prog': 'Prog Rock B3',
-    'reggae_organ': 'Roots Bubbler B3',
-    'dynamicOrgan': '⚡ DYNAMIC ORGAN',
-    'synth': 'Emerald Pad',
-    'synth_ambient_pad_lush': 'Lush Pad',
-    'synth_cave_pad': 'Cave Pad (Dark)',
-    'dynamicPad': '⚡ DYNAMIC PAD',
-    'theremin': 'Vocal Theremin',
-    'mellotron': 'Majestic Strings',
-    'mellotron_flute_intimate': 'Intimate Flute',
-    'guitar_shineOn': 'Shine On Guitar',
-    'guitar_muffLead': 'Muff Lead',
-    'reggae_guitar': 'Roots Skank Guitar',
-    'piano': 'Rhodes EPiano',
-    'violin': 'Solo Violin',
-    'flute': 'Silver Flute',
-    'bass_jazz_warm': 'Warm Jazz Bass',
-    'blackAcoustic': 'Black Acoustic',
-    'reggae': 'Roots Reggae',
-    'psybient': 'Psy-Ambient',
-    'dyn_tele_dark': '⚡ Tele → Dark Tele',
-    'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
-    'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
-    'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
-    'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
-    'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
-    'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
-    'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
-    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
-    'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
-    'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
-    'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
-    'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
-    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
-    'dyn_rhodes_piano': '⚡ Rhodes → Piano',
-    'dyn_piano_rhodes': '⚡ Piano → Rhodes'
-  };
-
   const filteredCompositions = availableCompositions.filter(comp => {
       const matchesSearch = comp.id.toLowerCase().includes(filterSearchText.toLowerCase());
       const matchesSelected = showSelectedOnly ? selectedCompositionIds.includes(comp.id) : true;
@@ -201,20 +222,6 @@ export function AuraGrooveV2({
       const matchesMood = selectedFilterMoods.length === 0 || selectedFilterMoods.some(m => comp.moods.includes(m));
       return matchesSearch && matchesSelected && matchesGenre && matchesMood;
   });
-
-  const getPartIcon = (part: string) => {
-    switch(part) {
-        case 'bass': return <Waves className="h-4 w-4"/>;
-        case 'melody': return <GitBranch className="h-4 w-4"/>;
-        case 'accompaniment': return <Piano className="h-4 w-4"/>;
-        case 'harmony': return <Waves className="h-4 w-4"/>;
-        case 'pianoAccompaniment': return <Piano className="h-4 w-4"/>;
-        case 'drums': return <Drum className="h-4 w-4"/>;
-        case 'sparkles': return <Sparkles className="h-4 w-4"/>;
-        case 'sfx': return <Sprout className="h-4 w-4"/>;
-        default: return <Music className="h-4 w-4"/>;
-    }
-  };
 
   const getAnchorButtonText = () => {
       const count = selectedCompositionIds.length;
@@ -296,7 +303,7 @@ export function AuraGrooveV2({
                                     <div className="flex gap-8 h-full pb-12">
                                         {(['bass', 'melody', 'accompaniment', 'pianoAccompaniment', 'harmony', 'drums', 'sparkles', 'sfx'] as const).map((partKey) => {
                                             const isPart = partKey in instrumentSettings;
-                                            const settings = isPart ? instrumentSettings[partKey as keyof typeof instrumentSettings] : (textureSettings as any)[partKey as any] || drumSettings;
+                                            const settings = isPart ? (instrumentSettings as any)[partKey] : (textureSettings as any)[partKey] || drumSettings;
                                             
                                             let instrumentList: string[] = [];
                                             if (partKey === 'bass') instrumentList = bassInstrumentList;
@@ -325,7 +332,7 @@ export function AuraGrooveV2({
                                                                 </SelectTrigger>
                                                                 <SelectContent>
                                                                     {instrumentList.map(inst => (
-                                                                        <SelectItem key={inst} value={inst} className="text-xs font-bold">{displayNames[inst] || inst}</SelectItem>
+                                                                        <SelectItem key={inst} value={inst} className="text-xs font-bold">{DISPLAY_NAMES[inst] || inst}</SelectItem>
                                                                     ))}
                                                                 </SelectContent>
                                                             </Select>
@@ -498,7 +505,7 @@ export function AuraGrooveV2({
                       <Label htmlFor="score-selector" className="text-right text-xs">Style</Label>
                       <Select value={score} onValueChange={(v) => handleScoreChange(v as any)} disabled={isInitializing || isPlaying}>
                           <SelectTrigger id="score-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                          <SelectContent><SelectItem value="neuro_f_matrix">{displayNames['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem></SelectContent>
+                          <SelectContent><SelectItem value="neuro_f_matrix">{DISPLAY_NAMES['neuro_f_matrix'] || 'Neuro F-Matrix'}</SelectItem></SelectContent>
                       </Select>
                   </div>
                    {isFractalStyle && (
@@ -507,7 +514,7 @@ export function AuraGrooveV2({
                           <Label htmlFor="genre-selector" className="text-right text-xs">Genre</Label>
                           <Select value={genre} onValueChange={(v) => setGenre(v as Genre)} disabled={isInitializing || isPlaying}>
                               <SelectTrigger id="genre-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                              <SelectContent>{genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{displayNames[g] || g}</SelectItem>)}</SelectContent>
+                              <SelectContent>{genreList.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{DISPLAY_NAMES[g] || g}</SelectItem>)}</SelectContent>
                           </Select>
                       </div>
                       <div className="grid grid-cols-3 items-center gap-2">
@@ -515,7 +522,7 @@ export function AuraGrooveV2({
                           <Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isInitializing || isPlaying}>
                               <SelectTrigger id="mood-selector" className="col-span-2 h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
                               <SelectContent>
-                                {moodList.map(m => (
+                                {AVAILABLE_MOODS.map(m => (
                                     <SelectItem key={m} value={m} className={cn("text-xs capitalize", MOOD_COLOR_CLASSES[MOOD_CATEGORIES[m]])}>{m}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -595,8 +602,7 @@ export function AuraGrooveV2({
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
-                          const settings = instrumentSettings[part];
-                          if (!settings) return null;
+                          const settings = instrumentSettings[part as keyof typeof instrumentSettings];
                           let instrumentList: (string | 'none')[] = [];
                            if (part === 'bass') instrumentList = bassInstrumentList;
                            else if (part === 'melody') instrumentList = melodyInstrumentList;
@@ -612,7 +618,7 @@ export function AuraGrooveV2({
                                     {part !== 'pianoAccompaniment' ? (
                                         <Select value={settings.name} onValueChange={(v) => setInstrumentSettings(part as any, v as any)} disabled={isDisabled}>
                                             <SelectTrigger className="h-8 text-xs bg-background/50"><SelectValue /></SelectTrigger>
-                                            <SelectContent>{instrumentList.map(inst => <SelectItem key={inst} value={inst} className="text-xs">{displayNames[inst] || inst}</SelectItem>)}</SelectContent>
+                                            <SelectContent>{instrumentList.map(inst => <SelectItem key={inst} value={inst} className="text-xs">{DISPLAY_NAMES[inst] || inst}</SelectItem>)}</SelectContent>
                                         </Select>
                                     ) : <div className="h-8 text-xs flex items-center justify-end pr-2 text-muted-foreground">Fixed</div>}
                                 </div>
