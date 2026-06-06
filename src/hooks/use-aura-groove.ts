@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.1 — "System Player Integration".
- * #ЗАЧЕМ: Полноценное управление через Web Media Session API.
- * #ЧТО: ПЛАН №103 — Метаданные DNA в ОС, системные кнопки и Heartbeat.
- * #ОБНОВЛЕНО (ПЛАН №103.1): Замена обложки на cover.jpg.
+ * @fileOverview Music Control Hook V13.2 — "Branding & Context Sync".
+ * #ЗАЧЕМ: Приведение метаданных в системном плеере к стандартам пользователя.
+ * #ЧТО: ПЛАН №105 — Первая строка: AuraGroove, Вторая строка: Genre / Mood.
  */
 'use client';
 
@@ -182,10 +181,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     const updateMetadata = () => {
         // #ЗАЧЕМ: ПЛАН №103.1. Использование cover.jpg для системного плеера.
         const fullArtworkUrl = `${window.location.origin}/assets/cover.jpg?v=${currentSeed}`;
+        
+        // #ЗАЧЕМ: ПЛАН №105. Реформа структуры метаданных.
+        // Line 1: AuraGroove (Brand)
+        // Line 2: GENRE / MOOD (Context)
+        // Album: DNA Track Name (Source)
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: currentTrackName || 'Generative Suite',
-            artist: 'AuraGroove V2 Imperial',
-            album: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+            title: 'AuraGroove',
+            artist: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+            album: currentTrackName || 'Generative Suite',
             artwork: [
                 { src: fullArtworkUrl, sizes: '96x96', type: 'image/jpeg' },
                 { src: fullArtworkUrl, sizes: '128x128', type: 'image/jpeg' },
