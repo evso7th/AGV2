@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.9 — "Vinyl Transition Protocol".
- * #ЗАЧЕМ: Добавление паузы 2 сек между пьесами для инициализации новой ДНК.
- * #ЧТО: ПЛАН №99 — tick() возвращает 2000мс при смене сюиты.
+ * @file AuraGroove Music Worker V5.9.1 — "Strict Heritage Protocol".
+ * #ЗАЧЕМ: Строгий отбор доноров по паре Жанр/Настроение.
+ * #ЧТО: ПЛАН №111 — Удаление фильтра по Common Mood для исключения "нецелевых" треков.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -84,15 +84,12 @@ const Scheduler = {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
             
-            const commonMoodFilter = ['epic', 'joyful', 'enthusiastic'].includes(uiMood) ? 'light' : 
-                                   (['melancholic', 'dark', 'anxious', 'gloomy'].includes(uiMood) ? 'dark' : 'neutral');
-
+            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                const commons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
                 
-                return genres.includes(uiGenre) && (moods.includes(uiMood) || commons.includes(commonMoodFilter));
+                return genres.includes(uiGenre) && moods.includes(uiMood);
             });
 
             if (matchingAxioms.length > 0) {
@@ -239,7 +236,6 @@ const Scheduler = {
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
-        // #ЗАЧЕМ: Проверка конца сюиты для запуска перехода (ПЛАН №99).
         if (this.barCount >= totalBars) {
              self.postMessage({ type: 'SUITE_TRANSITION' });
              this.filterRotationIndex++;
@@ -247,7 +243,6 @@ const Scheduler = {
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
-             // Возвращаем 2000мс для паузы перед Bar 0 новой пьесы.
              return 2000; 
         }
 
@@ -264,7 +259,6 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
-        // ───── COGNITIVE LOGGING (PLAN №100) ─────
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
         const hints = payload.instrumentHints || {};

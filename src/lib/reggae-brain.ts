@@ -1,6 +1,8 @@
+
 /**
- * @fileOverview Reggae Brain V4.4 — "State Fix".
- * #ЗАЧЕМ: Исправление ошибок доступа к свойствам.
+ * @fileOverview Reggae Brain V4.5 — "Strict Heritage Filtering".
+ * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
+ * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
  */
 
 import type {
@@ -142,10 +144,9 @@ export class ReggaeBrain {
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        this.currentTheme = null;
-        this.currentBassTheme = null;
         this.currentAccompAxioms = [];
         this.currentDrumAxioms = [];
+        this.currentBassTheme = null;
         this.currentNativeRoot = null;
         this.currentPreferredInstrument = null;
         
@@ -158,11 +159,11 @@ export class ReggaeBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
+            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                const axCommons = Array.isArray(ax.commonMood) ? ax.commonMood : [ax.commonMood];
-                return axGenres.includes('reggae') && axCommons.includes(commonMoodFilter);
+                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                return axGenres.includes(this.genre) && axMoods.includes(this.mood);
             });
         }
 

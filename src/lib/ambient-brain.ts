@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V77.0 — "Pulsing Textures Update".
- * #ЗАЧЕМ: Избавление от статичных пэдов в Psybient и Ambient.
- * #ЧТО: ПЛАН №60 — Декларативное "дыхание" пэдов и ритмический пульс.
+ * @fileOverview Ambient Brain V77.1 — "Strict Heritage Filtering".
+ * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
+ * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
  */
 
 import type {
@@ -148,11 +148,11 @@ export class AmbientBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood];
+            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                return axGenres.includes('ambient') && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
+                return axGenres.includes(this.genre) && axMoods.includes(this.mood);
             });
         }
 
@@ -620,10 +620,6 @@ export class AmbientBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №60. "Дышащие" пэды.
-     * #ЧТО: Сокращение длительности с 4.0 до 3.1 для создания ритмических пауз.
-     */
     private renderPad(chord: GhostChord, epoch: number, name: string, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         return [{
@@ -645,10 +641,6 @@ export class AmbientBrain {
         }];
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №60. Конверсивный пианист.
-     * #ЧТО: Более слышимый и живой аккомпанемент.
-     */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
 
@@ -663,7 +655,7 @@ export class AmbientBrain {
                     note: this.constrainAccompanimentOctave(root + steps[noteIdx]),
                     time: 1.5 * TICK_TO_BEAT,
                     duration: 2.0,
-                    weight: 0.58, // Increased for audibility
+                    weight: 0.58, 
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                     params: { attack: 0.01, release: 3.0 }
                 });
@@ -680,7 +672,7 @@ export class AmbientBrain {
                     ...m,
                     type: 'pianoAccompaniment',
                     note: this.constrainAccompanimentOctave(m.note + thirdInterval),
-                    weight: 0.62, // Increased
+                    weight: 0.62, 
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato',

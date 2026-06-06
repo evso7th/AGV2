@@ -1,6 +1,8 @@
+
 /**
- * @fileOverview Psybient Brain V48.1 — "State Fix".
- * #ЗАЧЕМ: Исправление ошибок доступа к свойствам.
+ * @fileOverview Psybient Brain V48.2 — "Strict Heritage Filtering".
+ * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
+ * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
  */
 
 import type {
@@ -127,11 +129,11 @@ export class TranceBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
+            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                return axGenres.includes('psybient') && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
+                return axGenres.includes(this.genre) && axMoods.includes(this.mood);
             });
         }
 
@@ -474,7 +476,7 @@ export class TranceBrain {
     }
 
     private renderSpecificHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
@@ -527,16 +529,11 @@ export class TranceBrain {
         return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 3.2, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №60. Ритмические пэды для Psybient.
-     * #ЧТО: Замена статичной ноты на пульсирующий сайдчейн-рисунок.
-     */
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const isMinor = chord.chordType === 'minor';
         const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
         const events: FractalEvent[] = [];
 
-        // Pulse every beat with a gap for breathing
         [0, 1, 2, 3].forEach(t => {
             intervals.forEach((interval, i) => {
                 events.push({

@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V78.0 — "Rhythmic Cohesion Update".
- * #ЗАЧЕМ: Избавление от статичных 1-нотных гудений в аккомпанементе.
- * #ЧТО: ПЛАН №85 — Удаление техники swell и лимитирование длительности нот.
+ * @fileOverview Blues Brain V78.1 — "Strict Heritage Filtering".
+ * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
+ * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
  */
 
 import {
@@ -269,11 +269,11 @@ export class BluesBrain {
       if (effectiveAnchor) {
           filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
       } else {
-          const commonMoodFilter = MOOD_TO_COMMON[this.mood] || 'neutral';
+          // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
           filteredPool = poolToUse.filter(ax => {
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-              return axGenres.includes('blues') && (axMoods.includes(this.mood) || (Array.isArray(ax.commonMood) ? ax.commonMood.includes(commonMoodFilter) : ax.commonMood === commonMoodFilter));
+              return axGenres.includes('blues') && axMoods.includes(this.mood);
           });
       }
 
@@ -645,26 +645,20 @@ export class BluesBrain {
       return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
           type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
           time: (n.t - barOffset) * TICK_TO_BEAT, 
-          // #ЗАЧЕМ: ПЛАН №85. Лимитирование длительности для предотвращения гудения.
           duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
           weight: 0.6, 
-          technique: 'hit', // #ЗАЧЕМ: Отмена swell в блюзе.
+          technique: 'hit', 
           dynamics: 'p', 
           phrasing: 'staccato'
       }));
   }
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №60. Реформа блюзового аккомпанемента.
-   * #ЧТО: Замена статичного гудения на ритмические "Organ Chops".
-   */
   private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
     const isMinor = chord.chordType === 'minor';
     const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 10]; 
     const events: FractalEvent[] = [];
 
-    // Shuffle comping pattern (backbeats + syncopated pushes)
     const pattern = [3, 9];
     if (calculateMusiNum(epoch, 5, this.seed, 100) < 30) pattern.push(10.5); 
 
@@ -686,24 +680,19 @@ export class BluesBrain {
     return events;
   }
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №60. Интеллектуальный пианист.
-   * #ЧТО: Переход от дубляжа к "Jazz Echoes" (ответным фразам).
-   */
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
       const scale = [0, 2, 3, 4, 7, 9, 10]; 
 
       if (melodyEvents.length > 0) {
-          // Shadow mode: Follow melody with thirds/fifths but more audible weight
           const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
           melodyEvents.forEach((m, i) => {
               if (i % 2 === 0) {
                   events.push({ 
                       ...m, type: 'pianoAccompaniment', 
                       note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
-                      weight: 0.65, // Increased weight for audibility
+                      weight: 0.65, 
                       technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
                       params: { ...m.params, release: 2.5 } 
                   });
@@ -711,7 +700,6 @@ export class BluesBrain {
           });
           return { events, style: "Shadow Support" };
       } else {
-          // Fill mode: Play subtle jazz responses in melody gaps
           [1.5, 4.5, 7.5, 10.5].forEach((t, i) => {
               if (calculateMusiNum(epoch + i, 7, this.seed, 100) < 40) {
                   const degIdx = calculateMusiNum(epoch + i, 11, this.seed, scale.length);
