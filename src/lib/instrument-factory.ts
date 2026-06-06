@@ -1,13 +1,14 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.6 — "Sonic Tamer Protocol".
- * #ЗАЧЕМ: ПЛАН №85 — Устранение пронзительных высоких частот и бесконечных нот.
+ * @fileOverview Центральная фабрика инструментов V7.7 — "FX Consolidation Protocol".
+ * #ЗАЧЕМ: ПЛАН №101 — Устранение тормозов при игре на гитарах (ShineOn/Muff).
+ * #ЧТО: Вынос Delay на уровень инструмента и оптимизация Overdrive.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 512;
+let globalVoiceLimit = 128; // Снижено для стабильности
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -127,8 +128,17 @@ const makeSoftDrive = (amount = 0.2) => {
 
 // ───── VOICE INSTANTIATION ─────
 
-const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, output: AudioNode, midi: number, when: number, velocity: number, duration: number) => {
-    // #ЗАЧЕМ: ПЛАН №85. Защита от бесконечных нот.
+const createIndependentVoice = (
+    ctx: AudioContext, 
+    type: string, 
+    preset: any, 
+    output: AudioNode, 
+    midi: number, 
+    when: number, 
+    velocity: number, 
+    duration: number,
+    sharedDelayNode: AudioNode | null = null
+) => {
     const safeDuration = Math.min(duration, 6.0); 
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset);
@@ -181,7 +191,7 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
         shaper.curve = preset.drive.type === 'muff' ? makeMuff(preset.drive.amount) : makeSoftDrive(preset.drive.amount);
-        shaper.oversample = '4x';
+        shaper.oversample = 'none'; // Убрано 4x для производительности
         chainHead.connect(shaper);
         chainHead = shaper;
         nodes.push(shaper);
@@ -195,16 +205,10 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     let finalCutoff = baseCutoff;
     let finalQ = baseQ;
 
-    // #ЗАЧЕМ: ПЛАН №85. Усмирение высоких частот.
-    // Снижаем частоту среза для высоких MIDI-нот более агрессивно.
     if (midi > 60) {
         const semitonesAbove = midi - 60;
-        // Коэффициент затухания среза — 0.92 для мягкого звука вверху
         finalCutoff = baseCutoff * Math.pow(0.92, semitonesAbove); 
-        // Повышаем мягкость (снижаем резонанс) для высоких нот
         finalQ = baseQ * Math.pow(0.95, semitonesAbove);
-        
-        // Жесткий потолок для высоких частот во избежание «свиста»
         if (midi > 84) finalCutoff = Math.min(finalCutoff, 1800);
     }
 
@@ -214,19 +218,9 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     chainHead = filter;
     nodes.push(filter);
 
-    if (preset.delay?.mix > 0.01) {
-        const delayNode = ctx.createDelay(2.0);
-        delayNode.delayTime.setValueAtTime(preset.delay.time || 0.4, now);
-        const feedback = ctx.createGain();
-        feedback.gain.setValueAtTime(preset.delay.fb || 0.3, now);
-        const delayMix = ctx.createGain();
-        delayMix.gain.setValueAtTime(preset.delay.mix, now);
-        chainHead.connect(delayNode);
-        delayNode.connect(feedback);
-        feedback.connect(delayNode);
-        delayNode.connect(delayMix);
-        delayMix.connect(output);
-        nodes.push(delayNode, feedback, delayMix);
+    // Подключение к общей линии задержки, если она есть
+    if (sharedDelayNode && preset.delay?.mix > 0.01) {
+        chainHead.connect(sharedDelayNode);
     }
 
     chainHead.connect(output);
@@ -284,23 +278,48 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     limiter.threshold.value = -12.0;
     limiter.ratio.value = 20;
 
+    // --- SHARED FX CHAIN ---
+    // Создаем общую задержку для этого инструмента
+    const sharedDelayNode = ctx.createDelay(2.0);
+    const feedbackGain = ctx.createGain();
+    const delayMixGain = ctx.createGain();
+
+    sharedDelayNode.connect(feedbackGain);
+    feedbackGain.connect(sharedDelayNode);
+    sharedDelayNode.connect(delayMixGain);
+    
+    // Начальные настройки задержки
+    sharedDelayNode.delayTime.value = currentPreset.delay?.time || 0.4;
+    feedbackGain.gain.value = currentPreset.delay?.fb || 0.3;
+    delayMixGain.gain.value = currentPreset.delay?.mix || 0;
+
     instrumentGain.connect(expressionGain).connect(panner).connect(limiter).connect(output);
+    delayMixGain.connect(panner); // Подмешиваем задержку в общую панораму
 
     return {
         connect: (dest) => limiter.connect(dest || output),
         disconnect: () => {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
-            [instrumentGain, expressionGain, panner, limiter].forEach(n => { try { n.disconnect(); } catch(e){} });
+            [instrumentGain, expressionGain, panner, limiter, sharedDelayNode, feedbackGain, delayMixGain].forEach(n => { try { n.disconnect(); } catch(e){} });
         },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0) => {
             enforceVoiceLimit();
-            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration);
+            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode);
         },
         noteOff: () => {}, 
         allNotesOff: () => {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
         },
-        setPreset: (p) => { currentPreset = { ...p }; instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05); },
+        setPreset: (p) => { 
+            currentPreset = { ...p }; 
+            instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05);
+            // Обновляем параметры общей задержки
+            if (p.delay) {
+                sharedDelayNode.delayTime.setTargetAtTime(p.delay.time || 0.4, ctx.currentTime, 0.1);
+                feedbackGain.gain.setTargetAtTime(p.delay.fb || 0.3, ctx.currentTime, 0.1);
+                delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, ctx.currentTime, 0.1);
+            }
+        },
         setParam: () => {},
         setVolume: (v) => { if(isFinite(v)) instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); },
         setVolumeDb: (db) => { if(isFinite(db)) instrumentGain.gain.setTargetAtTime(Math.pow(10, db/20), ctx.currentTime, 0.02); },
