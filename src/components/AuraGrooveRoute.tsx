@@ -66,15 +66,13 @@ const MOODS = [
 ];
 
 const MIXER_CHANNELS = [
-    { key: 'master', label: 'M' },
-    { key: 'bass', label: 'B' },
-    { key: 'melody', label: 'Mel' },
-    { key: 'accompaniment', label: 'Acc' },
-    { key: 'harmony', label: 'Har' },
-    { key: 'pianoAccompaniment', label: 'Rh' },
-    { key: 'sparkles', label: 'Sp' },
+    { key: 'master', label: 'MAIN' },
+    { key: 'melody', label: 'LEAD' },
+    { key: 'accompaniment', label: 'KEYB' },
+    { key: 'pianoAccompaniment', label: 'PIANO' },
+    { key: 'sparkles', label: 'SP' },
     { key: 'sfx', label: 'SFX' },
-    { key: 'drums', label: 'D' }
+    { key: 'drums', label: 'DRM' }
 ];
 
 const EQ_BANDS = [
