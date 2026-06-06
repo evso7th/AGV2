@@ -11,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №59 — Значительное увеличение extraDuration для предотвращения "проглатывания" хвостов.
+ * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -104,8 +104,8 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №59. Увеличение виртуальной длительности (Gate) для сохранения резонанса.
-            const extraDuration = this.partName === 'melody' ? 2.5 : 1.2; 
+            // #ЗАЧЕМ: ПЛАН №85. Уменьшение хвостов для чистоты.
+            const extraDuration = 0.5; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -165,8 +165,8 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            if (this.synth.setPan && note.pan !== undefined) {
-                this.synth.setPan(note.pan);
+            if (this.instrument?.setPan && note.pan !== undefined) {
+                this.instrument.setPan(note.pan);
             }
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);

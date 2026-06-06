@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №18): Naked Sound Test. Все эффекты отключены для проверки новой архитектуры.
+// #ОБНОВЛЕНО (ПЛАН №85): Sonic Warmth Calibration. Lower LPF cutoffs for all instruments.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -17,9 +17,9 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
     ],
-    noise: { on: true, gain: 0.015 },
-    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 2.5 },
-    lpf: { cutoff: 1200, q: 1.0 },
+    noise: { on: true, gain: 0.012 },
+    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 2.0 },
+    lpf: { cutoff: 950, q: 0.8 }, // #ЗАЧЕМ: Убрана резкость (было 1200)
     reverbMix: 0
   },
 
@@ -32,8 +32,8 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 3.0 },
-    lpf: { cutoff: 800, q: 0.8 },
+    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 2.5 },
+    lpf: { cutoff: 650, q: 0.7 }, // #ЗАЧЕМ: Еще мягче (было 800)
     reverbMix: 0
   },
 
@@ -46,8 +46,8 @@ export const V2_PRESETS = {
     name: 'Clean Organ',
     volume: 0.4, 
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], 
-    adsr: { a: 0.05, d: 0.1, s: 0.9, r: 0.5 },
-    lpf: 2500, 
+    adsr: { a: 0.05, d: 0.1, s: 0.9, r: 0.4 },
+    lpf: 1800, // #ЗАЧЕМ: Убрана пронзительность (было 2500)
     reverbMix: 0
   },
   
@@ -56,8 +56,8 @@ export const V2_PRESETS = {
     name: 'Clean Jazz Organ',
     volume: 0.4, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
-    lpf: 1800, 
-    adsr: { a: 0.03, d: 0.1, s: 0.85, r: 0.4 },
+    lpf: 1400, // #ЗАЧЕМ: Мягкое джазовое тепло (было 1800)
+    adsr: { a: 0.03, d: 0.1, s: 0.85, r: 0.3 },
     reverbMix: 0
   },
 
@@ -70,7 +70,8 @@ export const V2_PRESETS = {
     name: 'Clean Guitar',
     volume: 0.7,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.8 },
+    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.6 },
+    lpf: 4000,
     reverbMix: 0
   },
 
@@ -80,8 +81,8 @@ export const V2_PRESETS = {
     volume: 0.19, 
     osc: { width: 0.46 }, 
     drive: { type: 'soft', amount: 0.25 }, 
-    post: { lpf: 3600 },
-    adsr: { a: 0.006, d: 0.35, s: 0.85, r: 2.2 }, 
+    post: { lpf: 2800 }, // #ЗАЧЕМ: Убрана резь на соло (было 3600)
+    adsr: { a: 0.006, d: 0.35, s: 0.85, r: 1.8 }, 
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0
   },
@@ -91,10 +92,9 @@ export const V2_PRESETS = {
     name: 'Muff Lead (Warm Grit)',
     volume: 0.25,
     osc: { width: 0.45 },
-    // #ЗАЧЕМ: ПЛАН №22. Включение дисторшна и дилея для Muff Lead.
     drive: { type: 'muff', amount: 0.4 }, 
-    post: { lpf: 3200 },
-    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.2 },
+    post: { lpf: 2400 }, // #ЗАЧЕМ: Плотная середина без «песка» (было 3200)
+    adsr: { a: 0.008, d: 0.5, s: 0.65, r: 1.0 },
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0
   },
@@ -107,8 +107,8 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    adsr: { a: 0.01, d: 0.3, s: 0.65, r: 0.8 },
-    lpf: { cutoff: 2800, q: 0.8 },
+    adsr: { a: 0.01, d: 0.3, s: 0.65, r: 0.6 },
+    lpf: { cutoff: 2400, q: 0.7 }, // #ЗАЧЕМ: Было 2800
     reverbMix: 0
   }
 } as const;
@@ -133,7 +133,7 @@ export const BASS_PRESET_MAP: Record<string, string> = {
     ambientDrone: 'bass_ambient_dark',
     resonantGliss: 'bass_trance_acid',
     hypnoticDrone: 'bass_ambient',
-    livingRiff: 'bass_house'
+    linkRiff: 'bass_house'
 };
 
 export function getPreset(name: string): PresetConfig {

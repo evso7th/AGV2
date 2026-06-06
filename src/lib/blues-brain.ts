@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V77.0 — "Rhythmic Cohesion Update".
+ * @fileOverview Blues Brain V78.0 — "Rhythmic Cohesion Update".
  * #ЗАЧЕМ: Избавление от статичных 1-нотных гудений в аккомпанементе.
- * #ЧТО: ПЛАН №60 — Внедрение "Organ Chops" и "Jazz Echoes" для пианиста.
+ * #ЧТО: ПЛАН №85 — Удаление техники swell и лимитирование длительности нот.
  */
 
 import {
@@ -644,8 +644,13 @@ export class BluesBrain {
       const barOffset = mosaicBar * TICKS_PER_BAR;
       return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
           type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-          time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
-          technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
+          time: (n.t - barOffset) * TICK_TO_BEAT, 
+          // #ЗАЧЕМ: ПЛАН №85. Лимитирование длительности для предотвращения гудения.
+          duration: Math.min(n.d, 6) * TICK_TO_BEAT, 
+          weight: 0.6, 
+          technique: 'hit', // #ЗАЧЕМ: Отмена swell в блюзе.
+          dynamics: 'p', 
+          phrasing: 'staccato'
       }));
   }
 
@@ -734,8 +739,8 @@ export class BluesBrain {
       [0, 3, 6, 9].forEach((t, i) => { 
           events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
       });
-      events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
-      if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato' });
+      events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+      if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
       events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
       return events;
@@ -747,7 +752,7 @@ export class BluesBrain {
       const chordName = rootName + (currentChord.chordType === 'minor' ? 'm' : '');
       const note = this.constrainAccompanimentOctave(rootMidi + 12);
       if (timbre === 'guitarChords') return [{ type: 'harmony', note: note, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chordName }];
-      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+      return [{ type: 'harmony', note: note + 12, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato' }];
   }
 
   private constrainBassOctave(note: number): number {

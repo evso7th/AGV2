@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.5 — "Eternal Tail Protocol".
- * #ЗАЧЕМ: ПЛАН №59 — Приоритетная защита хвостов аккомпанемента и Rhodes.
+ * @fileOverview Центральная фабрика инструментов V7.6 — "Sonic Tamer Protocol".
+ * #ЗАЧЕМ: ПЛАН №85 — Устранение пронзительных высоких частот и бесконечных нот.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -9,10 +9,6 @@
 let globalActiveVoices: any[] = [];
 let globalVoiceLimit = 512;
 
-/**
- * Веса приоритета для "кражи" голосов. 
- * Чем выше вес, тем позже голос будет принесен в жертву.
- */
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
     'sfx': 0,
@@ -21,13 +17,12 @@ const STEAL_PRIORITY: Record<string, number> = {
     'accompaniment': 2,
     'harmony': 2,
     'bass': 3,
-    'pianoAccompaniment': 4 // Rhodes защищен максимально
+    'pianoAccompaniment': 4 
 };
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
         globalVoiceLimit = limit;
-        console.log(`%c[LegionFactory] Voice Limit set to: ${limit}`, 'color: #facc15; font-weight: bold;');
         enforceVoiceLimit(); 
     }
 };
@@ -60,14 +55,9 @@ const deepCleanup = (voiceRecord: any) => {
     if (idx !== -1) globalActiveVoices.splice(idx, 1);
 };
 
-/**
- * #ЗАЧЕМ: ПЛАН №59. Умная очистка переполненного буфера голосов.
- * #ЧТО: Сначала убиваем "мусорные" слои (sparkles, sfx), бережем основу.
- */
 const enforceVoiceLimit = () => {
     if (globalActiveVoices.length <= globalVoiceLimit) return;
 
-    // Сортируем: сначала те, у кого ниже приоритет, затем самые старые
     const voicesToConsider = [...globalActiveVoices].sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.type] ?? 1;
@@ -113,8 +103,6 @@ const getADSR = (p: any) => {
     return { a: rawA, d: rawD, s: rawS, r: rawR };
 };
 
-// ───── CURVES ─────
-
 const makeMuff = (gain = 0.65) => {
     const n = 4096;
     const c = new Float32Array(n);
@@ -140,6 +128,8 @@ const makeSoftDrive = (amount = 0.2) => {
 // ───── VOICE INSTANTIATION ─────
 
 const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, output: AudioNode, midi: number, when: number, velocity: number, duration: number) => {
+    // #ЗАЧЕМ: ПЛАН №85. Защита от бесконечных нот.
+    const safeDuration = Math.min(duration, 6.0); 
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset);
     const now = Math.max(when, ctx.currentTime);
@@ -204,10 +194,18 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
 
     let finalCutoff = baseCutoff;
     let finalQ = baseQ;
-    if (midi > 60 && (type === 'organ' || type === 'synth')) {
+
+    // #ЗАЧЕМ: ПЛАН №85. Усмирение высоких частот.
+    // Снижаем частоту среза для высоких MIDI-нот более агрессивно.
+    if (midi > 60) {
         const semitonesAbove = midi - 60;
-        finalCutoff = baseCutoff * Math.pow(0.95, semitonesAbove); 
-        finalQ = baseQ * Math.pow(0.97, semitonesAbove);      
+        // Коэффициент затухания среза — 0.92 для мягкого звука вверху
+        finalCutoff = baseCutoff * Math.pow(0.92, semitonesAbove); 
+        // Повышаем мягкость (снижаем резонанс) для высоких нот
+        finalQ = baseQ * Math.pow(0.95, semitonesAbove);
+        
+        // Жесткий потолок для высоких частот во избежание «свиста»
+        if (midi > 84) finalCutoff = Math.min(finalCutoff, 1800);
     }
 
     filter.frequency.value = finalCutoff;
@@ -238,14 +236,13 @@ const createIndependentVoice = (ctx: AudioContext, type: string, preset: any, ou
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-    const noteOffTime = now + duration;
+    const noteOffTime = now + safeDuration;
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, Math.max(adsr.r / 3, 0.001));
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // #ЗАЧЕМ: Увеличенное время жизни для хвостов.
-    const totalLife = duration + adsr.r * 10;
+    const totalLife = safeDuration + adsr.r * 10;
     setTimeout(() => deepCleanup(record), totalLife * 1000 + 100);
 
     nodes.forEach(n => {

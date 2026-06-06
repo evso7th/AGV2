@@ -8,8 +8,8 @@ import { SamplerPlayer } from './sampler-player';
 import { PIANO_SAMPLES } from './samples';
 
 /**
- * #ЗАЧЕМ: Реформа пианиста V2.1 — "Eternal Rhodes".
- * #ЧТО: ПЛАН №59 — Добавлена щедрая задержка для сохранения хвостов Rhodes.
+ * #ЗАЧЕМ: Реформа пианиста V2.2 — "Cohesion Fix".
+ * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -29,8 +29,6 @@ export class PianoAccompanimentManager {
     async init() {
         if (this.isInitialized) return;
         
-        console.log('%c[PianoManager] Initializing Dual Engine (Rhodes + Acoustic)...', 'color: #FFD700; font-weight: bold;');
-        
         try {
             // 1. Load Synth Rhodes
             this.rhodesInstrument = await buildMultiInstrument(this.audioContext, {
@@ -44,7 +42,6 @@ export class PianoAccompanimentManager {
             this.acousticSampler.setVolume(1.0);
 
             this.isInitialized = true;
-            console.log('%c[PianoManager] Ready.', 'color: #32CD32;');
         } catch (e) {
             console.error('[PianoManager] Init failed:', e);
         }
@@ -52,7 +49,6 @@ export class PianoAccompanimentManager {
 
     public setInstrumentType(type: 'rhodes' | 'acoustic') {
         this.currentMode = type;
-        console.log(`%c[PianoManager] Mode switched to: ${type.toUpperCase()}`, 'color: #DA70D6;');
     }
     
     public schedule(events: FractalEvent[], startTime: number, tempo: number) {
@@ -65,8 +61,8 @@ export class PianoAccompanimentManager {
         const notes: Note[] = filteredEvents.map(e => ({
             midi: e.note,
             time: e.time * beatDuration,
-            // #ЗАЧЕМ: ПЛАН №59. Добавляем 3 секунды сустейна, чтобы хвосты Rhodes не обрывались.
-            duration: (e.duration * beatDuration) + 3.0, 
+            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов.
+            duration: (e.duration * beatDuration) + 0.5, 
             velocity: e.weight
         }));
 

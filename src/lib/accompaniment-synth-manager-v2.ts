@@ -8,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №59 — Значительное увеличение extraDuration для защиты "хвостов" пэдов и органов.
+ * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза для устранения гудения.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -88,8 +88,8 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №59. Увеличение виртуального сустейна для аккомпанемента до 3 секунд.
-            const extraDuration = 3.0; 
+            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов для устранения гудения.
+            const extraDuration = 0.5; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,
