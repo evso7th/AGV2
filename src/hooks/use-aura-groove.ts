@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Music Control Hook V13.0 — "System Player Integration".
+ * @fileOverview Music Control Hook V13.1 — "System Player Integration".
  * #ЗАЧЕМ: Полноценное управление через Web Media Session API.
  * #ЧТО: ПЛАН №103 — Метаданные DNA в ОС, системные кнопки и Heartbeat.
+ * #ОБНОВЛЕНО (ПЛАН №103.1): Замена обложки на cover.jpg.
  */
 'use client';
 
@@ -179,7 +180,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
 
     const updateMetadata = () => {
-        const fullArtworkUrl = `${window.location.origin}/assets/icon8.jpeg?v=${currentSeed}`;
+        // #ЗАЧЕМ: ПЛАН №103.1. Использование cover.jpg для системного плеера.
+        const fullArtworkUrl = `${window.location.origin}/assets/cover.jpg?v=${currentSeed}`;
         navigator.mediaSession.metadata = new MediaMetadata({
             title: currentTrackName || 'Generative Suite',
             artist: 'AuraGroove V2 Imperial',
@@ -195,7 +197,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         });
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
         
-        // Pseudo-position to keep the notification alive
         try {
             (navigator.mediaSession as any).setPositionState({
                 duration: 3600,
@@ -207,10 +208,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
     updateMetadata();
 
-    // Heartbeat Interval (Every 2 seconds)
     const heartbeat = setInterval(updateMetadata, 2000);
 
-    // Action Handlers
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
@@ -364,6 +363,26 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setCalibrationGain('master', 1.0);
   }, [setCalibrationGain]);
 
+  const loadRoute = useCallback((s: SavedRoute) => { 
+      const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre as Genre, mood: it.mood as Mood, status: 'pending' as const })); 
+      setRoute(i); 
+      if (i.length > 0) setActiveRouteItemId(i[0].id); 
+      localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(i));
+  }, []);
+
+  const saveRoute = useCallback((name: string) => { 
+      const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; 
+      const u = [n, ...savedRoutes]; 
+      setSavedRoutes(u); 
+      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); 
+  }, [route, savedRoutes]);
+
+  const deleteSavedRoute = useCallback((id: string) => {
+      const u = savedRoutes.filter(r => r.id !== id);
+      setSavedRoutes(u);
+      localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u));
+  }, [savedRoutes]);
+
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -432,23 +451,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
         return next;
     }), []), 
-    saveRoute: useCallback((name) => { 
-        const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; 
-        const u = [n, ...savedRoutes]; 
-        setSavedRoutes(u); 
-        localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); 
-    }, [route, savedRoutes]), 
-    loadRoute: useCallback((s) => { 
-        const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre as Genre, mood: it.mood as Mood, status: 'pending' as const })); 
-        setRoute(i); 
-        if (i.length > 0) setActiveRouteItemId(i[0].id); 
-        localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(i));
-    }, []), 
-    deleteSavedRoute: useCallback((id) => {
-        const u = savedRoutes.filter(r => r.id !== id);
-        setSavedRoutes(u);
-        localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u));
-    }, [savedRoutes]), 
+    saveRoute, loadRoute, deleteSavedRoute,
     savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
