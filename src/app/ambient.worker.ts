@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.5 — "Vinyl Transition Update".
- * #ЗАЧЕМ: Эстетическая пауза между пьесами.
- * #ЧТО: ПЛАН №99 — Сигнализация перехода и управляемая задержка цикла.
+ * @file AuraGroove Music Worker V5.6 — "Cognitive Sight Restored".
+ * #ЗАЧЕМ: Возвращение детальных логов для контроля Наследия и Ансамбля.
+ * #ЧТО: ПЛАН №100 — Форматированный вывод аксиом, тембров и нарратива.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -226,8 +226,7 @@ const Scheduler = {
     },
 
     /**
-     * #ЗАЧЕМ: ПЛАН №99. Виниловый переход.
-     * #ЧТО: Метод теперь возвращает время до следующего вызова (ms).
+     * #ЗАЧЕМ: ПЛАН №100. Восстановление когнитивных логов.
      */
     tick(): number {
         if (!this.isRunning || !fractalMusicEngine) return 1000;
@@ -243,17 +242,14 @@ const Scheduler = {
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
-        // --- SUITE TRANSITION CHECK ---
         if (this.barCount >= totalBars) {
              self.postMessage({ type: 'SUITE_TRANSITION' });
-             
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
-             
-             return 2000; // Пауза 2 секунды под звук винила
+             return 2000; 
         }
 
         let payload: any;
@@ -269,12 +265,18 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
+        // ───── COGNITIVE LOGGING (PLAN №100) ─────
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-        const axioms = payload.activeAxioms || {};
-        const trackName = payload.trackName || 'Generative';
-        
+        const ax = payload.activeAxioms || {};
+        const hints = payload.instrumentHints || {};
+        const track = payload.trackName || 'Generative';
+        const t = payload.tension.toFixed(2);
+        const b = (payload.beautyScore || 0.5).toFixed(2);
+
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)}`,
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
+            `  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
+            `  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
             'color: #888;'
         );
 
