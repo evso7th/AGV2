@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.7 — "Plan #38: Hybrid Warmth".
- * #ЧТО: Внедрена имитация аналогового тракта (Saturation + Tone Filter).
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.8 — "Gain Calibration".
+ * #ЧТО: Громкость снижена в 2 раза (0.30 -> 0.15).
  */
 
 function makeWarmthCurve() {
@@ -68,7 +68,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.30; 
+        this.preamp.gain.value = 0.15; // Снижено в 2 раза
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();

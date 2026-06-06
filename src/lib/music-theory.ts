@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V4.9 — "Dynamic Guitar Extension".
+ * @fileOverview Universal Music Theory Utilities V5.0 — "Timbre Routing Fix".
  */
 
 import type { 
@@ -47,7 +47,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №25): Добавлены динамические гитарные группы.
+ * #ОБНОВЛЕНО (ПЛАН №86): Исправлен конфликт имен Telecaster / DarkTelecaster.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -82,7 +82,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return 'synth_cave_pad';
     }
 
-    // ─── Dynamic Groups (Guitars) [PLAN №25] ───
+    // ─── Dynamic Groups (Guitars) ───
     if (clean === 'dyntelecs80black') {
         if (tension < 0.4) return 'telecaster';
         if (tension < 0.75) return 'cs80';
@@ -127,6 +127,8 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
     if (part === 'melody') {
         if (clean.includes('acoustic')) return 'blackAcoustic';
+        // #ЗАЧЕМ: Специфичное правило для Dark Telecaster должно быть выше общего правила 'tele'.
+        if (clean.includes('darktele')) return 'darkTelecaster';
         if (clean.includes('tele')) return 'telecaster';
         if (clean.includes('shine')) return 'guitar_shineOn';
         if (clean.includes('muff')) return 'guitar_muffLead';

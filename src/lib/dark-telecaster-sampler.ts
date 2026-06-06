@@ -4,8 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.0 — "Refined Overdrive".
- * #ЧТО: ПЛАН №51 (Restored) — Замена фузза на мягкий овердрайв, гейн 0.08.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.1 — "Gain Calibration".
+ * #ЧТО: Громкость снижена в 2 раза (0.08 -> 0.04).
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -71,7 +71,7 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.08; 
+        this.preamp.gain.value = 0.04; // Снижено в 2 раза
 
         this.overdrive = this.audioContext.createWaveShaper();
         this.overdrive.curve = makeOverdriveCurve(0.42);
