@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: UI AuraGroove V4.0 — "Dynamic Group Expansion".
- * #ЧТО: ПЛАН №88 — Добавлены динамические группы пианиста.
+ * #ЗАЧЕМ: UI AuraGroove V4.1 — "Syntax & Integrity Fix".
+ * #ЧТО: ПЛАН №108 — Исправлена ошибка Unexpected token div, очищены дубликаты в displayNames.
  */
 'use client';
 
@@ -16,7 +15,7 @@ import {
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -30,7 +29,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { AuraGrooveProps } from "@/hooks/use-aura-groove";
 import { useRouter } from "next/navigation";
 import { formatTime, cn } from "@/lib/utils";
-import type { Mood, Genre, InstrumentPart, BassInstrument, MelodyInstrument, AccompanimentInstrument } from '@/types/music';
+import type { Mood, Genre, InstrumentPart } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { SpectrumAnalyzer } from "@/components/SpectrumAnalyzer";
@@ -138,13 +137,12 @@ export function AuraGrooveV2({
 
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const v2MelodyInstruments = Object.keys(V2_PRESETS).filter(k => 
-    V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && k !== 'ep_rhodes_warm'
+    V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && k !== 'ep_rhodes'
   );
   
   const melodyInstrumentList = v2MelodyInstruments;
   const textureInstrumentList = v2MelodyInstruments; 
   const harmonyInstrumentList: ('guitarChords' | 'flute' | 'violin' | 'none')[] = ['guitarChords', 'violin', 'none'];
-  const moodList: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
   const isFractalStyle = score === 'neuro_f_matrix';
   const composerControl = isFractalStyle && composerControlsInstruments;
 
@@ -171,14 +169,6 @@ export function AuraGrooveV2({
     'guitar_shineOn': 'Shine On Guitar',
     'guitar_muffLead': 'Muff Lead',
     'reggae_guitar': 'Roots Skank Guitar',
-    'organ': 'Cathedral Organ',
-    'organ_soft_jazz': 'Soft Jazz Organ',
-    'synth': 'Emerald Pad',
-    'theremin': 'Vocal Theremin',
-    'mellotron': 'Majestic Strings',
-    'mellotron_flute_intimate': 'Intimate Flute',
-    'guitar_shineOn': 'Shine On Guitar',
-    'synth_ambient_pad_lush': 'Lush Pad',
     'piano': 'Rhodes EPiano',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
@@ -186,7 +176,6 @@ export function AuraGrooveV2({
     'blackAcoustic': 'Black Acoustic',
     'reggae': 'Roots Reggae',
     'psybient': 'Psy-Ambient',
-    // Dynamic Guitars
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
     'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
     'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
@@ -196,13 +185,11 @@ export function AuraGrooveV2({
     'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
     'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
     'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
-    // Dynamic Basses
     'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
     'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
     'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
     'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
     'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
-    // Dynamic Piano
     'dyn_rhodes_piano': '⚡ Rhodes → Piano',
     'dyn_piano_rhodes': '⚡ Piano → Rhodes'
   };
@@ -690,4 +677,3 @@ export function AuraGrooveV2({
     </div>
   );
 }
-
