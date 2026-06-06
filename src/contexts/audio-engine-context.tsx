@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V43.0 — "Chronos & Journey Synchronization".
- * #ЗАЧЕМ: Передача прогресса тактов в UI для управления маршрутами.
- * #ЧТО: ПЛАН №94 — Экспорт currentBar и totalBars.
+ * @fileOverview Audio Engine Context V44.0 — "Heritage Sync Restoration".
+ * #ЗАЧЕМ: Исправление потери связи с наследием. 
+ * #ЧТО: ПЛАН №95 — Внедрен onSnapshot для реактивной доставки DNA в воркер.
  */
 'use client';
 
@@ -242,13 +242,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №95. Принудительная отправка аксиом в воркер.
+   */
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
       const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
+      const rawAxioms = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+      
+      // Отправляем в воркер
+      workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
+
       const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
-      snapshot.docs.forEach(d => {
-          const data = d.data(); const compId = data.compositionId;
+      rawAxioms.forEach(data => {
+          const compId = data.compositionId;
           if (compId) {
               if (!compMeta[compId]) { compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() }; }
               compMeta[compId].count++;
@@ -260,8 +268,40 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       });
       const meta = Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id));
       setAvailableCompositions(meta);
-    } catch (e) {}
+    } catch (e) {
+      console.error('[AudioEngine] Failed to refresh axioms:', e);
+    }
   }, [db]);
+
+  /**
+   * #ЗАЧЕМ: ПЛАН №95. Реактивный слушатель DNA.
+   */
+  useEffect(() => {
+    if (isInitialized && db && workerRef.current) {
+        console.log('%c[AudioEngine] Heritage Direct Sync Active', 'color: #4ade80;');
+        const unsubscribe = onSnapshot(collection(db, 'heritage_axioms'), (snapshot) => {
+            const rawAxioms = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+            workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
+            
+            // Также обновляем метаданные для UI
+            const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
+            rawAxioms.forEach(data => {
+                const compId = data.compositionId;
+                if (compId) {
+                    if (!compMeta[compId]) compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
+                    compMeta[compId].count++;
+                    const genres = Array.isArray(data.genre) ? data.genre : [data.genre];
+                    genres.forEach(g => compMeta[compId].genres.add(g));
+                    const moods = Array.isArray(data.mood) ? data.mood : [data.mood];
+                    moods.forEach(m => compMeta[compId].moods.add(m));
+                }
+            });
+            const meta = Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id));
+            setAvailableCompositions(meta);
+        });
+        return () => unsubscribe();
+    }
+  }, [isInitialized, db]);
 
   const initialize = useCallback(async () => {
     if (isInitialized || initializationInFlightRef.current) return true;
@@ -294,6 +334,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
         await Promise.all([ drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true), telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(true), sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5) ]);
+        
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (e) => {
@@ -312,6 +353,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
         }
+        
         await refreshCloudAxioms(); 
         applyCalibration(calibrationGains);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
