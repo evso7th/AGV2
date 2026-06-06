@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -136,6 +135,16 @@ const INSTRUMENT_GROUPS = [
     ]
   },
   {
+    label: "⚡ Dynamic Basses",
+    options: [
+      'dyn_bass_warm_blues',
+      'dyn_bass_warm_blues_slap',
+      'dyn_bass_fretless_jazz',
+      'dyn_bass_fretless_jazz_slap',
+      'dyn_bass_ambient_cs80'
+    ]
+  },
+  {
     label: "Sampled Guitars",
     options: ['blackAcoustic', 'guitarChords']
   },
@@ -146,6 +155,8 @@ const INSTRUMENT_GROUPS = [
   {
     label: "⚡ Dynamic Guitars",
     options: [
+        'dyn_tele_dark',
+        'dyn_black_tele_dark',
         'dyn_tele_cs80_black',
         'dyn_black_cs80_tele',
         'dyn_tele_cs80_shine',
@@ -203,13 +214,21 @@ const DISPLAY_NAMES: Record<string, string> = {
     'none': 'No Override',
     'psybient': 'Psy-Ambient',
     // Dynamic Guitars
+    'dyn_tele_dark': '⚡ Tele → Dark Tele',
+    'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
     'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
     'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
     'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
     'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
     'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
     'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
-    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)'
+    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
+    // Dynamic Basses
+    'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
+    'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
+    'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
+    'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
+    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -693,7 +712,7 @@ export default function HypercubeDashboard() {
                     <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle>
                     <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Inspect and Curate Heritage Axioms</CardDescription>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex wrap items-center gap-2">
                     {filtersActive && <Button variant="ghost" size="sm" onClick={() => { setFilterSearchText(""); setSelectedFilterGenres([]); setSelectedFilterMoods([]); }} className="text-muted-foreground h-8 px-2 text-[10px] uppercase font-bold"><RotateCcw className="h-3 w-3 mr-1.5" /> Clear</Button>}
                     <Input placeholder="Search..." className="h-9 w-[180px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                     <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
@@ -908,7 +927,7 @@ export default function HypercubeDashboard() {
           </TabsContent>
 
           <TabsContent value="inject" className="flex-grow flex flex-col overflow-hidden space-y-6 m-0">
-            <div className="flex flex-wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shrink-0">
+            <div className="flex wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shrink-0">
               <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
               <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-12 px-8 shadow-lg uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button>
               <div className="flex items-center gap-3 pl-6 border-l border-border/50">

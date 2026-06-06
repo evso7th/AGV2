@@ -1,7 +1,6 @@
-
 /**
- * #ЗАЧЕМ: UI AuraGroove V3.9 — "Dynamic Guitar Update".
- * #ЧТО: ПЛАН №25 — Добавлены динамические гитарные группы в словарь имен.
+ * #ЗАЧЕМ: UI AuraGroove V4.0 — "Dynamic Group Expansion".
+ * #ЧТО: ПЛАН №87 — Добавлены новые динамические группы в словарь имен.
  */
 'use client';
 
@@ -171,13 +170,21 @@ export function AuraGrooveV2({
     'reggae': 'Roots Reggae',
     'psybient': 'Psy-Ambient',
     // Dynamic Guitars
+    'dyn_tele_dark': '⚡ Tele → Dark Tele',
+    'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
     'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
     'dyn_black_cs80_tele': '⚡ Black → CS80 → Tele',
     'dyn_tele_cs80_shine': '⚡ Tele → CS80 → Shine',
     'dyn_tele_cs80_muff': '⚡ Tele → CS80 → Muff',
     'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
     'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
-    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)'
+    'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
+    // Dynamic Basses
+    'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
+    'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
+    'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
+    'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
+    'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub'
   };
 
   const filteredCompositions = availableCompositions.filter(comp => {

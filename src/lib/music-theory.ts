@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Universal Music Theory Utilities V5.0 — "Timbre Routing Fix".
+ * @fileOverview Universal Music Theory Utilities V5.1 — "Dynamic Group Expansion".
  */
 
 import type { 
@@ -47,7 +47,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №86): Исправлен конфликт имен Telecaster / DarkTelecaster.
+ * #ОБНОВЛЕНО (ПЛАН №87): Добавлены новые динамические группы баса и гитар.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -83,6 +83,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
 
     // ─── Dynamic Groups (Guitars) ───
+    if (clean === 'dynteledark') {
+        return tension < 0.6 ? 'telecaster' : 'darkTelecaster';
+    }
+    if (clean === 'dynblackteledark') {
+        if (tension < 0.4) return 'blackAcoustic';
+        if (tension < 0.75) return 'telecaster';
+        return 'darkTelecaster';
+    }
     if (clean === 'dyntelecs80black') {
         if (tension < 0.4) return 'telecaster';
         if (tension < 0.75) return 'cs80';
@@ -117,6 +125,27 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
     }
 
+    // ─── Dynamic Groups (Bass) ───
+    if (clean === 'dynbasswarmblues') {
+        return tension < 0.6 ? 'bass_jazz_warm' : 'bass_blues';
+    }
+    if (clean === 'dynbasswarmbluesslap') {
+        if (tension < 0.4) return 'bass_jazz_warm';
+        if (tension < 0.75) return 'bass_blues';
+        return 'bass_slap';
+    }
+    if (clean === 'dynbassfretlessjazz') {
+        return tension < 0.6 ? 'bass_jazz_fretless' : 'bass_jazz_warm';
+    }
+    if (clean === 'dynbassfretlessjazzslap') {
+        if (tension < 0.4) return 'bass_jazz_fretless';
+        if (tension < 0.75) return 'bass_jazz_warm';
+        return 'bass_slap';
+    }
+    if (clean === 'dynbassambientcs80') {
+        return tension < 0.6 ? 'bass_ambient' : 'bass_cs80';
+    }
+
     const v2Keys = Object.keys(V2_PRESETS);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedV2) return matchedV2;
@@ -127,7 +156,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
     if (part === 'melody') {
         if (clean.includes('acoustic')) return 'blackAcoustic';
-        // #ЗАЧЕМ: Специфичное правило для Dark Telecaster должно быть выше общего правила 'tele'.
         if (clean.includes('darktele')) return 'darkTelecaster';
         if (clean.includes('tele')) return 'telecaster';
         if (clean.includes('shine')) return 'guitar_shineOn';
