@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V46.0 — "Chronos Resync Protocol".
- * #ЗАЧЕМ: Исправление тишины при переходе между пьесами.
- * #ЧТО: ПЛАН №98 — Автоматическая подтяжка времени планирования к реальности при Bar 0.
+ * @fileOverview Audio Engine Context V47.0 — "Vinyl Transition Protocol".
+ * #ЗАЧЕМ: Эстетичный переход между пьесами и время для генерации ДНК.
+ * #ЧТО: ПЛАН №99 — Проигрывание vinyl_disk.ogg и пауза 2 сек при смене сюиты.
  */
 'use client';
 
@@ -146,6 +146,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const samplersMasterGainRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
+  const transitionGainRef = useRef<GainNode | null>(null);
+  const transitionBufferRef = useRef<AudioBuffer | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
@@ -229,6 +231,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
+  const playTransitionSound = useCallback(() => {
+      if (!audioContextRef.current || !transitionBufferRef.current || !transitionGainRef.current) return;
+      
+      console.log('%c[Chronos] Playing Vinyl Transition...', 'color: #a855f7; font-weight: bold;');
+      
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = transitionBufferRef.current;
+      source.connect(transitionGainRef.current);
+      source.start();
+      
+      // Плавное гашение музыки во время перехода
+      const now = audioContextRef.current.currentTime;
+      masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master * 0.3, now, 0.5);
+      setTimeout(() => {
+          masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current!.currentTime, 0.5);
+      }, 1500);
+  }, [calibrationGains.master]);
+
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     const beatDuration = 60 / tempo;
@@ -300,22 +320,38 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!audioContextRef.current) audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 44100 });
         const context = audioContextRef.current; if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
+        
+        // 1. Loading Transition Sample
+        if (!transitionBufferRef.current) {
+            try {
+                const res = await fetch('/assets/music/vinyl_disk.ogg');
+                const arrayBuffer = await res.arrayBuffer();
+                transitionBufferRef.current = await context.decodeAudioData(arrayBuffer);
+            } catch (e) { console.warn('[AudioEngine] Vinyl sample not found.'); }
+        }
+
         if (!masterGainNodeRef.current) {
             masterGainNodeRef.current = context.createGain(); 
             samplersMasterGainRef.current = context.createGain(); 
             speakerGainNodeRef.current = context.createGain();
             speakerGainNodeRef.current.gain.value = 1.0; 
             
+            transitionGainRef.current = context.createGain();
+            transitionGainRef.current.gain.value = 0.6;
+            
             analyserNodeRef.current = context.createAnalyser(); 
             analyserNodeRef.current.fftSize = 512;
             
             samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
             masterGainNodeRef.current.connect(analyserNodeRef.current);
+            transitionGainRef.current.connect(analyserNodeRef.current); // Винил тоже в спектр
+            
             analyserNodeRef.current.connect(speakerGainNodeRef.current); 
             speakerGainNodeRef.current.connect(context.destination);
             
             const recDest = context.createMediaStreamDestination(); 
             masterGainNodeRef.current.connect(recDest); 
+            transitionGainRef.current.connect(recDest);
             recDestRef.current = recDest;
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
@@ -347,18 +383,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     setCurrentBar(payload.barCount);
                     setTotalBars(payload.totalBars);
                     
-                    // #ЗАЧЕМ: ПЛАН №98. Ресинхронизация Chronos.
-                    // Если мы переходим к новой пьесе (Bar 0) или отстаем от реальности,
-                    // принудительно "подтягиваем" время планирования к реальности.
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
                     
                     if (payload.barCount === 0 || scheduleTime < now - 0.1) {
-                         const drift = now - scheduleTime;
-                         if (drift > 0.05) {
-                             console.log(`%c[Chronos] Drift detected: ${drift.toFixed(3)}s. Resyncing...`, 'color: #fbbf24; font-weight: bold;');
-                         }
-                         scheduleTime = now + 0.15; // 150ms буфер для стабильности
+                         scheduleTime = now + 0.15; 
                     }
 
                     scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
@@ -368,6 +397,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         saveMasterpiece(db, { seed: payload.seed, mood: settingsRef.current.mood, genre: settingsRef.current.genre, density: settingsRef.current.density, bpm: payload.actualBpm || settingsRef.current.bpm, instrumentSettings: settingsRef.current.instrumentSettings, isArbiterFind: true });
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
+                } else if (type === 'SUITE_TRANSITION') {
+                    playTransitionSound();
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
                 else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
@@ -379,7 +410,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { toast({ variant: "destructive", title: "Audio Error" }); return false; }
-  }, [toast, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains, scheduleEvents]);
+  }, [toast, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains, scheduleEvents, playTransitionSound]);
 
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; if (!context || !workerRef.current) return;

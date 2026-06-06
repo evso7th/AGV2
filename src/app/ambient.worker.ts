@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.4 — "Heritage Connectivity Update".
- * #ЗАЧЕМ: Исправление потери связи с облачными аксиомами при поздней загрузке.
- * #ЧТО: ПЛАН №35 — Принудительная инициализация при первом получении данных.
+ * @file AuraGroove Music Worker V5.5 — "Vinyl Transition Update".
+ * #ЗАЧЕМ: Эстетическая пауза между пьесами.
+ * #ЧТО: ПЛАН №99 — Сигнализация перехода и управляемая задержка цикла.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -166,20 +166,12 @@ const Scheduler = {
         
         if (!fractalMusicEngine) {
             this.initializeEngine(this.settings);
-        } else {
-            const isUsingHeritage = this.settings.useHeritage;
-            const engineIsAlgorithmic = !fractalMusicEngine.config.activeAnchorId;
-            const heritageDataAvailable = this.cloudAxiomPool.length > 0;
-            
-            if (isUsingHeritage && engineIsAlgorithmic && heritageDataAvailable) {
-                this.initializeEngine(this.settings);
-            }
         }
 
         const loop = () => {
             if (!this.isRunning) return;
-            this.tick();
-            this.loopId = setTimeout(loop, this.barDuration * 1000);
+            const nextDelay = this.tick();
+            this.loopId = setTimeout(loop, nextDelay);
         };
         loop();
     },
@@ -226,8 +218,6 @@ const Scheduler = {
         const wasEmpty = this.cloudAxiomPool.length === 0;
         this.cloudAxiomPool = axioms || [];
         
-        // #ЗАЧЕМ: Если мы в режиме Heritage, но движок запустился пустым,
-        // нужно немедленно переинициализироваться при поступлении данных.
         if (wasEmpty && this.cloudAxiomPool.length > 0 && this.settings.useHeritage) {
             this.initializeEngine(this.settings);
         } else if (fractalMusicEngine) {
@@ -235,8 +225,12 @@ const Scheduler = {
         }
     },
 
-    tick() {
-        if (!this.isRunning || !fractalMusicEngine) return;
+    /**
+     * #ЗАЧЕМ: ПЛАН №99. Виниловый переход.
+     * #ЧТО: Метод теперь возвращает время до следующего вызова (ms).
+     */
+    tick(): number {
+        if (!this.isRunning || !fractalMusicEngine) return 1000;
 
         if (this.targetBpm !== null) {
             this.settings.bpm += this.bpmStep;
@@ -248,12 +242,18 @@ const Scheduler = {
         }
 
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
+        
+        // --- SUITE TRANSITION CHECK ---
         if (this.barCount >= totalBars) {
+             self.postMessage({ type: 'SUITE_TRANSITION' });
+             
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
              this.initializeEngine(this.settings);
              this.barCount = 0;
+             
+             return 2000; // Пауза 2 секунды под звук винила
         }
 
         let payload: any;
@@ -261,7 +261,7 @@ const Scheduler = {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
             console.error('[Worker] Evolution Error:', e);
-            return;
+            return this.barDuration * 1000;
         }
 
         if (payload.newBpm && payload.newBpm !== this.settings.bpm && !this.targetBpm) {
@@ -269,47 +269,36 @@ const Scheduler = {
             self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
         }
 
-        const h = payload.instrumentHints || {};
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const axioms = payload.activeAxioms || {};
         const trackName = payload.trackName || 'Generative';
         
-        const melStr = axioms.melody === 'Generative' ? 'Generative' : (axioms.melody || 'Breath');
-        const cognitiveStr = `Axioms: [MEL: ${melStr}] [BASS: ${axioms.bass || 'none'}] [DRUM: ${axioms.drums || 'none'}] [HAR: ${axioms.harmony || 'none'}] [PNO: ${axioms.piano || 'none'}]`;
-        const ensembleStr = `Timbres: [MEL: ${h.melody || 'none'}] [BASS: ${h.bass || 'none'}] [ACC: ${h.accompaniment || 'none'}] [HAR: ${h.harmony || 'none'}] [PNO: ${h.pianoAccompaniment || 'none'}]`;
-
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)} B:${payload.beautyScore.toFixed(2)} ` +
-            `%c${cognitiveStr}\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Flowing...'} | %c${ensembleStr}`,
-            'color: #888;', 
-            'color: #4ade80; font-weight: bold;',
-            'color: #ADD8E6; font-style: italic;',
-            'color: #DA70D6; font-size: 10px; font-weight: bold;'
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackName}] T:${payload.tension.toFixed(2)}`,
+            'color: #888;'
         );
 
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
                 events: payload.events,
-                instrumentHints: h,
+                instrumentHints: payload.instrumentHints || {},
                 barDuration: this.barDuration,
                 barCount: this.barCount,
                 totalBars: totalBars,
                 actualBpm: Math.round(this.settings.bpm),
-                lickId: payload.lickId,
-                beautyScore: payload.beautyScore,
-                seed: this.settings.seed
+                seed: this.settings.seed,
+                beautyScore: payload.beautyScore
             }
         });
 
         this.barCount++;
+        return this.barDuration * 1000;
     }
 };
 
 self.onmessage = (event: MessageEvent) => {
     if (event.data?.type === 'shortCuts') return;
-    
     if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
     try {
