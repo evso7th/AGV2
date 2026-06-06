@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V42.0 — "Engine Ignition Stability".
- * #ЗАЧЕМ: Исправление нерабочей кнопки Play и устранение рекурсивных рендеров.
- * #ЧТО: ПЛАН №93 — Стабилизация всех методов через useCallback.
+ * @fileOverview Audio Engine Context V43.0 — "Chronos & Journey Synchronization".
+ * #ЗАЧЕМ: Передача прогресса тактов в UI для управления маршрутами.
+ * #ЧТО: ПЛАН №94 — Экспорт currentBar и totalBars.
  */
 'use client';
 
@@ -69,6 +69,8 @@ interface AudioEngineContextType {
   isPreviewPlaying: boolean;
   isPreviewLooping: boolean;
   availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
+  currentBar: number;
+  totalBars: number;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -116,6 +118,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   const [voiceLimit, setVoiceLimitState] = useState(512);
+  const [currentBar, setCurrentBar] = useState(0);
+  const [totalBars, setTotalBars] = useState(144);
 
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -295,6 +299,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             workerRef.current.onmessage = (e) => {
                 const { type, payload, error } = e.data;
                 if (type === 'SCORE_READY' && payload) {
+                    setCurrentBar(payload.barCount);
+                    setTotalBars(payload.totalBars);
                     scheduleEvents(payload.events, nextBarTimeRef.current, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current += payload.barDuration;
                     if (payload.beautyScore >= 0.88 && settingsRef.current && payload.seed !== lastSavedArbiterSeedRef.current) {
@@ -388,7 +394,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
-      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit,
+      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars,
       setIsPlaying: handleTogglePlay,
       updateSettings: updateSettingsCallback,
       refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
@@ -404,7 +410,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, 
       setVolumeCallback, calibrationGains, setCalibrationGain, startPreview, stopPreview, togglePreviewLoop, 
       playRawEventsCallback, updateSettingsCallback, updatePreviewPresetCallback, toggleBroadcastCallback, 
-      stopAllSounds, getEffectivePreset
+      stopAllSounds, getEffectivePreset, currentBar, totalBars
   ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;

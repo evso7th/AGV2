@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V11.0 — "Ignition Stability Protocol".
- * #ЗАЧЕМ: Исправление нерабочей кнопки Play и тотальная мемоизация.
- * #ЧТО: ПЛАН №93 — handlePlayPause теперь инициирует initialize().
+ * @fileOverview Music Control Hook V12.0 — "Journey Engine Synchronization".
+ * #ЗАЧЕМ: Исправление ситуации "в очереди блюз, а играет амбиент".
+ * #ЧТО: ПЛАН №94 — Авто-переключение настроек при прогрессии маршрута.
  */
 'use client';
 
@@ -126,7 +126,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit
+    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -169,6 +169,36 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
+  const prevBarRef = useRef(0);
+
+  // --- 1. SYNC ROUTE ITEM TO ENGINE STATE ---
+  // #ЗАЧЕМ: Когда в очереди меняется элемент, нужно обновить жанр и настроение.
+  useEffect(() => {
+    if (activeRouteItemId) {
+        const activeItem = route.find(it => it.id === activeRouteItemId);
+        if (activeItem && activeItem.genre !== 'random' && activeItem.mood !== 'random') {
+            setGenreState(activeItem.genre as Genre);
+            setMoodState(activeItem.mood as Mood);
+        }
+    }
+  }, [activeRouteItemId, route]);
+
+  // --- 2. JOURNEY AUTO-PROGRESSION ---
+  // #ЗАЧЕМ: Когда такт сбрасывается в 0, значит трек кончился -> идем дальше.
+  useEffect(() => {
+    if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
+        const nextIndex = activeRouteIndex + 1;
+        if (nextIndex < route.length) {
+            setActiveRouteItemId(route[nextIndex].id);
+            toast({ title: "Next Chapter", description: `Transitioning to ${route[nextIndex].genre} / ${route[nextIndex].mood}` });
+        } else if (isRepeat) {
+            setActiveRouteItemId(route[0].id);
+        } else {
+            setIsPlaying(false);
+        }
+    }
+    prevBarRef.current = currentBar;
+  }, [currentBar, isPlaying, route, activeRouteIndex, isRepeat, setIsPlaying, toast]);
 
   const loadEqPreset = useCallback((id: string) => {
       const preset = eqPresets.find(p => p.id === id);
@@ -268,12 +298,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
+            if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
             setIsPlaying(true);
         }
     } else {
         setIsPlaying(!isPlaying);
     }
-  }, [isInitialized, isPlaying, initialize, setIsPlaying]);
+  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId]);
 
   const resetMixerToSystem = useCallback(() => {
       setActiveMixerPresetId(null);
@@ -323,13 +354,25 @@ export const useAuraGroove = (): AuraGrooveProps => {
     route, 
     addToRoute: useCallback((g, m) => {
         const id = `route-${Date.now()}`;
-        setRoute(prev => [...prev, { id, genre: g, mood: m, status: 'pending' }]);
+        setRoute(prev => {
+            const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }];
+            localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
+            return next;
+        });
     }, []), 
-    removeFromRoute: useCallback((id) => setRoute(prev => prev.filter(it => it.id !== id)), []), 
+    removeFromRoute: useCallback((id) => setRoute(prev => {
+        const next = prev.filter(it => it.id !== id);
+        localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
+        return next;
+    }), []), 
     selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), 
     refreshRoute: useCallback(() => refreshCloudAxioms(), [refreshCloudAxioms]), 
     moveRouteItem: useCallback(() => {}, []), 
-    reorderRoute: useCallback((a, o) => setRoute(p => arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o))), []), 
+    reorderRoute: useCallback((a, o) => setRoute(p => {
+        const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o));
+        localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
+        return next;
+    }), []), 
     saveRoute: useCallback((name) => { 
         const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; 
         const u = [n, ...savedRoutes]; 
@@ -337,8 +380,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); 
     }, [route, savedRoutes]), 
     loadRoute: useCallback((s) => { 
-        const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre, mood: it.mood, status: 'pending' as const })); 
-        setRoute(i); if (i.length > 0) setActiveRouteItemId(i[0].id); 
+        const i = s.items.map((it, idx) => ({ id: `r-${idx}-${Date.now()}`, genre: it.genre as Genre, mood: it.mood as Mood, status: 'pending' as const })); 
+        setRoute(i); 
+        if (i.length > 0) setActiveRouteItemId(i[0].id); 
+        localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(i));
     }, []), 
     deleteSavedRoute: useCallback((id) => {
         const u = savedRoutes.filter(r => r.id !== id);
@@ -348,7 +393,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
-    currentBar: 0, totalBars: 144,
+    currentBar, totalBars,
     eqPresets, activeEqPresetId, 
     saveEqPreset: useCallback((name) => { 
         const n = { id: `eq-${Date.now()}`, name, values: [...eqSettings] }; 
