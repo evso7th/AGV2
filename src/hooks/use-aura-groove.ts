@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V12.1 — "Terminal Silence Update".
- * #ЗАЧЕМ: Гарантированная остановка музыки при навигации.
- * #ЧТО: ПЛАН №96 — handleGoHome теперь async и дожидается остановки движка.
+ * @fileOverview Music Control Hook V13.0 — "System Player Integration".
+ * #ЗАЧЕМ: Полноценное управление через Web Media Session API.
+ * #ЧТО: ПЛАН №103 — Метаданные DNA в ОС, системные кнопки и Heartbeat.
  */
 'use client';
 
@@ -107,6 +107,7 @@ export type AuraGrooveProps = {
   setShowAdvancedUI: (val: boolean) => void;
   currentBar: number;
   totalBars: number;
+  currentTrackName: string;
   eqPresets: PresetItem[];
   activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
@@ -128,7 +129,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars
+    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -173,7 +174,58 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const prevBarRef = useRef(0);
 
-  // --- 1. SYNC ROUTE ITEM TO ENGINE STATE ---
+  // --- 1. MEDIA SESSION INTEGRATION (PLAN №103) ---
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+
+    const updateMetadata = () => {
+        const fullArtworkUrl = `${window.location.origin}/assets/icon8.jpeg?v=${currentSeed}`;
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentTrackName || 'Generative Suite',
+            artist: 'AuraGroove V2 Imperial',
+            album: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+            artwork: [
+                { src: fullArtworkUrl, sizes: '96x96', type: 'image/jpeg' },
+                { src: fullArtworkUrl, sizes: '128x128', type: 'image/jpeg' },
+                { src: fullArtworkUrl, sizes: '192x192', type: 'image/jpeg' },
+                { src: fullArtworkUrl, sizes: '256x256', type: 'image/jpeg' },
+                { src: fullArtworkUrl, sizes: '384x384', type: 'image/jpeg' },
+                { src: fullArtworkUrl, sizes: '512x512', type: 'image/jpeg' },
+            ]
+        });
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+        
+        // Pseudo-position to keep the notification alive
+        try {
+            (navigator.mediaSession as any).setPositionState({
+                duration: 3600,
+                playbackRate: 1.0,
+                position: currentBar * (60/bpm * 4)
+            });
+        } catch(e) {}
+    };
+
+    updateMetadata();
+
+    // Heartbeat Interval (Every 2 seconds)
+    const heartbeat = setInterval(updateMetadata, 2000);
+
+    // Action Handlers
+    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
+    navigator.mediaSession.setActionHandler('nexttrack', () => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); });
+
+    return () => {
+        clearInterval(heartbeat);
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+    };
+  }, [isPlaying, currentTrackName, genre, mood, currentSeed, currentBar, bpm, setIsPlaying, stopAllSounds]);
+
+  // --- 2. SYNC ROUTE ITEM TO ENGINE STATE ---
   useEffect(() => {
     if (activeRouteItemId) {
         const activeItem = route.find(it => it.id === activeRouteItemId);
@@ -184,7 +236,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route]);
 
-  // --- 2. JOURNEY AUTO-PROGRESSION ---
+  // --- 3. JOURNEY AUTO-PROGRESSION ---
   useEffect(() => {
     if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
         const nextIndex = activeRouteIndex + 1;
@@ -306,6 +358,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId]);
 
+  const resetMixerToSystem = useCallback(() => {
+      setActiveMixerPresetId(null);
+      localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+      setCalibrationGain('master', 1.0);
+  }, [setCalibrationGain]);
+
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -336,13 +394,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
-    handleGoHome: useCallback(async () => { 
-        if (isPlaying) {
-            await setIsPlaying(false); 
-        }
-        stopAllSounds(); 
-        router.push('/'); 
-    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
     setIsPlaying,
     stopAllSounds,
     handleGoHome: useCallback(async () => { 
@@ -401,7 +452,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     savedRoutes,
     isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
-    currentBar, totalBars,
+    currentBar, totalBars, currentTrackName,
     eqPresets, activeEqPresetId, 
     saveEqPreset: useCallback((name) => { 
         const n = { id: `eq-${Date.now()}`, name, values: [...eqSettings] }; 
@@ -444,11 +495,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }, [activeMixerPresetId, instrumentSettings, drumSettings, textureSettings, calibrationGains, mixerPresets]), 
     loadMixerPreset, 
     deleteMixerPreset: useCallback((id) => setMixerPresets(prev => prev.filter(p => p.id !== id)), []),
-    resetMixerToSystem: useCallback(() => {
-        setActiveMixerPresetId(null);
-        localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
-        // Реактивный сброс громкостей произойдет через applyAutoMix в useEffect
-        setCalibrationGain('master', 1.0);
-    }, [setCalibrationGain])
+    resetMixerToSystem
   };
 };

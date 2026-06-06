@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V47.0 — "Vinyl Transition Protocol".
- * #ЗАЧЕМ: Эстетичный переход между пьесами и время для генерации ДНК.
- * #ЧТО: ПЛАН №99 — Проигрывание vinyl_disk.ogg и пауза 2 сек при смене сюиты.
+ * @fileOverview Audio Engine Context V48.0 — "Metadata Synchronization".
+ * #ЗАЧЕМ: Доставка названия DNA-трека из воркера в системный интерфейс ОС.
+ * #ЧТО: ПЛАН №103 — Добавлено состояние currentTrackName.
  */
 'use client';
 
@@ -71,6 +71,7 @@ interface AudioEngineContextType {
   availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
   currentBar: number;
   totalBars: number;
+  currentTrackName: string;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -120,6 +121,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState(512);
   const [currentBar, setCurrentBar] = useState(0);
   const [totalBars, setTotalBars] = useState(144);
+  const [currentTrackName, setCurrentTrackName] = useState('Generative Suite');
 
   const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
@@ -241,11 +243,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       source.connect(transitionGainRef.current);
       source.start();
       
-      // Плавное гашение музыки во время перехода
       const now = audioContextRef.current.currentTime;
       masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master * 0.3, now, 0.5);
       setTimeout(() => {
-          masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current!.currentTime, 0.5);
+          if(audioContextRef.current) masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master, audioContextRef.current.currentTime, 0.5);
       }, 1500);
   }, [calibrationGains.master]);
 
@@ -321,7 +322,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current; if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         
-        // 1. Loading Transition Sample
         if (!transitionBufferRef.current) {
             try {
                 const res = await fetch('/assets/music/vinyl_disk.ogg');
@@ -344,7 +344,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             
             samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
             masterGainNodeRef.current.connect(analyserNodeRef.current);
-            transitionGainRef.current.connect(analyserNodeRef.current); // Винил тоже в спектр
+            transitionGainRef.current.connect(analyserNodeRef.current);
             
             analyserNodeRef.current.connect(speakerGainNodeRef.current); 
             speakerGainNodeRef.current.connect(context.destination);
@@ -382,6 +382,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
                     setCurrentBar(payload.barCount);
                     setTotalBars(payload.totalBars);
+                    // #ЗАЧЕМ: Обновление имени трека для метаданных ОС
+                    if (payload.trackName) setCurrentTrackName(payload.trackName);
                     
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
@@ -429,50 +431,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }
   }, [calibrationGains.master, stopAllSounds]);
 
-  const startPreview = useCallback(async (preset: any, type: string, loop: boolean) => {
-      if (!isInitialized) await initialize();
-      if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-      if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); }
-      
-      loopingRef.current = loop; setIsPreviewLooping(loop); setIsPreviewPlaying(true);
-      const ctx = audioContextRef.current!; const previewInst = await buildMultiInstrument(ctx, { type, preset, output: masterGainNodeRef.current! });
-      previewInstrumentRef.current = previewInst;
-      
-      const scheduleSequence = () => {
-          const now = ctx.currentTime + 0.1; EPIC_TEST_SEQUENCE.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); });
-          const totalDuration = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0;
-          if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSequence, totalDuration * 1000); }
-          else { previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), totalDuration * 1000); }
-      };
-      scheduleSequence();
-  }, [isInitialized, initialize]);
-
-  const stopPreview = useCallback(() => {
-      if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current);
-      if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; }
-      setIsPreviewPlaying(false);
-  }, []);
-
-  const togglePreviewLoop = useCallback(() => {
-      loopingRef.current = !loopingRef.current;
-      setIsPreviewLooping(loopingRef.current);
-  }, []);
-
-  const playRawEventsCallback = useCallback((events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => {
-      if(audioContextRef.current) scheduleEvents(events, audioContextRef.current.currentTime + 0.1, tempo || 72, 0, instrumentHints);
-  }, [scheduleEvents]);
-
-  const updateSettingsCallback = useCallback((s: Partial<WorkerSettings>) => {
-      if (workerRef.current) {
-          settingsRef.current = { ...settingsRef.current, ...s } as any;
-          workerRef.current.postMessage({ command: 'update_settings', data: s });
-      }
-  }, []);
-
-  const updatePreviewPresetCallback = useCallback((p: any) => {
-      previewInstrumentRef.current?.setPreset(p);
-  }, []);
-
   const toggleBroadcastCallback = useCallback(() => {
       if (broadcastEngineRef.current && audioContextRef.current && speakerGainNodeRef.current) {
           const now = audioContextRef.current.currentTime;
@@ -490,23 +448,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
-      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars,
+      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
       setIsPlaying: handleTogglePlay,
-      updateSettings: updateSettingsCallback,
+      updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
       refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, startRecording: () => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecording(true); }, stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
       toggleBroadcast: toggleBroadcastCallback, 
-      playRawEvents: playRawEventsCallback,
-      stopAllSounds, startPreview, stopPreview, updatePreviewPreset: updatePreviewPresetCallback, togglePreviewLoop
+      playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
+      stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const previewInst = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = previewInst; const scheduleSeq = () => { const now = audioContextRef.current!.currentTime + 0.1; EPIC_TEST_SEQUENCE.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); }); const totalDur = Math.max(...EPIC_TEST_SEQUENCE.map(n => n.t + n.d)) + 1.0; if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSeq, totalDur * 1000); } else { previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), totalDur * 1000); } }; scheduleSeq(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, 
       availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, 
-      setVolumeCallback, calibrationGains, setCalibrationGain, startPreview, stopPreview, togglePreviewLoop, 
-      playRawEventsCallback, updateSettingsCallback, updatePreviewPresetCallback, toggleBroadcastCallback, 
-      stopAllSounds, getEffectivePreset, currentBar, totalBars
+      setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, 
+      stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, scheduleEvents
   ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;

@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.6 — "Cognitive Sight Restored".
- * #ЗАЧЕМ: Возвращение детальных логов для контроля Наследия и Ансамбля.
- * #ЧТО: ПЛАН №100 — Форматированный вывод аксиом, тембров и нарратива.
+ * @file AuraGroove Music Worker V5.7 — "Media Metadata Hub".
+ * #ЗАЧЕМ: Передача метаданных DNA для Web Media Session API.
+ * #ЧТО: ПЛАН №103 — Добавлены trackName и sectionName в SCORE_READY.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -225,9 +225,6 @@ const Scheduler = {
         }
     },
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №100. Восстановление когнитивных логов.
-     */
     tick(): number {
         if (!this.isRunning || !fractalMusicEngine) return 1000;
 
@@ -290,7 +287,9 @@ const Scheduler = {
                 totalBars: totalBars,
                 actualBpm: Math.round(this.settings.bpm),
                 seed: this.settings.seed,
-                beautyScore: payload.beautyScore
+                beautyScore: payload.beautyScore,
+                trackName: track, // #ЗАЧЕМ: Метаданные для Media Session
+                sectionName: sectionName
             }
         });
 
