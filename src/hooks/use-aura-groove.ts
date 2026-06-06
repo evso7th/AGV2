@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.2 — "Branding & Context Sync".
- * #ЗАЧЕМ: Приведение метаданных в системном плеере к стандартам пользователя.
- * #ЧТО: ПЛАН №105 — Первая строка: AuraGroove, Вторая строка: Genre / Mood.
+ * @fileOverview Music Control Hook V13.3 — "Masterpiece Interaction Restoration".
+ * #ЗАЧЕМ: Возврат функциональности лайков для пополнения облачного генофонда.
+ * #ЧТО: ПЛАН №106 — Реализован метод handleSaveMasterpiece.
  */
 'use client';
 
@@ -18,6 +18,8 @@ import { GENRE_MASTER_MIX } from "@/lib/master-mix";
 import { getBlueprint } from "@/lib/blueprints";
 import { useToast } from "./use-toast";
 import { arrayMove } from "@dnd-kit/sortable";
+import { useFirestore } from "@/firebase/provider";
+import { saveMasterpiece } from "@/lib/firebase-service";
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
@@ -133,6 +135,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   } = useAudioEngine(); 
   
   const { toast } = useToast();
+  const db = useFirestore();
   
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
@@ -179,13 +182,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
 
     const updateMetadata = () => {
-        // #ЗАЧЕМ: ПЛАН №103.1. Использование cover.jpg для системного плеера.
         const fullArtworkUrl = `${window.location.origin}/assets/cover.jpg?v=${currentSeed}`;
         
-        // #ЗАЧЕМ: ПЛАН №105. Реформа структуры метаданных.
-        // Line 1: AuraGroove (Brand)
-        // Line 2: GENRE / MOOD (Context)
-        // Album: DNA Track Name (Source)
         navigator.mediaSession.metadata = new MediaMetadata({
             title: 'AuraGroove',
             artist: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
@@ -387,6 +385,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
       localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u));
   }, [savedRoutes]);
 
+  const handleSaveMasterpieceCallback = useCallback(() => {
+      if (!isInitialized || !isPlaying) return;
+      saveMasterpiece(db, {
+          seed: currentSeed,
+          mood,
+          genre,
+          density,
+          bpm,
+          instrumentSettings
+      });
+  }, [isInitialized, isPlaying, db, currentSeed, mood, genre, density, bpm, instrumentSettings]);
+
   return {
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -397,7 +407,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleRegenerate: useCallback(() => { setIsRegenerating(true); setCurrentSeed(Date.now()); setTimeout(() => setIsRegenerating(false), 500); }, []),
     handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
     handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
-    handleSaveMasterpiece: useCallback(() => {}, []),
+    handleSaveMasterpiece: handleSaveMasterpieceCallback,
     drumSettings, setDrumSettings, 
     instrumentSettings, 
     setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),

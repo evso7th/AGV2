@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V6.9 — "Extended Polyphony Monitor".
- * #ЧТО: ПЛАН №58 — Слайдер лимита голосов расширен до 512.
+ * #ЗАЧЕМ: UI AuraGroove V7.0 — "Like Restoration".
+ * #ЧТО: ПЛАН №106 — Возвращена кнопка Лайк (Masterpiece) в тулбар.
  */
 'use client';
 
@@ -335,6 +335,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant={props.isRecording ? "destructive" : "outline"} onClick={props.handleToggleRecording} className="h-8 w-8 p-0 shrink-0">
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
+                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like">
+                                <ThumbsUp className="h-4 w-4 text-primary" />
+                            </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
                         </div>
                         <div className="flex items-center gap-1">
@@ -542,4 +545,3 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
-
