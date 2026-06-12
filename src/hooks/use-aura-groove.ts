@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V14.0 — "Mixer Sovereignty Protocol".
- * #ЗАЧЕМ: Реализация полноценного управления пресетами микшера.
- * #ЧТО: ПЛАН №501 — localStorage, обновление пресетов, замена Main на Bass.
+ * @fileOverview Music Control Hook V15.0 — "Preset Sovereignty Protocol".
+ * #ЗАЧЕМ: Реализация пресетов Эквалайзера и исправление порядка инициализации.
+ * #ЧТО: ПЛАН №502 — Логика CRUD для EQ, localStorage, устранение ReferenceError.
  */
 'use client';
 
@@ -170,6 +170,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [isRepeat, setRepeat] = useState(true);
   const [showAdvancedUI, setShowAdvancedUI] = useState(false);
   const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  
   const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
   const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
@@ -179,7 +180,28 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const prevBarRef = useRef(0);
   const isBpmSyncingRef = useRef(false);
 
-  // #ЗАЧЕМ: Загрузка пресетов микшера из localStorage.
+  // ─── BASE HANDLERS (Defined first to avoid ReferenceError) ───
+
+  const handleVolumeChange = useCallback((part: any, value: number) => {
+    setVolume(part, value);
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
+        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    } else if (part === 'drums') {
+        setDrumSettings(prev => ({ ...prev, volume: value }));
+    } else if (part === 'sparkles' || part === 'sfx') {
+        setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    }
+  }, [setVolume]);
+
+  const handleEqChange = useCallback((idx: number, val: number) => {
+    const n = [...eqSettings];
+    n[idx] = val;
+    setEqSettings(n);
+    setEQGain(idx, val);
+  }, [eqSettings, setEQGain]);
+
+  // ─── MIXER PRESET LOGIC ───
+
   const loadMixerPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(MIXER_PRESETS_KEY);
     if (!saved) return;
@@ -202,18 +224,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             toast({ title: "Mix Applied", description: `Loaded: ${target.name}` });
         }
     } catch (e) {}
-  }, [toast]);
-
-  const handleVolumeChange = useCallback((part: any, value: number) => {
-    setVolume(part, value);
-    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
-        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
-    } else if (part === 'drums') {
-        setDrumSettings(prev => ({ ...prev, volume: value }));
-    } else if (part === 'sparkles' || part === 'sfx') {
-        setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
-    }
-  }, [setVolume]);
+  }, [handleVolumeChange, toast]);
 
   const saveMixerPreset = useCallback((name: string) => {
     const values = {
@@ -277,9 +288,64 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: "System Mix Restored" });
   }, [handleVolumeChange, toast]);
 
+  // ─── EQ PRESET LOGIC ───
+
+  const loadEqPreset = useCallback((id: string) => {
+    const saved = localStorage.getItem(EQ_PRESETS_KEY);
+    if (!saved) return;
+    try {
+        const list: PresetItem[] = JSON.parse(saved);
+        const target = list.find(p => p.id === id);
+        if (target && Array.isArray(target.values)) {
+            target.values.forEach((val: number, idx: number) => {
+                handleEqChange(idx, val);
+            });
+            setActiveEqPresetId(id);
+            localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
+            toast({ title: "EQ Applied", description: target.name });
+        }
+    } catch (e) {}
+  }, [handleEqChange, toast]);
+
+  const saveEqPreset = useCallback((name: string) => {
+    const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
+    setEqPresets(prev => {
+        const next = [newPreset, ...prev];
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    setActiveEqPresetId(newPreset.id);
+    localStorage.setItem(ACTIVE_EQ_ID_KEY, newPreset.id);
+    toast({ title: "EQ Preset Saved", description: name });
+  }, [eqSettings, toast]);
+
+  const updateActiveEqPreset = useCallback(() => {
+    if (!activeEqPresetId) return;
+    setEqPresets(prev => {
+        const next = prev.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p);
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    toast({ title: "EQ Preset Updated" });
+  }, [activeEqPresetId, eqSettings, toast]);
+
+  const deleteEqPreset = useCallback((id: string) => {
+    setEqPresets(prev => {
+        const next = prev.filter(p => p.id !== id);
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    if (activeEqPresetId === id) {
+        setActiveEqPresetId(null);
+        localStorage.removeItem(ACTIVE_EQ_ID_KEY);
+    }
+  }, [activeEqPresetId]);
+
   // Initial Sync from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    
+    // Mixers
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     if (savedMixes) {
         try {
@@ -287,24 +353,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setMixerPresets(list);
             const activeId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
             if (activeId) {
-                // Прямое применение без toast при старте
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && target.values) {
                     const v = target.values;
-                    if (v.bass !== undefined) setVolume('bass', v.bass);
-                    if (v.melody !== undefined) setVolume('melody', v.melody);
-                    if (v.accompaniment !== undefined) setVolume('accompaniment', v.accompaniment);
-                    if (v.pianoAccompaniment !== undefined) setVolume('pianoAccompaniment', v.pianoAccompaniment);
-                    if (v.harmony !== undefined) setVolume('harmony', v.harmony);
-                    if (v.sparkles !== undefined) setVolume('sparkles', v.sparkles);
-                    if (v.sfx !== undefined) setVolume('sfx', v.sfx);
-                    if (v.drums !== undefined) setVolume('drums', v.drums);
+                    Object.entries(v).forEach(([part, vol]) => setVolume(part, vol as number));
                     setActiveMixerPresetId(activeId);
                 }
             }
         } catch(e) {}
     }
-  }, [setVolume]);
+
+    // EQs
+    const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
+    if (savedEqs) {
+        try {
+            const list = JSON.parse(savedEqs);
+            setEqPresets(list);
+            const activeId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
+            if (activeId) {
+                const target = list.find((p: any) => p.id === activeId);
+                if (target && Array.isArray(target.values)) {
+                    target.values.forEach((v: number, i: number) => setEQGain(i, v));
+                    setEqSettings(target.values);
+                    setActiveEqPresetId(activeId);
+                }
+            }
+        } catch(e) {}
+    }
+  }, [setVolume, setEQGain]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -437,8 +513,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     useHeritage, setUseHeritage,
     setIsPlaying, stopAllSounds,
     handleGoHome: useCallback(async () => { if (isPlaying) await setIsPlaying(false); stopAllSounds(); router.push('/'); }, [isPlaying, setIsPlaying, stopAllSounds, router]),
-    isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, 
-    handleEqChange: useCallback((idx: number, val: number) => { const n = [...eqSettings]; n[idx] = val; setEqSettings(n); setEQGain(idx, val); }, [eqSettings, setEQGain]),
+    isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, handleEqChange,
     isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: useCallback((m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })), []),
     handleToggleTimer: useCallback(() => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })), []),
@@ -457,7 +532,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName,
-    eqPresets, activeEqPresetId, saveEqPreset: useCallback(() => {}, []), updateActiveEqPreset: useCallback(() => {}, []), loadEqPreset: useCallback(() => {}, []), deleteEqPreset: useCallback(() => {}, []),
+    eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem,
     useMelodyV2: true, toggleMelodyEngine: () => {}
   };

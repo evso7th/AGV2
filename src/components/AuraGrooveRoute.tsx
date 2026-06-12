@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.5 — "Mixer Sovereignty UI".
- * #ЧТО: ПЛАН №501 — Удален Main, добавлен Bass, обновлена работа с пресетами.
+ * #ЗАЧЕМ: UI AuraGroove V7.6 — "Preset Connectivity Fix".
+ * #ЧТО: ПЛАН №502 — Подключение управления пресетами Эквалайзера к UI.
  */
 'use client';
 
