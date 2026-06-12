@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.7 — "Route Loading Fix".
- * #ЗАЧЕМ: Исправление ReferenceError при загрузке Journeys.
- * #ЧТО: ПЛАН №302 + Реализация loadRoute.
+ * @fileOverview Music Control Hook V14.0 — "Mixer Sovereignty Protocol".
+ * #ЗАЧЕМ: Реализация полноценного управления пресетами микшера.
+ * #ЧТО: ПЛАН №501 — localStorage, обновление пресетов, замена Main на Bass.
  */
 'use client';
 
@@ -15,7 +15,6 @@ import type {
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
-import { getBlueprint } from "@/lib/blueprints";
 import { useToast } from "./use-toast";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useFirestore } from "@/firebase/provider";
@@ -180,16 +179,141 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const prevBarRef = useRef(0);
   const isBpmSyncingRef = useRef(false);
 
+  // #ЗАЧЕМ: Загрузка пресетов микшера из localStorage.
+  const loadMixerPreset = useCallback((id: string) => {
+    const saved = localStorage.getItem(MIXER_PRESETS_KEY);
+    if (!saved) return;
+    try {
+        const list: PresetItem[] = JSON.parse(saved);
+        const target = list.find(p => p.id === id);
+        if (target && target.values) {
+            const v = target.values;
+            if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
+            if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
+            if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
+            if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+            if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
+            if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
+            if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
+            if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
+            
+            setActiveMixerPresetId(id);
+            localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
+            toast({ title: "Mix Applied", description: `Loaded: ${target.name}` });
+        }
+    } catch (e) {}
+  }, [toast]);
+
+  const handleVolumeChange = useCallback((part: any, value: number) => {
+    setVolume(part, value);
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
+        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    } else if (part === 'drums') {
+        setDrumSettings(prev => ({ ...prev, volume: value }));
+    } else if (part === 'sparkles' || part === 'sfx') {
+        setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    }
+  }, [setVolume]);
+
+  const saveMixerPreset = useCallback((name: string) => {
+    const values = {
+        bass: instrumentSettings.bass.volume,
+        melody: instrumentSettings.melody.volume,
+        accompaniment: instrumentSettings.accompaniment.volume,
+        pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+        harmony: instrumentSettings.harmony.volume,
+        sparkles: textureSettings.sparkles.volume,
+        sfx: textureSettings.sfx.volume,
+        drums: drumSettings.volume
+    };
+    const newPreset: PresetItem = { id: `mix-${Date.now()}`, name, values };
+    setMixerPresets(prev => {
+        const next = [newPreset, ...prev];
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    setActiveMixerPresetId(newPreset.id);
+    localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
+    toast({ title: "Mixer Preset Saved", description: name });
+  }, [instrumentSettings, textureSettings, drumSettings, toast]);
+
+  const updateActiveMixerPreset = useCallback(() => {
+    if (!activeMixerPresetId) return;
+    const values = {
+        bass: instrumentSettings.bass.volume,
+        melody: instrumentSettings.melody.volume,
+        accompaniment: instrumentSettings.accompaniment.volume,
+        pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+        harmony: instrumentSettings.harmony.volume,
+        sparkles: textureSettings.sparkles.volume,
+        sfx: textureSettings.sfx.volume,
+        drums: drumSettings.volume
+    };
+    setMixerPresets(prev => {
+        const next = prev.map(p => p.id === activeMixerPresetId ? { ...p, values } : p);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    toast({ title: "Mixer Preset Updated" });
+  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, toast]);
+
+  const deleteMixerPreset = useCallback((id: string) => {
+    setMixerPresets(prev => {
+        const next = prev.filter(p => p.id !== id);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    if (activeMixerPresetId === id) {
+        setActiveMixerPresetId(null);
+        localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+    }
+  }, [activeMixerPresetId]);
+
+  const resetMixerToSystem = useCallback(() => {
+    const mix = GENRE_MASTER_MIX['ambient'];
+    Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
+    setActiveMixerPresetId(null);
+    localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+    toast({ title: "System Mix Restored" });
+  }, [handleVolumeChange, toast]);
+
+  // Initial Sync from localStorage
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
+    const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
+    if (savedMixes) {
+        try {
+            const list = JSON.parse(savedMixes);
+            setMixerPresets(list);
+            const activeId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
+            if (activeId) {
+                // Прямое применение без toast при старте
+                const target = list.find((p: any) => p.id === activeId);
+                if (target && target.values) {
+                    const v = target.values;
+                    if (v.bass !== undefined) setVolume('bass', v.bass);
+                    if (v.melody !== undefined) setVolume('melody', v.melody);
+                    if (v.accompaniment !== undefined) setVolume('accompaniment', v.accompaniment);
+                    if (v.pianoAccompaniment !== undefined) setVolume('pianoAccompaniment', v.pianoAccompaniment);
+                    if (v.harmony !== undefined) setVolume('harmony', v.harmony);
+                    if (v.sparkles !== undefined) setVolume('sparkles', v.sparkles);
+                    if (v.sfx !== undefined) setVolume('sfx', v.sfx);
+                    if (v.drums !== undefined) setVolume('drums', v.drums);
+                    setActiveMixerPresetId(activeId);
+                }
+            }
+        } catch(e) {}
+    }
+  }, [setVolume]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     const handleBpmSync = (e: any) => {
         if (e.detail?.bpm) {
             isBpmSyncingRef.current = true;
             setBpm(e.detail.bpm);
         }
     };
-
     window.addEventListener('AG_BPM_SYNC', handleBpmSync);
     return () => window.removeEventListener('AG_BPM_SYNC', handleBpmSync);
   }, []);
@@ -209,7 +333,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             isBpmSyncingRef.current = false;
             return;
         }
-
         updateSettings({
           bpm, score, genre, instrumentSettings,
           drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
@@ -306,11 +429,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     instrumentSettings, 
     setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
     handleBassTechniqueChange: useCallback(() => {}, []), 
-    handleVolumeChange: useCallback((part: any, value: number) => {
-        setVolume(part, value);
-        if (part in instrumentSettings) { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } })); }
-        else if (part === 'drums') { setDrumSettings(prev => ({ ...prev, volume: value })); }
-    }, [setVolume, instrumentSettings]),
+    handleVolumeChange,
     textureSettings, 
     handleTextureEnabledChange: useCallback((part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})), []),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
@@ -339,8 +458,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName,
     eqPresets, activeEqPresetId, saveEqPreset: useCallback(() => {}, []), updateActiveEqPreset: useCallback(() => {}, []), loadEqPreset: useCallback(() => {}, []), deleteEqPreset: useCallback(() => {}, []),
-    mixerPresets, activeMixerPresetId, saveMixerPreset: useCallback(() => {}, []), updateActiveMixerPreset: useCallback(() => {}, []), loadMixerPreset: useCallback(() => {}, []), deleteMixerPreset: useCallback(() => {}, []),
-    resetMixerToSystem: useCallback(() => {}, []),
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem,
     useMelodyV2: true, toggleMelodyEngine: () => {}
   };
 };

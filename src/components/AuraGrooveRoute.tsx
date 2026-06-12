@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.1 — "Eternal Journey Protocol".
- * #ЧТО: ПЛАН №107.1 — Добавлена кнопка Repeat в тулбар Навигатора.
+ * #ЗАЧЕМ: UI AuraGroove V7.5 — "Mixer Sovereignty UI".
+ * #ЧТО: ПЛАН №501 — Удален Main, добавлен Bass, обновлена работа с пресетами.
  */
 'use client';
 
@@ -66,7 +66,7 @@ const MOODS = [
 ];
 
 const MIXER_CHANNELS = [
-    { key: 'master', label: 'MAIN' },
+    { key: 'bass', label: 'BASS' },
     { key: 'melody', label: 'LEAD' },
     { key: 'accompaniment', label: 'KEYB' },
     { key: 'pianoAccompaniment', label: 'PIANO' },
@@ -372,7 +372,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Library</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} steps</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
                         </Dialog>
-                        {/* #ЗАЧЕМ: ПЛАН №107.1. Тулбар контроля очереди. */}
                         <div className="flex gap-px bg-muted border rounded-md overflow-hidden">
                              <Button variant="ghost" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} className={cn("h-10 w-9 rounded-none border-0", props.isShuffle && "bg-primary/10 text-primary")} title="Shuffle">
                                 <Shuffle className="h-4 w-4" />
@@ -515,8 +514,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
-                        const vol = ch.key === 'master' ? props.calibrationGains.master : (ch.key === 'drums' ? props.drumSettings.volume : (['sparkles','sfx'].includes(ch.key) ? (props.textureSettings as any)[ch.key].volume : (props.instrumentSettings as any)[ch.key]?.volume ?? 0.5));
-                        return (<div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group"><span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span><Slider orientation="vertical" value={[vol]} max={ch.key === 'master' ? 1.5 : 1.0} step={0.01} onValueChange={v => { if(ch.key === 'master') props.handleCalibrationChange('master', v[0]); else props.handleVolumeChange(ch.key as any, v[0]); }} className="h-full" /><span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span></div>);
+                        const vol = ch.key === 'drums' 
+                            ? (props.drumSettings?.volume ?? 0.5) 
+                            : (['sparkles','sfx'].includes(ch.key) 
+                                ? (props.textureSettings?.[ch.key as keyof TextureSettings]?.volume ?? 0.5) 
+                                : (props.instrumentSettings?.[ch.key as keyof InstrumentSettings]?.volume ?? 0.5));
+                        
+                        return (
+                            <div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group">
+                                <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span>
+                                <Slider orientation="vertical" value={[vol]} max={1.0} step={0.01} onValueChange={v => props.handleVolumeChange(ch.key as any, v[0])} className="h-full" />
+                                <span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span>
+                            </div>
+                        );
                     })}</div>
                     <PresetManager 
                         title="Mixer" 
