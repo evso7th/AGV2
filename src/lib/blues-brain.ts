@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V78.1 — "Strict Heritage Filtering".
- * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
- * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
+ * @fileOverview Blues Brain V78.2 — "Infrequent Harmony Update".
+ * #ЗАЧЕМ: Реализация редких гитарных аккордов для глубины без перегруза.
+ * #ЧТО: ПЛАН №602 — Добавлена вероятностная проверка входа Harmony.
  */
 
 import {
@@ -269,7 +269,6 @@ export class BluesBrain {
       if (effectiveAnchor) {
           filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
       } else {
-          // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
           filteredPool = poolToUse.filter(ax => {
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -473,10 +472,17 @@ export class BluesBrain {
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        this.selectHarmonyInstrument(epoch, tension, false);
-        const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
-        harmonyEvents.forEach(e => e.pan = 0.35);
-        events.push(...harmonyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+        // #ЗАЧЕМ: Добавление нечастой гармонии в блюз (ПЛАН №602).
+        // Вероятность 30%, проверяем фрактально.
+        const shouldPlayHarmony = calculateMusiNum(epoch, 13, this.seed, 10) < 3;
+        
+        if (shouldPlayHarmony) {
+            this.selectHarmonyInstrument(epoch, tension, false);
+            const harmonyEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
+            harmonyEvents.forEach(e => e.pan = 0.35);
+            events.push(...harmonyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+            usedTargetLayers.add('harmony');
+        }
     }
 
     const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
