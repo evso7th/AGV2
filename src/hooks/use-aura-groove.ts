@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V15.0 — "Preset Sovereignty Protocol".
- * #ЗАЧЕМ: Реализация пресетов Эквалайзера и исправление порядка инициализации.
- * #ЧТО: ПЛАН №502 — Логика CRUD для EQ, localStorage, устранение ReferenceError.
+ * @fileOverview Music Control Hook V16.0 — "Mixer Persistence Fix".
+ * #ЗАЧЕМ: Исправление автоматической загрузки и применения пресетов Микшера.
+ * #ЧТО: ПЛАН №503 — Синхронизация состояний инструментов с загруженным пресетом.
  */
 'use client';
 
@@ -138,6 +138,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const { toast } = useToast();
   const db = useFirestore();
   
+  // --- States ---
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
@@ -180,8 +181,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const prevBarRef = useRef(0);
   const isBpmSyncingRef = useRef(false);
 
-  // ─── BASE HANDLERS (Defined first to avoid ReferenceError) ───
-
+  // --- Handlers ---
   const handleVolumeChange = useCallback((part: any, value: number) => {
     setVolume(part, value);
     if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
@@ -201,7 +201,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [eqSettings, setEQGain]);
 
   // ─── MIXER PRESET LOGIC ───
-
   const loadMixerPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(MIXER_PRESETS_KEY);
     if (!saved) return;
@@ -210,6 +209,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const target = list.find(p => p.id === id);
         if (target && target.values) {
             const v = target.values;
+            // #ЗАЧЕМ: ПЛАН №503. Полное применение пресета.
             if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
             if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
             if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
@@ -289,7 +289,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [handleVolumeChange, toast]);
 
   // ─── EQ PRESET LOGIC ───
-
   const loadEqPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(EQ_PRESETS_KEY);
     if (!saved) return;
@@ -341,10 +340,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeEqPresetId]);
 
-  // Initial Sync from localStorage
+  // --- Initial Sync Effect ---
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
+    // #ЗАЧЕМ: Глубокая синхронизация при старте.
+    setCurrentSeed(Date.now());
+    const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
+    if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
+    const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
+    if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
+
     // Mixers
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     if (savedMixes) {
@@ -356,7 +362,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && target.values) {
                     const v = target.values;
+                    // Обновляем аудио-движок
                     Object.entries(v).forEach(([part, vol]) => setVolume(part, vol as number));
+                    // Обновляем состояния React для UI и Воркера
+                    setInstrumentSettings(prev => ({
+                        ...prev,
+                        bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
+                        melody: { ...prev.melody, volume: v.melody ?? prev.melody.volume },
+                        accompaniment: { ...prev.accompaniment, volume: v.accompaniment ?? prev.accompaniment.volume },
+                        pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment ?? prev.pianoAccompaniment.volume },
+                        harmony: { ...prev.harmony, volume: v.harmony ?? prev.harmony.volume },
+                    }));
+                    setDrumSettings(prev => ({ ...prev, volume: v.drums ?? prev.volume }));
+                    setTextureSettings(prev => ({
+                        ...prev,
+                        sparkles: { ...prev.sparkles, volume: v.sparkles ?? prev.sparkles.volume },
+                        sfx: { ...prev.sfx, volume: v.sfx ?? prev.sfx.volume },
+                    }));
                     setActiveMixerPresetId(activeId);
                 }
             }
@@ -380,28 +402,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             }
         } catch(e) {}
     }
-  }, [setVolume, setEQGain]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleBpmSync = (e: any) => {
-        if (e.detail?.bpm) {
-            isBpmSyncingRef.current = true;
-            setBpm(e.detail.bpm);
-        }
-    };
-    window.addEventListener('AG_BPM_SYNC', handleBpmSync);
-    return () => window.removeEventListener('AG_BPM_SYNC', handleBpmSync);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    setCurrentSeed(Date.now());
-    const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
-    if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
-    const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
-    if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
-  }, []);
+  }, []); // Пустой массив зависимостей — только при старте
 
   useEffect(() => {
     if (isInitialized) {
