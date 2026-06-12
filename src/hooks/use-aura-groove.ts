@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V13.6 — "Silent BPM Sync".
- * #ЗАЧЕМ: Ликвидация петель самовозбуждения BPM.
- * #ЧТО: ПЛАН №302 — Использование Ref для блокировки обратного сообщения при синхронизации темпа.
+ * @fileOverview Music Control Hook V13.7 — "Route Loading Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError при загрузке Journeys.
+ * #ЧТО: ПЛАН №302 + Реализация loadRoute.
  */
 'use client';
 
@@ -29,6 +29,103 @@ const ACTIVE_EQ_ID_KEY = 'AuraGroove_ActiveEqPresetId';
 const ACTIVE_MIXER_ID_KEY = 'AuraGroove_ActiveMixerPresetId';
 
 export type PresetItem = { id: string; name: string; values: any };
+
+export interface AuraGrooveProps {
+  isPlaying: boolean;
+  isInitializing: boolean;
+  isRegenerating: boolean;
+  isRecording: boolean;
+  isBroadcastActive: boolean;
+  isWarmingUp: boolean;
+  warmUpTimeLeft: number;
+  loadingText: string;
+  availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
+  selectedCompositionIds: string[];
+  toggleCompositionFilter: (id: string) => void;
+  clearCompositionFilters: () => void;
+  refreshCloudAxioms: () => Promise<void>;
+  handlePlayPause: () => void;
+  handleRegenerate: () => void;
+  handleToggleRecording: () => void;
+  handleToggleBroadcast: () => void;
+  handleSaveMasterpiece: () => void;
+  drumSettings: DrumSettings;
+  setDrumSettings: React.Dispatch<React.SetStateAction<DrumSettings>>;
+  instrumentSettings: InstrumentSettings;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: any) => void;
+  handleBassTechniqueChange: (technique: BassTechnique) => void;
+  handleVolumeChange: (part: InstrumentPart | 'sparkles' | 'sfx' | 'drums', value: number) => void;
+  textureSettings: TextureSettings;
+  handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
+  bpm: number;
+  handleBpmChange: (value: number) => void;
+  score: ScoreName;
+  handleScoreChange: (value: ScoreName) => void;
+  density: number;
+  setDensity: (value: number) => void;
+  composerControlsInstruments: boolean;
+  setComposerControlsInstruments: (value: boolean) => void;
+  useHeritage: boolean;
+  setUseHeritage: (value: boolean) => void;
+  setIsPlaying: (playing: boolean) => void;
+  stopAllSounds: () => void;
+  handleGoHome: () => void;
+  isEqModalOpen: boolean;
+  setIsEqModalOpen: (isOpen: boolean) => void;
+  eqSettings: number[];
+  handleEqChange: (idx: number, val: number) => void;
+  isCalibrationModalOpen: boolean;
+  setIsCalibrationModalOpen: (isOpen: boolean) => void;
+  calibrationGains: Record<string, number>;
+  handleCalibrationChange: (key: string, val: number) => void;
+  timerSettings: TimerSettings;
+  handleTimerDurationChange: (minutes: number) => void;
+  handleToggleTimer: () => void;
+  mood: Mood;
+  setMood: (mood: Mood) => void;
+  genre: Genre;
+  setGenre: (genre: Genre) => void;
+  introBars: number;
+  setIntroBars: (bars: number) => void;
+  voiceLimit: number;
+  setVoiceLimit: (limit: number) => void;
+  route: RouteItem[];
+  addToRoute: (g: Genre | 'random', m: Mood | 'random') => void;
+  removeFromRoute: (id: string) => void;
+  selectRouteItem: (id: string) => void;
+  refreshRoute: () => void;
+  moveRouteItem: (oldIdx: number, newIdx: number) => void;
+  reorderRoute: (activeId: string, overId: string) => void;
+  saveRoute: (name: string) => void;
+  loadRoute: (saved: SavedRoute) => void;
+  deleteSavedRoute: (id: string) => void;
+  savedRoutes: SavedRoute[];
+  isShuffle: boolean;
+  setShuffle: (val: boolean) => void;
+  isRepeat: boolean;
+  setRepeat: (val: boolean) => void;
+  activeRouteIndex: number;
+  showAdvancedUI: boolean;
+  setShowAdvancedUI: (val: boolean) => void;
+  currentBar: number;
+  totalBars: number;
+  currentTrackName: string;
+  eqPresets: PresetItem[];
+  activeEqPresetId: string | null;
+  saveEqPreset: (name: string) => void;
+  updateActiveEqPreset: () => void;
+  loadEqPreset: (id: string) => void;
+  deleteEqPreset: (id: string) => void;
+  mixerPresets: PresetItem[];
+  activeMixerPresetId: string | null;
+  saveMixerPreset: (name: string) => void;
+  updateActiveMixerPreset: () => void;
+  loadMixerPreset: (id: string) => void;
+  deleteMixerPreset: (id: string) => void;
+  resetMixerToSystem: () => void;
+  useMelodyV2: boolean;
+  toggleMelodyEngine: (val: boolean) => void;
+}
 
 export const useAuraGroove = (): AuraGrooveProps => {
   const router = useRouter();
@@ -81,8 +178,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const prevBarRef = useRef(0);
-  
-  // #ЗАЧЕМ: Флаг для предотвращения петли обратной связи BPM.
   const isBpmSyncingRef = useRef(false);
 
   useEffect(() => {
@@ -92,7 +187,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (e.detail?.bpm) {
             isBpmSyncingRef.current = true;
             setBpm(e.detail.bpm);
-            // Флаг снимется в следующем кадре или эффекте
         }
     };
 
@@ -107,19 +201,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
     const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
     if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
-    const sE = localStorage.getItem(EQ_PRESETS_KEY);
-    if (sE) { try { setEqPresets(JSON.parse(sE)); } catch (e) {} }
-    const sM = localStorage.getItem(MIXER_PRESETS_KEY);
-    if (sM) { try { setMixerPresets(JSON.parse(sM)); } catch (e) {} }
-    const aM = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
-    if (aM) setActiveMixerPresetId(aM);
-    const aE = localStorage.getItem(ACTIVE_EQ_ID_KEY);
-    if (aE) setActiveEqPresetId(aE);
   }, []);
 
   useEffect(() => {
     if (isInitialized) {
-        // #ЗАЧЕМ: ПЛАН №302. Если обновление пришло от самого Воркера, не шлем его назад.
         if (isBpmSyncingRef.current) {
             isBpmSyncingRef.current = false;
             return;
@@ -138,7 +223,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  // Rest of the logic stays identical to 7c2933a1...
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     const updateMetadata = () => {
@@ -190,17 +274,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else { setIsPlaying(!isPlaying); }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId]);
 
+  const loadRoute = useCallback((saved: SavedRoute) => {
+    const next: RouteItem[] = saved.items.map((it, idx) => ({
+      id: `route-${Date.now()}-${idx}`,
+      genre: it.genre,
+      mood: it.mood,
+      status: 'pending' as const
+    }));
+    setRoute(next);
+    localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
+    if (next.length > 0) setActiveRouteItemId(next[0].id);
+    toast({ title: "Journey Loaded", description: `Active: ${saved.name}` });
+  }, [toast]);
+
   return {
-    isInitializing, isPlaying, isRegenerating: false, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
+    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
     clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
     handlePlayPause,
-    handleRegenerate: useCallback(() => { setCurrentSeed(Date.now()); }, []),
+    handleRegenerate: useCallback(() => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); }, []),
     handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
     handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
-    handleSaveMasterpiece: useCallback(() => {}, []),
+    handleSaveMasterpiece: useCallback(() => {
+        if (isInitialized) {
+            saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
+        }
+    }, [db, currentSeed, mood, genre, density, bpm, instrumentSettings, isInitialized]),
     drumSettings, setDrumSettings, 
     instrumentSettings, 
     setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
@@ -232,12 +333,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
     moveRouteItem: useCallback(() => {}, []), 
     reorderRoute: useCallback((a, o) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
     saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]),
-    loadRoute, deleteSavedRoute: useCallback((id) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [savedRoutes]),
+    loadRoute, 
+    deleteSavedRoute: useCallback((id) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [savedRoutes]),
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
     showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName,
     eqPresets, activeEqPresetId, saveEqPreset: useCallback(() => {}, []), updateActiveEqPreset: useCallback(() => {}, []), loadEqPreset: useCallback(() => {}, []), deleteEqPreset: useCallback(() => {}, []),
     mixerPresets, activeMixerPresetId, saveMixerPreset: useCallback(() => {}, []), updateActiveMixerPreset: useCallback(() => {}, []), loadMixerPreset: useCallback(() => {}, []), deleteMixerPreset: useCallback(() => {}, []),
-    resetMixerToSystem: useCallback(() => {}, [])
+    resetMixerToSystem: useCallback(() => {}, []),
+    useMelodyV2: true, toggleMelodyEngine: () => {}
   };
 };
