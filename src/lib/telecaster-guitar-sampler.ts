@@ -5,7 +5,7 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
  * #ЗАЧЕМ: Сэмплер Telecaster V4.8 — "Gain Calibration".
- * #ЧТО: Громкость снижена в 2 раза (0.30 -> 0.15).
+ * #ЧТО: Громкость снижена в 2 раза (0.15 -> 0.075).
  */
 
 function makeWarmthCurve() {
@@ -68,7 +68,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15; // Снижено в 2 раза
+        this.preamp.gain.value = 0.075; // Halved for calibration
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();

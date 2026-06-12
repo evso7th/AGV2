@@ -3,6 +3,7 @@
  * @fileOverview Audio Engine Context V49.0 — "Vinyl Transition Protocol".
  * #ЗАЧЕМ: Реализация эстетической и технической паузы между пьесами.
  * #ЧТО: ПЛАН №99 — 2-секундный переход со звуком винила.
+ * #ОБНОВЛЕНО (ПЛАН №55): Калибровка громкости Telecaster (-2x) и CS80 (+2x).
  */
 'use client';
 
@@ -44,10 +45,10 @@ const VOICE_BALANCE: Record<string, number> = {
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0,
     acoustic: 0.15,
-    electric: 0.30, 
+    electric: 0.15, // Halved for calibration (was 0.30)
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.1,
+    cs80: 0.2, // Doubled for calibration (was 0.1)
     chords: 1.2,
     bass: 1.0
 };
@@ -200,7 +201,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
-      darkTelecasterSamplerRef.current?.setPreampGain(4.4 * (gains.electric || 1.0)); 
+      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); // Halved from 4.4
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
@@ -244,7 +245,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       source.connect(transitionGainRef.current);
       source.start(now);
       
-      // #ЗАЧЕМ: Приглушение основной музыки на время перехода (2 сек).
       masterGainNodeRef.current?.gain.cancelScheduledValues(now);
       masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGains.master * 0.25, now, 0.4);
       
@@ -393,7 +393,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
                     
-                    // #ЗАЧЕМ: CHRONOS RESYNC (ПЛАН №98). Если Bar 0 или дрейф > 100мс, подтягиваем время.
                     if (payload.barCount === 0 || scheduleTime < now - 0.1) {
                          scheduleTime = now + 0.15; 
                     }
@@ -406,7 +405,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                         lastSavedArbiterSeedRef.current = payload.seed;
                     }
                 } else if (type === 'SUITE_TRANSITION') {
-                    // #ЗАЧЕМ: Реакция на конец сюиты (ПЛАН №99).
                     playTransitionSound();
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
