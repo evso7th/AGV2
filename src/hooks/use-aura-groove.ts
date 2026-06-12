@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V16.0 — "Mixer Persistence Fix".
- * #ЗАЧЕМ: Исправление автоматической загрузки и применения пресетов Микшера.
- * #ЧТО: ПЛАН №503 — Синхронизация состояний инструментов с загруженным пресетом.
+ * @fileOverview Music Control Hook V17.0 — "Engine-UI Synchronization Fix".
+ * #ЗАЧЕМ: Гарантия того, что звук соответствует положению слайдеров при старте.
+ * #ЧТО: ПЛАН №503 — Принудительное применение микса после инициализации AudioContext.
  */
 'use client';
 
@@ -200,6 +200,21 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setEQGain(idx, val);
   }, [eqSettings, setEQGain]);
 
+  /**
+   * #ЗАЧЕМ: Принудительная синхронизация движка с текущим состоянием слайдеров.
+   * #ЧТО: ПЛАН №503. Вызывается после инициализации.
+   */
+  const applyCurrentMixToEngine = useCallback(() => {
+      setVolume('bass', instrumentSettings.bass.volume);
+      setVolume('melody', instrumentSettings.melody.volume);
+      setVolume('accompaniment', instrumentSettings.accompaniment.volume);
+      setVolume('pianoAccompaniment', instrumentSettings.pianoAccompaniment.volume);
+      setVolume('harmony', instrumentSettings.harmony.volume);
+      setVolume('sparkles', textureSettings.sparkles.volume);
+      setVolume('sfx', textureSettings.sfx.volume);
+      setVolume('drums', drumSettings.volume);
+  }, [setVolume, instrumentSettings, textureSettings, drumSettings]);
+
   // ─── MIXER PRESET LOGIC ───
   const loadMixerPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(MIXER_PRESETS_KEY);
@@ -209,7 +224,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const target = list.find(p => p.id === id);
         if (target && target.values) {
             const v = target.values;
-            // #ЗАЧЕМ: ПЛАН №503. Полное применение пресета.
             if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
             if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
             if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
@@ -344,14 +358,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // #ЗАЧЕМ: Глубокая синхронизация при старте.
     setCurrentSeed(Date.now());
     const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
     if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
     const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
     if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
 
-    // Mixers
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     if (savedMixes) {
         try {
@@ -362,9 +374,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && target.values) {
                     const v = target.values;
-                    // Обновляем аудио-движок
-                    Object.entries(v).forEach(([part, vol]) => setVolume(part, vol as number));
-                    // Обновляем состояния React для UI и Воркера
                     setInstrumentSettings(prev => ({
                         ...prev,
                         bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
@@ -385,7 +394,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         } catch(e) {}
     }
 
-    // EQs
     const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
     if (savedEqs) {
         try {
@@ -395,14 +403,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (activeId) {
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && Array.isArray(target.values)) {
-                    target.values.forEach((v: number, i: number) => setEQGain(i, v));
                     setEqSettings(target.values);
                     setActiveEqPresetId(activeId);
                 }
             }
         } catch(e) {}
     }
-  }, []); // Пустой массив зависимостей — только при старте
+  }, []);
 
   useEffect(() => {
     if (isInitialized) {
@@ -468,11 +475,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
+            // #ЗАЧЕМ: ПЛАН №503. Немедленное применение громкостей после создания узлов.
+            applyCurrentMixToEngine();
+            // Также применяем EQ из стейта
+            eqSettings.forEach((v, i) => setEQGain(i, v));
+            
             if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
             setIsPlaying(true);
         }
     } else { setIsPlaying(!isPlaying); }
-  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId]);
+  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain]);
 
   const loadRoute = useCallback((saved: SavedRoute) => {
     const next: RouteItem[] = saved.items.map((it, idx) => ({
