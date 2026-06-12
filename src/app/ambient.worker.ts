@@ -1,8 +1,8 @@
 
 /**
- * @file AuraGroove Music Worker V5.9.1 — "Strict Heritage Protocol".
- * #ЗАЧЕМ: Строгий отбор доноров по паре Жанр/Настроение.
- * #ЧТО: ПЛАН №111 — Удаление фильтра по Common Mood для исключения "нецелевых" треков.
+ * @file AuraGroove Music Worker V6.0.0 — "Absolute BPM Lock".
+ * #ЗАЧЕМ: Жесткая стабилизация темпа на всю пьесу.
+ * #ЧТО: ПЛАН №302 — Игнорирование любых изменений BPM от UI во время воспроизведения.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -35,9 +35,8 @@ const Scheduler = {
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     
-    // Morphing State
-    targetBpm: null as number | null,
-    bpmStep: 0,
+    // BPM Control
+    bpmLocked: false,
 
     settings: {
         bpm: 75,
@@ -84,11 +83,9 @@ const Scheduler = {
             const uiGenre = this.settings.genre;
             const uiMood = this.settings.mood;
             
-            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                
                 return genres.includes(uiGenre) && moods.includes(uiMood);
             });
 
@@ -145,16 +142,14 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        if (settings.targetBpm) {
-            this.targetBpm = settings.targetBpm;
-            this.bpmStep = (this.targetBpm - this.settings.bpm) / 4; 
-        } else {
-            const inheritedBpm = fractalMusicEngine.config.tempo;
-            if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
-                this.settings.bpm = inheritedBpm;
-                self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
-            }
+        // #ЗАЧЕМ: Установка BPM из Наследия при старте.
+        const inheritedBpm = fractalMusicEngine.config.tempo;
+        if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
+            this.settings.bpm = inheritedBpm;
+            self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
         }
+        
+        this.bpmLocked = true; // Заморозка темпа на всю пьесу
     },
 
     start() {
@@ -175,6 +170,7 @@ const Scheduler = {
 
     stop() {
         this.isRunning = false;
+        this.bpmLocked = false; // Разблокировка при остановке
         if (this.loopId) {
             clearTimeout(this.loopId);
             this.loopId = null;
@@ -189,6 +185,11 @@ const Scheduler = {
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
+       // #ЗАЧЕМ: ПЛАН №302. Игнорирование BPM, если пьеса уже идет.
+       if (this.bpmLocked && newSettings.bpm !== undefined) {
+           delete newSettings.bpm;
+       }
+
        const seedChanged = newSettings.seed !== undefined && newSettings.seed !== this.settings.seed;
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
@@ -197,6 +198,7 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
+           this.bpmLocked = false; // Снимаем замок для переинициализации
            if (filterChanged || genreOrMoodChanged) {
                this.filterRotationIndex = 0;
            } else if (seedChanged) {
@@ -225,19 +227,11 @@ const Scheduler = {
     tick(): number {
         if (!this.isRunning || !fractalMusicEngine) return 1000;
 
-        if (this.targetBpm !== null) {
-            this.settings.bpm += this.bpmStep;
-            if (Math.abs(this.settings.bpm - this.targetBpm) < 0.5) {
-                this.settings.bpm = this.targetBpm;
-                this.targetBpm = null;
-            }
-            self.postMessage({ type: 'BPM_SYNC', payload: Math.round(this.settings.bpm) });
-        }
-
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
         if (this.barCount >= totalBars) {
              self.postMessage({ type: 'SUITE_TRANSITION' });
+             this.bpmLocked = false; // Снимаем замок для следующей пьесы
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -254,10 +248,8 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
-        if (payload.newBpm && payload.newBpm !== this.settings.bpm && !this.targetBpm) {
-            this.settings.bpm = payload.newBpm;
-            self.postMessage({ type: 'BPM_SYNC', payload: payload.newBpm });
-        }
+        // В трансе/амбиенте Brain может захотеть сменить темп, но мы игнорируем это ради жесткой стабильности
+        // если пользователь этого не просил.
 
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
