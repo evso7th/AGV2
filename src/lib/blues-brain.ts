@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.3 — "Transition Fill Protocol".
- * #ЗАЧЕМ: Реализация динамических филлов для коротких переходов.
- * #ЧТО: ПЛАН №99 — Филл на ударных: Кик, Снейр, Томы, Хэт, Ride Wetter.
+ * @fileOverview Blues Brain V79.4 — "Ride Softness Calibration".
+ * #ЗАЧЕМ: Смягчение переходных райдов по просьбе пользователя.
+ * #ЧТО: ПЛАН №101 — Уменьшение weight и перевод в динамику 'p' для ride_wetter.
  */
 
 import {
@@ -319,7 +319,7 @@ export class BluesBrain {
                       role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
                   }));
 
-                  const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                  const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
                   this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
 
                   const baseBars = selected.bars || 4;
@@ -488,7 +488,9 @@ export class BluesBrain {
     const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
     return {
-        events, lickId: currentLickDisplayId, mutationType: this.state.lastMutationType, newBpm,
+        events, tension, beautyScore: 0.5,
+        trackName: this.currentTrackName,
+        mutationType: this.state.lastMutationType, newBpm,
         instrumentOverrides, trackName: this.currentTrackName,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
@@ -500,11 +502,6 @@ export class BluesBrain {
     };
   }
 
-  /**
-   * #ЗАЧЕМ: Умный аккомпанемент для Блюза (ПЛАН №607).
-   * #ЧТО: Логика "Shadow & Fill". Орган играет стаккато во время соло и раздувы в паузах.
-   * #ОБНОВЛЕНО (ПЛАН №607.2): Реализация синкопированного компинга в стиле Чикаго.
-   */
   private renderConversationalAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const isSoloistBusy = melodyEvents.length > 3;
       const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
@@ -513,17 +510,15 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       if (isSoloistBusy) {
-          // Shadow Mode: Синкопированный компинг на слабых долях и "между" нотами соло
           const compingTicks = [1.5, 4.5, 7.5, 10.5]; 
           compingTicks.forEach(t => {
-              // Шанс удара зависит от напряжения
               if (calculateMusiNum(epoch + t, 11, this.seed, 10) < (4 + tension * 4)) {
                   intervals.forEach((interval, i) => {
                       events.push({
                           type: 'accompaniment',
                           note: this.constrainAccompanimentOctave(root + interval),
                           time: t * TICK_TO_BEAT,
-                          duration: 0.3 * TICK_TO_BEAT, // Короткий стаб
+                          duration: 0.3 * TICK_TO_BEAT, 
                           weight: 0.45 + (tension * 0.15),
                           technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                           params: { attack: 0.01, release: 0.6 }
@@ -532,9 +527,8 @@ export class BluesBrain {
               }
           });
       } else {
-          // Fill Mode: Органные раздувы (Swells) с гармоническим движением
           const startTick = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 0 : 3;
-          [0, 7].forEach((shift, j) => { // Добавляем вторую гармоническую опору (квинта)
+          [0, 7].forEach((shift, j) => { 
               intervals.forEach((interval, i) => {
                   events.push({
                       type: 'accompaniment',
@@ -795,9 +789,10 @@ export class BluesBrain {
 
       // --- TRANSITION DRUM FILL (ПЛАН №99) ---
       [0, 3, 6, 9].forEach(t => {
+          // #ЗАЧЕМ: ПЛАН №101. Мягкий райд в переходах.
           events.push({ 
               type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
-              duration: 2.0, weight: 0.6, technique: 'hit', dynamics: 'mf', phrasing: 'legato' 
+              duration: 2.0, weight: 0.38, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
           });
           events.push({ 
             type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
@@ -811,7 +806,7 @@ export class BluesBrain {
       // Каскад томов
       events.push({ type: 'drum_Sonor_Classix_High_Tom', note: 40, time: 6 * TICK_TO_BEAT, duration: 0.3, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       
-      if (epoch % 2 === 1) { // Клаймакс филла во втором такте перехода
+      if (epoch % 2 === 1) { 
           events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 41, time: 9 * TICK_TO_BEAT, duration: 0.3, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
           events.push({ type: 'drum_snare', note: 38, time: 10 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
           events.push({ type: 'drum_crash2', note: 49, time: 11 * TICK_TO_BEAT, duration: 1.0, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
