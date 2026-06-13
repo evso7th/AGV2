@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.7 — "Plan #39: Body Resonance".
- * #ЧТО: Добавлен резонансный фильтр (220 Гц) и сатурация для имитации деревянного корпуса.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.8 — "Plan #105: Hybrid Transient Attack".
+ * #ЧТО: Длительность транзиента зафиксирована на уровне 20 мсек для гибридного слоя.
  */
 
 function makeAcousticWarmthCurve() {
@@ -252,12 +252,13 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.022);
+        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+            // #ЗАЧЕМ: ПЛАН №105. Фиксация 20мс транзиента.
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.020, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.05);
+            source.stop(startTime + 0.05); // Безопасная остановка чуть позже
         } else {
             gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
             source.start(startTime);
