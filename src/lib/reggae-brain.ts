@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V8.1 — "Axiom Drum Purge".
- * #ЗАЧЕМ: Полное исключение барабанных аксиом из Регги по просьбе пользователя.
- * #ЧТО: ПЛАН №1146 — Heritage Drums больше не подмешиваются в микс.
+ * @fileOverview Reggae Brain V9.0 — "Authentic Riddim Re-Training".
+ * #ЗАЧЕМ: Безопасное обучение генеративного ударника канонам Регги.
+ * #ЧТО: ПЛАН №1150 — Внедрение One Drop, Rockers и Steppers без поломки Heritage DNA.
  */
 
 import type {
@@ -164,12 +164,13 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Rhythmic Mapping Protocol)
+        // 1. DRUMS (Refined Reggae Education)
         if (hints.drums) {
-            // #ЗАЧЕМ: ПЛАН №1146. Полное отключение барабанных аксиом.
-            // events.push(...this.renderHeritageDrums(epoch, tension));
+            // Heritage Drums (Axioms) - Keeping the logic untouched
+            events.push(...this.renderHeritageDrums(epoch, tension));
             
-            events.push(...this.renderDefaultReggaePulse(epoch, tension, kit));
+            // Generative Reggae Groove (Improved)
+            events.push(...this.renderReggaeGroove(epoch, tension, kit));
             events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
 
@@ -216,8 +217,8 @@ export class ReggaeBrain {
             events, tension, beautyScore: 0.98,
             trackName: this.currentTrackName,
             instrumentOverrides,
-            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Pure Generative' },
-            narrative: `Dub Session: ${this.currentTrackName} [Drums: Algorithmic Standard]`
+            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Reggae Archetype' },
+            narrative: `Dub Session: ${this.currentTrackName} [Drums: Reggae Standards]`
         };
     }
 
@@ -251,6 +252,53 @@ export class ReggaeBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Улучшенная генерация Регги-битов (One Drop, Rockers, Steppers).
+     */
+    private renderReggaeGroove(epoch: number, tension: number, kit: any): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        
+        // --- 1. Style Selection ---
+        let style: 'one-drop' | 'rockers' | 'steppers' = 'one-drop';
+        if (tension > 0.75) style = 'steppers';
+        else if (tension > 0.45) style = 'rockers';
+
+        // --- 2. Kick & Snare ---
+        if (style === 'one-drop') {
+            // Kick and Snare only on 3 (tick 6)
+            events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+            events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+        } else if (style === 'rockers') {
+            // Kick on all quarters, Snare on 2 and 4
+            [0, 3, 6, 9].forEach(t => {
+                events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+            });
+            [3, 9].forEach(t => {
+                events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+            });
+        } else {
+            // Steppers: Four-on-the-floor
+            [0, 3, 6, 9].forEach(t => {
+                events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+            });
+            events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+        }
+
+        // --- 3. Swinging Hi-Hats (Offbeat Accents) ---
+        // Accenting the "and" (ticks 1.5, 4.5, 7.5, 10.5)
+        [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(tick => {
+            const isOffbeat = tick % 3 !== 0;
+            events.push({ 
+                type: kit.hihat[0] as any, note: 42, 
+                time: tick * TICK_TO_BEAT, duration: 0.1, 
+                weight: isOffbeat ? 0.6 : 0.25, 
+                technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+            });
+        });
+
+        return events;
+    }
+
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
@@ -271,17 +319,6 @@ export class ReggaeBrain {
             time: t * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, weight: 0.35,
             technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: chord.chordType === 'minor' ? 'Am' : 'A'
         }));
-    }
-
-    private renderDefaultReggaePulse(epoch: number, tension: number, kit: any): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const t = (epoch % 2 === 0) ? 6 : 9; 
-        events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-        events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-        [0, 3, 6, 9].forEach(tick => {
-            events.push({ type: kit.hihat[0] as any, note: 42, time: tick * TICK_TO_BEAT, duration: 0.1, weight: 0.25, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-        });
-        return events;
     }
 
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
