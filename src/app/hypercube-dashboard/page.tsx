@@ -203,23 +203,11 @@ const DISPLAY_NAMES: Record<string, string> = {
     'mellotron': 'Mellotron Strings',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
-    'piano': 'Acoustic Piano',
-    'guitarChords': 'Acoustic Chords',
+    'piano': 'Rhodes EPiano',
+    'violin': 'Solo Violin',
+    'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
-    'bass_jazz_fretless': 'Fretless Jaco',
-    'bass_blues': 'Blues Bass',
-    'bass_ambient': 'Ambient Sub',
-    'bass_ambient_dark': 'Abyssal Bass',
-    'bass_trance_acid': 'Acid Bass',
-    'bass_reggae': 'Reggae Bass',
-    'bass_dub': 'Dub Bass',
-    'bass_house': 'House Bass',
-    'bass_808': '808 Sub Bass',
-    'bass_deep_house': 'Deep House Bass',
-    'bass_rock_pick': 'Rock Picked Bass',
-    'bass_slap': 'Slap Funk Bass',
-    'bass_cs80': 'CS80 Hybrid Bass',
-    'none': 'No Override',
+    'blackAcoustic': 'Black Acoustic',
     'psybient': 'Psy-Ambient',
     // Dynamic Guitars
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
@@ -393,7 +381,9 @@ export default function HypercubeDashboard() {
 
     return Object.entries(groups)
       .filter(([id, licks]) => {
-        const matchesSearch = id.toLowerCase().includes(explorerSearch.toLowerCase());
+        const trackMatch = id.toLowerCase().includes(explorerSearch.toLowerCase());
+        const axiomMatch = licks.some(ax => (ax.id.split('_').pop() || "").toLowerCase().includes(explorerSearch.toLowerCase()));
+        const matchesSearch = trackMatch || axiomMatch;
         const firstLick = licks[0];
         const lickGenres = Array.isArray(firstLick.genre) ? firstLick.genre : [firstLick.genre];
         const lickMoods = Array.isArray(firstLick.mood) ? firstLick.mood : [firstLick.mood];
@@ -789,7 +779,8 @@ export default function HypercubeDashboard() {
                                 <table className="w-full text-left text-sm border-collapse">
                                   <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60">
                                     <tr>
-                                        <th className="p-3 pl-12">Role</th>
+                                        <th className="p-3 pl-12">Axiom ID</th>
+                                        <th className="p-3">Role</th>
                                         <th className="p-3">Instrument</th>
                                         <th className="p-3">Struct</th>
                                         <th className="p-3">Vector</th>
@@ -800,7 +791,10 @@ export default function HypercubeDashboard() {
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
                                       <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                        <td className="p-3 pl-12">
+                                        <td className="p-3 pl-12 font-mono text-[10px] opacity-70">
+                                            {ax.id.split('_').pop()}
+                                        </td>
+                                        <td className="p-3">
                                           {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={v => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
                                           ) : <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge>}
