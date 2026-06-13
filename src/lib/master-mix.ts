@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Master Mix Registry V1.7 — "Reggae Calibration".
- * #ЗАЧЕМ: Тонкая настройка баланса для даб-пространства.
- * #ЧТО: ПЛАН №1143 — Снижение громкости гармонии и барабанов.
+ * @fileOverview Master Mix Registry V1.8 — "The Dub Balance".
+ * #ЗАЧЕМ: Радикальное снижение громкости для Регги.
+ * #ЧТО: ПЛАН №1144 — Ударные снижены до 0.25, гармония до 0.08.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -24,8 +24,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     blues: { ...UNIVERSAL_IMPERIAL_MIX },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        drums: 0.40,      // Снижено для прозрачности
-        harmony: 0.12     // Сильно снижено для мягкого сканка
+        drums: 0.25,      // ПЛАН №1144: В 3 раза ниже нормы
+        harmony: 0.08     // ПЛАН №1144: Минимальный сканк
     },
     progressive: { ...UNIVERSAL_IMPERIAL_MIX },
     rock: { ...UNIVERSAL_IMPERIAL_MIX },
