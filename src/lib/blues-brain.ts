@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V78.2 — "Infrequent Harmony Update".
- * #ЗАЧЕМ: Реализация редких гитарных аккордов для глубины без перегруза.
- * #ЧТО: ПЛАН №602 — Добавлена вероятностная проверка входа Harmony.
+ * @fileOverview Blues Brain V79.0 — "Conversational Accompaniment Reform".
+ * #ЗАЧЕМ: Устранение тупости генеративного аккомпанемента в блюзе.
+ * #ЧТО: ПЛАН №607 — Реализация логики "Shadow & Fill" для органов/клавиш.
  */
 
 import {
@@ -415,31 +415,6 @@ export class BluesBrain {
         instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
     }
 
-    if (!isSoloistResting) {
-        this.currentAccompAxioms.forEach((ax) => {
-            const rawRole = ax.role.toLowerCase(); 
-            let target: InstrumentPart | null = null;
-            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
-            else if (rawRole.includes('accomp')) target = 'accompaniment';
-            
-            if (target && hints[target] && !usedTargetLayers.has(target)) {
-                const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, target, dna, tension);
-                if (rendered.length > 0) {
-                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
-                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
-                    usedTargetLayers.add(target);
-                }
-            }
-        });
-        
-        if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            const adaptiveAcc = this.renderAdaptiveAccompaniment(epoch, resChord, tension);
-            adaptiveAcc.forEach(e => e.pan = 0.1);
-            events.push(...adaptiveAcc.flatMap(e => this.rippleLongNote(e, resChord)));
-            usedTargetLayers.add('accompaniment');
-        }
-    }
-
     let melodyEvents: FractalEvent[] = [];
     let currentLickDisplayId = this.currentLickId;
 
@@ -462,6 +437,31 @@ export class BluesBrain {
         events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
     }
 
+    if (!isSoloistResting) {
+        this.currentAccompAxioms.forEach((ax) => {
+            const rawRole = ax.role.toLowerCase(); 
+            let target: InstrumentPart | null = null;
+            if (rawRole.includes('piano')) target = 'pianoAccompaniment';
+            else if (rawRole.includes('accomp')) target = 'accompaniment';
+            
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
+                const rendered = this.renderHeritageAccompaniment(resChord, epoch, ax.phrase, target, dna, tension);
+                if (rendered.length > 0) {
+                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
+                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
+                    usedTargetLayers.add(target);
+                }
+            }
+        });
+        
+        if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
+            const adaptiveAcc = this.renderConversationalAccompaniment(epoch, resChord, tension, melodyEvents);
+            adaptiveAcc.forEach(e => e.pan = 0.1);
+            events.push(...adaptiveAcc.flatMap(e => this.rippleLongNote(e, resChord)));
+            usedTargetLayers.add('accompaniment');
+        }
+    }
+
     if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
         const pResult = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
         if (pResult.events.length > 0) {
@@ -472,8 +472,6 @@ export class BluesBrain {
     }
 
     if (hints.harmony && !usedTargetLayers.has('harmony')) {
-        // #ЗАЧЕМ: Добавление нечастой гармонии в блюз (ПЛАН №602).
-        // Вероятность 30%, проверяем фрактально.
         const shouldPlayHarmony = calculateMusiNum(epoch, 13, this.seed, 10) < 3;
         
         if (shouldPlayHarmony) {
@@ -498,6 +496,50 @@ export class BluesBrain {
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: ${isSoloistResting ? 'BREATHING' : 'PLAYING'}]`
     };
+  }
+
+  /**
+   * #ЗАЧЕМ: Умный аккомпанемент для Блюза (ПЛАН №607).
+   * #ЧТО: Логика "Shadow & Fill". Орган играет стаккато во время соло и раздувы в паузах.
+   */
+  private renderConversationalAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+      const isSoloistBusy = melodyEvents.length > 3;
+      const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
+      const isMinor = chord.chordType === 'minor';
+      const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 10]; 
+      const events: FractalEvent[] = [];
+
+      if (isSoloistBusy) {
+          // Shadow Mode: Акцентированные "chunks" на слабых долях (2 и 4)
+          [3, 9].forEach(t => {
+              intervals.forEach((interval, i) => {
+                  events.push({
+                      type: 'accompaniment',
+                      note: this.constrainAccompanimentOctave(root + interval),
+                      time: t * TICK_TO_BEAT,
+                      duration: 0.5 * TICK_TO_BEAT, 
+                      weight: 0.4 + (tension * 0.1),
+                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                      params: { attack: 0.01, release: 0.8 }
+                  });
+              });
+          });
+      } else {
+          // Fill Mode: Органные раздувы (Swells) между фразами солиста
+          const startTick = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 0 : 3;
+          intervals.forEach((interval, i) => {
+              events.push({
+                  type: 'accompaniment',
+                  note: this.constrainAccompanimentOctave(root + interval),
+                  time: startTick * TICK_TO_BEAT,
+                  duration: 3.5, 
+                  weight: 0.5 + (tension * 0.15),
+                  technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                  params: { attack: 1.2, release: 2.0, filterCutoff: 1500 + tension * 1000 }
+              });
+          });
+      }
+      return events;
   }
 
   private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -657,33 +699,6 @@ export class BluesBrain {
           dynamics: 'p', 
           phrasing: 'staccato'
       }));
-  }
-
-  private renderAdaptiveAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-    const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
-    const isMinor = chord.chordType === 'minor';
-    const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 10]; 
-    const events: FractalEvent[] = [];
-
-    const pattern = [3, 9];
-    if (calculateMusiNum(epoch, 5, this.seed, 100) < 30) pattern.push(10.5); 
-
-    pattern.forEach(t => {
-        intervals.forEach((interval, i) => {
-            events.push({
-                type: 'accompaniment',
-                note: this.constrainAccompanimentOctave(root + interval),
-                time: t * TICK_TO_BEAT,
-                duration: 0.75 * TICK_TO_BEAT, 
-                weight: 0.45 + (tension * 0.1),
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'staccato',
-                params: { attack: 0.015, release: 1.2 }
-            });
-        });
-    });
-    return events;
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {

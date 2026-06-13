@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V77.1 — "Strict Heritage Filtering".
- * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
- * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
+ * @fileOverview Ambient Brain V78.0 — "Intelligent Accompaniment Reform".
+ * #ЗАЧЕМ: Устранение монотонности генеративного аккомпанемента.
+ * #ЧТО: ПЛАН №607 — Реализация "Breathe & Shadow" логики для пэдов.
  */
 
 import type {
@@ -148,7 +148,6 @@ export class AmbientBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -347,6 +346,18 @@ export class AmbientBrain {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody', 'ambient');
         }
 
+        let melodyEvents: FractalEvent[] = [];
+        if (hints.melody && !isSoloistResting) {
+            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
+            } 
+            if (melodyEvents.length === 0) {
+                melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
+            }
+        }
+        melodyEvents.forEach(e => e.pan = -0.15); 
+        events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+
         let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         const usedTargetLayers = new Set<string>();
@@ -376,11 +387,11 @@ export class AmbientBrain {
             });
             
             if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-                const padEvents = this.renderPad(resChord, epoch, hints.accompaniment as string, localTension);
+                const padEvents = this.renderEvolvingPad(resChord, epoch, localTension, melodyEvents);
                 padEvents.forEach(e => e.pan = swirlPan);
                 events.push(...padEvents.flatMap(e => this.rippleLongNote(e, resChord)));
                 usedTargetLayers.add('accompaniment');
-                accStatus = 'Adaptive Pad (No DNA)';
+                accStatus = 'Evolving Pad (conversational)';
             }
             if (hints.harmony && !usedTargetLayers.has('harmony')) {
                 const harEvents = this.renderGenerativeHarmony(resChord, epoch, localTension, hints.harmony);
@@ -404,18 +415,6 @@ export class AmbientBrain {
             events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
             bassStatus = 'Walking Drone (drone)';
         }
-
-        let melodyEvents: FractalEvent[] = [];
-        if (hints.melody && !isSoloistResting) {
-            if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melodyEvents = this.renderThemeMelody(resChord, epoch, localTension, hints, dna, 'melody', this.currentTheme.phrase, this.currentThemeMaxTick, this.currentTimeScale);
-            } 
-            if (melodyEvents.length === 0) {
-                melodyEvents = this.renderMelodicPadBase(resChord, epoch, localTension);
-            }
-        }
-        melodyEvents.forEach(e => e.pan = -0.15); 
-        events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
 
         let pianoInfo = { style: 'none', count: 0 };
         const pianoHint = hints.pianoAccompaniment;
@@ -466,6 +465,38 @@ export class AmbientBrain {
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName || 'Algorithmic Cloud'} [Landscape: Pumping Textures]`
         };
+    }
+
+    /**
+     * #ЗАЧЕМ: Умный аккомпанемент для Эмбиента (ПЛАН №607).
+     * #ЧТО: Адаптация длительности и ритма пада под присутствие мелодии.
+     */
+    private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
+        const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
+        const isMelodyBusy = melodyEvents.length > 3;
+        
+        if (isMelodyBusy) {
+            // Shadow Mode: Длинные, стабильные ноты, чтобы не мешать солисту
+            return [{
+                type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
+                time: 0, duration: 3.8, weight: 0.45, 
+                technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 1.8, release: 2.5, filterCutoff: 800 + (tension * 400), mood: this.mood }
+            }];
+        } else {
+            // Conversational Mode: Пульсирующие ноты на слабых долях
+            const events: FractalEvent[] = [];
+            const pulseTicks = [1.5, 7.5]; // "И" второй и четвертой четверти
+            pulseTicks.forEach(t => {
+                events.push({
+                    type: 'accompaniment', note: this.constrainAccompanimentOctave(root + (calculateMusiNum(epoch + t, 7, this.seed, 2) === 0 ? 0 : 7)),
+                    time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.5,
+                    technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                    params: { attack: 0.8, release: 1.5, filterCutoff: 1200 + (tension * 600), mood: this.mood }
+                });
+            });
+            return events;
+        }
     }
 
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
@@ -618,16 +649,6 @@ export class AmbientBrain {
             technique: tension > 0.7 ? ('hit' as Technique) : ('swell' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { mood: this.mood }
         }));
-    }
-
-    private renderPad(chord: GhostChord, epoch: number, name: string, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
-        return [{
-            type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-            time: 0, duration: 3.1, // Breathing gap
-            weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 2.0, filterCutoff: 1200 + (tension * 800), mood: this.mood }
-        }];
     }
 
     private renderMelodicPadBase(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
