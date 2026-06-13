@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.4 — "Ride Softness Calibration".
- * #ЗАЧЕМ: Смягчение переходных райдов по просьбе пользователя.
- * #ЧТО: ПЛАН №101 — Уменьшение weight и перевод в динамику 'p' для ride_wetter.
+ * @fileOverview Blues Brain V79.5 — "Ultra-Soft Ride Calibration".
+ * #ЗАЧЕМ: Радикальное смягчение переходных райдов по просьбе пользователя.
+ * #ЧТО: ПЛАН №104 — Снижение weight до 0.12 для ride_wetter в переходах.
  */
 
 import {
@@ -782,17 +782,17 @@ export class BluesBrain {
       
       // Бас и Пэд (стандартный легато-фундамент)
       [0, 3, 6, 9].forEach((t, i) => { 
-          events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
+          events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legate' }); 
       });
       events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
       if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
 
       // --- TRANSITION DRUM FILL (ПЛАН №99) ---
       [0, 3, 6, 9].forEach(t => {
-          // #ЗАЧЕМ: ПЛАН №101. Мягкий райд в переходах.
+          // #ЗАЧЕМ: ПЛАН №104. Ультра-мягкий райд в переходах (0.12).
           events.push({ 
               type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
-              duration: 2.0, weight: 0.38, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
+              duration: 2.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
           });
           events.push({ 
             type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
