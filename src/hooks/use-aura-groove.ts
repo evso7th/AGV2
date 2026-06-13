@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview Music Control Hook V19.0 — "Media Session Stability".
- * #ЗАЧЕМ: Исправление статуса "Stopped" в системном плеере.
- * #ЧТО: ПЛАН №202.2 — Внедрение setPositionState и Cache-Busting обложек.
+ * @fileOverview Music Control Hook V20.0 — "Media Session Path Correction".
+ * #ЗАЧЕМ: Исправление путей к обложкам для системного плеера.
+ * #ЧТО: ПЛАН №202.3 — Удалены дефисы из имен файлов согласно спецификации.
  */
 'use client';
 
@@ -138,7 +137,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const { toast } = useToast();
   const db = useFirestore();
   
-  // --- States ---
   const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
   const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
     bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
@@ -182,7 +180,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const isBpmSyncingRef = useRef(false);
   const sessionStartTimeRef = useRef<number>(0);
 
-  // --- Handlers ---
   const handleVolumeChange = useCallback((part: any, value: number) => {
     setVolume(part, value);
     if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
@@ -212,7 +209,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setVolume('drums', drumSettings.volume);
   }, [setVolume, instrumentSettings, textureSettings, drumSettings]);
 
-  // ─── MIXER PRESET LOGIC ───
   const loadMixerPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(MIXER_PRESETS_KEY);
     if (!saved) return;
@@ -229,7 +225,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
             if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
             if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
-            
             setActiveMixerPresetId(id);
             localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
             toast({ title: "Mix Applied", description: `Loaded: ${target.name}` });
@@ -299,7 +294,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: "System Mix Restored" });
   }, [handleVolumeChange, toast]);
 
-  // ─── EQ PRESET LOGIC ───
   const loadEqPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(EQ_PRESETS_KEY);
     if (!saved) return;
@@ -351,7 +345,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeEqPresetId]);
 
-  // --- Initial Sync Effect ---
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -427,10 +420,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №202.2 — Стабильная реализация Media Session API.
-   * #ЧТО: Поддержка setPositionState и Cache-Busting обложек.
-   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
@@ -442,25 +431,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
     const updateMetadata = () => {
         const origin = window.location.origin;
-        const version = Date.now(); // Cache busting
+        const version = Date.now(); 
 
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
             artist: 'AuraGroove',
             album: 'The Infinite Take Band',
             artwork: [
-                { src: `${origin}/assets/cover/cover-96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-384.jpg?v=${version}`, sizes: '384x384', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
             ]
         });
         
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-        // #ЗАЧЕМ: Принудительное обновление позиции для статуса "Playing".
         if ('setPositionState' in navigator.mediaSession) {
             const position = isPlaying && sessionStartTimeRef.current > 0 
                 ? (Date.now() - sessionStartTimeRef.current) / 1000 
@@ -468,7 +455,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             
             try {
                 navigator.mediaSession.setPositionState({
-                    duration: 7200, // 2 часа фейковой длительности
+                    duration: 7200, 
                     playbackRate: 1.0,
                     position: Math.min(position, 7199)
                 });
@@ -478,7 +465,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
     updateMetadata();
     
-    // "Сердцебиение" для защиты сессии
     const heartbeat = setInterval(updateMetadata, 2000);
 
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
@@ -487,7 +473,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
     return () => {
         clearInterval(heartbeat);
-        // Сброс обработчиков при размонтировании
         navigator.mediaSession.setActionHandler('play', null);
         navigator.mediaSession.setActionHandler('pause', null);
         navigator.mediaSession.setActionHandler('stop', null);
