@@ -1,7 +1,7 @@
 /**
- * @fileOverview Music Control Hook V22.0 — "Media Session Final Fix".
- * #ЗАЧЕМ: Исправление отсутствия метаданных в системном плеере.
- * #ЧТО: ПЛАН №202.4 — Регистрация полных Action Handlers и форсированная инъекция метаданных.
+ * @fileOverview Music Control Hook V22.1 — "Reference Error Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError: resetWorker is not defined.
+ * #ЧТО: Добавлен resetWorker в деструктуризацию useAudioEngine.
  */
 'use client';
 
@@ -131,7 +131,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
-    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName
+    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
+    resetWorker
   } = useAudioEngine(); 
   
   const { toast } = useToast();
