@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V4.8 — "Ensemble Volume Alignment".
- * #ЗАЧЕМ: Устранение дисбаланса громкости между Наследием и Алгоритмами.
- * #ЧТО: ПЛАН №1142 — Снижение weight аксиомных ударных с 0.9 до 0.35.
+ * @fileOverview Reggae Brain V5.0 — "The Complete Soul Station".
+ * #ЗАЧЕМ: Устранение критической ошибки TypeError (отсутствие методов).
+ * #ЧТО: Внедрение renderVirtuosoPiano и renderGenerativePad.
+ * #ОБНОВЛЕНО (ПЛАН №1142): Балансировка громкости аксиомных ударных (weight 0.35).
  */
 
 import type {
@@ -253,7 +254,6 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: Динамический выбор кита (ПЛАН №1141).
         const kit = DRUM_KITS.reggae[hints.drums as any] || DRUM_KITS.reggae.standard;
 
         if (this.currentPreferredInstrument && hints.melody) {
@@ -385,9 +385,7 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: ПЛАН №1139. Разряженная гармония (не чаще раз в такт).
-        if (this.random.next() < tension) {
-            // Выбор между 3 и 9 долей для вариативности
+        if (this.random.next() < (0.3 + tension * 0.4)) {
             const t = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 3 : 9;
             intervals.forEach(interval => {
                 events.push({
@@ -489,7 +487,6 @@ export class ReggaeBrain {
                 events.push({
                     type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
                     duration: 0.1, 
-                    // #ЗАЧЕМ: ПЛАН №1142. Снижение веса с 0.9 до 0.35 для выравнивания с ансамблем.
                     weight: 0.35, 
                     technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
@@ -523,9 +520,54 @@ export class ReggaeBrain {
 
     private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
         return [{
-            type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
-            technique: 'swell', dynamics: 'p', phrasing: 'legate'
+            type: 'accompaniment', 
+            note: this.constrainAccompanimentOctave(chord.rootNote + 12), 
+            time: 0, 
+            duration: 4.0, 
+            weight: 0.4 + (tension * 0.1),
+            technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 1.5, release: 2.5 }
         }];
+    }
+
+    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 12;
+        const scale = [0, 2, 3, 4, 7, 9, 10]; 
+
+        if (melodyEvents.length > 0) {
+            const thirdInterval = chord.chordType === 'minor' ? 3 : 4;
+            melodyEvents.forEach((m, i) => {
+                if (i % 3 === 0) {
+                    events.push({ 
+                        ...m, type: 'pianoAccompaniment', 
+                        note: this.constrainAccompanimentOctave(m.note + thirdInterval), 
+                        weight: 0.6, 
+                        technique: 'hit', dynamics: 'p', phrasing: 'staccato', 
+                        params: { ...m.params, release: 2.0 } 
+                    });
+                }
+            });
+            return { events, style: "Shadow Support" };
+        } else {
+            [1.5, 4.5, 7.5, 10.5].forEach((t, i) => {
+                if (calculateMusiNum(epoch + i, 7, this.seed, 100) < (30 + tension * 20)) {
+                    const degIdx = calculateMusiNum(epoch + i, 11, this.seed, scale.length);
+                    events.push({
+                        type: 'pianoAccompaniment',
+                        note: this.constrainAccompanimentOctave(root + scale[degIdx]),
+                        time: t * TICK_TO_BEAT,
+                        duration: 0.5 * TICK_TO_BEAT,
+                        weight: 0.5,
+                        technique: 'hit',
+                        dynamics: 'p',
+                        phrasing: 'staccato',
+                        params: { attack: 0.01, release: 2.0 }
+                    });
+                }
+            });
+            return { events, style: "Sparse Echoes" };
+        }
     }
 
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
