@@ -1,7 +1,7 @@
 /**
- * @fileOverview Music Control Hook V20.0 — "Media Session Path Correction".
- * #ЗАЧЕМ: Исправление путей к обложкам для системного плеера.
- * #ЧТО: ПЛАН №202.3 — Удалены дефисы из имен файлов согласно спецификации.
+ * @fileOverview Music Control Hook V21.0 — "Clean Exit Protocol".
+ * #ЗАЧЕМ: Гарантированный сброс всех состояний при возврате домой.
+ * #ЧТО: ПЛАН №123 — Переход на "/" с последующим window.location.reload().
  */
 'use client';
 
@@ -177,7 +177,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const prevBarRef = useRef(0);
-  const isBpmSyncingRef = useRef(false);
   const sessionStartTimeRef = useRef<number>(0);
 
   const handleVolumeChange = useCallback((part: any, value: number) => {
@@ -403,10 +402,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (isInitialized) {
-        if (isBpmSyncingRef.current) {
-            isBpmSyncingRef.current = false;
-            return;
-        }
         updateSettings({
           bpm, score, genre, instrumentSettings,
           drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
@@ -464,7 +459,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
 
     updateMetadata();
-    
     const heartbeat = setInterval(updateMetadata, 2000);
 
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
@@ -552,7 +546,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
     setIsPlaying, stopAllSounds,
-    handleGoHome: useCallback(async () => { if (isPlaying) await setIsPlaying(false); stopAllSounds(); router.push('/'); }, [isPlaying, setIsPlaying, stopAllSounds, router]),
+    handleGoHome: useCallback(async () => { 
+        if (isPlaying) await setIsPlaying(false); 
+        stopAllSounds(); 
+        router.push('/');
+        // #ЗАЧЕМ: ПЛАН №123. Гарантированный сброс через релоад.
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
+    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
     isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, handleEqChange,
     isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: useCallback((m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })), []),
