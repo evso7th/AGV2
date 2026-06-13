@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V7.0 — "Deep Dub Protocol".
- * #ЗАЧЕМ: Радикальное исправление ритмической каши и перегруза.
- * #ЧТО: ПЛАН №1144 — Ритм-секция отвязана от timeScale (стабильность), веса снижены до минимума.
+ * @fileOverview Reggae Brain V8.0 — "Rhythmic Heritage Mapping".
+ * #ЗАЧЕМ: Полное решение проблемы "лупящих невпопад" барабанов.
+ * #ЧТО: ПЛАН №1145 — Из аксиом берется только ритм, ноты принудительно маппятся на Kick/Snare/Hat.
  */
 
 import type {
@@ -107,7 +107,11 @@ export class ReggaeBrain {
         
         const filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
-            : poolToUse.filter(ax => (ax.genre || []).includes(this.genre) && (ax.mood || []).includes(this.mood));
+            : poolToUse.filter(ax => {
+                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
+                return axGenres.includes(this.genre) && axMoods.includes(this.mood);
+            });
 
         if (filteredPool.length > 0) {
             let basePool = filteredPool.filter(ax => ax.role === 'melody');
@@ -132,7 +136,7 @@ export class ReggaeBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drums = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(cid) === cid && ax.barOffset === selected.barOffset);
+                    const drums = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentDrumAxioms = drums.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
                     const baseBars = selected.bars || 4;
@@ -160,14 +164,14 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Stable Grid, Low Weight)
+        // 1. DRUMS (Rhythmic Mapping Protocol)
         if (hints.drums) {
             events.push(...this.renderHeritageDrums(epoch, tension));
             events.push(...this.renderDefaultReggaePulse(epoch, tension, kit));
             events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
 
-        // 2. BASS (Stable Grid)
+        // 2. BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar) 
                 ? this.renderHeritageBass(epoch, resChord, tension)
@@ -175,7 +179,7 @@ export class ReggaeBrain {
             events.push(...b);
         }
 
-        // 3. HARMONY & PIANO (Ultra Sparse)
+        // 3. HARMONY & PIANO
         const usedLayers = new Set<string>();
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
@@ -210,8 +214,8 @@ export class ReggaeBrain {
             events, tension, beautyScore: 0.98,
             trackName: this.currentTrackName,
             instrumentOverrides,
-            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Dub Pulse' },
-            narrative: `Dub Session: ${this.currentTrackName} [Drums: Ghosted]`
+            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Rhythmic Heritage' },
+            narrative: `Dub Session: ${this.currentTrackName} [Drums: Heritage Pattern / Standard Timbre]`
         };
     }
 
@@ -224,10 +228,22 @@ export class ReggaeBrain {
 
         this.currentDrumAxioms.forEach(ax => {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
+                // ПЛАН №1145: Маппинг ступеней аксиомы на стандартный драм-набор
+                let mappedNote = 48; // Default: Perc
+                const deg = n.deg;
+                if (deg === 'R') mappedNote = 36; // Kick
+                else if (deg === '4' || deg === '5') mappedNote = 38; // Snare
+                else if (deg === 'b7' || deg === '6' || deg === 'R+8') mappedNote = 42; // Hat
+
                 events.push({
-                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), 
+                    type: 'drums', 
+                    note: mappedNote, 
                     time: (n.t - barOffset) * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.18, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    duration: 0.1, 
+                    weight: 0.12, // Ультра-тихий ритмический призрак
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato'
                 });
             });
         });
@@ -246,7 +262,6 @@ export class ReggaeBrain {
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №1144. Ультра-разряженно. Макс один удар, шанс 30-50%.
         if (this.random.next() > (0.1 + tension * 0.4)) return [];
         const t = calculateMusiNum(epoch, 7, this.seed, 2) === 0 ? 3 : 9;
         const root = chord.rootNote + 12;
@@ -259,7 +274,6 @@ export class ReggaeBrain {
 
     private renderDefaultReggaePulse(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // One Drop: Kick & Snare on 3 (beat 2) or 9 (beat 4)
         const t = (epoch % 2 === 0) ? 6 : 9; 
         events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
