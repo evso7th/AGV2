@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Drum Arsenal Protocol V2.1.
+ * @fileOverview Drum Arsenal Protocol V2.2.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №1092): Расширение текстурных наборов для создания ландшафтного Эмбиента.
+ * #ОБНОВЛЕНО (ПЛАН №1141): Создан стандартный Регги-кит на базе Блюзового с полной перкуссией.
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -81,5 +81,16 @@ export const DRUM_KITS: DrumKitLibrary = {
         melancholic: { kick: ['drum_kick_drum6'], snare: ['drum_snare'], hihat: ['drum_open_hh_top2'], ride: [], crash: ['drum_crash2'], perc: ALL_PERC },
         intro: { kick: ['drum_kick_soft'], snare: [], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ['perc-003'] },
         anxious: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: [], crash: ['drum_crash2'], perc: ALL_PERC }
+    },
+
+    reggae: {
+        standard: { 
+            kick: ALL_KICKS, 
+            snare: ALL_SNARES, 
+            hihat: ALL_HIHATS, 
+            ride: ALL_RIDES, 
+            crash: ['drum_crash2'], 
+            perc: ALL_PERC 
+        }
     }
 };

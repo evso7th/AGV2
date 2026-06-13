@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.3 — Bluesified).
- * #ЧТО: ПЛАН №1138 — Окончательная замена всех инструментов на блюзовые (Telecaster, Jazz Bass, Soft Jazz Organ).
+ * #ЗАЧЕМ: Блюпринт "Midnight Dub" (Reggae v1.4 — Standard Kit Integration).
+ * #ЧТО: ПЛАН №1141 — Установлен кит 'standard' как дефолт для всех секций.
  */
 export const MelancholicReggaeBlueprint: MusicBlueprint = {
     id: 'melancholic_reggae',
@@ -21,15 +22,17 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'MistyMorning', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true, bass: true, harmony: true, pianoAccompaniment: true },
+                layers: { accompaniment: true, sfx: true, bass: true, harmony: true, pianoAccompaniment: true, drums: true },
                 instrumentation: {
+                    drums: { strategy: 'weighted', options: [{ name: 'standard', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
                     pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
-                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] }
+                    accompaniment: { techniques: [{ value: 'long-chords', weight: 1.0 }] },
+                    drums: { kitName: 'standard', pattern: 'ambient_beat' }
                 },
                 bundles: [{ id: 'REG_INTRO_1', name: 'Mist', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -38,6 +41,7 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
                 id: 'MAIN', name: 'The Roots Cycle', duration: { percent: 80 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
                 instrumentation: {
+                    drums: { strategy: 'weighted', options: [{ name: 'standard', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'telecaster', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] },
@@ -45,7 +49,7 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
                     pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+                    drums: { kitName: 'standard', pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
                     melody: { source: 'motif', style: 'staccato' }
                 },
                 bundles: [{ id: 'REG_MAIN_1', name: 'The Riddim', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -53,10 +57,14 @@ export const MelancholicReggaeBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Smoke & Echo', duration: { percent: 10 },
-                layers: { accompaniment: true, sfx: true, harmony: true, bass: true },
+                layers: { accompaniment: true, sfx: true, harmony: true, bass: true, drums: true },
                 instrumentation: {
+                    drums: { strategy: 'weighted', options: [{ name: 'standard', weight: 1.0 }] },
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                },
+                instrumentRules: {
+                    drums: { kitName: 'standard', pattern: 'ambient_beat' }
                 },
                 bundles: [{ id: 'REG_OUTRO_1', name: 'Silence', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

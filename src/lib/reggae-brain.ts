@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.6 — "Narrative Stretching & Golden Note".
- * #ЗАЧЕМ: Победа над «пулеметным эффектом» и реализация эффекта Элвина Ли.
- * #ЧТО: ПЛАН №568 — Растяжение времени и фильтрация опорных нот.
+ * @fileOverview Reggae Brain V4.7 — "Standard Kit Protocol".
+ * #ЗАЧЕМ: Унификация работы с ударными через глобальную библиотеку китов.
+ * #ЧТО: ПЛАН №1141 — Динамическая подгрузка сэмплов из DRUM_KITS.reggae.standard.
  */
 
 import type {
@@ -30,6 +30,7 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT
 } from './music-theory';
+import { DRUM_KITS } from './assets/drum-kits';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -252,6 +253,9 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
+        // #ЗАЧЕМ: Динамический выбор кита (ПЛАН №1141).
+        const kit = DRUM_KITS.reggae[hints.drums as any] || DRUM_KITS.reggae.standard;
+
         if (this.currentPreferredInstrument && hints.melody) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
         }
@@ -261,8 +265,9 @@ export class ReggaeBrain {
             if (this.currentDrumAxioms.length > 0) {
                 events.push(...this.renderHeritageDrums(epoch, tension));
             } else {
-                events.push(...this.renderDefaultReggaePulse(epoch, tension));
+                events.push(...this.renderDefaultReggaePulse(epoch, tension, kit));
             }
+            events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
 
         // 2. BASS
@@ -380,7 +385,6 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: Разряжение гармонии (макс 1 раз в такт) и привязка к Tension.
         if (this.random.next() < tension) {
             const t = this.random.next() < 0.5 ? 3 : 9;
             intervals.forEach(interval => {
@@ -400,9 +404,6 @@ export class ReggaeBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №568. Нарративное растяжение и фильтр «Золотой ноты».
-     */
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number = 1): FractalEvent[] {
         if (!this.currentTheme) return [];
         const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
@@ -492,12 +493,20 @@ export class ReggaeBrain {
         return events;
     }
 
-    private renderDefaultReggaePulse(epoch: number, tension: number): FractalEvent[] {
+    /**
+     * #ЗАЧЕМ: ПЛАН №1141. Использование динамического кита.
+     */
+    private renderDefaultReggaePulse(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        events.push({ type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-        events.push({ type: 'drum_snare', note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        const kick = kit.kick[calculateMusiNum(epoch, 3, this.seed, kit.kick.length)];
+        const snare = kit.snare[calculateMusiNum(epoch, 7, this.seed, kit.snare.length)];
+        const hat = kit.hihat[calculateMusiNum(epoch, 11, this.seed, kit.hihat.length)];
+
+        events.push({ type: kick as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        events.push({ type: snare as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        
         [0, 3, 6, 9].forEach(t => {
-            events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+            events.push({ type: hat as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
         });
         return events;
     }
@@ -517,44 +526,24 @@ export class ReggaeBrain {
         }];
     }
 
-    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+    /**
+     * #ЗАЧЕМ: ПЛАН №1141. Использование перкуссии из кита.
+     */
+    private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const root = chord.rootNote + 12;
-        const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
+        const percPool = kit.perc || [];
+        if (percPool.length === 0) return [];
 
-        if (melodyEvents.length > 0) {
-            melodyEvents.forEach((m, i) => {
-                if (i % 2 === 0) {
-                    events.push({
-                        ...m,
-                        type: 'pianoAccompaniment',
-                        note: this.constrainAccompanimentOctave(m.note + (chord.chordType === 'minor' ? 3 : 4)),
-                        weight: 0.35,
-                        technique: 'hit',
-                        phrasing: 'staccato'
-                    });
-                }
-            });
-            return { events, style: 'Melodic Shadow' };
-        } else {
-            [1.5, 4.5, 7.5, 10.5].forEach(t => {
-                if (this.random.next() < 0.6) {
-                    intervals.forEach(interval => {
-                        events.push({
-                            type: 'pianoAccompaniment',
-                            note: this.constrainAccompanimentOctave(root + interval + 12),
-                            time: t * TICK_TO_BEAT,
-                            duration: 0.3 * TICK_TO_BEAT,
-                            weight: 0.3,
-                            technique: 'hit',
-                            dynamics: 'p',
-                            phrasing: 'staccato'
-                        });
-                    });
-                }
-            });
-            return { events, style: 'Rhodes Bubbling' };
+        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
+            if (this.random.next() < (0.2 + tension * 0.15)) {
+                const perc = percPool[calculateMusiNum(epoch + t, 13, this.seed, percPool.length)];
+                events.push({
+                    type: perc as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
+                    weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.8) - 0.9
+                });
+            }
         }
+        return events;
     }
 
     private constrainBassOctave(note: number): number {
