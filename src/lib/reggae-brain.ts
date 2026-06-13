@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.7 — "Standard Kit Protocol".
- * #ЗАЧЕМ: Унификация работы с ударными через глобальную библиотеку китов.
- * #ЧТО: ПЛАН №1141 — Динамическая подгрузка сэмплов из DRUM_KITS.reggae.standard.
+ * @fileOverview Reggae Brain V4.8 — "Ensemble Volume Alignment".
+ * #ЗАЧЕМ: Устранение дисбаланса громкости между Наследием и Алгоритмами.
+ * #ЧТО: ПЛАН №1142 — Снижение weight аксиомных ударных с 0.9 до 0.35.
  */
 
 import type {
@@ -212,7 +212,7 @@ export class ReggaeBrain {
                         this.currentAccompAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument });
                     });
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => { 
                         this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }); 
                     });
@@ -385,8 +385,10 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
+        // #ЗАЧЕМ: ПЛАН №1139. Разряженная гармония (не чаще раз в такт).
         if (this.random.next() < tension) {
-            const t = this.random.next() < 0.5 ? 3 : 9;
+            // Выбор между 3 и 9 долей для вариативности
+            const t = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 3 : 9;
             intervals.forEach(interval => {
                 events.push({
                     type: 'harmony',
@@ -486,16 +488,16 @@ export class ReggaeBrain {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
                 events.push({
                     type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
+                    duration: 0.1, 
+                    // #ЗАЧЕМ: ПЛАН №1142. Снижение веса с 0.9 до 0.35 для выравнивания с ансамблем.
+                    weight: 0.35, 
+                    technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
         });
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1141. Использование динамического кита.
-     */
     private renderDefaultReggaePulse(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kick = kit.kick[calculateMusiNum(epoch, 3, this.seed, kit.kick.length)];
@@ -522,13 +524,10 @@ export class ReggaeBrain {
     private renderGenerativePad(chord: GhostChord, tension: number): FractalEvent[] {
         return [{
             type: 'accompaniment', note: chord.rootNote + 12, time: 0, duration: 4.0, weight: 0.5,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            technique: 'swell', dynamics: 'p', phrasing: 'legate'
         }];
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1141. Использование перкуссии из кита.
-     */
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const percPool = kit.perc || [];
