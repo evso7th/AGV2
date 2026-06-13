@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V8.0 — "Rhythmic Heritage Mapping".
- * #ЗАЧЕМ: Полное решение проблемы "лупящих невпопад" барабанов.
- * #ЧТО: ПЛАН №1145 — Из аксиом берется только ритм, ноты принудительно маппятся на Kick/Snare/Hat.
+ * @fileOverview Reggae Brain V8.1 — "Axiom Drum Purge".
+ * #ЗАЧЕМ: Полное исключение барабанных аксиом из Регги по просьбе пользователя.
+ * #ЧТО: ПЛАН №1146 — Heritage Drums больше не подмешиваются в микс.
  */
 
 import type {
@@ -166,7 +166,9 @@ export class ReggaeBrain {
 
         // 1. DRUMS (Rhythmic Mapping Protocol)
         if (hints.drums) {
-            events.push(...this.renderHeritageDrums(epoch, tension));
+            // #ЗАЧЕМ: ПЛАН №1146. Полное отключение барабанных аксиом.
+            // events.push(...this.renderHeritageDrums(epoch, tension));
+            
             events.push(...this.renderDefaultReggaePulse(epoch, tension, kit));
             events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
@@ -214,8 +216,8 @@ export class ReggaeBrain {
             events, tension, beautyScore: 0.98,
             trackName: this.currentTrackName,
             instrumentOverrides,
-            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Rhythmic Heritage' },
-            narrative: `Dub Session: ${this.currentTrackName} [Drums: Heritage Pattern / Standard Timbre]`
+            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Pure Generative' },
+            narrative: `Dub Session: ${this.currentTrackName} [Drums: Algorithmic Standard]`
         };
     }
 
@@ -228,19 +230,18 @@ export class ReggaeBrain {
 
         this.currentDrumAxioms.forEach(ax => {
             ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
-                // ПЛАН №1145: Маппинг ступеней аксиомы на стандартный драм-набор
-                let mappedNote = 48; // Default: Perc
+                let mappedNote = 48; 
                 const deg = n.deg;
-                if (deg === 'R') mappedNote = 36; // Kick
-                else if (deg === '4' || deg === '5') mappedNote = 38; // Snare
-                else if (deg === 'b7' || deg === '6' || deg === 'R+8') mappedNote = 42; // Hat
+                if (deg === 'R') mappedNote = 36; 
+                else if (deg === '4' || deg === '5') mappedNote = 38; 
+                else if (deg === 'b7' || deg === '6' || deg === 'R+8') mappedNote = 42; 
 
                 events.push({
                     type: 'drums', 
                     note: mappedNote, 
                     time: (n.t - barOffset) * TICK_TO_BEAT, 
                     duration: 0.1, 
-                    weight: 0.12, // Ультра-тихий ритмический призрак
+                    weight: 0.12, 
                     technique: 'hit', 
                     dynamics: 'p', 
                     phrasing: 'staccato'

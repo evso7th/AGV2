@@ -13,7 +13,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     '25696__walter_odington__hackney-hat-4': '/assets/drums/25696__walter_odington__hackney-hat-4.ogg',
     '25701__walter_odington__new-years-hat-1': '/assets/drums/25701__walter_odington__new-years-hat-1.ogg',
     '25702__walter_odington__new-years-hat-2': '/assets/drums/25702__walter_odington__new-years-hat-2.ogg',
-    'a-ride1': '/assets/drums/a-ride1.ogg',
+    'a-ride1': '/assets/drums/a-ride2.ogg',
     'a-ride2': '/assets/drums/a-ride2.ogg',
     'a-ride3': '/assets/drums/a-ride3.ogg',
     'a-ride4': '/assets/drums/a-ride4.ogg',
