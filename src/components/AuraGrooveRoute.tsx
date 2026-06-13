@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.6 — "Preset Connectivity Fix".
- * #ЧТО: ПЛАН №502 — Подключение управления пресетами Эквалайзера к UI.
+ * #ЗАЧЕМ: UI AuraGroove V7.7 — "Navigator Mood Cleanup".
+ * #ЧТО: ПЛАН №90 — Очистка списка настроений до 5 эталонных пунктов.
  */
 'use client';
 
@@ -60,8 +60,6 @@ const MOODS = [
     { id: 'dreamy', label: 'Dreamy' },
     { id: 'calm', label: 'Calm' },
     { id: 'joyful', label: 'Joyful' },
-    { id: 'dark', label: 'Dark Ritual' },
-    { id: 'epic', label: 'Epic Call' },
     { id: 'random', label: '⚡ ANY' }
 ];
 
