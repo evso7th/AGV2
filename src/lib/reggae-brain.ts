@@ -380,7 +380,9 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        [3, 9].forEach(t => { 
+        // #ЗАЧЕМ: Разряжение гармонии (макс 1 раз в такт) и привязка к Tension.
+        if (this.random.next() < tension) {
+            const t = this.random.next() < 0.5 ? 3 : 9;
             intervals.forEach(interval => {
                 events.push({
                     type: 'harmony',
@@ -394,7 +396,7 @@ export class ReggaeBrain {
                     chordName: chord.chordType === 'minor' ? 'Am' : 'A'
                 });
             });
-        });
+        }
         return events;
     }
 
