@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.2 — "Intelligent Accompaniment Reform".
- * #ЗАЧЕМ: Победа над «кирпичами» в сопровождении.
- * #ЧТО: ПЛАН №607 — Реализация логики "Shadow Comping" для органа.
+ * @fileOverview Blues Brain V79.3 — "Transition Fill Protocol".
+ * #ЗАЧЕМ: Реализация динамических филлов для коротких переходов.
+ * #ЧТО: ПЛАН №99 — Филл на ударных: Кик, Снейр, Томы, Хэт, Ride Wetter.
  */
 
 import {
@@ -777,17 +777,49 @@ export class BluesBrain {
       }
   }
 
+  /**
+   * #ЗАЧЕМ: Улучшенный переходной филл (ПЛАН №99).
+   * #ЧТО: Кик, Снейр, Томы, Хэт и самый мокрый райд.
+   */
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
       const events: FractalEvent[] = []; 
       const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
       const scale = [0, 2, 4, 5, 7, 9, 11];
+      
+      // Бас и Пэд (стандартный легато-фундамент)
       [0, 3, 6, 9].forEach((t, i) => { 
           events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legato' }); 
       });
       events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
       if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
-      events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 0.8, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
-      events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+
+      // --- TRANSITION DRUM FILL (ПЛАН №99) ---
+      [0, 3, 6, 9].forEach(t => {
+          events.push({ 
+              type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
+              duration: 2.0, weight: 0.6, technique: 'hit', dynamics: 'mf', phrasing: 'legato' 
+          });
+          events.push({ 
+            type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
+            duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+        });
+      });
+
+      events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+      events.push({ type: 'drum_snare', note: 38, time: 3 * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      
+      // Каскад томов
+      events.push({ type: 'drum_Sonor_Classix_High_Tom', note: 40, time: 6 * TICK_TO_BEAT, duration: 0.3, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      
+      if (epoch % 2 === 1) { // Клаймакс филла во втором такте перехода
+          events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 41, time: 9 * TICK_TO_BEAT, duration: 0.3, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+          events.push({ type: 'drum_snare', note: 38, time: 10 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+          events.push({ type: 'drum_crash2', note: 49, time: 11 * TICK_TO_BEAT, duration: 1.0, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      } else {
+          events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+          events.push({ type: 'drum_Sonor_Classix_Mid_Tom', note: 40, time: 10.5 * TICK_TO_BEAT, duration: 0.2, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
+      }
+
       return events;
   }
 

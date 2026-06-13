@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v34.0 — Transition Reform).
- * #ЧТО: ПЛАН №27 — Сокращение переходов до 4 тактов. Бас + Ударные + случайный 3-й инструмент.
+ * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v35.0 — Transition Reform).
+ * #ЧТО: ПЛАН №99 — Сокращение переходов до 2-х тактов (1.25%).
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -66,9 +66,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 3. BRIDGE 1 (4 bars) ---
+            // --- 3. BRIDGE 1 (2 bars = 1.25%) ---
             {
-                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 2.5 }, 
+                id: 'BRIDGE_1', name: 'Transition_I', duration: { percent: 1.25 }, 
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     {
@@ -109,9 +109,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 5. BRIDGE 2 (4 bars) ---
+            // --- 5. BRIDGE 2 (2 bars) ---
             {
-                id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 2.5 },
+                id: 'BRIDGE_2', name: 'Transition_II', duration: { percent: 1.25 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     {
@@ -134,7 +134,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 6. MAIN 3 (Deep Inversion) (20% = 32 bars) ---
+            // --- 6. MAIN 3 (Deep Introspection) (20% = 32 bars) ---
             {
                 id: 'MAIN_3', name: 'Introspection', duration: { percent: 20 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true, sparkles: true, sfx: true },
@@ -152,9 +152,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 7. BRIDGE 3 (4 bars) ---
+            // --- 7. BRIDGE 3 (2 bars) ---
             {
-                id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 2.5 },
+                id: 'BRIDGE_3', name: 'Transition_III', duration: { percent: 1.25 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     {
@@ -191,9 +191,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 9. BRIDGE 4 (4 bars) ---
+            // --- 9. BRIDGE 4 (2 bars) ---
             {
-                id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 2.5 },
+                id: 'BRIDGE_4', name: 'Transition_IV', duration: { percent: 1.25 },
                 layers: { bass: true, drums: true, melody: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     {
@@ -212,9 +212,9 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
 
-            // --- 10. OUTRO ---
+            // --- 10. OUTRO (Increased to maintain 100% total) ---
             {
-                id: 'OUTRO', name: 'Final Breath', duration: { percent: 5 }, 
+                id: 'OUTRO', name: 'Final Breath', duration: { percent: 8 }, 
                 layers: { bass: true, accompaniment: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] }
