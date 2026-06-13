@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V5.0 — "The Complete Soul Station".
- * #ЗАЧЕМ: Устранение критической ошибки TypeError (отсутствие методов).
- * #ЧТО: Внедрение renderVirtuosoPiano и renderGenerativePad.
- * #ОБНОВЛЕНО (ПЛАН №1142): Балансировка громкости аксиомных ударных (weight 0.35).
+ * @fileOverview Reggae Brain V6.0 — "The Narrative Sync Fix".
+ * #ЗАЧЕМ: Исправление ошибки "громче и быстрее" через внедрение timeScale в расчеты тиков.
+ * #ЧТО: ПЛАН №1143 — Синхронизация всех слоев Наследия с мастер-темпом.
  */
 
 import type {
@@ -60,7 +59,7 @@ export class ReggaeBrain {
     private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
-    private currentDrumAxioms: { phrase: any[], role: string }[] = [];
+    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 84;
@@ -215,7 +214,7 @@ export class ReggaeBrain {
 
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
                     drumSiblings.forEach(ax => { 
-                        this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }); 
+                        this.currentDrumAxioms.push({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }); 
                     });
 
                     const baseBars = selected.bars || 4;
@@ -385,7 +384,8 @@ export class ReggaeBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
         
-        if (this.random.next() < (0.3 + tension * 0.4)) {
+        // #ЗАЧЕМ: ПЛАН №1139. Максимум один удар в такт, вероятность привязана к T.
+        if (this.random.next() < (0.2 + tension * 0.5)) {
             const t = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 3 : 9;
             intervals.forEach(interval => {
                 events.push({
@@ -450,26 +450,37 @@ export class ReggaeBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const timeScale = this.currentTimeScale;
+        const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        // #ЗАЧЕМ: Исправление скорости через timeScale.
+        const readingWindow = TICKS_PER_BAR / timeScale;
+        const barOffset = mosaicBar * readingWindow;
+        
+        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0,
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
+            duration: n.d * TICK_TO_BEAT * timeScale, 
+            weight: 0.8,
             technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const timeScale = this.currentTimeScale;
+        const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        const readingWindow = TICKS_PER_BAR / timeScale;
+        const barOffset = mosaicBar * readingWindow;
+        
+        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6, 
+            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
+            duration: n.d * TICK_TO_BEAT * timeScale, 
+            weight: 0.6, 
             technique: tension > 0.7 ? 'hit' : 'swell', dynamics: 'p', phrasing: 'staccato'
         }));
     }
@@ -477,17 +488,23 @@ export class ReggaeBrain {
     private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
         if (this.currentDrumAxioms.length === 0) return [];
         const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const timeScale = this.currentTimeScale;
+        const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
+        
+        // #ЗАЧЕМ: Исправление ошибки "быстрее".
+        const readingWindow = TICKS_PER_BAR / timeScale;
+        const barOffset = mosaicBar * readingWindow;
 
         this.currentDrumAxioms.forEach(ax => {
-            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
+            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow).forEach(n => {
                 events.push({
-                    type: 'drums', note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), time: (n.t - barOffset) * TICK_TO_BEAT, 
+                    type: 'drums', 
+                    note: 36 + (DEGREE_TO_SEMITONE[n.deg] || 0), 
+                    time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
                     duration: 0.1, 
-                    weight: 0.35, 
+                    weight: 0.25, // #ЗАЧЕМ: ПЛАН №1143. Выравнивание громкости.
                     technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
