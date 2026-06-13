@@ -1,7 +1,7 @@
 /**
- * @fileOverview Music Control Hook V21.0 — "Clean Exit Protocol".
- * #ЗАЧЕМ: Гарантированный сброс всех состояний при возврате домой.
- * #ЧТО: ПЛАН №123 — Переход на "/" с последующим window.location.reload().
+ * @fileOverview Music Control Hook V22.0 — "Media Session Final Fix".
+ * #ЗАЧЕМ: Исправление отсутствия метаданных в системном плеере.
+ * #ЧТО: ПЛАН №202.4 — Регистрация полных Action Handlers и форсированная инъекция метаданных.
  */
 'use client';
 
@@ -415,6 +415,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
+  /**
+   * #ЗАЧЕМ: Ультимативный фикс Media Session (ПЛАН №202.4).
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
@@ -428,6 +431,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const origin = window.location.origin;
         const version = Date.now(); 
 
+        // Сборка метаданных
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
             artist: 'AuraGroove',
@@ -438,11 +442,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
                 { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
                 { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+                // Запасные относительные пути для некоторых ОС
+                { src: `assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
             ]
         });
         
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
+        // Форсирование статуса "В эфире" через Position State
         if ('setPositionState' in navigator.mediaSession) {
             const position = isPlaying && sessionStartTimeRef.current > 0 
                 ? (Date.now() - sessionStartTimeRef.current) / 1000 
@@ -458,20 +465,37 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
     };
 
+    // Первая инъекция немедленно
     updateMetadata();
+    
+    // Heartbeat цикл
     const heartbeat = setInterval(updateMetadata, 2000);
 
+    // Регистрация ПОЛНОГО набора обработчиков для получения статуса "Real Player"
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
-    navigator.mediaSession.setActionHandler('stop', () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
+    
+    // Фиктивные обработчики для активации кнопок в ОС
+    navigator.mediaSession.setActionHandler('nexttrack', () => { 
+        toast({ title: "Next Pattern", description: "Regenerating suite..." });
+        setIsRegenerating(true);
+        setCurrentSeed(Date.now());
+        setTimeout(() => setIsRegenerating(false), 500);
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+        toast({ title: "Previous Pattern", description: "Restarting current DNA..." });
+        resetWorker();
+    });
 
     return () => {
         clearInterval(heartbeat);
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('stop', null);
+        const handlers: MediaSessionAction[] = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
+        handlers.forEach(action => {
+            try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {}
+        });
     };
-  }, [isPlaying, genre, mood, setIsPlaying]);
+  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker]);
 
   useEffect(() => {
     if (activeRouteItemId) {
