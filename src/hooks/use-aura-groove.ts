@@ -1,7 +1,7 @@
 /**
- * @fileOverview Music Control Hook V22.1 — "Reference Error Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: resetWorker is not defined.
- * #ЧТО: Добавлен resetWorker в деструктуризацию useAudioEngine.
+ * @fileOverview Music Control Hook V23.0 — "Route Reset Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №102 — Безопасное обновление маршрута.
+ * #ЧТО: Блокировка рефреша во время игры, сброс очереди и автостарт в паузе.
  */
 'use client';
 
@@ -416,9 +416,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  /**
-   * #ЗАЧЕМ: Ультимативный фикс Media Session (ПЛАН №202.4).
-   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
@@ -432,7 +429,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const origin = window.location.origin;
         const version = Date.now(); 
 
-        // Сборка метаданных
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
             artist: 'AuraGroove',
@@ -443,14 +439,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
                 { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
                 { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
-                // Запасные относительные пути для некоторых ОС
                 { src: `assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
             ]
         });
         
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
 
-        // Форсирование статуса "В эфире" через Position State
         if ('setPositionState' in navigator.mediaSession) {
             const position = isPlaying && sessionStartTimeRef.current > 0 
                 ? (Date.now() - sessionStartTimeRef.current) / 1000 
@@ -466,18 +460,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
     };
 
-    // Первая инъекция немедленно
     updateMetadata();
-    
-    // Heartbeat цикл
     const heartbeat = setInterval(updateMetadata, 2000);
 
-    // Регистрация ПОЛНОГО набора обработчиков для получения статуса "Real Player"
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
     
-    // Фиктивные обработчики для активации кнопок в ОС
     navigator.mediaSession.setActionHandler('nexttrack', () => { 
         toast({ title: "Next Pattern", description: "Regenerating suite..." });
         setIsRegenerating(true);
@@ -520,7 +509,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     prevBarRef.current = currentBar;
   }, [currentBar, isPlaying, route, activeRouteIndex, isRepeat]);
 
-  const handlePlayPause = useCallback(async () => { 
+  const handlePlayPauseCallback = useCallback(async () => { 
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
@@ -551,7 +540,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
     clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
-    handlePlayPause,
+    handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: useCallback(() => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); }, []),
     handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
     handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
@@ -575,7 +564,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (isPlaying) await setIsPlaying(false); 
         stopAllSounds(); 
         router.push('/');
-        // #ЗАЧЕМ: ПЛАН №123. Гарантированный сброс через релоад.
         setTimeout(() => {
             window.location.reload();
         }, 300);
@@ -590,7 +578,21 @@ export const useAuraGroove = (): AuraGrooveProps => {
     addToRoute: useCallback((g, m) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); }, []), 
     removeFromRoute: useCallback((id) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
     selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), 
-    refreshRoute: useCallback(() => refreshCloudAxioms(), [refreshCloudAxioms]), 
+    refreshRoute: useCallback(() => {
+        if (isPlaying) {
+            toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" });
+            return;
+        }
+        refreshCloudAxioms();
+        resetWorker();
+        if (route.length > 0) {
+            setActiveRouteItemId(route[0].id);
+            setTimeout(() => {
+                handlePlayPauseCallback();
+            }, 100);
+        }
+        toast({ title: "Route Reset", description: "DNA refreshed and journey restarted." });
+    }, [isPlaying, route, refreshCloudAxioms, resetWorker, handlePlayPauseCallback, toast]), 
     moveRouteItem: useCallback(() => {}, []), 
     reorderRoute: useCallback((a, o) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
     saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]),
