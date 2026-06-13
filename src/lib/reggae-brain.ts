@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V9.0 — "Authentic Riddim Re-Training".
- * #ЗАЧЕМ: Безопасное обучение генеративного ударника канонам Регги.
- * #ЧТО: ПЛАН №1150 — Внедрение One Drop, Rockers и Steppers без поломки Heritage DNA.
+ * @fileOverview Reggae Brain V10.0 — "Pure Generative Riddim".
+ * #ЗАЧЕМ: Полное отключение барабанных аксиом для идеальной чистоты даб-грува.
+ * #ЧТО: ПЛАН №1151 — Игнорирование Heritage Drums, использование только генеративных канонов.
  */
 
 import type {
@@ -55,11 +55,10 @@ export class ReggaeBrain {
     private currentPreferredInstrument: string | null = null;
     
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
-    private currentThemeMaxTick: number = 0;
+    private currentAxiomMaxTick: number = 0;
     private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
-    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
     private readonly MELODY_CEILING = 84;
@@ -98,7 +97,6 @@ export class ReggaeBrain {
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = [];
-        this.currentDrumAxioms = [];
         this.currentBassTheme = null;
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
@@ -136,11 +134,8 @@ export class ReggaeBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drums = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drums.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
-
                     const baseBars = selected.bars || 4;
-                    this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + baseBars;
                     return selected.nativeBpm || undefined;
@@ -164,12 +159,10 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Refined Reggae Education)
+        // 1. DRUMS (Pure Generative Riddim)
         if (hints.drums) {
-            // Heritage Drums (Axioms) - Keeping the logic untouched
-            events.push(...this.renderHeritageDrums(epoch, tension));
-            
-            // Generative Reggae Groove (Improved)
+            // #ЗАЧЕМ: ПЛАН №1151. Аксиомы барабанов игнорируются.
+            // Играем только эталонный регги-грув.
             events.push(...this.renderReggaeGroove(epoch, tension, kit));
             events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
@@ -217,59 +210,25 @@ export class ReggaeBrain {
             events, tension, beautyScore: 0.98,
             trackName: this.currentTrackName,
             instrumentOverrides,
-            activeAxioms: { melody: this.currentTheme?.id || 'Gap-Filler', drums: 'Reggae Archetype' },
-            narrative: `Dub Session: ${this.currentTrackName} [Drums: Reggae Standards]`
+            activeAxioms: { 
+                melody: this.currentTheme?.id || 'Gap-Filler', 
+                drums: 'Pure Generative Riddim',
+                bass: this.currentBassTheme ? 'Sibling DNA' : 'Algorithmic Dub'
+            },
+            narrative: `Pure Riddim Session: ${this.currentTrackName} [Drums: Algorithmic Standards]`
         };
     }
 
-    private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
-        if (this.currentDrumAxioms.length === 0) return [];
-        const events: FractalEvent[] = [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-
-        this.currentDrumAxioms.forEach(ax => {
-            ax.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).forEach(n => {
-                let mappedNote = 48; 
-                const deg = n.deg;
-                if (deg === 'R') mappedNote = 36; 
-                else if (deg === '4' || deg === '5') mappedNote = 38; 
-                else if (deg === 'b7' || deg === '6' || deg === 'R+8') mappedNote = 42; 
-
-                events.push({
-                    type: 'drums', 
-                    note: mappedNote, 
-                    time: (n.t - barOffset) * TICK_TO_BEAT, 
-                    duration: 0.1, 
-                    weight: 0.12, 
-                    technique: 'hit', 
-                    dynamics: 'p', 
-                    phrasing: 'staccato'
-                });
-            });
-        });
-        return events;
-    }
-
-    /**
-     * #ЗАЧЕМ: Улучшенная генерация Регги-битов (One Drop, Rockers, Steppers).
-     */
     private renderReggaeGroove(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // --- 1. Style Selection ---
         let style: 'one-drop' | 'rockers' | 'steppers' = 'one-drop';
         if (tension > 0.75) style = 'steppers';
         else if (tension > 0.45) style = 'rockers';
 
-        // --- 2. Kick & Snare ---
         if (style === 'one-drop') {
-            // Kick and Snare only on 3 (tick 6)
             events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         } else if (style === 'rockers') {
-            // Kick on all quarters, Snare on 2 and 4
             [0, 3, 6, 9].forEach(t => {
                 events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
             });
@@ -277,15 +236,12 @@ export class ReggaeBrain {
                 events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
             });
         } else {
-            // Steppers: Four-on-the-floor
             [0, 3, 6, 9].forEach(t => {
                 events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
             });
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         }
 
-        // --- 3. Swinging Hi-Hats (Offbeat Accents) ---
-        // Accenting the "and" (ticks 1.5, 4.5, 7.5, 10.5)
         [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(tick => {
             const isOffbeat = tick % 3 !== 0;
             events.push({ 
@@ -301,7 +257,7 @@ export class ReggaeBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
@@ -337,7 +293,7 @@ export class ReggaeBrain {
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
+        const totalBars = Math.ceil((this.currentAxiomMaxTick * timeScale) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
         const window = TICKS_PER_BAR / timeScale;
         const offset = mosaicBar * window;
@@ -349,7 +305,7 @@ export class ReggaeBrain {
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars);
         const offset = mosaicBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
