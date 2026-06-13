@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.1 — "Narrative Stretching & Golden Note".
- * #ЗАЧЕМ: Победа над «пулеметным эффектом» и реализация эффекта Элвина Ли.
- * #ЧТО: ПЛАН №568 — Растяжение времени и фильтрация опорных нот.
+ * @fileOverview Blues Brain V79.2 — "Intelligent Accompaniment Reform".
+ * #ЗАЧЕМ: Победа над «кирпичами» в сопровождении.
+ * #ЧТО: ПЛАН №607 — Реализация логики "Shadow Comping" для органа.
  */
 
 import {
@@ -347,7 +347,6 @@ export class BluesBrain {
     this.state.lastTension = tension;
     const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
 
-    // #ЗАЧЕМ: ПЛАН №568. Считывание timeScale из Блюпринта.
     this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
 
     if (navInfo.isPartTransition) {
@@ -504,6 +503,7 @@ export class BluesBrain {
   /**
    * #ЗАЧЕМ: Умный аккомпанемент для Блюза (ПЛАН №607).
    * #ЧТО: Логика "Shadow & Fill". Орган играет стаккато во время соло и раздувы в паузах.
+   * #ОБНОВЛЕНО (ПЛАН №607.2): Реализация синкопированного компинга в стиле Чикаго.
    */
   private renderConversationalAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
       const isSoloistBusy = melodyEvents.length > 3;
@@ -513,32 +513,38 @@ export class BluesBrain {
       const events: FractalEvent[] = [];
 
       if (isSoloistBusy) {
-          // Shadow Mode: Акцентированные "chunks" на слабых долях (2 и 4)
-          [3, 9].forEach(t => {
+          // Shadow Mode: Синкопированный компинг на слабых долях и "между" нотами соло
+          const compingTicks = [1.5, 4.5, 7.5, 10.5]; 
+          compingTicks.forEach(t => {
+              // Шанс удара зависит от напряжения
+              if (calculateMusiNum(epoch + t, 11, this.seed, 10) < (4 + tension * 4)) {
+                  intervals.forEach((interval, i) => {
+                      events.push({
+                          type: 'accompaniment',
+                          note: this.constrainAccompanimentOctave(root + interval),
+                          time: t * TICK_TO_BEAT,
+                          duration: 0.3 * TICK_TO_BEAT, // Короткий стаб
+                          weight: 0.45 + (tension * 0.15),
+                          technique: 'hit', dynamics: 'p', phrasing: 'staccato',
+                          params: { attack: 0.01, release: 0.6 }
+                      });
+                  });
+              }
+          });
+      } else {
+          // Fill Mode: Органные раздувы (Swells) с гармоническим движением
+          const startTick = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 0 : 3;
+          [0, 7].forEach((shift, j) => { // Добавляем вторую гармоническую опору (квинта)
               intervals.forEach((interval, i) => {
                   events.push({
                       type: 'accompaniment',
-                      note: this.constrainAccompanimentOctave(root + interval),
-                      time: t * TICK_TO_BEAT,
-                      duration: 0.5 * TICK_TO_BEAT, 
-                      weight: 0.4 + (tension * 0.1),
-                      technique: 'hit', dynamics: 'p', phrasing: 'staccato',
-                      params: { attack: 0.01, release: 0.8 }
+                      note: this.constrainAccompanimentOctave(root + interval + shift),
+                      time: (startTick + j * 1.5) * TICK_TO_BEAT,
+                      duration: 3.0, 
+                      weight: 0.5 + (tension * 0.2),
+                      technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                      params: { attack: 1.0, release: 2.5, filterCutoff: 1500 + tension * 1200 }
                   });
-              });
-          });
-      } else {
-          // Fill Mode: Органные раздувы (Swells) между фразами солиста
-          const startTick = calculateMusiNum(epoch, 3, this.seed, 2) === 0 ? 0 : 3;
-          intervals.forEach((interval, i) => {
-              events.push({
-                  type: 'accompaniment',
-                  note: this.constrainAccompanimentOctave(root + interval),
-                  time: startTick * TICK_TO_BEAT,
-                  duration: 3.5, 
-                  weight: 0.5 + (tension * 0.15),
-                  technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                  params: { attack: 1.2, release: 2.0, filterCutoff: 1500 + tension * 1000 }
               });
           });
       }
@@ -643,26 +649,20 @@ export class BluesBrain {
       return events;
   }
 
-  /**
-   * #ЗАЧЕМ: ПЛАН №568. Нарративное растяжение и фильтр «Золотой ноты».
-   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
     const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
     
-    // Time Scaling: Сокращаем окно чтения Аксиомы пропорционально растяжению.
     const readingWindow = TICKS_PER_BAR / timeScale;
     const barOffset = mosaicBar * readingWindow;
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow);
     
-    // Narrative Filter: Если нот много, выделяем опорные (Золотые).
     const useNarrativeFilter = barNotes.length > 3;
-    const goldenTicks = [0, 3, 6, 9]; // Сильные доли 12/8
+    const goldenTicks = [0, 3, 6, 9]; 
 
     return barNotes.map((n) => {
         const relativeTick = n.t - barOffset;
-        // Проверка: является ли нота кандидатом на «Золотую» (попадание в сильную долю)
         const isGoldenCandidate = goldenTicks.some(gt => Math.abs(relativeTick - gt) < 0.1);
         
         let weight = 0.75;
@@ -671,17 +671,14 @@ export class BluesBrain {
         
         if (useNarrativeFilter) {
             if (isGoldenCandidate) {
-                // Золотая нота: Резонанс и пространство
                 weight = 0.95;
-                durationScale = 2.0; // Растягиваем вдвое
-                tech = 'vb';         // Всегда вибрато
+                durationScale = 2.0; 
+                tech = 'vb';         
             } else {
-                // Призрачная нота: Тень пассажа
-                weight = 0.3;        // 30% громкости
-                durationScale = 0.4; // Минимальная длительность
+                weight = 0.3;        
+                durationScale = 0.4; 
             }
         } else {
-            // Стандартное поведение, если пассаж разреженный
             if ((tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn') {
                 tech = 'vb';
             }

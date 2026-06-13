@@ -1,6 +1,6 @@
 
 /**
- * @fileOverview Ambient Brain V78.0 — "Intelligent Accompaniment Reform".
+ * @fileOverview Ambient Brain V78.5 — "Intelligent Accompaniment Reform".
  * #ЗАЧЕМ: Устранение монотонности генеративного аккомпанемента.
  * #ЧТО: ПЛАН №607 — Реализация "Breathe & Shadow" логики для пэдов.
  */
@@ -470,33 +470,45 @@ export class AmbientBrain {
     /**
      * #ЗАЧЕМ: Умный аккомпанемент для Эмбиента (ПЛАН №607).
      * #ЧТО: Адаптация длительности и ритма пада под присутствие мелодии.
+     * #ОБНОВЛЕНО (ПЛАН №607.2): Замена статического пада на многослойные Swells.
      */
     private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const isMelodyBusy = melodyEvents.length > 3;
-        
+        const isMinor = chord.chordType === 'minor';
+        const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
+        const events: FractalEvent[] = [];
+
         if (isMelodyBusy) {
-            // Shadow Mode: Длинные, стабильные ноты, чтобы не мешать солисту
-            return [{
-                type: 'accompaniment', note: this.constrainAccompanimentOctave(root),
-                time: 0, duration: 3.8, weight: 0.45, 
-                technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 1.8, release: 2.5, filterCutoff: 800 + (tension * 400), mood: this.mood }
-            }];
-        } else {
-            // Conversational Mode: Пульсирующие ноты на слабых долях
-            const events: FractalEvent[] = [];
-            const pulseTicks = [1.5, 7.5]; // "И" второй и четвертой четверти
-            pulseTicks.forEach(t => {
+            // Shadow Mode: Вместо одного "кирпича" — многослойные раздувы на сильных долях
+            [0, 6].forEach(t => {
+                const noteIdx = calculateMusiNum(epoch + t, 11, this.seed, intervals.length);
                 events.push({
-                    type: 'accompaniment', note: this.constrainAccompanimentOctave(root + (calculateMusiNum(epoch + t, 7, this.seed, 2) === 0 ? 0 : 7)),
-                    time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.5,
+                    type: 'accompaniment', 
+                    note: this.constrainAccompanimentOctave(root + intervals[noteIdx]),
+                    time: t * TICK_TO_BEAT, 
+                    duration: 3.5, 
+                    weight: 0.35 + (tension * 0.1), 
                     technique: 'swell', dynamics: 'p', phrasing: 'legato',
-                    params: { attack: 0.8, release: 1.5, filterCutoff: 1200 + (tension * 600), mood: this.mood }
+                    params: { attack: 1.5, release: 2.0, filterCutoff: 1000 + (tension * 600), mood: this.mood }
                 });
             });
-            return events;
+        } else {
+            // Conversational Mode: Пульсирующие ноты на слабых долях (1.5, 4.5, 7.5, 10.5)
+            [1.5, 4.5, 7.5, 10.5].forEach(t => {
+                if (calculateMusiNum(epoch + t, 7, this.seed, 10) < 4) {
+                    const noteIdx = calculateMusiNum(epoch + t, 3, this.seed, intervals.length);
+                    events.push({
+                        type: 'accompaniment', 
+                        note: this.constrainAccompanimentOctave(root + intervals[noteIdx] + (this.rng?.nextInt(10) < 3 ? 12 : 0)),
+                        time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.4,
+                        technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                        params: { attack: 0.8, release: 1.2, filterCutoff: 1400 + (tension * 800), mood: this.mood }
+                    });
+                }
+            });
         }
+        return events;
     }
 
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
