@@ -1,5 +1,4 @@
-
-# DNA Rules: The Heritage Codex (v1.2)
+# DNA Rules: The Heritage Codex (v1.3 "Narrative Age")
 
 1.  **Dual Mode Operation**: The engine exclusively uses 'DNA Anchor' (manual selection) and 'Composer' (heritage-enabled free play) modes.
 2.  **Strict Channel Routing**: In Anchor mode, axioms must play exactly as recorded through their assigned channels: Bass, Melody, Accompaniment, Harmony, and Rhodes.
@@ -17,9 +16,9 @@
 14. **Brain-Defined Logic**: Differences between Harmony and Accompaniment logic are defined by the specific genre Brain (Ambient, Blues, Trance, etc.).
 15. **Axiom Supremacy**: No layering of axioms with generation. If an axiom exists for a channel, it is the master. Generation is used only when no axioms are present.
 16. **Instrument Veto**: Instruments defined in an axiom's `preferredInstrument` field have absolute priority over Blueprint and UI settings.
-17. **Semantic Timbre Groups**: In DNA Auditor, instruments can be assigned to dynamic groups that react to Tension (T):
-    *   **Dynamic Organ**: (by increasing T) -> prog, soft jazz, cathedral.
-    *   **Dynamic Pad**: (by increasing T) -> emerald, lush, dark cave.
-18. **Piano Dualism**: The pianist channel (pianoAccompaniment) should use Rhodes (70%) and Sampled Piano (30%) randomly, decided upon each donor track change.
-19. **DNA INTERFACE SANCTITY**: КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ ТРОГАТЬ СИСТЕМУ ЛОГИРОВАНИЯ И ИНТЕРФЕЙС РАБОТЫ С DNA. Любое изменение в файле `src/app/hypercube-dashboard/page.tsx` или в структуре `console.log` без явного приказа пользователя считается критическим нарушением.
-20. **ANCHOR PERSISTENCE**: The active DNA Anchor must remain strictly locked during Pause/Play cycles. Re-selection of a donor is only allowed on bar-limit expiration or manual regeneration. The engine state must be preserved in the worker thread to ensure seamless continuity.
+17. **Semantic Timbre Groups**: In DNA Auditor, instruments can be assigned to dynamic groups that react to Tension (T).
+18. **Piano Dualism**: The pianist channel should use Rhodes (70%) and Sampled Piano (30%) randomly, decided upon each donor track change.
+19. **DNA INTERFACE SANCTITY**: КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ ТРОГАТЬ СИСТЕМУ ЛОГИРОВАНИЯ И ИНТЕРФЕЙС DNA.
+20. **ANCHOR PERSISTENCE**: The active DNA Anchor must remain strictly locked during Pause/Play cycles.
+21. **NARRATIVE SCALING**: The engine supports `timeScale` parameter. For Solo/Melody, this expands the reading window of the Axiom while slowing down the playback, creating 'laid-back' feel.
+22. **GOLDEN NOTE SUPREMACY**: In high-density passages, notes on strong beats (0, 3, 6, 9) must be preserved and enhanced (vibrato, duration), while others become ghost notes (30% weight).
