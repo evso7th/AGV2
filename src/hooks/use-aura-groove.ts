@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V18.0 — "Media Session Standard".
- * #ЗАЧЕМ: Профессиональное отображение метаданных в ОС.
- * #ЧТО: ПЛАН №202 — Обновление Title, Artist, Album и Artwork.
+ * @fileOverview Music Control Hook V19.0 — "Media Session Stability".
+ * #ЗАЧЕМ: Исправление статуса "Stopped" в системном плеере.
+ * #ЧТО: ПЛАН №202.2 — Внедрение setPositionState и Cache-Busting обложек.
  */
 'use client';
 
@@ -180,6 +180,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const prevBarRef = useRef(0);
   const isBpmSyncingRef = useRef(false);
+  const sessionStartTimeRef = useRef<number>(0);
 
   // --- Handlers ---
   const handleVolumeChange = useCallback((part: any, value: number) => {
@@ -427,43 +428,70 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
   /**
-   * #ЗАЧЕМ: ПЛАН №202 — Реализация Media Session API.
-   * #ЧТО: Динамическое обновление метаданных "The Infinite Take Band".
+   * #ЗАЧЕМ: ПЛАН №202.2 — Стабильная реализация Media Session API.
+   * #ЧТО: Поддержка setPositionState и Cache-Busting обложек.
    */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
+    if (isPlaying) {
+        sessionStartTimeRef.current = Date.now();
+    } else {
+        sessionStartTimeRef.current = 0;
+    }
+
     const updateMetadata = () => {
         const origin = window.location.origin;
-        // #ЗАЧЕМ: Установка метаданных согласно запросу пользователя.
+        const version = Date.now(); // Cache busting
+
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
             artist: 'AuraGroove',
             album: 'The Infinite Take Band',
             artwork: [
-                { src: `${origin}/assets/cover/cover-96.jpg`, sizes: '96x96', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-128.jpg`, sizes: '128x128', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-192.jpg`, sizes: '192x192', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-256.jpg`, sizes: '256x256', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-384.jpg`, sizes: '384x384', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover-512.jpg`, sizes: '512x512', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-384.jpg?v=${version}`, sizes: '384x384', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
             ]
         });
         
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+        // #ЗАЧЕМ: Принудительное обновление позиции для статуса "Playing".
+        if ('setPositionState' in navigator.mediaSession) {
+            const position = isPlaying && sessionStartTimeRef.current > 0 
+                ? (Date.now() - sessionStartTimeRef.current) / 1000 
+                : 0;
+            
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: 7200, // 2 часа фейковой длительности
+                    playbackRate: 1.0,
+                    position: Math.min(position, 7199)
+                });
+            } catch(e) {}
+        }
     };
 
     updateMetadata();
     
-    // #ЗАЧЕМ: "Сердцебиение" для защиты сессии от перехвата другими элементами (Media Session Handbook).
+    // "Сердцебиение" для защиты сессии
     const heartbeat = setInterval(updateMetadata, 2000);
 
-    // #ЗАЧЕМ: Обработчики системных кнопок.
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => setIsPlaying(false));
 
-    return () => clearInterval(heartbeat);
+    return () => {
+        clearInterval(heartbeat);
+        // Сброс обработчиков при размонтировании
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('stop', null);
+    };
   }, [isPlaying, genre, mood, setIsPlaying]);
 
   useEffect(() => {

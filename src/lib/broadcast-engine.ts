@@ -1,8 +1,7 @@
 
 /**
- * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.1 — "DOM Integrity Fix".
- * #ЧТО: 1. Добавлено скрытое монтирование аудио-элемента в DOM для iOS/Safari.
- *       2. Внедрен "Silk Start" для маскировки стартовых шумов.
+ * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.2 — "Media Session Stability Fix".
+ * #ЧТО: 1. Установка начальной громкости 0.01 для предотвращения игнорирования медиа-сессии.
  */
 
 export class BroadcastEngine {
@@ -28,13 +27,12 @@ export class BroadcastEngine {
         this.audioElement.srcObject = this.stream;
         
         // #ЗАЧЕМ: Принудительное монтирование в DOM для iOS.
-        // Без этого многие мобильные браузеры отключают звук через 30 секунд.
         this.audioElement.style.display = 'none';
         this.audioElement.id = 'ag-broadcast-bridge';
         document.body.appendChild(this.audioElement);
         
-        // 3. Silk Start: Глушим звук перед стартом
-        this.audioElement.volume = 0;
+        // #ЗАЧЕМ: ПЛАН №202.2. Не используем 0, так как браузер может счесть поток неактивным.
+        this.audioElement.volume = 0.01; 
         this.audioElement.autoplay = true;
 
         try {
@@ -43,7 +41,8 @@ export class BroadcastEngine {
             
             const fadeDuration = 1500; 
             const steps = 30;
-            const increment = 1 / steps;
+            const targetVolume = 1.0;
+            const increment = (targetVolume - 0.01) / steps;
             let currentStep = 0;
 
             this.fadeInterval = setInterval(() => {
@@ -52,7 +51,7 @@ export class BroadcastEngine {
                     return;
                 }
                 currentStep++;
-                this.audioElement.volume = Math.min(1, currentStep * increment);
+                this.audioElement.volume = Math.min(targetVolume, 0.01 + currentStep * increment);
                 if (currentStep >= steps) {
                     clearInterval(this.fadeInterval);
                 }
@@ -76,7 +75,6 @@ export class BroadcastEngine {
         if (this.audioElement) {
             this.audioElement.pause();
             this.audioElement.srcObject = null;
-            // #ЗАЧЕМ: Демонтирование элемента.
             if (this.audioElement.parentNode) {
                 this.audioElement.parentNode.removeChild(this.audioElement);
             }
