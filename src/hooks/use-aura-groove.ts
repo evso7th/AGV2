@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Music Control Hook V24.0 — "Manual Refresh Protocol".
- * #ЗАЧЕМ: ПЛАН №103 — Отключение автозапуска при сбросе маршрута.
- * #ЧТО: Удален handlePlayPauseCallback из логики refreshRoute.
+ * @fileOverview Music Control Hook V25.0 — "Voice Persistence Integration".
+ * #ЗАЧЕМ: Устранение дублирующего состояния voiceLimit для корректной работы сохранения.
+ * #ЧТО: ПЛАН №1149 — Удаление локального voiceLimit, использование контекстного.
  */
 'use client';
 

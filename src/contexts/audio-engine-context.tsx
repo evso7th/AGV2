@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V49.0 — "Vinyl Transition Protocol".
- * #ЗАЧЕМ: Реализация эстетической и технической паузы между пьесами.
- * #ЧТО: ПЛАН №99 — 2-секундный переход со звуком винила.
- * #ОБНОВЛЕНО (ПЛАН №55): Калибровка громкости Telecaster (-2x) и CS80 (+2x).
+ * @fileOverview Audio Engine Context V50.0 — "Voice Persistence Protocol".
+ * #ЗАЧЕМ: Реализация сохранения пользовательских настроек полифонии.
+ * #ЧТО: ПЛАН №1149 — Загрузка voiceLimit из localStorage при старте.
  */
 'use client';
 
@@ -45,10 +44,10 @@ const VOICE_BALANCE: Record<string, number> = {
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 1.0,
     acoustic: 0.15,
-    electric: 0.15, // Halved for calibration (was 0.30)
+    electric: 0.15, 
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.2, // Doubled for calibration (was 0.1)
+    cs80: 0.2, 
     chords: 1.2,
     bass: 1.0
 };
@@ -119,7 +118,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
-  const [voiceLimit, setVoiceLimitState] = useState(512);
+  
+  // #ЗАЧЕМ: ПЛАН №1149. Загрузка лимита голосов из localStorage.
+  const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('AuraGroove_VoiceLimit');
+        return saved ? parseInt(saved, 10) : 512;
+    }
+    return 512;
+  });
+
   const [currentBar, setCurrentBar] = useState(0);
   const [totalBars, setTotalBars] = useState(144);
   const [currentTrackName, setCurrentTrackName] = useState('Generative Suite');
@@ -201,7 +209,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
-      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); // Halved from 4.4
+      darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); 
       cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
@@ -328,6 +336,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current; if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         
+        // #ЗАЧЕМ: ПЛАН №1149. Применение сохраненного лимита полифонии.
+        setGlobalVoiceLimit(voiceLimit);
+
         if (!transitionBufferRef.current) {
             try {
                 const res = await fetch('/assets/music/vinyl_disk.ogg');
@@ -417,7 +428,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { toast({ variant: "destructive", title: "Audio Error" }); return false; }
-  }, [toast, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains, scheduleEvents, playTransitionSound]);
+  }, [toast, auth, refreshCloudAxioms, db, applyCalibration, calibrationGains, scheduleEvents, playTransitionSound, voiceLimit]);
 
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; if (!context || !workerRef.current) return;
