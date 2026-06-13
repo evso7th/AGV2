@@ -1,7 +1,7 @@
 /**
- * @fileOverview Music Control Hook V23.0 — "Route Reset Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №102 — Безопасное обновление маршрута.
- * #ЧТО: Блокировка рефреша во время игры, сброс очереди и автостарт в паузе.
+ * @fileOverview Music Control Hook V24.0 — "Manual Refresh Protocol".
+ * #ЗАЧЕМ: ПЛАН №103 — Отключение автозапуска при сбросе маршрута.
+ * #ЧТО: Удален handlePlayPauseCallback из логики refreshRoute.
  */
 'use client';
 
@@ -587,12 +587,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
         resetWorker();
         if (route.length > 0) {
             setActiveRouteItemId(route[0].id);
-            setTimeout(() => {
-                handlePlayPauseCallback();
-            }, 100);
         }
         toast({ title: "Route Reset", description: "DNA refreshed and journey restarted." });
-    }, [isPlaying, route, refreshCloudAxioms, resetWorker, handlePlayPauseCallback, toast]), 
+    }, [isPlaying, route, refreshCloudAxioms, resetWorker, toast]), 
     moveRouteItem: useCallback(() => {}, []), 
     reorderRoute: useCallback((a, o) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
     saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]),
