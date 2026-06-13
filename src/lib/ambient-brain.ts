@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V78.5 — "Intelligent Accompaniment Reform".
- * #ЗАЧЕМ: Устранение монотонности генеративного аккомпанемента.
- * #ЧТО: ПЛАН №607 — Реализация "Breathe & Shadow" логики для пэдов.
+ * @fileOverview Ambient Brain V78.6 — "Universal Transition Ride".
+ * #ЗАЧЕМ: Унификация переходных филлов.
+ * #ЧТО: ПЛАН №104.2 — Внедрение ультра-мягкого ride_wetter в Liquid Bridge.
  */
 
 import type {
@@ -467,11 +467,6 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: Умный аккомпанемент для Эмбиента (ПЛАН №607).
-     * #ЧТО: Адаптация длительности и ритма пада под присутствие мелодии.
-     * #ОБНОВЛЕНО (ПЛАН №607.2): Замена статического пада на многослойные Swells.
-     */
     private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
         const root = chord.rootNote + 12 + this.registerShift + this.currentTransposition + this.microTransposition;
         const isMelodyBusy = melodyEvents.length > 3;
@@ -480,7 +475,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         if (isMelodyBusy) {
-            // Shadow Mode: Вместо одного "кирпича" — многослойные раздувы на сильных долях
             [0, 6].forEach(t => {
                 const noteIdx = calculateMusiNum(epoch + t, 11, this.seed, intervals.length);
                 events.push({
@@ -494,13 +488,12 @@ export class AmbientBrain {
                 });
             });
         } else {
-            // Conversational Mode: Пульсирующие ноты на слабых долях (1.5, 4.5, 7.5, 10.5)
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
                 if (calculateMusiNum(epoch + t, 7, this.seed, 10) < 4) {
                     const noteIdx = calculateMusiNum(epoch + t, 3, this.seed, intervals.length);
                     events.push({
                         type: 'accompaniment', 
-                        note: this.constrainAccompanimentOctave(root + intervals[noteIdx] + (this.rng?.nextInt(10) < 3 ? 12 : 0)),
+                        note: this.constrainAccompanimentOctave(root + intervals[noteIdx] + (this.random.nextInt(10) < 3 ? 12 : 0)),
                         time: t * TICK_TO_BEAT, duration: 2.0, weight: 0.4,
                         technique: 'swell', dynamics: 'p', phrasing: 'legato',
                         params: { attack: 0.8, release: 1.2, filterCutoff: 1400 + (tension * 800), mood: this.mood }
@@ -678,7 +671,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
 
         if (melodyEvents.length === 0) {
-            // Fill mode: Conversational drops
             const root = chord.rootNote + 12;
             const steps = [0, 4, 7, 11, 14];
             if (calculateMusiNum(epoch, 7, this.seed, 100) < 45) {
@@ -799,6 +791,14 @@ export class AmbientBrain {
             };
             events.push(melE); 
         }
+
+        // --- TRANSITION DRUM FILL (ПЛАН №104.2) ---
+        [0, 3, 6, 9].forEach(t => {
+            events.push({ 
+                type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
+                duration: 2.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
+            });
+        });
 
         events.push({ 
             type: 'drum_kick_reso', 
