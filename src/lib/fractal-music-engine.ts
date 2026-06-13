@@ -1,3 +1,4 @@
+
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -55,9 +56,9 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.3 — "Heritage Connectivity Restoration".
- * #ЗАЧЕМ: Исправление отсутствия звука в Регги.
- * #ЧТО: ПЛАН №1138 — Добавлена передача cloudAxioms в ReggaeBrain.
+ * @fileOverview Fractal Music Engine V44.4 — "Narrative Scaling Support".
+ * #ЗАЧЕМ: Поддержка эффекта Элвина Ли для всех жанров с Наследием.
+ * #ЧТО: ПЛАН №568 — Передача timeScale в ReggaeBrain.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -162,7 +163,6 @@ export class FractalMusicEngine {
         this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
-        // #ЗАЧЕМ: Восстановление связи Reggae с Облаком (ПЛАН №1138)
         this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
         this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null;
     } else {
@@ -305,6 +305,7 @@ export class FractalMusicEngine {
     if (this.config.genre === 'psybient' && this.tranceBrain) {
         result = this.tranceBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre === 'reggae' && this.reggaeBrain) {
+        // #ЗАЧЕМ: ПЛАН №568. Передача timeScale в Регги.
         result = this.reggaeBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre !== 'blues' && this.ambientBrain) {
         result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);

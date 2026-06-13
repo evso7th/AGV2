@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.0 — "Conversational Accompaniment Reform".
- * #ЗАЧЕМ: Устранение тупости генеративного аккомпанемента в блюзе.
- * #ЧТО: ПЛАН №607 — Реализация логики "Shadow & Fill" для органов/клавиш.
+ * @fileOverview Blues Brain V79.1 — "Narrative Stretching & Golden Note".
+ * #ЗАЧЕМ: Победа над «пулеметным эффектом» и реализация эффекта Элвина Ли.
+ * #ЧТО: ПЛАН №568 — Растяжение времени и фильтрация опорных нот.
  */
 
 import {
@@ -347,6 +347,9 @@ export class BluesBrain {
     this.state.lastTension = tension;
     const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
 
+    // #ЗАЧЕМ: ПЛАН №568. Считывание timeScale из Блюпринта.
+    this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+
     if (navInfo.isPartTransition) {
         this.soloistBusyUntilBar = epoch;
         const shifts = [0, 2, -2, 5, 7, -5];
@@ -640,21 +643,57 @@ export class BluesBrain {
       return events;
   }
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №568. Нарративное растяжение и фильтр «Золотой ноты».
+   */
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
     const totalBarsInPhrase = Math.ceil((maxTick * timeScale) / TICKS_PER_BAR);
     const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
-    const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
-    return phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale)).map((n) => {
-        const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
+    
+    // Time Scaling: Сокращаем окно чтения Аксиомы пропорционально растяжению.
+    const readingWindow = TICKS_PER_BAR / timeScale;
+    const barOffset = mosaicBar * readingWindow;
+    const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow);
+    
+    // Narrative Filter: Если нот много, выделяем опорные (Золотые).
+    const useNarrativeFilter = barNotes.length > 3;
+    const goldenTicks = [0, 3, 6, 9]; // Сильные доли 12/8
+
+    return barNotes.map((n) => {
+        const relativeTick = n.t - barOffset;
+        // Проверка: является ли нота кандидатом на «Золотую» (попадание в сильную долю)
+        const isGoldenCandidate = goldenTicks.some(gt => Math.abs(relativeTick - gt) < 0.1);
         
+        let weight = 0.75;
+        let durationScale = 1.25;
+        let tech: Technique = (n.tech as any || 'pick');
+        
+        if (useNarrativeFilter) {
+            if (isGoldenCandidate) {
+                // Золотая нота: Резонанс и пространство
+                weight = 0.95;
+                durationScale = 2.0; // Растягиваем вдвое
+                tech = 'vb';         // Всегда вибрато
+            } else {
+                // Призрачная нота: Тень пассажа
+                weight = 0.3;        // 30% громкости
+                durationScale = 0.4; // Минимальная длительность
+            }
+        } else {
+            // Стандартное поведение, если пассаж разреженный
+            if ((tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn') {
+                tech = 'vb';
+            }
+        }
+
         return {
             type: type as any,
             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
-            time: (n.t - barOffset) * TICK_TO_BEAT * timeScale,
-            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25,
-            weight: 0.75, 
-            technique: useVibrato ? 'vb' as Technique : (n.tech as any || 'pick'), 
+            time: relativeTick * TICK_TO_BEAT * timeScale,
+            duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale,
+            weight: weight,
+            technique: tech, 
             dynamics: 'p', 
             phrasing: 'legato'
         };

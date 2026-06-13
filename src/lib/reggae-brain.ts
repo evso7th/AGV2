@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V4.5 — "Strict Heritage Filtering".
- * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
- * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
+ * @fileOverview Reggae Brain V4.6 — "Narrative Stretching & Golden Note".
+ * #ЗАЧЕМ: Победа над «пулеметным эффектом» и реализация эффекта Элвина Ли.
+ * #ЧТО: ПЛАН №568 — Растяжение времени и фильтрация опорных нот.
  */
 
 import type {
@@ -55,6 +55,7 @@ export class ReggaeBrain {
     
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentThemeMaxTick: number = 0;
+    private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
     private currentDrumAxioms: { phrase: any[], role: string }[] = [];
@@ -159,7 +160,6 @@ export class ReggaeBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -239,6 +239,8 @@ export class ReggaeBrain {
     ): { events: FractalEvent[], tension: number, beautyScore: number, trackName?: string, activeAxioms?: any, narrative?: string, instrumentOverrides?: Partial<InstrumentHints>, newBpm?: number } {
         
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+        
         const events: FractalEvent[] = [];
         
         let newBpm: number | undefined;
@@ -318,7 +320,7 @@ export class ReggaeBrain {
         if (hints.melody) {
             let melEvents: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                melEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                melEvents = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
                 if (melEvents.length > 0) activeMelLick = this.currentTheme.id;
             }
             
@@ -396,20 +398,48 @@ export class ReggaeBrain {
         return events;
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    /**
+     * #ЗАЧЕМ: ПЛАН №568. Нарративное растяжение и фильтр «Золотой ноты».
+     */
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number = 1): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil((this.currentThemeMaxTick * timeScale) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
-            const useVibrato = (tension > 0.4 && n.d >= 3) || n.tech === 'vb';
+        const readingWindow = TICKS_PER_BAR / timeScale;
+        const barOffset = mosaicBar * readingWindow;
+        const barNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow);
+        
+        const useNarrativeFilter = barNotes.length > 3;
+        const goldenTicks = [0, 3, 6, 9];
+
+        return barNotes.map(n => {
+            const relativeTick = n.t - barOffset;
+            const isGoldenCandidate = goldenTicks.some(gt => Math.abs(relativeTick - gt) < 0.1);
+            
+            let weight = 0.85;
+            let durationScale = 1.25;
+            let tech: Technique = n.tech === 'vb' ? 'vb' : 'pick';
+
+            if (useNarrativeFilter) {
+                if (isGoldenCandidate) {
+                    weight = 0.95;
+                    durationScale = 2.0;
+                    tech = 'vb';
+                } else {
+                    weight = 0.3;
+                    durationScale = 0.4;
+                }
+            } else {
+                if ((tension > 0.4 && n.d >= 3) || n.tech === 'vb') tech = 'vb';
+            }
+
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-                time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: (n.d * TICK_TO_BEAT) * 1.25, 
-                weight: 0.85 + (tension * 0.1),
-                technique: useVibrato ? 'vb' as Technique : 'pick', 
+                time: relativeTick * TICK_TO_BEAT * timeScale, 
+                duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale, 
+                weight: weight + (tension * 0.1),
+                technique: tech, 
                 dynamics: 'mf', phrasing: 'legato'
             };
         });
