@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V17.0 — "Engine-UI Synchronization Fix".
- * #ЗАЧЕМ: Гарантия того, что звук соответствует положению слайдеров при старте.
- * #ЧТО: ПЛАН №503 — Принудительное применение микса после инициализации AudioContext.
+ * @fileOverview Music Control Hook V18.0 — "Media Session Standard".
+ * #ЗАЧЕМ: Профессиональное отображение метаданных в ОС.
+ * #ЧТО: ПЛАН №202 — Обновление Title, Artist, Album и Artwork.
  */
 'use client';
 
@@ -200,10 +200,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setEQGain(idx, val);
   }, [eqSettings, setEQGain]);
 
-  /**
-   * #ЗАЧЕМ: Принудительная синхронизация движка с текущим состоянием слайдеров.
-   * #ЧТО: ПЛАН №503. Вызывается после инициализации.
-   */
   const applyCurrentMixToEngine = useCallback(() => {
       setVolume('bass', instrumentSettings.bass.volume);
       setVolume('melody', instrumentSettings.melody.volume);
@@ -430,24 +426,45 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №202 — Реализация Media Session API.
+   * #ЧТО: Динамическое обновление метаданных "The Infinite Take Band".
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    
     const updateMetadata = () => {
-        const fullArtworkUrl = `${window.location.origin}/assets/cover.jpg?v=${currentSeed}`;
+        const origin = window.location.origin;
+        // #ЗАЧЕМ: Установка метаданных согласно запросу пользователя.
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: 'AuraGroove',
-            artist: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
-            album: currentTrackName || 'Generative Suite',
-            artwork: [{ src: fullArtworkUrl, sizes: '512x512', type: 'image/jpeg' }]
+            title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+            artist: 'AuraGroove',
+            album: 'The Infinite Take Band',
+            artwork: [
+                { src: `${origin}/assets/cover/cover-96.jpg`, sizes: '96x96', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-128.jpg`, sizes: '128x128', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-192.jpg`, sizes: '192x192', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-256.jpg`, sizes: '256x256', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-384.jpg`, sizes: '384x384', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover-512.jpg`, sizes: '512x512', type: 'image/jpeg' },
+            ]
         });
+        
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     };
+
     updateMetadata();
+    
+    // #ЗАЧЕМ: "Сердцебиение" для защиты сессии от перехвата другими элементами (Media Session Handbook).
     const heartbeat = setInterval(updateMetadata, 2000);
+
+    // #ЗАЧЕМ: Обработчики системных кнопок.
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler('stop', () => setIsPlaying(false));
+
     return () => clearInterval(heartbeat);
-  }, [isPlaying, currentTrackName, genre, mood, currentSeed, setIsPlaying]);
+  }, [isPlaying, genre, mood, setIsPlaying]);
 
   useEffect(() => {
     if (activeRouteItemId) {
@@ -475,11 +492,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
-            // #ЗАЧЕМ: ПЛАН №503. Немедленное применение громкостей после создания узлов.
             applyCurrentMixToEngine();
-            // Также применяем EQ из стейта
             eqSettings.forEach((v, i) => setEQGain(i, v));
-            
             if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
             setIsPlaying(true);
         }
