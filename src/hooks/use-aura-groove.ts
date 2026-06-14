@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V25.0 — "Voice Persistence Integration".
- * #ЗАЧЕМ: Устранение дублирующего состояния voiceLimit для корректной работы сохранения.
- * #ЧТО: ПЛАН №1149 — Удаление локального voiceLimit, использование контекстного.
+ * @fileOverview Music Control Hook V26.0 — "Chrono-Stabilization Protocol".
+ * #ЗАЧЕМ: Устранение бага перепрыгивания маршрута при старте.
+ * #ЧТО: ПЛАН №1164 — Сброс prevBarRef при любых действиях по инициализации или рефрешу.
  */
 'use client';
 
@@ -517,9 +517,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
             applyCurrentMixToEngine();
             eqSettings.forEach((v, i) => setEQGain(i, v));
             if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
+            // #ЗАЧЕМ: ПЛАН №1164. Сброс истории тактов при старте.
+            prevBarRef.current = 0; 
             setIsPlaying(true);
         }
-    } else { setIsPlaying(!isPlaying); }
+    } else { 
+        // #ЗАЧЕМ: Сброс при возобновлении из паузы.
+        if (!isPlaying) prevBarRef.current = 0;
+        setIsPlaying(!isPlaying); 
+    }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain]);
 
   const loadRoute = useCallback((saved: SavedRoute) => {
@@ -542,7 +548,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
     clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
     handlePlayPause: handlePlayPauseCallback,
-    handleRegenerate: useCallback(() => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); }, []),
+    handleRegenerate: useCallback(() => { 
+        // #ЗАЧЕМ: ПЛАН №1164.
+        prevBarRef.current = 0;
+        setCurrentSeed(Date.now()); 
+        setIsRegenerating(true); 
+        setTimeout(() => setIsRegenerating(false), 1000); 
+    }, []),
     handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
     handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
     handleSaveMasterpiece: useCallback(() => {
@@ -584,6 +596,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
             toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" });
             return;
         }
+        // #ЗАЧЕМ: ПЛАН №1164. Сброс истории перед перезапуском.
+        prevBarRef.current = 0;
         refreshCloudAxioms();
         resetWorker();
         if (route.length > 0) {

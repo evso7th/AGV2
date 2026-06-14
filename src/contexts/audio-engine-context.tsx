@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V50.0 — "Voice Persistence Protocol".
- * #ЗАЧЕМ: Реализация сохранения пользовательских настроек полифонии.
- * #ЧТО: ПЛАН №1149 — Загрузка voiceLimit из localStorage при старте.
+ * @fileOverview Audio Engine Context V51.0 — "Chrono-Stabilization Fix".
+ * #ЗАЧЕМ: Исправление бага перепрыгивания маршрута при старте.
+ * #ЧТО: ПЛАН №1164 — Сброс currentBar при ресете воркера.
  */
 'use client';
 
@@ -119,7 +119,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   
-  // #ЗАЧЕМ: ПЛАН №1149. Загрузка лимита голосов из localStorage.
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
@@ -336,7 +335,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current; if (context.state === 'suspended') await context.resume();
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
         
-        // #ЗАЧЕМ: ПЛАН №1149. Применение сохраненного лимита полифонии.
         setGlobalVoiceLimit(voiceLimit);
 
         if (!transitionBufferRef.current) {
@@ -467,7 +465,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
       setIsPlaying: handleTogglePlay,
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
-      refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => workerRef.current?.postMessage({ command: 'reset' }), 
+      refreshCloudAxioms, getWorker: () => workerRef.current, 
+      resetWorker: () => {
+          setCurrentBar(0); 
+          workerRef.current?.postMessage({ command: 'reset' });
+      }, 
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
