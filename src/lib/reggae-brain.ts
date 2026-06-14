@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V13.0 — "Transition Fill Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1157. Добавление выразительных сбивок.
- * #ЧТО: Автоматическая генерация филлов на границах частей и стилей.
+ * @fileOverview Reggae Brain V14.0 — "Symbiotic Riddim & Cymbals".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1158. Внедрение специфических тарелок и привязка к басу.
+ * #ЧТО: 1. Использование drum_ride_wetter и drum_cymbal_bell1.
+ *       2. Ударник теперь "подсматривает" в басовую аксиому для акцентов.
  */
 
 import type {
@@ -159,7 +160,7 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Evolutionary Riddim)
+        // 1. DRUMS (Evolutionary Riddim + Bass Symbiosis)
         if (hints.drums) {
             const currentStyle = this.getStyleName(epoch, tension);
             const prevStyle = epoch > 0 ? this.getStyleName(epoch - 1, dna.tensionMap?.[epoch - 1] ?? 0.5) : currentStyle;
@@ -167,9 +168,7 @@ export class ReggaeBrain {
             const isTransition = navInfo.isPartTransition || isStyleChange || (epoch > 0 && epoch % 8 === 7);
 
             if (isTransition) {
-                // Исполняем филл
                 events.push(...this.renderReggaeFills(epoch, tension));
-                // Основной грув только в первой половине такта, чтобы не мешать филлу
                 events.push(...this.renderReggaeGroove(epoch, tension, kit).filter(e => e.time < 6 * TICK_TO_BEAT));
             } else {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit));
@@ -243,6 +242,17 @@ export class ReggaeBrain {
         else if (tension > 0.8 || epoch > 80) style = 'steppers';
         else style = 'rockers';
 
+        // Барабанщик "слушает" бас из Наследия
+        const bassTicks = new Set<number>();
+        if (this.currentBassTheme) {
+            const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+            const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
+            const barOffset = mosaicBar * TICKS_PER_BAR;
+            this.currentBassTheme.phrase.forEach(n => {
+                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) bassTicks.add(n.t - barOffset);
+            });
+        }
+
         if (style === 'one-drop') {
             events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
@@ -260,12 +270,22 @@ export class ReggaeBrain {
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         }
 
+        // Синкопированные акценты тарелки Bell, если бас играет
+        bassTicks.forEach(t => {
+            if (this.random.next() < 0.6) {
+                events.push({ 
+                    type: 'drum_cymbal_bell1', note: 53, time: t * TICK_TO_BEAT, 
+                    duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                });
+            }
+        });
+
+        // Классический оффбит хэта
         [1.5, 4.5, 7.5, 10.5].forEach(tick => {
             events.push({ 
                 type: kit.hihat[0] as any, note: 42, 
                 time: tick * TICK_TO_BEAT, duration: 0.1, 
-                weight: 0.55, 
-                technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
         });
 
@@ -280,28 +300,26 @@ export class ReggaeBrain {
         const isIntense = tension > 0.75 || epoch > 64;
 
         if (!isIntense) {
-            // Мягкий спуск по томам (Simple Fill)
             [9, 10, 11].forEach((t, i) => {
                 events.push({
                     type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2,
-                    weight: 0.85 + (i * 0.05), technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
+                    weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
                     pan: -0.6 + (i * 0.6)
                 });
             });
+            // Мягкий райд в конце спокойного филла
+            events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 3.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         } else {
-            // Энергичный ролл (Snare to Toms)
             [6, 7.5, 9, 10, 10.5, 11, 11.5].forEach((t, i) => {
                 const isSnareNode = t < 9;
                 const type = isSnareNode ? snare : toms[Math.floor((i % 3))];
                 events.push({
-                    type: type as any, 
-                    note: isSnareNode ? 38 : 48, 
+                    type: type as any, note: isSnareNode ? 38 : 48, 
                     time: t * TICK_TO_BEAT, duration: 0.1,
-                    weight: 0.75 + (i * 0.08), technique: 'hit', dynamics: 'f', phrasing: 'staccato',
-                    pan: isSnareNode ? 0 : -0.8 + ((t-9)*0.8)
+                    weight: 0.7 + (i * 0.08), technique: 'hit', dynamics: 'f', phrasing: 'staccato'
                 });
             });
-            // Финальный удар крэша в начале следующего такта (симулируем через длинный хвост здесь)
+            // Финальный Crash акцент
             events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         }
         return events;
@@ -381,7 +399,7 @@ export class ReggaeBrain {
         return {
             style: 'Dub Echoes',
             events: [{
-                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
+                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? '3' : '4' as any)),
                 time: 10.5 * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.5,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             }]
