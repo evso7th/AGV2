@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V80.0 — "Melodic Motion & Purity".
- * #ЗАЧЕМ: Устранение монотонного гудения в мелодии и очистка интро от шумов.
- * #ЧТО: ПЛАН №1166 — Интеллектуальное дробление длинных нот соло и снижение частоты текстур.
+ * @fileOverview Ambient Brain V81.0 — "Pure Landscape Protocol".
+ * #ЗАЧЕМ: Устранение "фантомных" ударных (фр-фр-фр) через отсечение Наследия.
+ * #ЧТО: ПЛАН №1167 — Ударные в Амбиенте теперь на 100% генеративные.
  */
 
 import type {
@@ -234,10 +234,6 @@ export class AmbientBrain {
         return undefined;
     }
 
-    /**
-     * #ЗАЧЕМ: Устранение монотонного гудения (ПЛАН №1166).
-     * #ЧТО: Для мелодии добавляется движение по тонике и квинте.
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 2.5) return [e]; 
 
@@ -245,8 +241,6 @@ export class AmbientBrain {
         const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
         const isMinor = chord.chordType === 'minor';
         
-        // Пул для мелодического движения (ПЛАН №1166)
-        // Тоника, Квинта, Девятая (2)
         const melodyRipplePool = isMinor ? [0, 7, 2, 3] : [0, 7, 2, 4];
         const textureRipplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
         
@@ -454,7 +448,6 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        // #ЗАЧЕМ: Разрежение текстур (ПЛАН №1166).
         if (hints.sparkles && this.random.nextInt(100) < 10) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
         if (hints.sfx && this.random.nextInt(100) < 8) events.push(...this.renderSfx(localTension));
 
@@ -560,13 +553,8 @@ export class AmbientBrain {
             });
         }
 
-        if (this.currentDrumAxioms.length > 0) {
-            const hDrums = this.renderHeritageDrums(epoch, tension);
-            hDrums.forEach(e => {
-                e.weight *= 0.35; 
-                events.push(e);
-            });
-        }
+        // #ЗАЧЕМ: ПЛАН №1167. Ударные в Амбиенте теперь только генеративные.
+        // Блок Heritage Drums удален для устранения рассинхронов.
 
         return events;
     }
