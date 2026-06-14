@@ -28,6 +28,7 @@ export async function readProjectRootManifests() {
     'docs/GENETIC_SYSTEM.md',
     'docs/SOR_SPECIFICATION.md',
     'docs/TECHNIQUE_GUIDE.md',
+    'docs/AMBIENT_DRUM_ARSENAL.md',
     'src/lib/project_history.md'
   ];
 
