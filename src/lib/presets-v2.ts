@@ -91,7 +91,8 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.25,
+    // #ЗАЧЕМ: ПЛАН №1163. Потише по просьбе пользователя.
+    volume: 0.12, 
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 }, 
     post: { lpf: 2400 }, 
