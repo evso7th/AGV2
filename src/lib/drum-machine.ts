@@ -72,7 +72,7 @@ const DRUM_SAMPLES: Record<string, string> = {
     'cajon_kick': '/assets/drums/cajon_kick.ogg',
     'closed_hi_hat_ghost': '/assets/drums/closed_hi_hat_ghost.ogg',
     'cowbell': '/assets/drums/cowbell.ogg',
-    'crash2': '/assets/drums/crash2.ogg',
+    'crash2': '/assets/drums/a-ride2.ogg',
     'cymbal1': '/assets/drums/cymbal1.ogg',
     'cymbal2': '/assets/drums/cymbal2.ogg',
     'cymbal3': '/assets/drums/cymbal3.ogg',
