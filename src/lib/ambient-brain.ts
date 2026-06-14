@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V78.6 — "Universal Transition Ride".
- * #ЗАЧЕМ: Унификация переходных филлов.
- * #ЧТО: ПЛАН №104.2 — Внедрение ультра-мягкого ride_wetter в Liquid Bridge.
+ * @fileOverview Ambient Brain V79.0 — "Ambient Swell Reform".
+ * #ЗАЧЕМ: Устранение резких "ударных" атак (hit/pick) в Амбиенте.
+ * #ЧТО: ПЛАН №1165 — Все тональные инструменты переведены на 'swell', кроме пианиста.
  */
 
 import type {
@@ -521,7 +521,7 @@ export class AmbientBrain {
             events.push({
                 type: 'drum_ride_wetter', note: 51,
                 time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT,
-                duration: 2.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                duration: 2.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato',
                 pan: (this.random.next() * 1.6) - 0.8
             });
         }
@@ -621,10 +621,11 @@ export class AmbientBrain {
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
                 duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
                 weight: 0.7,
-                technique: useVibrato ? ('vb' as Technique) : ('pick' as Technique), 
+                /** #ЗАЧЕМ: ПЛАН №1165. Перевод мелодии на swell. */
+                technique: useVibrato ? ('vb' as Technique) : ('swell' as Technique), 
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
-                params: { attack: 0.3, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
+                params: { attack: 0.8, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
             };
         });
     }
@@ -651,8 +652,9 @@ export class AmbientBrain {
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            technique: tension > 0.7 ? ('hit' as Technique) : ('swell' as Technique), dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
-            params: { mood: this.mood }
+            /** #ЗАЧЕМ: ПЛАН №1165. Принудительный swell для наследия. */
+            technique: 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
+            params: { mood: this.mood, attack: 1.2 }
         }));
     }
 
@@ -681,6 +683,7 @@ export class AmbientBrain {
                     time: 1.5 * TICK_TO_BEAT,
                     duration: 2.0,
                     weight: 0.58, 
+                    /** #ЗАЧЕМ: ПЛАН №1165. Пианисту можно hit. */
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                     params: { attack: 0.01, release: 3.0 }
                 });
@@ -714,9 +717,10 @@ export class AmbientBrain {
         const colorDegree = epoch % 8 < 4 ? (resChord.chordType === 'minor' ? 3 : 4) : 7;
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         
+        /** #ЗАЧЕМ: ПЛАН №1165. Даже гитарные аккорды в амбиенте должны входить мягко. */
         return (timbre === 'guitarChords') 
-            ? [{ type: 'harmony', note: note, time: 0, duration: 3.5, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood } }]
-            : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.5, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood } }];
+            ? [{ type: 'harmony', note: note, time: 0, duration: 3.5, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood, attack: 0.8 } }]
+            : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.5, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood, attack: 1.5 } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
@@ -792,7 +796,6 @@ export class AmbientBrain {
             events.push(melE); 
         }
 
-        // --- TRANSITION DRUM FILL (ПЛАН №104.2) ---
         [0, 3, 6, 9].forEach(t => {
             events.push({ 
                 type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
