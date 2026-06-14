@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.2).
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в мелодии.
+ * #ЗАЧЕМ: Блюпринт "The Atlas Voyage" (Dreamy Ambient v15.3).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const DreamyAmbientBlueprint: MusicBlueprint = {
   id: 'dreamy_ambient',
@@ -28,7 +29,7 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
     parts: [
       {
         id: 'INTRO', name: 'LotteryEntrance', duration: { percent: 15 },
-        layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+        layers: { accompaniment: true, sparkles: false, sfx: false, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
         stagedInstrumentation: [
             {
                 duration: { percent: 25 },
@@ -48,14 +49,14 @@ export const DreamyAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                     pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                    sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                    sfx: { activationChance: 0.0, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                 }
             },
             {
                 duration: { percent: 25 },
                 instrumentation: {
                     harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
-                    sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
+                    sparkles: { activationChance: 0.0, instrumentOptions: [ { name: 'light', weight: 1.0 } ] }
                 }
             }
         ],

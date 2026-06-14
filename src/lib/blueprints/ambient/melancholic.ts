@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v44.1).
- * #ЧТО: ПЛАН №1024 — Добавлена пустая секция soundMix для подготовки к иерархическому сведению.
+ * #ЗАЧЕМ: Флагманский блюпринт "Nostalgic Morning" (v44.2).
+ * #ЧТО: ПЛАН №1166 — SFX и Sparkles отключены в INTRO для чистой атмосферы.
  */
 export const MelancholicAmbientBlueprint: MusicBlueprint = {
   id: 'melancholic_ambient',
@@ -31,7 +31,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
     parts: [
       {
         id: 'INTRO', name: 'The Awakening', duration: { percent: 15 }, 
-        layers: { accompaniment: true, sfx: true, pianoAccompaniment: true, bass: true, drums: true, sparkles: true, harmony: true, melody: true },
+        // #ЗАЧЕМ: ПЛАН №1166. Отключение текстур в интро.
+        layers: { accompaniment: true, sfx: false, pianoAccompaniment: true, bass: true, drums: true, sparkles: false, harmony: true, melody: true },
         stagedInstrumentation: [
           {
             duration: { percent: 25 },
@@ -57,8 +58,8 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
           {
             duration: { percent: 25 },
             instrumentation: {
-              sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true },
-              sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+              sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true },
+              sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
             }
           }
         ],
@@ -126,6 +127,5 @@ export const MelancholicAmbientBlueprint: MusicBlueprint = {
       sfx: { level: -26, pan: 0.0 }
     }
   },
-  /** #ЗАЧЕМ: Секция soundMix пуста — используются глобальные настройки жанра 'ambient'. */
   soundMix: {}
 };

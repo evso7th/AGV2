@@ -1,10 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Stable Geography" (Calm Ambient v12.0).
- * #ЧТО: 1. Внедрена лотерея интро.
- *       2. Реализована поддержка маршрута (3 локации).
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в мелодии.
+ * #ЗАЧЕМ: Блюпринт "Stable Geography" (Calm Ambient v13.1).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const CalmAmbientBlueprint: MusicBlueprint = {
   id: 'calm_ambient',
@@ -27,7 +26,7 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
     parts: [
       {
         id: 'INTRO', name: 'CalmLottery', duration: { percent: 15 },
-        layers: { sparkles: true, accompaniment: true, sfx: true, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true },
+        layers: { sparkles: false, accompaniment: true, sfx: false, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true },
         stagedInstrumentation: [
             {
                 duration: { percent: 25 },
@@ -47,14 +46,14 @@ export const CalmAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                     pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                    sfx: { activationChance: 0.6, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                    sfx: { activationChance: 0.0, instrumentOptions: [ { name: 'common', weight: 1.0 } ], transient: true }
                 }
             },
             {
                 duration: { percent: 25 },
                 instrumentation: {
                     harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
-                    sparkles: { activationChance: 0.5, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+                    sparkles: { activationChance: 0.0, instrumentOptions: [ { name: 'ambient_common', weight: 1.0 } ] }
                 }
             }
         ],

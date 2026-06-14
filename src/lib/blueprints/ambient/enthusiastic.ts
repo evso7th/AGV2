@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Ступень Йоги 2 — ENTHUSIASTIC: «Восхождение».
- * #ЧТО: Парящий Lydian амбиент. Модель Jean-Michel Jarre.
- * #ОБНОВЛЕНО (ПЛАН №435): Мелодия теперь гарантирована (activationChance 1.0).
+ * #ЗАЧЕМ: Ступень Йоги 2 — ENTHUSIASTIC (v1.3).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
     id: 'enthusiastic_ambient',
@@ -22,7 +22,7 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'IgnitionLottery', duration: { percent: 12 },
-                layers: { accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true, bass: true, pianoAccompaniment: true },
+                layers: { accompaniment: true, melody: true, drums: true, sparkles: false, sfx: false, harmony: true, bass: true, pianoAccompaniment: true },
                 stagedInstrumentation: [
                     {
                         duration: { percent: 25 },
@@ -35,7 +35,6 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'intro', weight: 1.0 }] },
-                            // #ЗАЧЕМ: Мелодия гарантирована.
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'theremin', weight: 1.0 }] }
                         }
                     },
@@ -43,14 +42,14 @@ export const EnthusiasticAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            sfx: { activationChance: 0.7, instrumentOptions: [{ name: 'laser', weight: 1.0 }], transient: true }
+                            sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'laser', weight: 1.0 }], transient: true }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
                             harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
-                            sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
+                            sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
                         }
                     }
                 ],

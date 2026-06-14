@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V79.0 — "Ambient Swell Reform".
- * #ЗАЧЕМ: Устранение резких "ударных" атак (hit/pick) в Амбиенте.
- * #ЧТО: ПЛАН №1165 — Все тональные инструменты переведены на 'swell', кроме пианиста.
+ * @fileOverview Ambient Brain V80.0 — "Melodic Motion & Purity".
+ * #ЗАЧЕМ: Устранение монотонного гудения в мелодии и очистка интро от шумов.
+ * #ЧТО: ПЛАН №1166 — Интеллектуальное дробление длинных нот соло и снижение частоты текстур.
  */
 
 import type {
@@ -234,14 +234,25 @@ export class AmbientBrain {
         return undefined;
     }
 
+    /**
+     * #ЗАЧЕМ: Устранение монотонного гудения (ПЛАН №1166).
+     * #ЧТО: Для мелодии добавляется движение по тонике и квинте.
+     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-        if (e.duration < 3.5) return [e]; 
+        if (e.duration < 2.5) return [e]; 
 
         const rippled: FractalEvent[] = [];
+        const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
         const isMinor = chord.chordType === 'minor';
-        const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
         
-        const numChunks = Math.ceil(e.duration / 1.5); 
+        // Пул для мелодического движения (ПЛАН №1166)
+        // Тоника, Квинта, Девятая (2)
+        const melodyRipplePool = isMinor ? [0, 7, 2, 3] : [0, 7, 2, 4];
+        const textureRipplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
+        
+        const ripplePool = rawType === 'melody' ? melodyRipplePool : textureRipplePool;
+        
+        const numChunks = Math.ceil(e.duration / 1.6); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
@@ -255,7 +266,6 @@ export class AmbientBrain {
                 note = baseOctaveMidi + ripplePool[idx];
             }
 
-            const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             let finalNote = note;
             
             if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
@@ -444,8 +454,9 @@ export class AmbientBrain {
             events.push(...landscapeDrums);
         }
 
-        if (hints.sparkles && this.random.nextInt(100) < 25) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
-        if (hints.sfx && this.random.nextInt(100) < 15) events.push(...this.renderSfx(localTension));
+        // #ЗАЧЕМ: Разрежение текстур (ПЛАН №1166).
+        if (hints.sparkles && this.random.nextInt(100) < 10) events.push(this.renderSparkle(resChord, MOOD_TO_COMMON[this.mood] === 'light'));
+        if (hints.sfx && this.random.nextInt(100) < 8) events.push(...this.renderSfx(localTension));
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 
@@ -621,7 +632,6 @@ export class AmbientBrain {
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
                 duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
                 weight: 0.7,
-                /** #ЗАЧЕМ: ПЛАН №1165. Перевод мелодии на swell. */
                 technique: useVibrato ? ('vb' as Technique) : ('swell' as Technique), 
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
@@ -651,8 +661,7 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35,
-            /** #ЗАЧЕМ: ПЛАН №1165. Принудительный swell для наследия. */
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { mood: this.mood, attack: 1.2 }
         }));
@@ -683,7 +692,6 @@ export class AmbientBrain {
                     time: 1.5 * TICK_TO_BEAT,
                     duration: 2.0,
                     weight: 0.58, 
-                    /** #ЗАЧЕМ: ПЛАН №1165. Пианисту можно hit. */
                     technique: 'hit', dynamics: 'p', phrasing: 'staccato',
                     params: { attack: 0.01, release: 3.0 }
                 });
@@ -717,7 +725,6 @@ export class AmbientBrain {
         const colorDegree = epoch % 8 < 4 ? (resChord.chordType === 'minor' ? 3 : 4) : 7;
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         
-        /** #ЗАЧЕМ: ПЛАН №1165. Даже гитарные аккорды в амбиенте должны входить мягко. */
         return (timbre === 'guitarChords') 
             ? [{ type: 'harmony', note: note, time: 0, duration: 3.5, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood, attack: 0.8 } }]
             : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.5, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood, attack: 1.5 } }];

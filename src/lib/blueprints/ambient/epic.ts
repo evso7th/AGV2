@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Ступень Йоги 1 — EPIC: «Зов и Подготовка».
- * #ЧТО: Величественный Mixolydian амбиент. Модель Vangelis.
- * #ОБНОВЛЕНО (ПЛАН №435): Усилена роль Мелодии. activationChance поднят до 1.0.
+ * #ЗАЧЕМ: Ступень Йоги 1 — EPIC (v1.4).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const EpicAmbientBlueprint: MusicBlueprint = {
     id: 'epic_ambient',
@@ -26,7 +26,7 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'PreparationLottery', duration: { percent: 15 },
-                layers: { accompaniment: true, sfx: true, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true, sparkles: true },
+                layers: { accompaniment: true, sfx: false, bass: true, drums: true, harmony: true, pianoAccompaniment: true, melody: true, sparkles: false },
                 stagedInstrumentation: [
                     {
                         duration: { percent: 25 },
@@ -46,15 +46,14 @@ export const EpicAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            sfx: { activationChance: 0.6, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                            sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            // #ЗАЧЕМ: Мелодия гарантирована.
                             melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ', weight: 1.0 }] },
-                            sparkles: { activationChance: 0.3, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
+                            sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'light', weight: 1.0 }] }
                         }
                     }
                 ],

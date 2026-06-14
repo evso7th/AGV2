@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Contemplative Atlas" (Neutral Ambient v13.0).
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Emerald Pad в мелодии.
+ * #ЗАЧЕМ: Блюпринт "Contemplative Atlas" (Neutral Ambient v13.1).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const NeutralAmbientBlueprint: MusicBlueprint = {
     id: 'neutral_ambient',
@@ -21,7 +22,7 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'AtlasLottery', duration: { percent: 15 },
-                layers: { accompaniment: true, sfx: true, sparkles: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+                layers: { accompaniment: true, sfx: false, sparkles: false, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
                 stagedInstrumentation: [
                     {
                         duration: { percent: 25 },
@@ -41,14 +42,14 @@ export const NeutralAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            sfx: { activationChance: 0.7, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                            sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
                             harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
-                            sparkles: { activationChance: 0.6, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
+                            sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'ambient_common', weight: 1.0 }] }
                         }
                     }
                 ],

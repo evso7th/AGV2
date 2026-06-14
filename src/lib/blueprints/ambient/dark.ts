@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.4).
- * #ОБНОВЛЕНО (ПЛАН №426): Замена гудящего баса на техничный bass_house.
+ * #ЗАЧЕМ: Блюпринт "Abyssal Ritual" (Dark Ambient v4.5).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const DarkAmbientBlueprint: MusicBlueprint = {
     id: 'dark_ambient',
@@ -25,12 +26,11 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
         parts: [
           {
             id: 'INTRO', name: 'AwakeningLottery', duration: { percent: 10 },
-            layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: true, sparkles: true, harmony: true, pianoAccompaniment: true },
+            layers: { bass: true, drums: true, melody: true, accompaniment: true, sfx: false, sparkles: false, harmony: true, pianoAccompaniment: true },
             stagedInstrumentation: [
               {
                 duration: { percent: 25 },
                 instrumentation: {
-                  // #ЗАЧЕМ: Использование четкого баса без гула.
                   bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_house', weight: 1.0 }] },
                   accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                 }
@@ -46,14 +46,14 @@ export const DarkAmbientBlueprint: MusicBlueprint = {
                 duration: { percent: 25 },
                 instrumentation: {
                   melody: { activationChance: 1.0, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'theremin', weight: 0.3 }] },
-                  sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }], transient: true }
+                  sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
                 }
               },
               {
                 duration: { percent: 25 },
                 instrumentation: {
                   harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 }] },
-                  sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
+                  sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                 }
               }
             ],

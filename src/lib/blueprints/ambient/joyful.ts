@@ -1,9 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Ступень Йоги 3 — JOYFUL: «Чистое Присутствие».
- * #ЧТО: Кристально чистый Ionian амбиент. Модель Harold Budd.
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Emerald Pad в мелодии.
+ * #ЗАЧЕМ: Ступень Йоги 3 — JOYFUL (v1.1).
+ * #ЧТО: ПЛАН №1166 — Отключение текстур в INTRO.
  */
 export const JoyfulAmbientBlueprint: MusicBlueprint = {
     id: 'joyful_ambient',
@@ -22,7 +22,7 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'PresenceLottery', duration: { percent: 13 },
-                layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
+                layers: { accompaniment: true, sparkles: false, sfx: false, harmony: true, bass: true, drums: true, pianoAccompaniment: true, melody: true },
                 stagedInstrumentation: [
                     {
                         duration: { percent: 25 },
@@ -42,13 +42,13 @@ export const JoyfulAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             harmony: { activationChance: 0.4, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
-                            sfx: { activationChance: 0.5, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
+                            sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'common', weight: 1.0 }], transient: true }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            sparkles: { activationChance: 0.4, instrumentOptions: [{ name: 'light', weight: 1.0 }] },
+                            sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'light', weight: 1.0 }] },
                             drums: { activationChance: 0.3, instrumentOptions: [{ name: 'calm', weight: 1.0 }] }
                         }
                     }

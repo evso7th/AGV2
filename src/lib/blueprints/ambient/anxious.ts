@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Очистка Anxious Ambient и внедрение Medieval Shadow (ПЛАН №424).
- * #ОБНОВЛЕНО (ПЛАН №426): Замена гудящего баса на чистый bass_808.
+ * #ЗАЧЕМ: Очистка Anxious Ambient и внедрение Medieval Shadow (ПЛАН №1166).
+ * #ЧТО: Отключение текстур в INTRO.
  */
 export const AnxiousAmbientBlueprint: MusicBlueprint = {
     id: 'anxious_ambient',
@@ -25,12 +26,11 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'ShadowsLottery', duration: { percent: 15 },
-                layers: { sfx: true, accompaniment: true, pianoAccompaniment: true, bass: true, drums: true, melody: true, harmony: true, sparkles: true },
+                layers: { sfx: false, accompaniment: true, pianoAccompaniment: true, bass: true, drums: true, melody: true, harmony: true, sparkles: false },
                 stagedInstrumentation: [
                     {
                         duration: { percent: 25 },
                         instrumentation: {
-                            // #ЗАЧЕМ: Чистый, артикулированный бас вместо гула.
                             bass: { activationChance: 1.0, instrumentOptions: [{ name: 'bass_808', weight: 1.0 }] },
                             accompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'synth_cave_pad', weight: 1.0 }] }
                         }
@@ -46,14 +46,14 @@ export const AnxiousAmbientBlueprint: MusicBlueprint = {
                         duration: { percent: 25 },
                         instrumentation: {
                             pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [{ name: 'piano', weight: 1.0 }] },
-                            sfx: { activationChance: 0.8, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
+                            sfx: { activationChance: 0.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }], transient: true }
                         }
                     },
                     {
                         duration: { percent: 25 },
                         instrumentation: {
                             harmony: { activationChance: 1.0, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
-                            sparkles: { activationChance: 0.7, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
+                            sparkles: { activationChance: 0.0, instrumentOptions: [{ name: 'dark', weight: 1.0 }] }
                         }
                     }
                 ],
