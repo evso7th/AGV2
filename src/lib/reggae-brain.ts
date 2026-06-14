@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V11.0 — "Surgical Ensemble Riddim".
- * #ЗАЧЕМ: Реализация ПЛАНА №1152 с сохранением полной работоспособности аксиом.
- * #ЧТО: Внедрение фазовой эволюции ударных: One Drop -> Rockers -> Steppers.
+ * @fileOverview Reggae Brain V12.0 — "Percussive Texture Shift".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1156. Регулировка плотности ритм-секции.
+ * #ЧТО: Разряжение хэта и учащение перкуссии.
  */
 
 import type {
@@ -227,39 +227,33 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         let style: 'one-drop' | 'rockers' | 'steppers' = 'one-drop';
         
-        // #ЗАЧЕМ: ПЛАН №1152. Фазовая эволюция ритма.
         if (epoch < 32 || tension < 0.4) style = 'one-drop';
         else if (tension > 0.8 || epoch > 80) style = 'steppers';
         else style = 'rockers';
 
         if (style === 'one-drop') {
-            // Только на 3-ю долю (6-й тик)
             events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         } else if (style === 'rockers') {
-            // Бочка на каждую четверть
             [0, 3, 6, 9].forEach(t => {
                 events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
             });
-            // Снейр на 2 и 4
             [3, 9].forEach(t => {
                 events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
             });
         } else {
-            // Steppers: Плотный пульс 4/4
             [0, 3, 6, 9].forEach(t => {
                 events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
             });
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         }
 
-        // Хай-хэт с акцентом на слабые доли ("и")
-        [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(tick => {
-            const isOffbeat = tick % 3 !== 0;
+        // #ЗАЧЕМ: ПЛАН №1156. Разрежение хэта. Только оффбиты ("и").
+        [1.5, 4.5, 7.5, 10.5].forEach(tick => {
             events.push({ 
                 type: kit.hihat[0] as any, note: 42, 
                 time: tick * TICK_TO_BEAT, duration: 0.1, 
-                weight: isOffbeat ? 0.65 : 0.2, 
+                weight: 0.55, 
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
         });
@@ -292,11 +286,12 @@ export class ReggaeBrain {
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const pool = kit.perc || [];
-        for (let t = 0; t < TICKS_PER_BAR; t += 3) {
-            if (this.random.next() < (0.15 + tension * 0.1)) {
+        // #ЗАЧЕМ: ПЛАН №1156. Учащение перкуссии. Шаг 1.5 вместо 3.0.
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
+            if (this.random.next() < (0.35 + tension * 0.15)) {
                 events.push({
                     type: pool[this.random.nextInt(pool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
-                    weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
+                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
                 });
             }
         }
