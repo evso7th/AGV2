@@ -1,9 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V14.0 — "Symbiotic Riddim & Cymbals".
- * #ЗАЧЕМ: Реализация ПЛАНА №1158. Внедрение специфических тарелок и привязка к басу.
- * #ЧТО: 1. Использование drum_ride_wetter и drum_cymbal_bell1.
- *       2. Ударник теперь "подсматривает" в басовую аксиому для акцентов.
+ * @fileOverview Reggae Brain V15.0 — "The Breathing Riddim".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1160. Внедрение пауз (вздохов) и фильтрация басовой дроби.
+ * #ЧТО: 1. Ударник теперь делает паузы раз в 16 тактов.
+ *       2. Игнорирование быстрой пульсации баса (только якорные ноты).
  */
 
 import type {
@@ -62,6 +62,7 @@ export class ReggaeBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
+    private drumRestUntilBar: number = -1; // Переменная для "вздоха"
     private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -155,25 +156,41 @@ export class ReggaeBrain {
         
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
+        // --- DRUM BREATH LOGIC (ПЛАН №1160) ---
+        // Ударник делает паузу на 1 такт каждые 16-24 такта или при резком падении напряжения
+        if (this.drumRestUntilBar <= epoch) {
+            const restRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
+            if (restRoll < 0.05 || (epoch > 0 && epoch % 16 === 15)) {
+                this.drumRestUntilBar = epoch + 1; // 1 бар отдыха
+            }
+        }
+
+        const isDrumResting = epoch < this.drumRestUntilBar;
+
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // 1. DRUMS (Evolutionary Riddim + Bass Symbiosis)
+        // 1. DRUMS (Evolutionary Riddim + Selective Bass Symbiosis)
         if (hints.drums) {
-            const currentStyle = this.getStyleName(epoch, tension);
-            const prevStyle = epoch > 0 ? this.getStyleName(epoch - 1, dna.tensionMap?.[epoch - 1] ?? 0.5) : currentStyle;
-            const isStyleChange = currentStyle !== prevStyle;
-            const isTransition = navInfo.isPartTransition || isStyleChange || (epoch > 0 && epoch % 8 === 7);
-
-            if (isTransition) {
-                events.push(...this.renderReggaeFills(epoch, tension));
-                events.push(...this.renderReggaeGroove(epoch, tension, kit).filter(e => e.time < 6 * TICK_TO_BEAT));
+            if (isDrumResting) {
+                // Во время "вздоха" играем только тихую перкуссию или вообще молчим
+                if (this.random.next() < 0.5) events.push(...this.renderPsybientKitchen(epoch, tension * 0.5, kit));
             } else {
-                events.push(...this.renderReggaeGroove(epoch, tension, kit));
+                const currentStyle = this.getStyleName(epoch, tension);
+                const prevStyle = epoch > 0 ? this.getStyleName(epoch - 1, dna.tensionMap?.[epoch - 1] ?? 0.5) : currentStyle;
+                const isStyleChange = currentStyle !== prevStyle;
+                const isTransition = navInfo.isPartTransition || isStyleChange || (epoch > 0 && epoch % 8 === 7);
+
+                if (isTransition) {
+                    events.push(...this.renderReggaeFills(epoch, tension));
+                    events.push(...this.renderReggaeGroove(epoch, tension, kit).filter(e => e.time < 6 * TICK_TO_BEAT));
+                } else {
+                    events.push(...this.renderReggaeGroove(epoch, tension, kit));
+                }
+                events.push(...this.renderPsybientKitchen(epoch, tension, kit));
             }
-            events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
 
         // 2. BASS
@@ -221,10 +238,10 @@ export class ReggaeBrain {
             instrumentOverrides,
             activeAxioms: { 
                 melody: this.currentTheme?.id || 'Gap-Filler', 
-                drums: `Riddim [${this.getStyleName(epoch, tension)}]`,
+                drums: isDrumResting ? 'BREATH' : `Riddim [${this.getStyleName(epoch, tension)}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Algorithmic Dub'
             },
-            narrative: `Pure Riddim Evolution: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
+            narrative: isDrumResting ? `Drums are taking a breath.` : `Pure Riddim Evolution: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
         };
     }
 
@@ -242,14 +259,25 @@ export class ReggaeBrain {
         else if (tension > 0.8 || epoch > 80) style = 'steppers';
         else style = 'rockers';
 
-        // Барабанщик "слушает" бас из Наследия
+        // --- INTELLIGENT BASS SCANNING (ПЛАН №1160) ---
+        // Ударник фильтрует бас, реагируя только на стабильную сетку
         const bassTicks = new Set<number>();
         if (this.currentBassTheme) {
             const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
             const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
             const barOffset = mosaicBar * TICKS_PER_BAR;
+            
             this.currentBassTheme.phrase.forEach(n => {
-                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) bassTicks.add(n.t - barOffset);
+                const absoluteTick = n.t - barOffset;
+                // Игнорируем ноты вне "якорных" позиций (четверти и триоли)
+                // Игнорируем слишком частые ноты (минимум 1.5 тика между ударами барабана)
+                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) {
+                    const isAnchorPos = absoluteTick % 1.5 === 0;
+                    const isHeavyNote = n.d >= 3;
+                    if (isAnchorPos && isHeavyNote) {
+                        bassTicks.add(absoluteTick);
+                    }
+                }
             });
         }
 
@@ -270,12 +298,12 @@ export class ReggaeBrain {
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         }
 
-        // Синкопированные акценты тарелки Bell, если бас играет
+        // Синкопированные акценты тарелки Bell только на отфильтрованные "якорные" ноты баса
         bassTicks.forEach(t => {
-            if (this.random.next() < 0.6) {
+            if (this.random.next() < 0.65) {
                 events.push({ 
                     type: 'drum_cymbal_bell1', note: 53, time: t * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                    duration: 0.1, weight: 0.42, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
                 });
             }
         });
@@ -307,7 +335,6 @@ export class ReggaeBrain {
                     pan: -0.6 + (i * 0.6)
                 });
             });
-            // Мягкий райд в конце спокойного филла
             events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 3.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
         } else {
             [6, 7.5, 9, 10, 10.5, 11, 11.5].forEach((t, i) => {
@@ -319,7 +346,6 @@ export class ReggaeBrain {
                     weight: 0.7 + (i * 0.08), technique: 'hit', dynamics: 'f', phrasing: 'staccato'
                 });
             });
-            // Финальный Crash акцент
             events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         }
         return events;
