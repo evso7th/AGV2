@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V12.0 — "Percussive Texture Shift".
- * #ЗАЧЕМ: Реализация ПЛАНА №1156. Регулировка плотности ритм-секции.
- * #ЧТО: Разряжение хэта и учащение перкуссии.
+ * @fileOverview Reggae Brain V13.0 — "Transition Fill Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1157. Добавление выразительных сбивок.
+ * #ЧТО: Автоматическая генерация филлов на границах частей и стилей.
  */
 
 import type {
@@ -161,7 +161,19 @@ export class ReggaeBrain {
 
         // 1. DRUMS (Evolutionary Riddim)
         if (hints.drums) {
-            events.push(...this.renderReggaeGroove(epoch, tension, kit));
+            const currentStyle = this.getStyleName(epoch, tension);
+            const prevStyle = epoch > 0 ? this.getStyleName(epoch - 1, dna.tensionMap?.[epoch - 1] ?? 0.5) : currentStyle;
+            const isStyleChange = currentStyle !== prevStyle;
+            const isTransition = navInfo.isPartTransition || isStyleChange || (epoch > 0 && epoch % 8 === 7);
+
+            if (isTransition) {
+                // Исполняем филл
+                events.push(...this.renderReggaeFills(epoch, tension));
+                // Основной грув только в первой половине такта, чтобы не мешать филлу
+                events.push(...this.renderReggaeGroove(epoch, tension, kit).filter(e => e.time < 6 * TICK_TO_BEAT));
+            } else {
+                events.push(...this.renderReggaeGroove(epoch, tension, kit));
+            }
             events.push(...this.renderPsybientKitchen(epoch, tension, kit));
         }
 
@@ -210,7 +222,7 @@ export class ReggaeBrain {
             instrumentOverrides,
             activeAxioms: { 
                 melody: this.currentTheme?.id || 'Gap-Filler', 
-                drums: 'Evolutionary Riddim',
+                drums: `Riddim [${this.getStyleName(epoch, tension)}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Algorithmic Dub'
             },
             narrative: `Pure Riddim Evolution: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
@@ -248,7 +260,6 @@ export class ReggaeBrain {
             events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         }
 
-        // #ЗАЧЕМ: ПЛАН №1156. Разрежение хэта. Только оффбиты ("и").
         [1.5, 4.5, 7.5, 10.5].forEach(tick => {
             events.push({ 
                 type: kit.hihat[0] as any, note: 42, 
@@ -258,6 +269,41 @@ export class ReggaeBrain {
             });
         });
 
+        return events;
+    }
+
+    private renderReggaeFills(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+        const snare = 'drum_snarepress';
+        
+        const isIntense = tension > 0.75 || epoch > 64;
+
+        if (!isIntense) {
+            // Мягкий спуск по томам (Simple Fill)
+            [9, 10, 11].forEach((t, i) => {
+                events.push({
+                    type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2,
+                    weight: 0.85 + (i * 0.05), technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
+                    pan: -0.6 + (i * 0.6)
+                });
+            });
+        } else {
+            // Энергичный ролл (Snare to Toms)
+            [6, 7.5, 9, 10, 10.5, 11, 11.5].forEach((t, i) => {
+                const isSnareNode = t < 9;
+                const type = isSnareNode ? snare : toms[Math.floor((i % 3))];
+                events.push({
+                    type: type as any, 
+                    note: isSnareNode ? 38 : 48, 
+                    time: t * TICK_TO_BEAT, duration: 0.1,
+                    weight: 0.75 + (i * 0.08), technique: 'hit', dynamics: 'f', phrasing: 'staccato',
+                    pan: isSnareNode ? 0 : -0.8 + ((t-9)*0.8)
+                });
+            });
+            // Финальный удар крэша в начале следующего такта (симулируем через длинный хвост здесь)
+            events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
+        }
         return events;
     }
 
@@ -286,7 +332,6 @@ export class ReggaeBrain {
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const pool = kit.perc || [];
-        // #ЗАЧЕМ: ПЛАН №1156. Учащение перкуссии. Шаг 1.5 вместо 3.0.
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             if (this.random.next() < (0.35 + tension * 0.15)) {
                 events.push({
