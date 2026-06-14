@@ -1,0 +1,76 @@
+
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user profile within AuraGroove.",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "username": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "createdAt"]
+    },
+    "HeritageAxiom": {
+      "title": "HeritageAxiom",
+      "description": "A musical fragment (lick) from the digitized human heritage.",
+      "type": "object",
+      "properties": {
+        "phrase": { "type": "array", "items": { "type": "number" } },
+        "role": { "type": "string" },
+        "compositionId": { "type": "string" },
+        "vector": {
+          "type": "object",
+          "properties": {
+            "t": { "type": "number" },
+            "b": { "type": "number" },
+            "e": { "type": "number" },
+            "h": { "type": "number" }
+          }
+        },
+        "userId": { "type": "string" }
+      },
+      "required": ["phrase", "role", "compositionId", "vector"]
+    },
+    "SavedRoute": {
+      "title": "SavedRoute",
+      "description": "A named sequence of musical scenes.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "genre": { "type": "string" },
+              "mood": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "items"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous"]
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/User" },
+      "description": "User profiles."
+    },
+    "/heritage_axioms/{axiomId}": {
+      "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
+      "description": "Shared musical fragments."
+    },
+    "/routes/{routeId}": {
+      "schema": { "$ref": "#/backend/entities/SavedRoute" },
+      "description": "User created routes."
+    }
+  }
+}

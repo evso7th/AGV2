@@ -1,0 +1,606 @@
+
+/**
+ * @fileOverview Music Control Hook V25.0 — "Voice Persistence Integration".
+ * #ЗАЧЕМ: Устранение дублирующего состояния voiceLimit для корректной работы сохранения.
+ * #ЧТО: ПЛАН №1149 — Удаление локального voiceLimit, использование контекстного.
+ */
+'use client';
+
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import type { 
+    DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
+    InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
+    Mood, Genre, SoundMix, RouteItem, SavedRoute
+} from '@/types/music';
+import { useAudioEngine } from "@/contexts/audio-engine-context";
+import { GENRE_MASTER_MIX } from "@/lib/master-mix";
+import { useToast } from "./use-toast";
+import { arrayMove } from "@dnd-kit/sortable";
+import { useFirestore } from "@/firebase/provider";
+import { saveMasterpiece } from "@/lib/firebase-service";
+
+const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
+const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
+const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
+const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
+const ACTIVE_EQ_ID_KEY = 'AuraGroove_ActiveEqPresetId';
+const ACTIVE_MIXER_ID_KEY = 'AuraGroove_ActiveMixerPresetId';
+
+export type PresetItem = { id: string; name: string; values: any };
+
+export interface AuraGrooveProps {
+  isPlaying: boolean;
+  isInitializing: boolean;
+  isRegenerating: boolean;
+  isRecording: boolean;
+  isBroadcastActive: boolean;
+  isWarmingUp: boolean;
+  warmUpTimeLeft: number;
+  loadingText: string;
+  availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
+  selectedCompositionIds: string[];
+  toggleCompositionFilter: (id: string) => void;
+  clearCompositionFilters: () => void;
+  refreshCloudAxioms: () => Promise<void>;
+  handlePlayPause: () => void;
+  handleRegenerate: () => void;
+  handleToggleRecording: () => void;
+  handleToggleBroadcast: () => void;
+  handleSaveMasterpiece: () => void;
+  drumSettings: DrumSettings;
+  setDrumSettings: React.Dispatch<React.SetStateAction<DrumSettings>>;
+  instrumentSettings: InstrumentSettings;
+  setInstrumentSettings: (part: keyof InstrumentSettings, name: any) => void;
+  handleBassTechniqueChange: (technique: BassTechnique) => void;
+  handleVolumeChange: (part: InstrumentPart | 'sparkles' | 'sfx' | 'drums', value: number) => void;
+  textureSettings: TextureSettings;
+  handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
+  bpm: number;
+  handleBpmChange: (value: number) => void;
+  score: ScoreName;
+  handleScoreChange: (value: ScoreName) => void;
+  density: number;
+  setDensity: (value: number) => void;
+  composerControlsInstruments: boolean;
+  setComposerControlsInstruments: (value: boolean) => void;
+  useHeritage: boolean;
+  setUseHeritage: (value: boolean) => void;
+  setIsPlaying: (playing: boolean) => void;
+  stopAllSounds: () => void;
+  handleGoHome: () => void;
+  isEqModalOpen: boolean;
+  setIsEqModalOpen: (isOpen: boolean) => void;
+  eqSettings: number[];
+  handleEqChange: (idx: number, val: number) => void;
+  isCalibrationModalOpen: boolean;
+  setIsCalibrationModalOpen: (isOpen: boolean) => void;
+  calibrationGains: Record<string, number>;
+  handleCalibrationChange: (key: string, val: number) => void;
+  timerSettings: TimerSettings;
+  handleTimerDurationChange: (minutes: number) => void;
+  handleToggleTimer: () => void;
+  mood: Mood;
+  setMood: (mood: Mood) => void;
+  genre: Genre;
+  setGenre: (genre: Genre) => void;
+  introBars: number;
+  setIntroBars: (bars: number) => void;
+  voiceLimit: number;
+  setVoiceLimit: (limit: number) => void;
+  route: RouteItem[];
+  addToRoute: (g: Genre | 'random', m: Mood | 'random') => void;
+  removeFromRoute: (id: string) => void;
+  selectRouteItem: (id: string) => void;
+  refreshRoute: () => void;
+  moveRouteItem: (oldIdx: number, newIdx: number) => void;
+  reorderRoute: (activeId: string, overId: string) => void;
+  saveRoute: (name: string) => void;
+  loadRoute: (saved: SavedRoute) => void;
+  deleteSavedRoute: (id: string) => void;
+  savedRoutes: SavedRoute[];
+  isShuffle: boolean;
+  setShuffle: (val: boolean) => void;
+  isRepeat: boolean;
+  setRepeat: (val: boolean) => void;
+  activeRouteIndex: number;
+  showAdvancedUI: boolean;
+  setShowAdvancedUI: (val: boolean) => void;
+  currentBar: number;
+  totalBars: number;
+  currentTrackName: string;
+  eqPresets: PresetItem[];
+  activeEqPresetId: string | null;
+  saveEqPreset: (name: string) => void;
+  updateActiveEqPreset: () => void;
+  loadEqPreset: (id: string) => void;
+  deleteEqPreset: (id: string) => void;
+  mixerPresets: PresetItem[];
+  activeMixerPresetId: string | null;
+  saveMixerPreset: (name: string) => void;
+  updateActiveMixerPreset: () => void;
+  loadMixerPreset: (id: string) => void;
+  deleteMixerPreset: (id: string) => void;
+  resetMixerToSystem: () => void;
+  useMelodyV2: boolean;
+  toggleMelodyEngine: (val: boolean) => void;
+}
+
+export const useAuraGroove = (): AuraGrooveProps => {
+  const router = useRouter();
+  const { 
+    isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
+    setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
+    setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
+    setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
+    resetWorker
+  } = useAudioEngine(); 
+  
+  const { toast } = useToast();
+  const db = useFirestore();
+  
+  const [drumSettings, setDrumSettings] = useState<DrumSettings>({ pattern: 'composer', volume: 0.5, kickVolume: 1.0, enabled: true });
+  const [instrumentSettings, setInstrumentSettings] = useState<InstrumentSettings>({
+    bass: { name: "bass_jazz_warm" as any, volume: 0.5, technique: 'walking' as any },
+    melody: { name: "blackAcoustic" as any, volume: 0.5 },
+    accompaniment: { name: "organ_soft_jazz" as any, volume: 0.5 },
+    harmony: { name: "guitarChords", volume: 0.5 }, 
+    pianoAccompaniment: { name: "piano", volume: 0.5 },
+  });
+  const [textureSettings, setTextureSettings] = useState<TextureSettings>({
+      sparkles: { enabled: true, volume: 0.5 },
+      sfx: { enabled: true, volume: 0.5 },
+  });
+  
+  const [bpm, setBpm] = useState(75);
+  const [score, setScore] = useState<ScoreName>('neuro_f_matrix');
+  const [genre, setGenreState] = useState<Genre>('ambient');
+  const [density, setDensity] = useState(0.5);
+  const [composerControlsInstruments, setComposerControlsInstruments] = useState(true);
+  const [useHeritage, setUseHeritage] = useState(true); 
+  const [mood, setMoodState] = useState<Mood>('melancholic');
+  const [introBars, setIntroBars] = useState(8); 
+  const [currentSeed, setCurrentSeed] = useState<number>(0);
+  const [timerSettings, setTimerSettings] = useState<TimerSettings>({ duration: 0, timeLeft: 0, isActive: false });
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [eqSettings, setEqSettings] = useState<number[]>(new Array(7).fill(0));
+  const [selectedCompositionIds, setSelectedCompositionIds] = useState<string[]>([]);
+  const [route, setRoute] = useState<RouteItem[]>([]);
+  const [activeRouteItemId, setActiveRouteItemId] = useState<string | null>(null);
+  const [isShuffle, setShuffle] = useState(false);
+  const [isRepeat, setRepeat] = useState(true);
+  const [showAdvancedUI, setShowAdvancedUI] = useState(false);
+  const [savedRoutes, setSavedRoutes] = useState<SavedRoute[]>([]);
+  
+  const [eqPresets, setEqPresets] = useState<PresetItem[]>([]);
+  const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
+  const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
+  const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
+
+  const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
+  const prevBarRef = useRef(0);
+  const sessionStartTimeRef = useRef<number>(0);
+
+  const handleVolumeChange = useCallback((part: any, value: number) => {
+    setVolume(part, value);
+    if (part === 'bass' || part === 'melody' || part === 'accompaniment' || part === 'harmony' || part === 'pianoAccompaniment') {
+        setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    } else if (part === 'drums') {
+        setDrumSettings(prev => ({ ...prev, volume: value }));
+    } else if (part === 'sparkles' || part === 'sfx') {
+        setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
+    }
+  }, [setVolume]);
+
+  const handleEqChange = useCallback((idx: number, val: number) => {
+    const n = [...eqSettings];
+    n[idx] = val;
+    setEqSettings(n);
+    setEQGain(idx, val);
+  }, [eqSettings, setEQGain]);
+
+  const applyCurrentMixToEngine = useCallback(() => {
+      setVolume('bass', instrumentSettings.bass.volume);
+      setVolume('melody', instrumentSettings.melody.volume);
+      setVolume('accompaniment', instrumentSettings.accompaniment.volume);
+      setVolume('pianoAccompaniment', instrumentSettings.pianoAccompaniment.volume);
+      setVolume('harmony', instrumentSettings.harmony.volume);
+      setVolume('sparkles', textureSettings.sparkles.volume);
+      setVolume('sfx', textureSettings.sfx.volume);
+      setVolume('drums', drumSettings.volume);
+  }, [setVolume, instrumentSettings, textureSettings, drumSettings]);
+
+  const loadMixerPreset = useCallback((id: string) => {
+    const saved = localStorage.getItem(MIXER_PRESETS_KEY);
+    if (!saved) return;
+    try {
+        const list: PresetItem[] = JSON.parse(saved);
+        const target = list.find(p => p.id === id);
+        if (target && target.values) {
+            const v = target.values;
+            if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
+            if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
+            if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
+            if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+            if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
+            if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
+            if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
+            if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
+            setActiveMixerPresetId(id);
+            localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
+            toast({ title: "Mix Applied", description: `Loaded: ${target.name}` });
+        }
+    } catch (e) {}
+  }, [handleVolumeChange, toast]);
+
+  const saveMixerPreset = useCallback((name: string) => {
+    const values = {
+        bass: instrumentSettings.bass.volume,
+        melody: instrumentSettings.melody.volume,
+        accompaniment: instrumentSettings.accompaniment.volume,
+        pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+        harmony: instrumentSettings.harmony.volume,
+        sparkles: textureSettings.sparkles.volume,
+        sfx: textureSettings.sfx.volume,
+        drums: drumSettings.volume
+    };
+    const newPreset: PresetItem = { id: `mix-${Date.now()}`, name, values };
+    setMixerPresets(prev => {
+        const next = [newPreset, ...prev];
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    setActiveMixerPresetId(newPreset.id);
+    localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
+    toast({ title: "Mixer Preset Saved", description: name });
+  }, [instrumentSettings, textureSettings, drumSettings, toast]);
+
+  const updateActiveMixerPreset = useCallback(() => {
+    if (!activeMixerPresetId) return;
+    const values = {
+        bass: instrumentSettings.bass.volume,
+        melody: instrumentSettings.melody.volume,
+        accompaniment: instrumentSettings.accompaniment.volume,
+        pianoAccompaniment: instrumentSettings.pianoAccompaniment.volume,
+        harmony: instrumentSettings.harmony.volume,
+        sparkles: textureSettings.sparkles.volume,
+        sfx: textureSettings.sfx.volume,
+        drums: drumSettings.volume
+    };
+    setMixerPresets(prev => {
+        const next = prev.map(p => p.id === activeMixerPresetId ? { ...p, values } : p);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    toast({ title: "Mixer Preset Updated" });
+  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, toast]);
+
+  const deleteMixerPreset = useCallback((id: string) => {
+    setMixerPresets(prev => {
+        const next = prev.filter(p => p.id !== id);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    if (activeMixerPresetId === id) {
+        setActiveMixerPresetId(null);
+        localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+    }
+  }, [activeMixerPresetId]);
+
+  const resetMixerToSystem = useCallback(() => {
+    const mix = GENRE_MASTER_MIX['ambient'];
+    Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
+    setActiveMixerPresetId(null);
+    localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
+    toast({ title: "System Mix Restored" });
+  }, [handleVolumeChange, toast]);
+
+  const loadEqPreset = useCallback((id: string) => {
+    const saved = localStorage.getItem(EQ_PRESETS_KEY);
+    if (!saved) return;
+    try {
+        const list: PresetItem[] = JSON.parse(saved);
+        const target = list.find(p => p.id === id);
+        if (target && Array.isArray(target.values)) {
+            target.values.forEach((val: number, idx: number) => {
+                handleEqChange(idx, val);
+            });
+            setActiveEqPresetId(id);
+            localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
+            toast({ title: "EQ Applied", description: target.name });
+        }
+    } catch (e) {}
+  }, [handleEqChange, toast]);
+
+  const saveEqPreset = useCallback((name: string) => {
+    const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
+    setEqPresets(prev => {
+        const next = [newPreset, ...prev];
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    setActiveEqPresetId(newPreset.id);
+    localStorage.setItem(ACTIVE_EQ_ID_KEY, newPreset.id);
+    toast({ title: "EQ Preset Saved", description: name });
+  }, [eqSettings, toast]);
+
+  const updateActiveEqPreset = useCallback(() => {
+    if (!activeEqPresetId) return;
+    setEqPresets(prev => {
+        const next = prev.map(p => p.id === activeEqPresetId ? { ...p, values: [...eqSettings] } : p);
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    toast({ title: "EQ Preset Updated" });
+  }, [activeEqPresetId, eqSettings, toast]);
+
+  const deleteEqPreset = useCallback((id: string) => {
+    setEqPresets(prev => {
+        const next = prev.filter(p => p.id !== id);
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+    if (activeEqPresetId === id) {
+        setActiveEqPresetId(null);
+        localStorage.removeItem(ACTIVE_EQ_ID_KEY);
+    }
+  }, [activeEqPresetId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    setCurrentSeed(Date.now());
+    const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
+    if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
+    const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
+    if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
+
+    const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
+    if (savedMixes) {
+        try {
+            const list = JSON.parse(savedMixes);
+            setMixerPresets(list);
+            const activeId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
+            if (activeId) {
+                const target = list.find((p: any) => p.id === activeId);
+                if (target && target.values) {
+                    const v = target.values;
+                    setInstrumentSettings(prev => ({
+                        ...prev,
+                        bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
+                        melody: { ...prev.melody, volume: v.melody ?? prev.melody.volume },
+                        accompaniment: { ...prev.accompaniment, volume: v.accompaniment ?? prev.accompaniment.volume },
+                        pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment ?? prev.pianoAccompaniment.volume },
+                        harmony: { ...prev.harmony, volume: v.harmony ?? prev.harmony.volume },
+                    }));
+                    setDrumSettings(prev => ({ ...prev, volume: v.drums ?? prev.volume }));
+                    setTextureSettings(prev => ({
+                        ...prev,
+                        sparkles: { ...prev.sparkles, volume: v.sparkles ?? prev.sparkles.volume },
+                        sfx: { ...prev.sfx, volume: v.sfx ?? prev.sfx.volume },
+                    }));
+                    setActiveMixerPresetId(activeId);
+                }
+            }
+        } catch(e) {}
+    }
+
+    const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
+    if (savedEqs) {
+        try {
+            const list = JSON.parse(savedEqs);
+            setEqPresets(list);
+            const activeId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
+            if (activeId) {
+                const target = list.find((p: any) => p.id === activeId);
+                if (target && Array.isArray(target.values)) {
+                    setEqSettings(target.values);
+                    setActiveEqPresetId(activeId);
+                }
+            }
+        } catch(e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isInitialized) {
+        updateSettings({
+          bpm, score, genre, instrumentSettings,
+          drumSettings: { ...drumSettings, enabled: drumSettings.pattern !== 'none' },
+          textureSettings: {
+              sparkles: { enabled: textureSettings.sparkles.enabled, volume: textureSettings.sparkles.volume },
+              sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
+          },
+          density, composerControlsInstruments, useHeritage, mood, introBars, 
+          selectedCompositionIds, seed: currentSeed
+        });
+    }
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    
+    if (isPlaying) {
+        sessionStartTimeRef.current = Date.now();
+    } else {
+        sessionStartTimeRef.current = 0;
+    }
+
+    const updateMetadata = () => {
+        const origin = window.location.origin;
+        const version = Date.now(); 
+
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+            artist: 'AuraGroove',
+            album: 'The Infinite Take Band',
+            artwork: [
+                { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
+                { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+                { src: `assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+            ]
+        });
+        
+        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+        if ('setPositionState' in navigator.mediaSession) {
+            const position = isPlaying && sessionStartTimeRef.current > 0 
+                ? (Date.now() - sessionStartTimeRef.current) / 1000 
+                : 0;
+            
+            try {
+                navigator.mediaSession.setPositionState({
+                    duration: 7200, 
+                    playbackRate: 1.0,
+                    position: Math.min(position, 7199)
+                });
+            } catch(e) {}
+        }
+    };
+
+    updateMetadata();
+    const heartbeat = setInterval(updateMetadata, 2000);
+
+    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
+    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
+    navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
+    
+    navigator.mediaSession.setActionHandler('nexttrack', () => { 
+        toast({ title: "Next Pattern", description: "Regenerating suite..." });
+        setIsRegenerating(true);
+        setCurrentSeed(Date.now());
+        setTimeout(() => setIsRegenerating(false), 500);
+    });
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+        toast({ title: "Previous Pattern", description: "Restarting current DNA..." });
+        resetWorker();
+    });
+
+    return () => {
+        clearInterval(heartbeat);
+        const handlers: MediaSessionAction[] = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
+        handlers.forEach(action => {
+            try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {}
+        });
+    };
+  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker]);
+
+  useEffect(() => {
+    if (activeRouteItemId) {
+        const activeItem = route.find(it => it.id === activeRouteItemId);
+        if (activeItem && activeItem.genre !== 'random' && activeItem.mood !== 'random') {
+            setGenreState(activeItem.genre as Genre);
+            setMoodState(activeItem.mood as Mood);
+        }
+    }
+  }, [activeRouteItemId, route]);
+
+  useEffect(() => {
+    if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
+        const nextIndex = activeRouteIndex + 1;
+        if (nextIndex < route.length) {
+            setActiveRouteItemId(route[nextIndex].id);
+        } else if (isRepeat) {
+            setActiveRouteItemId(route[0].id);
+        }
+    }
+    prevBarRef.current = currentBar;
+  }, [currentBar, isPlaying, route, activeRouteIndex, isRepeat]);
+
+  const handlePlayPauseCallback = useCallback(async () => { 
+    if (!isInitialized) {
+        const success = await initialize();
+        if (success) {
+            applyCurrentMixToEngine();
+            eqSettings.forEach((v, i) => setEQGain(i, v));
+            if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
+            setIsPlaying(true);
+        }
+    } else { setIsPlaying(!isPlaying); }
+  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain]);
+
+  const loadRoute = useCallback((saved: SavedRoute) => {
+    const next: RouteItem[] = saved.items.map((it, idx) => ({
+      id: `route-${Date.now()}-${idx}`,
+      genre: it.genre,
+      mood: it.mood,
+      status: 'pending' as const
+    }));
+    setRoute(next);
+    localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next));
+    if (next.length > 0) setActiveRouteItemId(next[0].id);
+    toast({ title: "Journey Loaded", description: `Active: ${saved.name}` });
+  }, [toast]);
+
+  return {
+    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
+    loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
+    availableCompositions, selectedCompositionIds, 
+    toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
+    clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
+    handlePlayPause: handlePlayPauseCallback,
+    handleRegenerate: useCallback(() => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); }, []),
+    handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
+    handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
+    handleSaveMasterpiece: useCallback(() => {
+        if (isInitialized) {
+            saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
+        }
+    }, [db, currentSeed, mood, genre, density, bpm, instrumentSettings, isInitialized]),
+    drumSettings, setDrumSettings, 
+    instrumentSettings, 
+    setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
+    handleBassTechniqueChange: useCallback(() => {}, []), 
+    handleVolumeChange,
+    textureSettings, 
+    handleTextureEnabledChange: useCallback((part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})), []),
+    bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
+    composerControlsInstruments, setComposerControlsInstruments,
+    useHeritage, setUseHeritage,
+    setIsPlaying, stopAllSounds,
+    handleGoHome: useCallback(async () => { 
+        if (isPlaying) await setIsPlaying(false); 
+        stopAllSounds(); 
+        router.push('/');
+        setTimeout(() => {
+            window.location.reload();
+        }, 300);
+    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
+    isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, handleEqChange,
+    isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
+    timerSettings, handleTimerDurationChange: useCallback((m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })), []),
+    handleToggleTimer: useCallback(() => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })), []),
+    mood, setMood: setMoodState, genre, setGenre: setGenreState, introBars, setIntroBars,
+    voiceLimit, setVoiceLimit,
+    route, 
+    addToRoute: useCallback((g, m) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); }, []), 
+    removeFromRoute: useCallback((id) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
+    selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), 
+    refreshRoute: useCallback(() => {
+        if (isPlaying) {
+            toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" });
+            return;
+        }
+        refreshCloudAxioms();
+        resetWorker();
+        if (route.length > 0) {
+            setActiveRouteItemId(route[0].id);
+        }
+        toast({ title: "Route Reset", description: "DNA refreshed and journey restarted." });
+    }, [isPlaying, route, refreshCloudAxioms, resetWorker, toast]), 
+    moveRouteItem: useCallback(() => {}, []), 
+    reorderRoute: useCallback((a, o) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
+    saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]),
+    loadRoute, 
+    deleteSavedRoute: useCallback((id) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [savedRoutes]),
+    savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
+    showAdvancedUI, setShowAdvancedUI,
+    currentBar, totalBars, currentTrackName,
+    eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem,
+    useMelodyV2: true, toggleMelodyEngine: () => {}
+  };
+};

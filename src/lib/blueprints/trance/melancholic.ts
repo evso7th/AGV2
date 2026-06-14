@@ -1,0 +1,74 @@
+
+import type { MusicBlueprint } from '@/types/music';
+
+/**
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.2).
+ * #ОБНОВЛЕНО (ПЛАН №906): Сокращено INTRO до 4 тактов для мгновенного старта TranceBrain.
+ */
+export const MelancholicTranceBlueprint: MusicBlueprint = {
+    id: 'melancholic_trance',
+    name: 'Midnight Voyage',
+    description: 'Introspective and driving trance with a progressive buildup.',
+    mood: 'melancholic',
+    musical: {
+        key: { root: 'D', scale: 'dorian', octave: 3 },
+        bpm: { base: 74, range: [70, 78], modifier: 1.0 }, 
+        timeSignature: { numerator: 4, denominator: 4 },
+        harmonicJourney: [],
+        tensionProfile: { type: 'arc', peakPosition: 0.7, curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.2) : 1 - ((p - pp) / (1 - pp)) }
+    },
+    structure: {
+        totalDuration: { preferredBars: 128 },
+        parts: [
+            {
+                id: 'INTRO', name: 'Ignition', duration: { percent: 3 }, // ~4 bars
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
+                    },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: { min: 0.1, max: 0.3 } },
+                },
+                bundles: [{ id: 'TR_INTRO_B1', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'BUILD', name: 'Journey', duration: { percent: 32 },
+                layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true },
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 },
+                },
+                bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'roll', duration: 2, parameters: {} },
+            },
+            {
+                id: 'PEAK', name: 'Reflection', duration: { percent: 50 },
+                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true },
+                instrumentation: {
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 },
+                },
+                bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            },
+            {
+                id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 15 },
+                layers: { accompaniment: true, sfx: true },
+                bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            }
+        ]
+    },
+    mutations: {}, ambientEvents: [], continuity: {}, rendering: {}
+};

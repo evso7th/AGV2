@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * AuraGroove V2 Security Rules
+     * Pure V2 Domain Standard
+     */
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // --- Heritage Axioms (The Hypercube) ---
+    match /heritage_axioms/{axiomId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // --- System Knowledge Base ---
+    match /project_documents/{docId} {
+      allow read, write: if isSignedIn();
+    }
+
+    // --- Masterpieces ---
+    match /masterpieces/{masterpieceId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if false; 
+    }
+
+    // --- User Profiles ---
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+  }
+}

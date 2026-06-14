@@ -1,0 +1,49 @@
+
+{
+  "description": "Probability distribution for sparkle sample selection based on mood, specifically for the 'ambient' genre.",
+  "neutral": {
+    "calm": {
+      "ambient_common": 0.9,
+      "light": 0.1
+    },
+    "contemplative": {
+      "ambient_common": 0.8,
+      "light": 0.2
+    },
+    "dreamy": {
+      "ambient_common": 0.7,
+      "light": 0.3
+    }
+  },
+  "positive": {
+    "joyful": {
+      "ambient_common": 0.2,
+      "light": 0.8
+    },
+    "enthusiastic": {
+      "ambient_common": 0.3,
+      "light": 0.7
+    },
+    "epic": {
+      "light": 0.4,
+      "ambient_common": 0.4,
+      "dark": 0.2
+    }
+  },
+  "negative": {
+    "melancholic": {
+      "ambient_common": 0.5,
+      "light": 0.3,
+      "dark": 0.2
+    },
+    "dark": {
+      "ambient_common": 0.3,
+      "dark": 0.7
+    },
+    "anxious": {
+      "dark": 0.7,
+      "electronic": 0.2,
+      "ambient_common": 0.1
+    }
+  }
+}

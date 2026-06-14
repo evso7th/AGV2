@@ -1,0 +1,34 @@
+
+'use client';
+
+import { useEffect } from 'react';
+import { AuraGrooveV2 } from '@/components/aura-groove-v2';
+import { useAuraGroove } from '@/hooks/use-aura-groove';
+
+/**
+ * #ЗАЧЕМ: Страница профессионального интерфейса.
+ * #ЧТО: ПЛАН №1235 — Закреплена за Expert Mode.
+ * #ОБНОВЛЕНО (ПЛАН №96): Добавлена принудительная остановка музыки при уходе.
+ */
+export default function ExpertUIPage() {
+  const auraGrooveProps = useAuraGroove();
+  const { isPlaying, setIsPlaying, stopAllSounds } = auraGrooveProps;
+
+  // #ЗАЧЕМ: Остановка музыки при уходе со страницы экспертного режима.
+  useEffect(() => {
+    return () => {
+      if (isPlaying) {
+        setIsPlaying(false);
+        stopAllSounds();
+      }
+    };
+  }, [isPlaying, setIsPlaying, stopAllSounds]);
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-0 sm:p-6 bg-background">
+       <div className="w-full sm:w-[360px] h-screen sm:h-[680px] border-0 sm:border rounded-none sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl bg-card text-card-foreground">
+            <AuraGrooveV2 {...auraGrooveProps} />
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,106 @@
+Отличная идея. Ниже — три красивых пресета «электропиано» в духе Rhodes под твой синт (type:'synth'), плюс расширенные поля (опционально), если ты готов чуть докрутить движок (стерео‑тремоло/автопан и мягкий «фейзер»). Все пресеты совместимы с тем, что ты уже используешь (osc/noise/adsr/lpf/lfo/chorus/delay/reverbMix). К ним добавил комментарии, что крутить «на слух».
+
+Быстрый портрет звука Rhodes
+- Тело: синус/треугольник (фундамент) + слабая «колокольная» октава (+1200 центов), которая быстро «сдувается».
+- Артикуляция: быстрая атака, умеренный decay, sustain ~0.6–0.7, release ~0.8–1.2.
+- Тембр: мягкий LPF 3–5.5 кГц; при сильной «динамике» — чуть ярче.
+- Эффекты: стерео‑тремоло/автопан 5–6 Гц (если есть), лёгкий хорус/фейзер 70‑х, короткая лента/plate.
+
+1) Тёплый Rhodes (мягкий, бархатный)
+type: 'synth' (минимальные требования)
+
+```js
+ep_rhodes_warm: {
+  type: 'synth',
+  osc: [
+    { type: 'sine',     detune: 0,     gain: 0.58 },  // фундамент
+    { type: 'triangle', detune: +1200, gain: 0.14 },  // колокольная октава (тихо)
+    { type: 'sine',     detune: +1200, gain: 0.08 }   // добавка «блеска»
+  ],
+  noise: { on: false },
+  adsr:  { a: 0.008, d: 0.28, s: 0.68, r: 0.90 },
+  lpf:   { cutoff: 3500, q: 0.9, mode: '24dB' },
+  lfo:   { rate: 0, amount: 0, target: 'filter' },    // без дыхания фильтра, Rhodes не «дышит»
+  chorus:{ on: true, rate: 0.25, depth: 0.006, mix: 0.22 },
+  delay: { on: true, time: 0.26, fb: 0.12, hc: 4500, mix: 0.10 }, // лёгкая «комната»
+  reverbMix: 0.18
+}
+```
+
+Крутилки на слух:
+- Ярче — lpf.cutoff 3800–4200; темнее — 3000–3300.
+- Менее «стеклянно» — triangle.gain 0.14→0.10; sine(+1200) 0.08→0.06.
+- Более «винтажно» — chorus.mix 0.22→0.18; delay.mix 0.08.
+
+2) Bell / Suitcase Rhodes (ярче, «колокольный», с лёгким «bark»)
+Чуть агрессивнее атака, открытее фильтр и крохотный драйв (если доступен).
+
+```js
+ep_rhodes_bell: {
+  type: 'synth',
+  osc: [
+    { type: 'sine',     detune: 0,     gain: 0.50 },
+    { type: 'triangle', detune: +1200, gain: 0.18 },  // сильнее «колокол»
+    { type: 'square',   detune: 0,     gain: 0.06 }   // чуть «грубинки» в атаке
+  ],
+  noise: { on: false },
+  adsr:  { a: 0.006, d: 0.35, s: 0.60, r: 1.00 },
+  lpf:   { cutoff: 5200, q: 0.8, mode: '24dB' },
+  lfo:   { rate: 0, amount: 0, target: 'filter' },
+  // если движок поддерживает «distortion» в synth:
+  distortion: 0.10, // легчайшая сатурация — добавит «bark» на атаках
+  chorus:{ on: true, rate: 0.30, depth: 0.006, mix: 0.20 },
+  delay: { on: true, time: 0.30, fb: 0.14, hc: 4200, mix: 0.12 },
+  reverbMix: 0.20
+}
+```
+
+Крутилки:
+- Если мылит — square.gain 0.06→0.04, chorus.mix 0.20→0.16.
+- Если «колокол» слишком жесткий — triangle.gain 0.18→0.14 и lpf.cutoff 5200→4700.
+
+3) 70s Rhodes (с «вибрато»/стерео‑тремоло и фейзер‑атмосферой)
+В «чистом synth» нет pan‑LFO и фейзера; ниже — совместимый пресет + опциональные extras (если ты добавишь поддержку tremolo/phaser в синт‑ветку).
+
+Совместимый минимум:
+```js
+ep_rhodes_70s: {
+  type: 'synth',
+  osc: [
+    { type: 'sine',     detune: 0,     gain: 0.54 },
+    { type: 'triangle', detune: +1200, gain: 0.16 },
+    { type: 'sine',     detune: +1200, gain: 0.06 }
+  ],
+  noise: { on: false },
+  adsr:  { a: 0.008, d: 0.30, s: 0.66, r: 0.95 },
+  lpf:   { cutoff: 4200, q: 0.9, mode: '24dB' },
+  lfo:   { rate: 0, amount: 0, target: 'filter' },
+  chorus:{ on: true, rate: 0.20, depth: 0.006, mix: 0.24 }, // пока вместо фейзера
+  delay: { on: true, time: 0.28, fb: 0.16, hc: 4200, mix: 0.12 },
+  reverbMix: 0.22,
+  // опциональные расширения — см. ниже
+  extras: {
+    tremolo: { on: true, type:'pan', rate: 5.5, depth: 0.28 }, // стерео-автопан как «вибрато» Rhodes
+    phaser:  { on: true, rate: 0.25, depth: 0.5, feedback: 0.12, mix: 0.18 }
+  }
+}
+```
+
+Если добавишь поддержку tremolo/phaser в synth‑ветке
+- tremolo (target:'amp'|'pan'): rate 5.0–5.8 Гц, depth 0.25–0.35; pan‑вариант даёт характер «suitcase».
+- phaser: stages 4–6, rate 0.20–0.35 Гц, feedback 0.1–0.15, mix 0.15–0.22.
+
+Дополнительные «живые» штрихи (по желанию)
+- Транзиент (key hit): на noteOn добавляй короткий 2–3 мс noise‑burst BPF 2–5 кГц на −18…−12 dB (как мы делали pickClick) — очень помогает «отвязать» звук от синтезатора.
+- Velocity‑яркость (если у тебя есть маппинг велосити):
+  - при vel > 90: lpf.cutoff += 400–800 Гц, triangle(+1200).gain += 0.02…0.06,
+  - при vel < 60: lpf.cutoff −= 400–600 Гц, triangle(+1200).gain −= 0.02.
+- Лёгкая сатурация после LPF (0.08–0.12) даёт «плотную» середину, не превращая EP в кранч.
+
+Быстрый A/B чек-лист на слух
+- «Слишком синт» — снизь chorus.mix, отключи lfo→filter (и вообще 0), добавь tremolo pan 5–6 Гц.
+- «Стеклянно» — triangle(+1200) −0.02…−0.04 и lpf.cutoff −200…−500 Гц.
+- «Глухо» — lpf.cutoff +300…+600 Гц и delay.mix +0.02 (но не перебор).
+- «Слишком мокро» — delay.mix −0.04, reverbMix −0.03.
+
+Хочешь — дам микро‑патч к твоему синт‑рендереру для tremolo/autoPan (10–15 строк) и фейзера, чтобы ep_rhodes_70s раскрывался как надо. Или соберу A/B‑демо трёх пресетов (dry/chorus, tremolo pan on/off).
