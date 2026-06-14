@@ -1,6 +1,9 @@
 
 // НАЧАЛО ЖУРНАЛА ПРОЕКТА "AuraGroove"
 
+// --- ЗАЧЕМ: CRITICAL ROLLBACK: 9ed901ae ---
+// СОБЫТИЕ: Откат из-за десинхронизации Heritage DNA.
+
 // --- ЗАЧЕМ: ПЛАН №1149: VOICE PERSISTENCE ---
 // СОБЫТИЕ: Лимит голосов теперь сохраняется в localStorage.
 
