@@ -3,13 +3,14 @@
 
 ---
 
-### ЗАПИСЬ: 2024-11-02 (ПЛАН №1168: DNA AUDITOR BUGFIX)
-**СОБЫТИЕ**: Исправление TypeError в интерфейсе редактирования трека.
+### ЗАПИСЬ: 2024-11-02 (ПЛАН №1169: HORIZON CLEANUP PROTOCOL)
+**СОБЫТИЕ**: Ограничение времени звучания нот 3 секундами.
 **ИТОГ**:
-1. **Setter Fix**: В `src/app/hypercube-dashboard/page.tsx` исправлена передача аргумента `onValuesChange` для компонентов `MultiSelector` (Genre и Mood). Вместо самих значений теперь передаются функции `setEditGenreValue` и `setEditMoodValue`.
-2. **Stability**: Ошибка "onValuesChange is not a function" полностью устранена, редактирование метаданных в облаке работает корректно.
+1. **Hard Limit**: В `instrument-factory.ts` и всех сэмплерах установлено принудительное затухание через 3 секунды.
+2. **Ambient Optimization**: В `AmbientBrain` все генеративные и наследуемые длительности для M и A ограничены 3.0с.
+3. **Voice Recovery**: Ускорена работа Garbage Collector для немедленного освобождения аудио-ресурсов после затухания ноты.
 
 ---
 
-### ЗАПИСЬ: 2024-11-02 (ПЛАН №1167: PURE LANDSCAPE PROTOCOL)
+### ЗАПИСЬ: 2024-11-02 (ПЛАН №1168: DNA AUDITOR BUGFIX)
 ... (предыдущие записи)

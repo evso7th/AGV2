@@ -2,8 +2,8 @@
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.3 — "Gain Calibration".
- * #ЧТО: Громкость увеличена в 2 раза (0.1 -> 0.2).
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.4 — "Three-Second Horizon".
+ * #ЧТО: ПЛАН №1169 — Принудительное затухание через 3 секунды.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -33,7 +33,7 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.2; // Doubled for calibration
+        this.preamp.gain.value = 0.2; 
         this.preamp.connect(this.destination);
     }
 
@@ -122,7 +122,9 @@ export class CS80GuitarSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
-        gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+        
+        // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
+        gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
 
         source.start(startTime);
         this.activeSources.add(source);

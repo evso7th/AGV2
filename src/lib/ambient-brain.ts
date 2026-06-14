@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V81.0 — "Pure Landscape Protocol".
- * #ЗАЧЕМ: Устранение "фантомных" ударных (фр-фр-фр) через отсечение Наследия.
- * #ЧТО: ПЛАН №1167 — Ударные в Амбиенте теперь на 100% генеративные.
+ * @fileOverview Ambient Brain V82.0 — "Three-Second Horizon Protocol".
+ * #ЗАЧЕМ: Устранение накопленного гудения и освобождение голосов.
+ * #ЧТО: ПЛАН №1169 — Жесткий лимит на длительность нот (3.0 сек) для всех слоев.
  */
 
 import type {
@@ -204,15 +204,6 @@ export class AmbientBrain {
                         });
                     });
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    drumSiblings.forEach(ax => { 
-                        this.currentDrumAxioms.push({ 
-                            phrase: decompressCompactPhrase(ax.phrase), 
-                            role: ax.role,
-                            endBar: epoch + (selected.bars || 4)
-                        }); 
-                    });
-
                     const baseBars = selected.bars || 4;
                     this.currentThemeMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { 
@@ -235,6 +226,7 @@ export class AmbientBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+        // #ЗАЧЕМ: ПЛАН №1169. Нота не должна звучать дольше 3.0с.
         if (e.duration < 2.5) return [e]; 
 
         const rippled: FractalEvent[] = [];
@@ -246,8 +238,10 @@ export class AmbientBrain {
         
         const ripplePool = rawType === 'melody' ? melodyRipplePool : textureRipplePool;
         
-        const numChunks = Math.ceil(e.duration / 1.6); 
-        const chunkDur = e.duration / numChunks;
+        // Лимитируем общую длительность события
+        const totalDuration = Math.min(e.duration, 3.0);
+        const numChunks = Math.ceil(totalDuration / 1.5); 
+        const chunkDur = totalDuration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
         for (let i = 0; i < numChunks; i++) {
@@ -270,11 +264,11 @@ export class AmbientBrain {
                 ...e,
                 note: finalNote,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.15,
+                duration: chunkDur * 1.1,
                 params: { 
                     ...e.params, 
                     attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
-                    release: 2.5 
+                    release: 2.0 
                 }
             });
         }
@@ -485,7 +479,7 @@ export class AmbientBrain {
                     type: 'accompaniment', 
                     note: this.constrainAccompanimentOctave(root + intervals[noteIdx]),
                     time: t * TICK_TO_BEAT, 
-                    duration: 3.5, 
+                    duration: 3.0, // Capped
                     weight: 0.35 + (tension * 0.1), 
                     technique: 'swell', dynamics: 'p', phrasing: 'legato',
                     params: { attack: 1.5, release: 2.0, filterCutoff: 1000 + (tension * 600), mood: this.mood }
@@ -553,44 +547,6 @@ export class AmbientBrain {
             });
         }
 
-        // #ЗАЧЕМ: ПЛАН №1167. Ударные в Амбиенте теперь только генеративные.
-        // Блок Heritage Drums удален для устранения рассинхронов.
-
-        return events;
-    }
-
-    private renderHeritageDrums(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        if (this.currentDrumAxioms.length === 0) return [];
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
-        const startEpoch = this.soloistBusyUntilBar - totalBars;
-        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-
-        this.currentDrumAxioms.forEach(ax => {
-            const barNotes = ax.phrase.filter(n => {
-                const isCorrectBar = n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR;
-                const passesFogFilter = calculateMusiNum(n.t, 13, this.seed, 100) < 30;
-                return isCorrectBar && passesFogFilter;
-            });
-            
-            barNotes.forEach(n => {
-                let pan = (this.random.next() * 1.4) - 0.7;
-                const midiNote = 36 + (DEGREE_TO_SEMITONE[n.deg] || 0);
-
-                events.push({
-                    type: 'drums', 
-                    note: midiNote, 
-                    time: (n.t - barOffset + (this.random.next() - 0.5) * 0.8) * TICK_TO_BEAT, 
-                    duration: 0.1, 
-                    weight: 0.5, 
-                    technique: 'hit', 
-                    dynamics: 'p', 
-                    phrasing: 'staccato', 
-                    pan
-                });
-            });
-        });
         return events;
     }
 
@@ -599,7 +555,8 @@ export class AmbientBrain {
         const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
         const e: FractalEvent = {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition + this.microTransposition),
-            time: 0, duration: 4.0, weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
+            time: 0, duration: 3.0, // Capped
+            weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 1.5, release: 2.0, filterCutoff: 300 + (tension * 200) }
         };
         return this.rippleLongNote(e, chord);
@@ -613,17 +570,18 @@ export class AmbientBrain {
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         return barNotes.map(n => {
             const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
+            const rawDur = (n.d * TICK_TO_BEAT * timeScale) * 1.25;
             
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-                duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
+                duration: Math.min(rawDur, 3.0), // Capped
                 weight: 0.7,
                 technique: useVibrato ? ('vb' as Technique) : ('swell' as Technique), 
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
-                params: { attack: 0.8, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
+                params: { attack: 0.8, release: 2.0, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
             };
         });
     }
@@ -638,7 +596,9 @@ export class AmbientBrain {
         if (barNotes.length === 0) return []; 
         return barNotes.map(n => ({
             type: 'bass' as any, note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.7, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
+            time: (n.t - barOffset) * TICK_TO_BEAT, 
+            duration: Math.min(n.d * TICK_TO_BEAT, 3.0), // Capped
+            weight: 0.7, technique: 'pick' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing
         }));
     }
 
@@ -649,7 +609,9 @@ export class AmbientBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: (n.t - barOffset) * TICK_TO_BEAT, 
+            duration: Math.min(n.d * TICK_TO_BEAT, 3.0), // Capped
+            weight: 0.45,
             technique: 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { mood: this.mood, attack: 1.2 }
         }));
@@ -660,9 +622,9 @@ export class AmbientBrain {
         return [{
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, 
-            duration: 3.2, 
+            duration: 3.0, // Capped
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 2.5, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
+            params: { attack: 1.5, release: 2.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         }];
     }
 
@@ -700,7 +662,7 @@ export class AmbientBrain {
                     technique: 'hit',
                     dynamics: 'p',
                     phrasing: 'staccato',
-                    params: { ...m.params, release: 2.5 }
+                    params: { ...m.params, release: 2.0 }
                 });
             }
         });
@@ -714,16 +676,22 @@ export class AmbientBrain {
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         
         return (timbre === 'guitarChords') 
-            ? [{ type: 'harmony', note: note, time: 0, duration: 3.5, weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood, attack: 0.8 } }]
-            : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.5, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood, attack: 1.5 } }];
+            ? [{ type: 'harmony', note: note, time: 0, duration: 3.0, // Capped
+                 weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood, attack: 0.8 } }]
+            : [{ type: 'harmony', note: note + 12, time: 0, duration: 3.0, // Capped
+                 weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood, attack: 1.5 } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
-        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 6.0, weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
+        return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                 duration: 3.0, // Capped
+                 weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
     }
 
     private renderSfx(tension: number): FractalEvent[] {
-        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (Math.random() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
+        return [{ type: 'sfx', note: 60, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
+                 duration: 3.0, // Capped
+                 weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (Math.random() * 1.6) - 0.8, params: { mood: this.mood, genre: this.genre } }];
     }
 
     private constrainBassOctave(note: number): number {
@@ -755,7 +723,7 @@ export class AmbientBrain {
                 type: 'bass', 
                 note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), 
                 time: t * TICK_TO_BEAT, 
-                duration: 3.0 * TICK_TO_BEAT, 
+                duration: Math.min(3.0 * TICK_TO_BEAT, 3.0), // Capped
                 weight: 0.7, 
                 technique: 'pick', 
                 dynamics: 'p', 
@@ -767,12 +735,12 @@ export class AmbientBrain {
             type: 'accompaniment', 
             note: this.constrainAccompanimentOctave(root + 12), 
             time: 0, 
-            duration: 3.5, 
+            duration: 3.0, // Capped
             weight: 0.3, 
             technique: 'swell', 
             dynamics: 'p', 
             phrasing: 'legato', 
-            params: { attack: 1.5, release: 2.5, mood: this.mood } 
+            params: { attack: 1.5, release: 2.0, mood: this.mood } 
         };
         events.push(padE);
 
@@ -781,12 +749,12 @@ export class AmbientBrain {
                 type: 'melody', 
                 note: root + 24, 
                 time: 1.5, 
-                duration: 3.0, 
+                duration: 3.0, // Capped
                 weight: 0.5, 
                 technique: 'swell', 
                 dynamics: 'p', 
                 phrasing: 'legato', 
-                params: { attack: 2.0, release: 3.0, mood: this.mood } 
+                params: { attack: 2.0, release: 2.0, mood: this.mood } 
             };
             events.push(melE); 
         }

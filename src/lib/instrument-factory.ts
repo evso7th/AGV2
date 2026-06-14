@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.7 — "FX Consolidation Protocol".
- * #ЗАЧЕМ: ПЛАН №101 — Устранение тормозов при игре на гитарах (ShineOn/Muff).
- * #ЧТО: Вынос Delay на уровень инструмента и оптимизация Overdrive.
+ * @fileOverview Центральная фабрика инструментов V7.8 — "Horizon Cleanup Protocol".
+ * #ЗАЧЕМ: ПЛАН №1169 — Ограничение времени жизни голоса 3 секундами.
+ * #ЧТО: Снижение safeDuration до 3.0 и ускорение Garbage Collector.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -139,7 +139,8 @@ const createIndependentVoice = (
     duration: number,
     sharedDelayNode: AudioNode | null = null
 ) => {
-    const safeDuration = Math.min(duration, 6.0); 
+    // #ЗАЧЕМ: ПЛАН №1169. Любой звук не дольше 3 секунд.
+    const safeDuration = Math.min(duration, 3.0); 
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset);
     const now = Math.max(when, ctx.currentTime);
@@ -191,7 +192,7 @@ const createIndependentVoice = (
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
         shaper.curve = preset.drive.type === 'muff' ? makeMuff(preset.drive.amount) : makeSoftDrive(preset.drive.amount);
-        shaper.oversample = 'none'; // Убрано 4x для производительности
+        shaper.oversample = 'none'; 
         chainHead.connect(shaper);
         chainHead = shaper;
         nodes.push(shaper);
@@ -218,7 +219,6 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
-    // Подключение к общей линии задержки, если она есть
     if (sharedDelayNode && preset.delay?.mix > 0.01) {
         chainHead.connect(sharedDelayNode);
     }
@@ -236,7 +236,8 @@ const createIndependentVoice = (
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    const totalLife = safeDuration + adsr.r * 10;
+    // ПЛАН №1169: Ускоренное освобождение ресурсов.
+    const totalLife = safeDuration + Math.min(adsr.r, 2.0) + 0.5;
     setTimeout(() => deepCleanup(record), totalLife * 1000 + 100);
 
     nodes.forEach(n => {
@@ -278,8 +279,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     limiter.threshold.value = -12.0;
     limiter.ratio.value = 20;
 
-    // --- SHARED FX CHAIN ---
-    // Создаем общую задержку для этого инструмента
     const sharedDelayNode = ctx.createDelay(2.0);
     const feedbackGain = ctx.createGain();
     const delayMixGain = ctx.createGain();
@@ -288,13 +287,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     feedbackGain.connect(sharedDelayNode);
     sharedDelayNode.connect(delayMixGain);
     
-    // Начальные настройки задержки
     sharedDelayNode.delayTime.value = currentPreset.delay?.time || 0.4;
     feedbackGain.gain.value = currentPreset.delay?.fb || 0.3;
     delayMixGain.gain.value = currentPreset.delay?.mix || 0;
 
     instrumentGain.connect(expressionGain).connect(panner).connect(limiter).connect(output);
-    delayMixGain.connect(panner); // Подмешиваем задержку в общую панораму
+    delayMixGain.connect(panner); 
 
     return {
         connect: (dest) => limiter.connect(dest || output),
@@ -313,7 +311,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         setPreset: (p) => { 
             currentPreset = { ...p }; 
             instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05);
-            // Обновляем параметры общей задержки
             if (p.delay) {
                 sharedDelayNode.delayTime.setTargetAtTime(p.delay.time || 0.4, ctx.currentTime, 0.1);
                 feedbackGain.gain.setTargetAtTime(p.delay.fb || 0.3, ctx.currentTime, 0.1);

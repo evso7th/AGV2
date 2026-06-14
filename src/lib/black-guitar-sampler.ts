@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V4.8 — "Plan #105: Hybrid Transient Attack".
- * #ЧТО: Длительность транзиента зафиксирована на уровне 20 мсек для гибридного слоя.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V4.9 — "Three-Second Horizon".
+ * #ЧТО: ПЛАН №1169 — Принудительное затухание длинных хвостов через 3 секунды.
  */
 
 function makeAcousticWarmthCurve() {
@@ -13,7 +13,6 @@ function makeAcousticWarmthCurve() {
     const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Мягкая сатурация для нижней середины
         curve[i] = Math.tanh(x * 1.1) / Math.tanh(1.1);
     }
     return curve;
@@ -105,7 +104,6 @@ export class BlackGuitarSampler {
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.15; 
 
-        // Имитация резонанса корпуса (Body)
         this.bodyFilter = this.audioContext.createBiquadFilter();
         this.bodyFilter.type = 'peaking';
         this.bodyFilter.frequency.value = 220;
@@ -255,12 +253,12 @@ export class BlackGuitarSampler {
         gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
         
         if (isTransientMode) {
-            // #ЗАЧЕМ: ПЛАН №105. Фиксация 20мс транзиента.
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.020, 0.005);
             source.start(startTime);
-            source.stop(startTime + 0.05); // Безопасная остановка чуть позже
+            source.stop(startTime + 0.05);
         } else {
-            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+            // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
+            gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
             source.start(startTime);
         }
         this.activeSources.add(source);

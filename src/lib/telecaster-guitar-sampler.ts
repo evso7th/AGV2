@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V4.8 — "Gain Calibration".
- * #ЧТО: Громкость снижена в 2 раза (0.15 -> 0.075).
+ * #ЗАЧЕМ: Сэмплер Telecaster V4.9 — "Three-Second Horizon".
+ * #ЧТО: ПЛАН №1169 — Принудительное затухание длинных хвостов через 3 секунды.
  */
 
 function makeWarmthCurve() {
@@ -13,7 +13,6 @@ function makeWarmthCurve() {
     const curve = new Float32Array(n);
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        // Мягкое ламповое насыщение
         curve[i] = Math.tanh(x * 1.2) / Math.tanh(1.2);
     }
     return curve;
@@ -68,7 +67,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.075; // Halved for calibration
+        this.preamp.gain.value = 0.075; 
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();
@@ -76,7 +75,7 @@ export class TelecasterGuitarSampler {
 
         this.toneFilter = this.audioContext.createBiquadFilter();
         this.toneFilter.type = 'lowpass';
-        this.toneFilter.frequency.value = 3800; // Убираем песок
+        this.toneFilter.frequency.value = 3800; 
         this.toneFilter.Q.value = 0.7;
 
         this.preamp.connect(this.saturation);
@@ -181,7 +180,8 @@ export class TelecasterGuitarSampler {
             source.start(startTime);
             source.stop(startTime + 0.05);
         } else {
-            gainNode.gain.setTargetAtTime(0, startTime + 15.0, 0.8);
+            // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
+            gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
             source.start(startTime);
         }
         
