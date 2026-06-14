@@ -204,12 +204,9 @@ const DISPLAY_NAMES: Record<string, string> = {
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
     'piano': 'Rhodes EPiano',
-    'violin': 'Solo Violin',
-    'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'blackAcoustic': 'Black Acoustic',
     'psybient': 'Psy-Ambient',
-    // Dynamic Guitars
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
     'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
     'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
@@ -219,13 +216,11 @@ const DISPLAY_NAMES: Record<string, string> = {
     'dyn_black_cs80_shine': '⚡ Black → CS80 → Shine',
     'dyn_black_cs80_muff': '⚡ Black → CS80 → Muff',
     'dyn_shine_muff': '⚡ Shine ↔ Muff (Dist)',
-    // Dynamic Basses
     'dyn_bass_warm_blues': '⚡ Warm Jazz → Blues',
     'dyn_bass_warm_blues_slap': '⚡ Warm → Blues → Slap',
     'dyn_bass_fretless_jazz': '⚡ Fretless → Jazz',
     'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
     'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
-    // Dynamic Piano
     'dyn_rhodes_piano': '⚡ Rhodes → Piano',
     'dyn_piano_rhodes': '⚡ Piano → Rhodes'
 };
@@ -753,8 +748,8 @@ export default function HypercubeDashboard() {
                                             <SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
-                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={editGenreValue} placeholder="Genres" className="w-full" /></div>
-                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={editMoodValue} placeholder="Moods" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Genres" className="w-full" /></div>
+                                    <div className="space-y-1"><Label className="text-[10px] uppercase font-bold opacity-50">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Moods" className="w-full" /></div>
                                   </div>
                                   <div className="flex gap-2 pt-1">
                                     <Button size="sm" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editScaleValue, editTsValue, licks)}><Check className="h-4 w-4" /> Save</Button>
