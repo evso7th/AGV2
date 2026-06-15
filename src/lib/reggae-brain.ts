@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V15.1 — "The Breathing Riddim".
- * #ЗАЧЕМ: Реализация ПЛАНА №1161. Разрежение хай-хэта.
- * #ЧТО: 1. Хэт играет "через раз" (2 удара вместо 4).
+ * @fileOverview Reggae Brain V15.2 — "Unified Time Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1172. Временное отключение тайм-скейлинга.
+ * #ЧТО: 1. currentTimeScale принудительно установлен в 1.
  */
 
 import type {
@@ -61,7 +61,7 @@ export class ReggaeBrain {
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
-    private drumRestUntilBar: number = -1; // Переменная для "вздоха"
+    private drumRestUntilBar: number = -1; 
     private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -132,7 +132,7 @@ export class ReggaeBrain {
                     const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
 
-                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
                     const baseBars = selected.bars || 4;
@@ -150,12 +150,15 @@ export class ReggaeBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+        
+        // #ЗАЧЕМ: ПЛАН №1172. Временная блокировка тайм-скейлинга в Регги.
+        // this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+        this.currentTimeScale = 1;
+
         const events: FractalEvent[] = [];
         
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
-        // --- DRUM BREATH LOGIC (ПЛАН №1160) ---
         if (this.drumRestUntilBar <= epoch) {
             const restRoll = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
             if (restRoll < 0.05 || (epoch > 0 && epoch % 16 === 15)) {
@@ -300,7 +303,6 @@ export class ReggaeBrain {
             }
         });
 
-        // Классический оффбит хэта — #ЗАЧЕМ: ПЛАН №1161 (через раз)
         [1.5, 7.5].forEach(tick => {
             events.push({ 
                 type: kit.hihat[0] as any, note: 42, 
@@ -380,13 +382,17 @@ export class ReggaeBrain {
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil((this.currentAxiomMaxTick * timeScale) / TICKS_PER_BAR);
+        
+        // #ЗАЧЕМ: ПЛАН №1172. Использование timeScale = 1 для проверки синхронизации.
+        const effectiveScale = timeScale || 1;
+        const totalBars = Math.ceil((this.currentAxiomMaxTick * effectiveScale) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
-        const window = TICKS_PER_BAR / timeScale;
+        const window = TICKS_PER_BAR / effectiveScale;
         const offset = mosaicBar * window;
+        
         return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + window).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT * timeScale, duration: (n.d * TICK_TO_BEAT * timeScale) * 1.2,
+            time: (n.t - offset) * TICK_TO_BEAT * effectiveScale, duration: (n.d * TICK_TO_BEAT * effectiveScale) * 1.2,
             weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
         }));
     }
