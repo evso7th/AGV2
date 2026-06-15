@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V5.0 — "Extended Horizon Protocol".
- * #ЧТО: ПЛАН №1170 — Принудительное затухание расширено до 6 секунд.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V5.1 — "Zero-Choke Protocol".
+ * #ЧТО: ПЛАН №1171 — Удаление принудительного стопа для 100% плавного затухания.
  */
 
 function makeAcousticWarmthCurve() {
@@ -257,8 +257,8 @@ export class BlackGuitarSampler {
             source.start(startTime);
             source.stop(startTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1170. Горизонт расширен до 6 секунд. Плавное затухание.
-            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.6);
+            // #ЗАЧЕМ: ПЛАН №1171. Убран стоп для полной естественности хвоста.
+            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.8);
             source.start(startTime);
         }
         this.activeSources.add(source);

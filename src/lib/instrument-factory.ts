@@ -1,14 +1,14 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V7.9 — "Ensemble Layering Protocol".
- * #ЗАЧЕМ: ПЛАН №1170 — Лимит расширен до 6 секунд для глубокой многослойности.
- * #ЧТО: Гарантия плавного затухания и отсутствие резких обрывов хвостов.
+ * @fileOverview Центральная фабрика инструментов V8.0 — "Absolute Resonance Protocol".
+ * #ЗАЧЕМ: ПЛАН №1171 — Гарантия 100% мягкого затухания без "проглатывания" нот.
+ * #ЧТО: Оптимизация Garbage Collector под 5 временных констант Release.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 128; 
+let globalVoiceLimit = 512; 
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -73,18 +73,19 @@ const enforceVoiceLimit = () => {
         const voiceNode = oldest.voiceState?.node;
         if (voiceNode && !oldest.cleaned) {
             const now = voiceNode.context.currentTime;
-            const stealFadeOut = 0.15; // Медленнее для незаметности
+            // #ЗАЧЕМ: ПЛАН №1171. Более мягкое "воровство" голосов (0.5с).
+            const stealFadeOut = 0.5; 
             try {
                 voiceNode.gain.cancelScheduledValues(now);
                 voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                            try { n.stop(now + stealFadeOut + 0.05); } catch(e){}
+                            try { n.stop(now + stealFadeOut + 0.1); } catch(e){}
                         }
                     });
                 }
-                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 100);
+                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 200);
             } catch (e) { deepCleanup(oldest); }
         } else { deepCleanup(oldest); }
     });
@@ -139,8 +140,6 @@ const createIndependentVoice = (
     duration: number,
     sharedDelayNode: AudioNode | null = null
 ) => {
-    // #ЗАЧЕМ: ПЛАН №1170. Горизонт расширен до 6.0с.
-    const safeDuration = Math.min(duration, 6.0); 
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset);
     const now = Math.max(when, ctx.currentTime);
@@ -230,16 +229,17 @@ const createIndependentVoice = (
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-    // Закон Плавного Затухания: Release начинается на 6-й секунде
-    const noteOffTime = now + safeDuration;
-    voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, Math.max(adsr.r / 3, 0.05));
+    // #ЗАЧЕМ: ПЛАН №1171. Реализация закона 100% плавности.
+    const noteOffTime = now + duration;
+    const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
+    voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // ПЛАН №1170: Увеличенное время жизни для полной фазы Release.
-    const totalLife = safeDuration + Math.min(adsr.r, 4.0) + 0.8;
-    setTimeout(() => deepCleanup(record), totalLife * 1000 + 100);
+    // ПЛАН №1171: Сборщик мусора ждет ровно 5 временных констант Release.
+    const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
+    setTimeout(() => deepCleanup(record), totalLife * 1000 + 200);
 
     nodes.forEach(n => {
         if (n instanceof OscillatorNode) n.stop(now + totalLife + 0.5);
