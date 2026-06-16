@@ -81,18 +81,14 @@ export function saveProjectDocument(db: Firestore, data: {
 }
 
 /**
- * #ЗАЧЕМ: Генерирую уникальный ID для аксиомы.
+ * #ЗАЧЕМ: Генерирую уникальный UID для аксиомы (ПЛАН №1188).
+ * #ЧТО: Комбинация названия, роли и криптографически стойкого случайного суффикса.
  */
-function generateAxiomId(compositionId: string, role: string, phrase: any[], index: number = 0): string {
-    const phraseContent = typeof phrase[0] === 'object' ? JSON.stringify(phrase) : phrase.join(',');
-    const content = `${compositionId}_${role}_${phraseContent}_I${index}`;
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-        hash = ((hash << 5) - hash) + content.charCodeAt(i);
-        hash |= 0; 
-    }
-    const cleanCompId = compositionId.replace(/[^a-zA-Z0-9]/g, '_');
-    return `${cleanCompId}_${role.replace(/\s+/g, '_')}_${Math.abs(hash).toString(36)}`;
+function generateAxiomUid(compositionId: string, role: string): string {
+    const cleanCompId = compositionId.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+    const cleanRole = role.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 10);
+    const randomSuffix = Math.random().toString(36).substring(2, 12); // 10 chars
+    return `${cleanCompId}_${cleanRole}_${randomSuffix}`;
 }
 
 /**
@@ -101,13 +97,13 @@ function generateAxiomId(compositionId: string, role: string, phrase: any[], ind
 export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
     const compositionId = data.compositionId || 'Unknown_Heritage';
     const role = data.role || 'melody';
-    const phrase = data.phrase || [];
     
-    const axiomId = generateAxiomId(compositionId, role, phrase, index);
+    // #ЗАЧЕМ: ПЛАН №1188. Использование UID вместо хеша для предотвращения коллизий типа "70hori".
+    const axiomId = generateAxiomUid(compositionId, role);
     const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
     const payload = {
-        phrase: phrase,
+        phrase: data.phrase || [],
         role: role,
         genre: Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []),
         commonMood: Array.isArray(data.commonMood) ? data.commonMood : (data.commonMood ? [data.commonMood] : []),

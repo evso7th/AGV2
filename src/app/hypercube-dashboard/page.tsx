@@ -522,11 +522,14 @@ export default function HypercubeDashboard() {
             const calculatedNoteCount = Math.floor(repaired.length / 4);
             const narrative = ax.narrative || ax.instrument || "Heritage component.";
             
+            // #ЗАЧЕМ: ПЛАН №1188. Идентификатор в Staging тоже должен быть уникальным.
+            const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+            
             return {
                 ...ax, 
                 phrase: repaired, 
                 role: (ax.role || 'melody').toLowerCase(), 
-                id: `${compId}_${idx}_${Math.random()}`,
+                id: `${compId}_${idx}_${uniqueSuffix}`,
                 compositionId: compId, 
                 genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
@@ -621,6 +624,7 @@ export default function HypercubeDashboard() {
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (let i = 0; i < toInject.length; i++) {
+        // #ЗАЧЕМ: ПЛАН №1188. UID теперь генерируется внутри saveHeritageAxiom.
         await saveHeritageAxiom(db, { ...toInject[i], genre: selectedGenre }, i);
         count++;
       }
