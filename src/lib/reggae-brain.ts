@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V20.0 — "Rolling Ribbon Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
- * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
+ * @fileOverview Reggae Brain V21.0 — "L-Logic Activation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1201. Возврат мутаций (Inversion, Retrograde, Jitter).
+ * #ЧТО: 1. Мутации только после 12 такта. 2. Плотность ~2 на 12 тактов. 3. Вывод в логи.
  */
 
 import type {
@@ -28,7 +28,10 @@ import {
     keyToMidiRoot,
     normalizeStr,
     TICKS_PER_BAR,
-    TICK_TO_BEAT
+    TICK_TO_BEAT,
+    invertPhrase,
+    retrogradePhrase,
+    applyRhythmicJitter
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -62,6 +65,7 @@ export class ReggaeBrain {
 
     private soloistBusyUntilBar: number = -1;
     private drumRestUntilBar: number = -1; 
+    private currentMutationType: string = 'none';
     private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -92,14 +96,10 @@ export class ReggaeBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number = 0.5): number {
         if (totalBars <= 0) return 0;
-        
-        // #ЗАЧЕМ: ПЛАН №1187. Стартовое смещение ленты на основе Seed.
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-        
         if (this.isImprovising) {
             return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
         }
-        
         const barsElapsed = epoch - startEpoch;
         return (barsElapsed + startOffset) % totalBars;
     }
@@ -131,15 +131,10 @@ export class ReggaeBrain {
                     effectiveAnchor = this.sessionAnchorId;
                 }
 
-                // #ЗАЧЕМ: Расчет границ Rolling Ribbon для Регги.
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                
-                // #ЧТО: Фиксация пути вариаций (ПЛАН №1187).
                 const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
                 const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
@@ -192,6 +187,22 @@ export class ReggaeBrain {
         this.currentTimeScale = 1;
         const events: FractalEvent[] = [];
         
+        // #ЗАЧЕМ: ПЛАН №1201. Логика выбора мутации.
+        if (epoch < 12) {
+            this.currentMutationType = 'none';
+        } else if (epoch % 4 === 0) {
+            const roll = calculateMusiNum(epoch, 17, this.seed, 100);
+            if (roll < 40) { // 40% шанс на сохранение оригинала
+                this.currentMutationType = 'none';
+            } else if (roll < 60) {
+                this.currentMutationType = 'inversion';
+            } else if (roll < 80) {
+                this.currentMutationType = 'retrograde';
+            } else {
+                this.currentMutationType = 'jitter';
+            }
+        }
+
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
         if (this.drumRestUntilBar <= epoch) {
@@ -265,13 +276,14 @@ export class ReggaeBrain {
         return {
             events, tension, beautyScore: 0.98,
             trackName: this.currentTrackName,
+            mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: { 
                 melody: this.currentTheme?.id || 'Gap-Filler', 
                 drums: isDrumResting ? 'BREATH' : `Riddim Sync [${this.getStyleName(epoch, tension)}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub'
             },
-            narrative: isDrumResting ? `Drums are taking a breath.` : `Direct Rhythmic Sync: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
+            narrative: isDrumResting ? `Drums are taking a breath.` : `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
 
@@ -381,7 +393,15 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
+        
+        let barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        
+        // #ЗАЧЕМ: ПЛАН №1201. Применение мутаций.
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+        else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
+
+        return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
@@ -402,7 +422,14 @@ export class ReggaeBrain {
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+        let barNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        
+        // #ЗАЧЕМ: ПЛАН №1201. Применение мутаций к мелодии.
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+        else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
+
+        return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - offset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.2,
             weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
@@ -413,7 +440,14 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+        
+        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        
+        // Применяем те же мутации к слоям аккомпанемента для консистентности ансамбля
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+
+        return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'

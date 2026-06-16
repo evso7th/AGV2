@@ -1,8 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker V6.0.0 — "Absolute BPM Lock".
- * #ЗАЧЕМ: Жесткая стабилизация темпа на всю пьесу.
- * #ЧТО: ПЛАН №302 — Игнорирование любых изменений BPM от UI во время воспроизведения.
+ * @file AuraGroove Music Worker V6.1.0 — "Cognitive Log Update".
+ * #ЗАЧЕМ: ПЛАН №1201 — Отображение типа мутации в логах консоли.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -142,14 +141,13 @@ const Scheduler = {
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
-        // #ЗАЧЕМ: Установка BPM из Наследия при старте.
         const inheritedBpm = fractalMusicEngine.config.tempo;
         if (inheritedBpm && inheritedBpm !== this.settings.bpm) {
             this.settings.bpm = inheritedBpm;
             self.postMessage({ type: 'BPM_SYNC', payload: inheritedBpm });
         }
         
-        this.bpmLocked = true; // Заморозка темпа на всю пьесу
+        this.bpmLocked = true; 
     },
 
     start() {
@@ -170,7 +168,7 @@ const Scheduler = {
 
     stop() {
         this.isRunning = false;
-        this.bpmLocked = false; // Разблокировка при остановке
+        this.bpmLocked = false; 
         if (this.loopId) {
             clearTimeout(this.loopId);
             this.loopId = null;
@@ -185,7 +183,6 @@ const Scheduler = {
     },
 
     updateSettings(newSettings: Partial<WorkerSettings>) {
-       // #ЗАЧЕМ: ПЛАН №302. Игнорирование BPM, если пьеса уже идет.
        if (this.bpmLocked && newSettings.bpm !== undefined) {
            delete newSettings.bpm;
        }
@@ -198,7 +195,7 @@ const Scheduler = {
        this.settings = { ...this.settings, ...newSettings };
        
        if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
-           this.bpmLocked = false; // Снимаем замок для переинициализации
+           this.bpmLocked = false; 
            if (filterChanged || genreOrMoodChanged) {
                this.filterRotationIndex = 0;
            } else if (seedChanged) {
@@ -231,7 +228,7 @@ const Scheduler = {
         
         if (this.barCount >= totalBars) {
              self.postMessage({ type: 'SUITE_TRANSITION' });
-             this.bpmLocked = false; // Снимаем замок для следующей пьесы
+             this.bpmLocked = false; 
              this.filterRotationIndex++;
              this.sessionLickHistory = []; 
              this.settings.seed = generateTrueSeed(); 
@@ -248,18 +245,17 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
-        // В трансе/амбиенте Brain может захотеть сменить темп, но мы игнорируем это ради жесткой стабильности
-        // если пользователь этого не просил.
-
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
         const hints = payload.instrumentHints || {};
         const track = payload.trackName || 'Generative';
         const t = payload.tension.toFixed(2);
         const b = (payload.beautyScore || 0.5).toFixed(2);
+        const mut = payload.mutationType || 'none';
 
+        // #ЗАЧЕМ: ПЛАН №1201. Отображение мутации в логе.
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
             `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
             `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
             'color: #888;',
