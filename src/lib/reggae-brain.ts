@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V17.0 — "Organic Kitchen Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1179. Хэты больше не стучат метрономом.
- * #ЧТО: Внедрена адаптивная логика хэта, меняющая паттерны и акценты в зависимости от пульса баса.
+ * @fileOverview Reggae Brain V18.0 — "Transparent Kitchen Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1180. Разрежение хэтов в 2 раза.
+ * #ЧТО: Шаг сетки хэта увеличен, вероятность ударов снижена для создания большего "воздуха".
  */
 
 import type {
@@ -291,65 +291,64 @@ export class ReggaeBrain {
             }
         });
 
-        // 3. ORGANIC HI-HATS (ПЛАН №1179)
+        // 3. ORGANIC HI-HATS (ПЛАН №1180)
         events.push(...this.renderOrganicHats(epoch, tension, kit, bassTicks));
 
         return events;
     }
 
     /**
-     * #ЗАЧЕМ: Реализация живого, органического поведения хэта (ПЛАН №1179).
-     * #ЧТО: Паттерны хэта меняются каждые 4 такта, адаптируясь к энергии и басу.
+     * #ЗАЧЕМ: Реализация живого, органического поведения хэта (ПЛАН №1180).
+     * #ЧТО: Плотность хэта снижена в 2 раза. Шаг увеличен до 3.0.
      */
     private renderOrganicHats(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); // 3 стиля игры
+        const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); 
         
-        // Регги-хэт любит подчеркивать офф-биты (1.5, 4.5, 7.5, 10.5)
+        // Регги-хэт любит подчеркивать офф-биты
         const mainOffbeats = [1.5, 4.5, 7.5, 10.5];
         
-        if (patternIdx === 0) { // STYLE: LAZY_OFF (Классический ленивый офф-бит)
-            mainOffbeats.forEach(t => {
-                const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
-                events.push({
-                    type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                    duration: 0.1, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-                });
-            });
-        } 
-        else if (patternIdx === 1) { // STYLE: TRIPLET_FLOW (Триольное кружево)
-            for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
-                const isMainOff = mainOffbeats.includes(t);
-                const isSyncWithBass = bassTicks.has(t);
-                
-                // Хэт уступает место басу или акцентирует офф-бит
-                const prob = isMainOff ? 0.9 : (isSyncWithBass ? 0.2 : 0.4);
-                if (this.random.next() < prob) {
-                    const weight = isMainOff ? 0.6 : 0.35;
+        if (patternIdx === 0) { // STYLE: LAZY_OFF (Разреженный офф-бит)
+            mainOffbeats.forEach((t, i) => {
+                // ПЛАН №1180: Играем только каждый второй удар (зависит от такта)
+                if (i % 2 === (epoch % 2)) {
+                    const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
                     events.push({
                         type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                        duration: 0.05, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                        duration: 0.1, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    });
+                }
+            });
+        } 
+        else if (patternIdx === 1) { // STYLE: TRIPLET_FLOW (Разреженное триольное кружево)
+            // ПЛАН №1180: Шаг увеличен до 3.0
+            for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
+                const isSyncWithBass = bassTicks.has(t);
+                const prob = isSyncWithBass ? 0.15 : 0.45;
+                if (this.random.next() < prob) {
+                    events.push({
+                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
+                        duration: 0.05, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
                     });
                 }
             }
         }
-        else { // STYLE: GHOST_PULSE (Призрачный пульс)
-            for (let t = 0; t < TICKS_PER_BAR; t++) {
-                if (t % 1.5 === 0) {
-                    const weight = (t % 3 === 0) ? 0.25 : 0.55;
-                    events.push({
-                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                        duration: 0.05, weight, technique: 'ghost', dynamics: 'p', phrasing: 'staccato'
-                    });
-                }
+        else { // STYLE: GHOST_PULSE (Разреженный призрачный пульс)
+            // ПЛАН №1180: Шаг увеличен до 3.0
+            for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
+                const weight = (t % 6 === 0) ? 0.20 : 0.45;
+                events.push({
+                    type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
+                    duration: 0.05, weight, technique: 'ghost', dynamics: 'p', phrasing: 'staccato'
+                });
             }
         }
 
-        // Open Hat "Slurp" (Раз в 4-8 тактов на конце фразы)
-        if (epoch % 4 === 3 && this.random.next() < 0.6) {
+        // Open Hat "Slurp" (Раз в 8 тактов на конце фразы для чистоты)
+        if (epoch % 8 === 7 && this.random.next() < 0.5) {
             events.push({
                 type: 'drum_open_hh_top2', note: 46, time: 11 * TICK_TO_BEAT,
-                duration: 0.4, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato'
+                duration: 0.4, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato'
             });
         }
 
@@ -430,8 +429,8 @@ export class ReggaeBrain {
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const pool = kit.perc || [];
-        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
-            if (this.random.next() < (0.35 + tension * 0.15)) {
+        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
+            if (this.random.next() < (0.25 + tension * 0.1)) {
                 events.push({
                     type: pool[this.random.nextInt(pool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
                     weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
@@ -465,3 +464,5 @@ export class ReggaeBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return v; }
 }
+
+    
