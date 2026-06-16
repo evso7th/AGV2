@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V26.1 — "Master Channel Support".
- * #ЗАЧЕМ: Реализация ПЛАНА №1181. Добавление мастер-канала в системные пресеты.
+ * @fileOverview Music Control Hook V27.0 — "Function Stability Protocol".
+ * #ЗАЧЕМ: ПЛАН №1182. Оптимизация идентичности функций для предотвращения автопауз.
  */
 'use client';
 
@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import type { 
     DrumSettings, InstrumentSettings, ScoreName, WorkerSettings, 
     InstrumentPart, BassTechnique, TextureSettings, TimerSettings, 
-    Mood, Genre, SoundMix, RouteItem, SavedRoute
+    Mood, Genre, RouteItem, SavedRoute
 } from '@/types/music';
 import { useAudioEngine } from "@/contexts/audio-engine-context";
 import { GENRE_MASTER_MIX } from "@/lib/master-mix";
@@ -189,7 +189,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else if (part === 'sparkles' || part === 'sfx') {
         setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
     }
-    // Note: 'master' is handled inside setVolume -> setCalibrationGain in the context.
   }, [setVolume]);
 
   const handleEqChange = useCallback((idx: number, val: number) => {
@@ -353,13 +352,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    
     setCurrentSeed(Date.now());
     const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
     if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
     const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
     if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
-
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     if (savedMixes) {
         try {
@@ -370,7 +367,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && target.values) {
                     const v = target.values;
-                    if (v.master !== undefined) handleVolumeChange('master', v.master);
+                    if (v.master !== undefined) setCalibrationGain('master', v.master);
                     setInstrumentSettings(prev => ({
                         ...prev,
                         bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
@@ -390,7 +387,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             }
         } catch(e) {}
     }
-
     const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
     if (savedEqs) {
         try {
@@ -425,17 +421,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-    
-    if (isPlaying) {
-        sessionStartTimeRef.current = Date.now();
-    } else {
-        sessionStartTimeRef.current = 0;
-    }
-
+    if (isPlaying) { sessionStartTimeRef.current = Date.now(); } else { sessionStartTimeRef.current = 0; }
     const updateMetadata = () => {
         const origin = window.location.origin;
         const version = Date.now(); 
-
         navigator.mediaSession.metadata = new MediaMetadata({
             title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
             artist: 'AuraGroove',
@@ -449,48 +438,30 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 { src: `assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
             ]
         });
-        
         navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
         if ('setPositionState' in navigator.mediaSession) {
-            const position = isPlaying && sessionStartTimeRef.current > 0 
-                ? (Date.now() - sessionStartTimeRef.current) / 1000 
-                : 0;
-            
-            try {
-                navigator.mediaSession.setPositionState({
-                    duration: 7200, 
-                    playbackRate: 1.0,
-                    position: Math.min(position, 7199)
-                });
-            } catch(e) {}
+            const position = isPlaying && sessionStartTimeRef.current > 0 ? (Date.now() - sessionStartTimeRef.current) / 1000 : 0;
+            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
         }
     };
-
     updateMetadata();
     const heartbeat = setInterval(updateMetadata, 2000);
-
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
-    
     navigator.mediaSession.setActionHandler('nexttrack', () => { 
         toast({ title: "Next Pattern", description: "Regenerating suite..." });
-        setIsRegenerating(true);
-        setCurrentSeed(Date.now());
+        setIsRegenerating(true); setCurrentSeed(Date.now());
         setTimeout(() => setIsRegenerating(false), 500);
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => {
         toast({ title: "Previous Pattern", description: "Restarting current DNA..." });
         resetWorker();
     });
-
     return () => {
         clearInterval(heartbeat);
         const handlers: MediaSessionAction[] = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
-        handlers.forEach(action => {
-            try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {}
-        });
+        handlers.forEach(action => { try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {} });
     };
   }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker]);
 
@@ -507,11 +478,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
         const nextIndex = activeRouteIndex + 1;
-        if (nextIndex < route.length) {
-            setActiveRouteItemId(route[nextIndex].id);
-        } else if (isRepeat) {
-            setActiveRouteItemId(route[0].id);
-        }
+        if (nextIndex < route.length) { setActiveRouteItemId(route[nextIndex].id); } 
+        else if (isRepeat) { setActiveRouteItemId(route[0].id); }
     }
     prevBarRef.current = currentBar;
   }, [currentBar, isPlaying, route, activeRouteIndex, isRepeat]);
@@ -523,8 +491,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             applyCurrentMixToEngine();
             eqSettings.forEach((v, i) => setEQGain(i, v));
             if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
-            prevBarRef.current = 0; 
-            setIsPlaying(true);
+            prevBarRef.current = 0; setIsPlaying(true);
         }
     } else { 
         if (!isPlaying) prevBarRef.current = 0;
@@ -545,78 +512,53 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: "Journey Loaded", description: `Active: ${saved.name}` });
   }, [toast]);
 
-  return {
+  // #ЗАЧЕМ: ПЛАН №1182. Полная мемоизация объекта результата для стабильности Identity.
+  return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
-    toggleCompositionFilter: useCallback((id) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]), []),
-    clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
+    toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
+    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
     handlePlayPause: handlePlayPauseCallback,
-    handleRegenerate: useCallback(() => { 
-        prevBarRef.current = 0;
-        setCurrentSeed(Date.now()); 
-        setIsRegenerating(true); 
-        setTimeout(() => setIsRegenerating(false), 1000); 
-    }, []),
-    handleToggleRecording: useCallback(() => isRecording ? stopRecording() : startRecording(), [isRecording, stopRecording, startRecording]),
-    handleToggleBroadcast: useCallback(() => toggleBroadcast(), [toggleBroadcast]),
-    handleSaveMasterpiece: useCallback(() => {
-        if (isInitialized) {
-            saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings });
-        }
-    }, [db, currentSeed, mood, genre, density, bpm, instrumentSettings, isInitialized]),
-    drumSettings, setDrumSettings, 
-    instrumentSettings, 
-    setInstrumentSettings: useCallback((part, name) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); }, [setInstrument]),
-    handleBassTechniqueChange: useCallback(() => {}, []), 
-    handleVolumeChange,
-    textureSettings, 
-    handleTextureEnabledChange: useCallback((part, enabled) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part], enabled }})), []),
+    handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
+    handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
+    handleToggleBroadcast: () => toggleBroadcast(),
+    handleSaveMasterpiece: () => { if (isInitialized) { saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }); } },
+    drumSettings, setDrumSettings, instrumentSettings, 
+    setInstrumentSettings: (part: any, name: any) => { setInstrumentSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], name } })); setInstrument(part as any, name as any); },
+    handleBassTechniqueChange: () => {}, handleVolumeChange,
+    textureSettings, handleTextureEnabledChange: (part: any, enabled: boolean) => setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], enabled }})),
     bpm, handleBpmChange: setBpm, score, handleScoreChange: setScore, density, setDensity,
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
     setIsPlaying, stopAllSounds,
-    handleGoHome: useCallback(async () => { 
-        if (isPlaying) await setIsPlaying(false); 
-        stopAllSounds(); 
-        router.push('/');
-        setTimeout(() => {
-            window.location.reload();
-        }, 300);
-    }, [isPlaying, setIsPlaying, stopAllSounds, router]),
+    handleGoHome: async () => { if (isPlaying) await setIsPlaying(false); stopAllSounds(); router.push('/'); setTimeout(() => { window.location.reload(); }, 300); },
     isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, handleEqChange,
     isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
-    timerSettings, handleTimerDurationChange: useCallback((m) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })), []),
-    handleToggleTimer: useCallback(() => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })), []),
+    timerSettings, handleTimerDurationChange: (m: number) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
+    handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood: setMoodState, genre, setGenre: setGenreState, introBars, setIntroBars,
     voiceLimit, setVoiceLimit,
-    route, 
-    addToRoute: useCallback((g, m) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); }, []), 
-    removeFromRoute: useCallback((id) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
-    selectRouteItem: useCallback((id) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); }, [route]), 
-    refreshRoute: useCallback(() => {
-        if (isPlaying) {
-            toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" });
-            return;
-        }
-        prevBarRef.current = 0;
-        refreshCloudAxioms();
-        resetWorker();
-        if (route.length > 0) {
-            setActiveRouteItemId(route[0].id);
-        }
-        toast({ title: "Route Reset", description: "DNA refreshed and journey restarted." });
-    }, [isPlaying, route, refreshCloudAxioms, resetWorker, toast]), 
-    moveRouteItem: useCallback(() => {}, []), 
-    reorderRoute: useCallback((a, o) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }), []), 
-    saveRoute: useCallback((name) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [route, savedRoutes]),
-    loadRoute, 
-    deleteSavedRoute: useCallback((id) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); }, [savedRoutes]),
-    savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex,
-    showAdvancedUI, setShowAdvancedUI,
+    route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
+    removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
+    selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
+    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" }); return; } prevBarRef.current = 0; refreshCloudAxioms(); resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } toast({ title: "Route Reset" }); }, 
+    moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
+    saveRoute: (name: string) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
+    loadRoute, deleteSavedRoute: (id: string) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
+    savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex, showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName,
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem,
     useMelodyV2: true, toggleMelodyEngine: () => {}
-  };
+  }), [
+      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms,
+      handlePlayPauseCallback, isRecording, stopRecording, startRecording, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
+      setInstrument, handleVolumeChange, textureSettings, bpm, setBpm, score, setScore, density, setDensity, composerControlsInstruments, 
+      setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
+      calibrationGains, setCalibrationGain, timerSettings, mood, genre, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
+      savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, eqPresets, activeEqPresetId, 
+      saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset, 
+      updateActiveMixerPreset, deleteMixerPreset, resetMixerToSystem
+  ]);
 };
