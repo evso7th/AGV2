@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.8 — "Master Mixer Control".
- * #ЧТО: ПЛАН №1181 — Добавлен мастер-канал в Studio Mixer.
+ * #ЗАЧЕМ: UI AuraGroove V7.9 — "Syntax & DND Fix".
+ * #ЧТО: ПЛАН №1185 — Исправление критической ошибки Unexpected token div.
  */
 'use client';
 
@@ -173,7 +173,7 @@ function PresetManager({
                             p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
                         )}>
                             <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow" onClick={() => onLoad(p.id)}>{p.name}</span>
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                     ))}
                 </div>
@@ -319,8 +319,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 </div>
                             </div>
                         </div>
-                        <Button onClick={props.handlePlayPause} disabled={props.isInitializing} className="h-9 px-6 font-black uppercase tracking-widest shadow-lg">
-                            {props.isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}
+                        <Button 
+                            onClick={props.handlePlayPause} 
+                            disabled={props.isInitializing} 
+                            className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
+                        >
+                            {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
                             {props.isPlaying ? "Pause" : "Play"}
                         </Button>
                     </div>
@@ -337,7 +341,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like">
                                 <ThumbsUp className="h-4 w-4 text-primary" />
                             </Button>
-                            <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0"><RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} /></Button>
+                            <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0">
+                                <RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} />
+                            </Button>
                         </div>
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
@@ -522,7 +528,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     : (props.instrumentSettings?.[ch.key as keyof InstrumentSettings]?.volume ?? 0.5)));
                         
                         return (
-                            <div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group">
+                            <div key={ch.key} className="flex flex-col items-center gap-4 flex-1 h-full group">
                                 <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span>
                                 <Slider orientation="vertical" value={[vol]} max={1.0} step={0.01} onValueChange={v => props.handleVolumeChange(ch.key as any, v[0])} className="h-full" />
                                 <span className={cn("text-[8px] font-black uppercase opacity-50 group-hover:text-primary", ch.key === 'master' && "text-primary opacity-100")}>{ch.label}</span>
@@ -550,10 +556,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         title="EQ" 
                         presets={props.eqPresets} 
                         activeId={props.activeEqPresetId}
-                        onSave={props.saveEqPreset} 
+                        onSave={name => props.saveEqPreset(name)} 
                         onUpdate={props.updateActiveEqPreset}
-                        onLoad={props.loadEqPreset} 
-                        onDelete={props.deleteEqPreset} 
+                        onLoad={id => props.loadEqPreset(id)} 
+                        onDelete={id => props.deleteEqPreset(id)} 
                     />
                 </DialogContent>
             </Dialog>

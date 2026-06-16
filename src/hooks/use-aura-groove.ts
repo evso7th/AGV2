@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V27.1 — "Scope Integrity Fix".
- * #ЗАЧЕМ: ПЛАН №1183. Исправление ReferenceError: handleGoHome is not defined.
- * #ЧТО: Вынос handleGoHome в отдельный useCallback для обеспечения правильной области видимости.
+ * @fileOverview Music Control Hook V27.2 — "Unified Stability Update".
+ * #ЗАЧЕМ: ПЛАН №1185. Исправление ReferenceError и стабилизация UI-экшенов.
  */
 'use client';
 
@@ -181,7 +180,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const prevBarRef = useRef(0);
   const sessionStartTimeRef = useRef<number>(0);
 
-  // #ЗАЧЕМ: Стабильная функция возврата домой.
   const handleGoHome = useCallback(async () => {
     if (isPlaying) await setIsPlaying(false);
     stopAllSounds();

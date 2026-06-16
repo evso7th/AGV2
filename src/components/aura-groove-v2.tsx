@@ -11,7 +11,7 @@ import {
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock, Dna, Settings2, Mic2, Activity, Navigation
+  Guitar, Lock, Dna, Settings2, Mic2, Activity, Navigation, Volume2
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -337,7 +337,15 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
         </div>
         
         <div className="flex items-center justify-center gap-2 pt-2 pb-1.5">
-           <Button type="button" onClick={handlePlayPause} disabled={isInitializing} className="w-[35%] text-base h-10">{isPlaying ? <Pause className="mr-2 h-5 w-5" /> : <Music className="mr-2 h-5 w-5" />}{isPlaying ? "Pause" : "Play"}</Button>
+           <Button 
+            type="button" 
+            onClick={handlePlayPause} 
+            disabled={isInitializing} 
+            className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
+           >
+                {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
+                {isPlaying ? "Pause" : "Play"}
+           </Button>
            <Button type="button" onClick={handleToggleBroadcast} variant={isBroadcastActive ? "destructive" : "outline"} className="h-10 w-10 p-0"><TowerControl className={cn("h-5 w-5", isBroadcastActive && "animate-pulse text-primary")} /></Button>
            <Button type="button" onClick={handleToggleRecording} variant={isRecording ? "destructive" : "outline"} className="h-10 w-10 p-0"><Radio className={cn("h-5 w-5", isRecording && "animate-pulse")} /></Button>
            <Button type="button" onClick={handleSaveMasterpiece} disabled={!isPlaying} variant="outline" className="h-10 w-10 p-0"><ThumbsUp className="h-5 w-5 text-primary" /></Button>
@@ -404,7 +412,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                          <Button onClick={handleToggleTimer} disabled={timerSettings.isActive} variant={timerSettings.isActive ? 'destructive' : 'secondary'} className="flex-grow h-8 text-[10px] uppercase font-black">{timerSettings.isActive ? `Stop (${formatTime(timerSettings.timeLeft)})` : `Timer (${timerSettings.duration / 60}m)`}</Button>
                         <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                             <DialogTrigger asChild><Button variant="outline" className="w-10 h-8 p-0"><Activity className={cn("h-4 w-4", isPlaying && "text-primary animate-pulse")} /></Button></DialogTrigger>
-                            <DialogContent className="sm:max-w-2xl bg-card border-primary/20"><DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader><div className="py-4 h-[350px]"><SpectrumAnalyzer /></div></DialogContent>
+                            <DialogContent className="sm:max-w-[480px] bg-card border-primary/20"><DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader><div className="py-4 h-[250px]"><SpectrumAnalyzer /></div></DialogContent>
                         </Dialog>
                     </div>
                     {!timerSettings.isActive && <Slider value={[timerSettings.duration / 60]} min={0} max={30} step={5} onValueChange={(v) => handleTimerDurationChange(v[0])} className="px-1" />}
