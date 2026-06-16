@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №105): Hybrid Attack Calibration for Lead Guitars.
+// #ОБНОВЛЕНО (ПЛАН №1177): Громкость лидов снижена в 2 раза.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -78,11 +78,11 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.19, 
+    // #ЗАЧЕМ: ПЛАН №1177. Снижено в 2 раза (0.19 -> 0.10)
+    volume: 0.10, 
     osc: { width: 0.46 }, 
     drive: { type: 'soft', amount: 0.25 }, 
     post: { lpf: 2800 }, 
-    // #ЗАЧЕМ: ПЛАН №105. Атака 20мс для сшивки с транзиентом.
     adsr: { a: 0.020, d: 0.35, s: 0.85, r: 1.8 }, 
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0
@@ -91,12 +91,11 @@ export const V2_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    // #ЗАЧЕМ: ПЛАН №1163. Потише по просьбе пользователя.
-    volume: 0.12, 
+    // #ЗАЧЕМ: ПЛАН №1177. Снижено в 2 раза (0.12 -> 0.06)
+    volume: 0.06, 
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 }, 
     post: { lpf: 2400 }, 
-    // #ЗАЧЕМ: ПЛАН №105. Атака 20мс для сшивки с транзиентом.
     adsr: { a: 0.020, d: 0.5, s: 0.65, r: 1.0 },
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0

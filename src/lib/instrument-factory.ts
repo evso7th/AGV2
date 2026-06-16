@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.0 — "Absolute Resonance Protocol".
- * #ЗАЧЕМ: ПЛАН №1171 — Гарантия 100% мягкого затухания без "проглатывания" нот.
- * #ЧТО: Оптимизация Garbage Collector под 5 временных констант Release.
+ * @fileOverview Центральная фабрика инструментов V8.1 — "Deterministic Gain Protocol".
+ * #ЗАЧЕМ: ПЛАН №1177 — Устранение эффекта "плавающей" громкости через строгую атомарность.
+ * #ЧТО: Внедрение cancelScheduledValues во все узлы управления уровнем.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -73,7 +73,6 @@ const enforceVoiceLimit = () => {
         const voiceNode = oldest.voiceState?.node;
         if (voiceNode && !oldest.cleaned) {
             const now = voiceNode.context.currentTime;
-            // #ЗАЧЕМ: ПЛАН №1171. Более мягкое "воровство" голосов (0.5с).
             const stealFadeOut = 0.5; 
             try {
                 voiceNode.gain.cancelScheduledValues(now);
@@ -96,12 +95,13 @@ const enforceVoiceLimit = () => {
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
-const getADSR = (p: any) => {
+const getADSR = (p: any, params?: any) => {
     const a = p.adsr || p;
-    let rawA = isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01);
-    let rawD = isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1);
-    let rawS = isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7);
-    let rawR = isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3);
+    // #ЗАЧЕМ: ПЛАН №1177. Приоритет параметров из FractalEvent для правильной отработки Swell.
+    let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
+    let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
+    let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
+    let rawR = isFinite(params?.release) ? params.release : (isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3));
     return { a: rawA, d: rawD, s: rawS, r: rawR };
 };
 
@@ -138,10 +138,11 @@ const createIndependentVoice = (
     when: number, 
     velocity: number, 
     duration: number,
-    sharedDelayNode: AudioNode | null = null
+    sharedDelayNode: AudioNode | null = null,
+    eventParams: any = null
 ) => {
     const f0 = midiToHz(midi);
-    const adsr = getADSR(preset);
+    const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
     
     const voiceGain = ctx.createGain();
@@ -229,7 +230,6 @@ const createIndependentVoice = (
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-    // #ЗАЧЕМ: ПЛАН №1171. Реализация закона 100% плавности.
     const noteOffTime = now + duration;
     const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
@@ -237,7 +237,6 @@ const createIndependentVoice = (
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // ПЛАН №1171: Сборщик мусора ждет ровно 5 временных констант Release.
     const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
     setTimeout(() => deepCleanup(record), totalLife * 1000 + 200);
 
@@ -249,7 +248,7 @@ const createIndependentVoice = (
 export interface InstrumentAPI {
     connect: (dest?: AudioNode) => void;
     disconnect: () => void;
-    noteOn: (midi: number, when?: number, velocity?: number, duration?: number) => void;
+    noteOn: (midi: number, when?: number, velocity?: number, duration?: number, params?: any) => void;
     noteOff: (midi: number, when?: number, velocity?: number, duration?: number) => void;
     allNotesOff: () => void;
     setPreset: (p: any) => void;
@@ -301,29 +300,55 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
             [instrumentGain, expressionGain, panner, limiter, sharedDelayNode, feedbackGain, delayMixGain].forEach(n => { try { n.disconnect(); } catch(e){} });
         },
-        noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0) => {
+        noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             enforceVoiceLimit();
-            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode);
+            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params);
         },
         noteOff: () => {}, 
         allNotesOff: () => {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
         },
         setPreset: (p) => { 
+            const now = ctx.currentTime;
             currentPreset = { ...p }; 
-            instrumentGain.gain.setTargetAtTime(p.volume || 0.7, ctx.currentTime, 0.05);
+            instrumentGain.gain.cancelScheduledValues(now);
+            instrumentGain.gain.setTargetAtTime(p.volume || 0.7, now, 0.05);
             if (p.delay) {
-                sharedDelayNode.delayTime.setTargetAtTime(p.delay.time || 0.4, ctx.currentTime, 0.1);
-                feedbackGain.gain.setTargetAtTime(p.delay.fb || 0.3, ctx.currentTime, 0.1);
-                delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, ctx.currentTime, 0.1);
+                sharedDelayNode.delayTime.setTargetAtTime(p.delay.time || 0.4, now, 0.1);
+                feedbackGain.gain.setTargetAtTime(p.delay.fb || 0.3, now, 0.1);
+                delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, now, 0.1);
             }
         },
         setParam: () => {},
-        setVolume: (v) => { if(isFinite(v)) instrumentGain.gain.setTargetAtTime(v, ctx.currentTime, 0.02); },
-        setVolumeDb: (db) => { if(isFinite(db)) instrumentGain.gain.setTargetAtTime(Math.pow(10, db/20), ctx.currentTime, 0.02); },
+        setVolume: (v) => { 
+            if(isFinite(v)) {
+                const now = ctx.currentTime;
+                instrumentGain.gain.cancelScheduledValues(now);
+                instrumentGain.gain.setTargetAtTime(v, now, 0.02); 
+            }
+        },
+        setVolumeDb: (db) => { 
+            if(isFinite(db)) {
+                const now = ctx.currentTime;
+                instrumentGain.gain.cancelScheduledValues(now);
+                instrumentGain.gain.setTargetAtTime(Math.pow(10, db/20), now, 0.02); 
+            }
+        },
         getVolume: () => instrumentGain.gain.value,
-        setExpression: (v) => { if(isFinite(v)) expressionGain.gain.setTargetAtTime(v, ctx.currentTime, 0.01); },
-        setPan: (v) => { if(isFinite(v)) panner.pan.setTargetAtTime(clamp(v, -1, 1), ctx.currentTime, 0.05); },
+        setExpression: (v) => { 
+            if(isFinite(v)) {
+                const now = ctx.currentTime;
+                expressionGain.gain.cancelScheduledValues(now);
+                expressionGain.gain.setTargetAtTime(v, now, 0.01); 
+            }
+        },
+        setPan: (v) => { 
+            if(isFinite(v)) {
+                const now = ctx.currentTime;
+                panner.pan.cancelScheduledValues(now);
+                panner.pan.setTargetAtTime(clamp(v, -1, 1), now, 0.05); 
+            }
+        },
         preset: currentPreset,
         type
     };
