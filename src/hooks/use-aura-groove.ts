@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Music Control Hook V27.0 — "Function Stability Protocol".
- * #ЗАЧЕМ: ПЛАН №1182. Оптимизация идентичности функций для предотвращения автопауз.
+ * @fileOverview Music Control Hook V27.1 — "Scope Integrity Fix".
+ * #ЗАЧЕМ: ПЛАН №1183. Исправление ReferenceError: handleGoHome is not defined.
+ * #ЧТО: Вынос handleGoHome в отдельный useCallback для обеспечения правильной области видимости.
  */
 'use client';
 
@@ -179,6 +180,16 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const prevBarRef = useRef(0);
   const sessionStartTimeRef = useRef<number>(0);
+
+  // #ЗАЧЕМ: Стабильная функция возврата домой.
+  const handleGoHome = useCallback(async () => {
+    if (isPlaying) await setIsPlaying(false);
+    stopAllSounds();
+    router.push('/');
+    setTimeout(() => {
+      if (typeof window !== 'undefined') window.location.reload();
+    }, 300);
+  }, [isPlaying, setIsPlaying, stopAllSounds, router]);
 
   const handleVolumeChange = useCallback((part: any, value: number) => {
     setVolume(part, value);
@@ -512,7 +523,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: "Journey Loaded", description: `Active: ${saved.name}` });
   }, [toast]);
 
-  // #ЗАЧЕМ: ПЛАН №1182. Полная мемоизация объекта результата для стабильности Identity.
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -532,7 +542,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
     setIsPlaying, stopAllSounds,
-    handleGoHome: async () => { if (isPlaying) await setIsPlaying(false); stopAllSounds(); router.push('/'); setTimeout(() => { window.location.reload(); }, 300); },
+    handleGoHome,
     isEqModalOpen: false, setIsEqModalOpen: () => {}, eqSettings, handleEqChange,
     isCalibrationModalOpen: false, setIsCalibrationModalOpen: () => {}, calibrationGains, handleCalibrationChange: setCalibrationGain,
     timerSettings, handleTimerDurationChange: (m: number) => setTimerSettings(p => ({ ...p, duration: m*60, timeLeft: m*60 })),
