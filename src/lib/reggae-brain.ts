@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V15.2 — "Unified Time Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1172. Временное отключение тайм-скейлинга.
- * #ЧТО: 1. currentTimeScale принудительно установлен в 1.
+ * @fileOverview Reggae Brain V16.0 — "One Drop Supremacy".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1178. Устранение рассинхрона баса и ударных.
+ * #ЧТО: 1. Кик теперь дублирует онсеты баса. 2. 3-я доля (тик 6) — жесткий якорь для всех.
  */
 
 import type {
@@ -135,6 +135,9 @@ export class ReggaeBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
@@ -148,13 +151,30 @@ export class ReggaeBrain {
         return undefined;
     }
 
+    // #ЗАЧЕМ: ПЛАН №1178. Предварительный расчет ритма баса для синхронизации.
+    private getActiveBassTicks(epoch: number): Set<number> {
+        const ticks = new Set<number>();
+        if (this.currentBassTheme) {
+            const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+            const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
+            const barOffset = mosaicBar * TICKS_PER_BAR;
+            this.currentBassTheme.phrase.forEach(n => {
+                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) {
+                    ticks.add(n.t - barOffset);
+                }
+            });
+        } else {
+            // Темы One Drop для генеративного баса
+            ticks.add(1.5);
+            ticks.add(6.0); // One Drop Anchor
+            ticks.add(10.5);
+        }
+        return ticks;
+    }
+
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        
-        // #ЗАЧЕМ: ПЛАН №1172. Временная блокировка тайм-скейлинга в Регги.
-        // this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
         this.currentTimeScale = 1;
-
         const events: FractalEvent[] = [];
         
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
@@ -167,29 +187,26 @@ export class ReggaeBrain {
         }
 
         const isDrumResting = epoch < this.drumRestUntilBar;
-
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
+
+        // #ЗАЧЕМ: Сначала вычисляем пульс баса.
+        const bassTicks = this.getActiveBassTicks(epoch);
 
         // 1. DRUMS
         if (hints.drums) {
             if (isDrumResting) {
                 if (this.random.next() < 0.5) events.push(...this.renderPsybientKitchen(epoch, tension * 0.5, kit));
             } else {
-                const currentStyle = this.getStyleName(epoch, tension);
-                const prevStyle = epoch > 0 ? this.getStyleName(epoch - 1, dna.tensionMap?.[epoch - 1] ?? 0.5) : currentStyle;
-                const isStyleChange = currentStyle !== prevStyle;
-                const isTransition = navInfo.isPartTransition || isStyleChange || (epoch > 0 && epoch % 8 === 7);
-
-                if (isTransition) {
-                    events.push(...this.renderReggaeFills(epoch, tension));
-                    events.push(...this.renderReggaeGroove(epoch, tension, kit).filter(e => e.time < 6 * TICK_TO_BEAT));
-                } else {
-                    events.push(...this.renderReggaeGroove(epoch, tension, kit));
-                }
+                // #ЗАЧЕМ: ПЛАН №1178. Передаем bassTicks для "склейки" риддима.
+                events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
+                
+                if (epoch % 8 === 7) {
+                    events.push(...this.renderReggaeFills(epoch, tension));
+                }
             }
         }
 
@@ -238,10 +255,10 @@ export class ReggaeBrain {
             instrumentOverrides,
             activeAxioms: { 
                 melody: this.currentTheme?.id || 'Gap-Filler', 
-                drums: isDrumResting ? 'BREATH' : `Riddim [${this.getStyleName(epoch, tension)}]`,
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Algorithmic Dub'
+                drums: isDrumResting ? 'BREATH' : `Riddim Sync [${this.getStyleName(epoch, tension)}]`,
+                bass: this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub'
             },
-            narrative: isDrumResting ? `Drums are taking a breath.` : `Pure Riddim Evolution: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
+            narrative: isDrumResting ? `Drums are taking a breath.` : `Direct Rhythmic Sync: ${this.currentTrackName} [Phase: ${this.getStyleName(epoch, tension)}]`
         };
     }
 
@@ -251,63 +268,53 @@ export class ReggaeBrain {
         return 'Rockers';
     }
 
-    private renderReggaeGroove(epoch: number, tension: number, kit: any): FractalEvent[] {
+    // #ЗАЧЕМ: ПЛАН №1178. Узаконивание One Drop и синхронизация якорей.
+    private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
-        let style: 'one-drop' | 'rockers' | 'steppers' = 'one-drop';
         
-        if (epoch < 32 || tension < 0.4) style = 'one-drop';
-        else if (tension > 0.8 || epoch > 80) style = 'steppers';
-        else style = 'rockers';
+        // 1. ПРИНУДИТЕЛЬНЫЙ ONE DROP (Тик 6 - 3-я доля)
+        // Малый барабан (Rimshot) + Бочка в одну точку.
+        events.push({ 
+            type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
+            duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+        });
+        events.push({ 
+            type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, 
+            duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+        });
 
-        const bassTicks = new Set<number>();
-        if (this.currentBassTheme) {
-            const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-            const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
-            const barOffset = mosaicBar * TICKS_PER_BAR;
-            
-            this.currentBassTheme.phrase.forEach(n => {
-                const absoluteTick = n.t - barOffset;
-                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) {
-                    const isAnchorPos = absoluteTick % 1.5 === 0;
-                    const isHeavyNote = n.d >= 3;
-                    if (isAnchorPos && isHeavyNote) {
-                        bassTicks.add(absoluteTick);
-                    }
+        // 2. СИНХРОНИЗАЦИЯ С БАСОМ
+        // Кик дублирует онсеты баса (кроме сильной 1-й доли, если это One Drop).
+        bassTicks.forEach(t => {
+            if (Math.abs(t - 6) > 0.1) { // Если это не основной One Drop удар
+                const isDownbeat = t < 1.0;
+                // В One Drop стиле на 1-ю долю кик не бьет или бьет очень тихо.
+                const kickWeight = isDownbeat ? 0.3 : 0.95;
+                if (kickWeight > 0.4 || this.random.next() < 0.5) {
+                    events.push({ 
+                        type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, 
+                        duration: 0.1, weight: kickWeight, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+                    });
+                }
+            }
+        });
+
+        // 3. ДОПОЛНИТЕЛЬНЫЕ РИТМИЧЕСКИЕ СЛОИ (Rockers/Steppers)
+        const style = this.getStyleName(epoch, tension);
+        if (style === 'Steppers') {
+            [0, 3, 9].forEach(t => {
+                if (!bassTicks.has(t)) {
+                    events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
                 }
             });
         }
 
-        if (style === 'one-drop') {
-            events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-            events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-        } else if (style === 'rockers') {
-            [0, 3, 6, 9].forEach(t => {
-                events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-            });
-            [3, 9].forEach(t => {
-                events.push({ type: kit.snare[0] as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-            });
-        } else {
-            [0, 3, 6, 9].forEach(t => {
-                events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-            });
-            events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-        }
-
-        bassTicks.forEach(t => {
-            if (this.random.next() < 0.65) {
-                events.push({ 
-                    type: 'drum_cymbal_bell1', note: 53, time: t * TICK_TO_BEAT, 
-                    duration: 0.1, weight: 0.42, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
-                });
-            }
-        });
-
-        [1.5, 7.5].forEach(tick => {
+        // 4. ХАЙ-ХЭТ (Стандартные "и" - 1.5, 4.5, 7.5, 10.5)
+        [1.5, 4.5, 7.5, 10.5].forEach(tick => {
             events.push({ 
                 type: kit.hihat[0] as any, note: 42, 
                 time: tick * TICK_TO_BEAT, duration: 0.1, 
-                weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+                weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
             });
         });
 
@@ -317,30 +324,14 @@ export class ReggaeBrain {
     private renderReggaeFills(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-        const snare = 'drum_snarepress';
-        const isIntense = tension > 0.75 || epoch > 64;
-
-        if (!isIntense) {
-            [9, 10, 11].forEach((t, i) => {
-                events.push({
-                    type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2,
-                    weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
-                    pan: -0.6 + (i * 0.6)
-                });
+        [9, 10, 11].forEach((t, i) => {
+            events.push({
+                type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2,
+                weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
+                pan: -0.6 + (i * 0.6)
             });
-            events.push({ type: 'drum_ride_wetter', note: 51, time: 11.5 * TICK_TO_BEAT, duration: 3.0, weight: 0.15, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
-        } else {
-            [6, 7.5, 9, 10, 10.5, 11, 11.5].forEach((t, i) => {
-                const isSnareNode = t < 9;
-                const type = isSnareNode ? snare : toms[Math.floor((i % 3))];
-                events.push({
-                    type: type as any, note: isSnareNode ? 38 : 48, 
-                    time: t * TICK_TO_BEAT, duration: 0.1,
-                    weight: 0.7 + (i * 0.08), technique: 'hit', dynamics: 'f', phrasing: 'staccato'
-                });
-            });
-            events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.8, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-        }
+        });
+        events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.7, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         return events;
     }
 
@@ -351,7 +342,43 @@ export class ReggaeBrain {
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.75, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
+        }));
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1178. Узаконивание One Drop в генеративном басу.
+    private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const root = chord.rootNote - 12;
+        return [
+            { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
+            { type: 'bass', note: root, time: 6.0 * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached' }, // ONE DROP ANCHOR
+            { type: 'bass', note: root + 7, time: 10.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.7, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
+        ];
+    }
+
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
+        if (!this.currentTheme) return [];
+        const effectiveScale = timeScale || 1;
+        const totalBars = Math.ceil((this.currentAxiomMaxTick * effectiveScale) / TICKS_PER_BAR);
+        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
+        const window = TICKS_PER_BAR / effectiveScale;
+        const offset = mosaicBar * window;
+        
+        return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + window).map(n => ({
+            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+            time: (n.t - offset) * TICK_TO_BEAT * effectiveScale, duration: (n.d * TICK_TO_BEAT * effectiveScale) * 1.2,
+            weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
+        }));
+    }
+
+    private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars);
+        const offset = mosaicBar * TICKS_PER_BAR;
+        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
 
@@ -380,49 +407,13 @@ export class ReggaeBrain {
         return events;
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
-        if (!this.currentTheme) return [];
-        
-        // #ЗАЧЕМ: ПЛАН №1172. Использование timeScale = 1 для проверки синхронизации.
-        const effectiveScale = timeScale || 1;
-        const totalBars = Math.ceil((this.currentAxiomMaxTick * effectiveScale) / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
-        const window = TICKS_PER_BAR / effectiveScale;
-        const offset = mosaicBar * window;
-        
-        return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + window).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT * effectiveScale, duration: (n.d * TICK_TO_BEAT * effectiveScale) * 1.2,
-            weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
-        }));
-    }
-
-    private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars);
-        const offset = mosaicBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
-    }
-
-    private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote - 12;
-        return [
-            { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
-            { type: 'bass', note: root + 7, time: 7.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.7, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
-        ];
-    }
-
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number): { events: FractalEvent[], style: string } {
         if (this.random.next() > 0.3) return { events: [], style: 'none' };
         const root = chord.rootNote + 12;
         return {
             style: 'Dub Echoes',
             events: [{
-                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? '3' : '4' as any)),
+                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
                 time: 10.5 * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.5,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             }]
