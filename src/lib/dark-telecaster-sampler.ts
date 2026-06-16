@@ -4,8 +4,8 @@ import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.2 — "Gain Calibration".
- * #ЧТО: Громкость снижена в 2 раза (0.04 -> 0.02).
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.3 — "Security Guard Update".
+ * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -71,7 +71,7 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.02; // Halved for calibration
+        this.preamp.gain.value = 0.02; 
 
         this.overdrive = this.audioContext.createWaveShaper();
         this.overdrive.curve = makeOverdriveCurve(0.42);
@@ -177,7 +177,10 @@ export class DarkTelecasterSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        if (!isFinite(startTime) || !isFinite(velocity)) return;
+        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
+        const now = this.audioContext.currentTime;
+        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
+        if (playTime < 0) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -187,12 +190,12 @@ export class DarkTelecasterSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
-        gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+        gainNode.gain.setValueAtTime(0, playTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.005);
+        gainNode.gain.setTargetAtTime(0.0001, playTime + 0.022, 0.005);
 
-        source.start(startTime);
-        source.stop(startTime + 0.05);
+        source.start(playTime);
+        source.stop(playTime + 0.05);
         
         this.activeSources.add(source);
         source.onended = () => {

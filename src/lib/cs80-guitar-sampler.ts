@@ -2,8 +2,8 @@
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.5 — "Imperial Volume Boost".
- * #ЧТО: ПЛАН №1190 — Громкость увеличена в 2 раза (0.2 -> 0.4).
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.6 — "Temporal Shield Protocol".
+ * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -33,7 +33,7 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.4; // ПЛАН №1190: Увеличено с 0.2
+        this.preamp.gain.value = 0.4; 
         this.preamp.connect(this.destination);
     }
 
@@ -109,7 +109,10 @@ export class CS80GuitarSampler {
     }
 
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        if (!isFinite(startTime) || !isFinite(velocity)) return;
+        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
+        const now = this.audioContext.currentTime;
+        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
+        if (playTime < 0) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -120,13 +123,12 @@ export class CS80GuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
+        gainNode.gain.setValueAtTime(0, playTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.01);
         
-        // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
-        gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
+        gainNode.gain.setTargetAtTime(0, playTime + 3.0, 0.4);
 
-        source.start(startTime);
+        source.start(playTime);
         this.activeSources.add(source);
         
         source.onended = () => {

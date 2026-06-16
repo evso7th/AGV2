@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V5.1 — "Zero-Choke Protocol".
- * #ЧТО: ПЛАН №1171 — Удаление принудительного стопа для 100% плавного затухания.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V5.2 — "Range Security Protocol".
+ * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
  */
 
 function makeAcousticWarmthCurve() {
@@ -242,24 +242,28 @@ export class BlackGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, name: string, mood?: string, isTransientMode: boolean = false) {
-        if (!isFinite(startTime)) return;
+        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
+        const now = this.audioContext.currentTime;
+        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
+        if (playTime < 0) return;
+
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
         source.connect(gainNode).connect(this.preamp);
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
+        
+        gainNode.gain.setValueAtTime(0, playTime);
+        gainNode.gain.linearRampToValueAtTime(1.0, playTime + 0.005);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.020, 0.005);
-            source.start(startTime);
-            source.stop(startTime + 0.05);
+            gainNode.gain.setTargetAtTime(0.0001, playTime + 0.020, 0.005);
+            source.start(playTime);
+            source.stop(playTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1171. Убран стоп для полной естественности хвоста.
-            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.8);
-            source.start(startTime);
+            gainNode.gain.setTargetAtTime(0, playTime + 6.0, 0.8);
+            source.start(playTime);
         }
         this.activeSources.add(source);
         source.onended = () => { this.activeSources.delete(source); try { gainNode.disconnect(); } catch(e) {} };

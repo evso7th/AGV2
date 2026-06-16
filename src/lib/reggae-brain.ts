@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V22.0 — "Continuous Riddim Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1202. Внедрение Gap-filling для мелодии.
- * #ЧТО: Автоматическая генерация филлеров, если Наследие содержит пустые такты.
+ * @fileOverview Reggae Brain V23.0 — "Temporal Stability Update".
+ * #ЗАЧЕМ: Исправление RangeError (ПЛАН №1203).
+ * #ЧТО: Нормализация времени нот к 0 перед применением мутаций.
  */
 
 import type {
@@ -150,9 +150,6 @@ export class ReggaeBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
-
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
@@ -272,7 +269,6 @@ export class ReggaeBrain {
                 m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
             }
             
-            // #ЗАЧЕМ: ПЛАН №1202. Если Наследие молчит - заполняем пустоту.
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 melodyLabel = 'Gap-Filler';
@@ -363,15 +359,19 @@ export class ReggaeBrain {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
-        const barOffset = mosaicBar * TICKS_PER_BAR;
-        let barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+        const offset = mosaicBar * TICKS_PER_BAR;
+        
+        // #ЗАЧЕМ: ПЛАН №1203. Нормализация времени перед мутацией.
+        const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
+
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
     }
 
@@ -389,14 +389,18 @@ export class ReggaeBrain {
         const totalBars = Math.ceil((this.currentAxiomMaxTick) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        let barNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        
+        // #ЗАЧЕМ: ПЛАН №1203. Глубокая нормализация времени для устранения RangeError.
+        const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
+
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
 
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.2,
+            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.2,
             weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
         }));
     }
@@ -405,13 +409,16 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
+
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
@@ -454,7 +461,6 @@ export class ReggaeBrain {
         };
     }
 
-    // #ЗАЧЕМ: ПЛАН №1202. Мелодический филлер для регги.
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote + 12;

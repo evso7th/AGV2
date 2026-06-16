@@ -4,8 +4,8 @@ import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V5.0 — "Extended Horizon Protocol".
- * #ЧТО: ПЛАН №1170 — Принудительное затухание расширено до 6 секунд.
+ * #ЗАЧЕМ: Сэмплер Telecaster V5.1 — "Range Security Update".
+ * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
  */
 
 function makeWarmthCurve() {
@@ -146,7 +146,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
                         }
                     }
                 }
@@ -162,7 +162,10 @@ export class TelecasterGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
-        if (!isFinite(startTime) || !isFinite(velocity)) return;
+        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
+        const now = this.audioContext.currentTime;
+        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
+        if (playTime < 0) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -172,17 +175,16 @@ export class TelecasterGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
+        gainNode.gain.setValueAtTime(0, playTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.022);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
-            source.start(startTime);
-            source.stop(startTime + 0.05);
+            gainNode.gain.setTargetAtTime(0.0001, playTime + 0.022, 0.005);
+            source.start(playTime);
+            source.stop(playTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1170. Горизонт расширен до 6 секунд. Плавное затухание.
-            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.6);
-            source.start(startTime);
+            gainNode.gain.setTargetAtTime(0, playTime + 6.0, 0.6);
+            source.start(playTime);
         }
         
         this.activeSources.add(source);

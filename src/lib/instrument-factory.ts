@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.1 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: ПЛАН №1177 — Устранение эффекта "плавающей" громкости через строгую атомарность.
- * #ЧТО: Внедрение cancelScheduledValues во все узлы управления уровнем.
+ * @fileOverview Центральная фабрика инструментов V8.2 — "Infinite Range Protection".
+ * #ЗАЧЕМ: ПЛАН №1203 — Тотальная защита от RangeError в методах AudioParam.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -97,7 +96,6 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 
 const getADSR = (p: any, params?: any) => {
     const a = p.adsr || p;
-    // #ЗАЧЕМ: ПЛАН №1177. Приоритет параметров из FractalEvent для правильной отработки Swell.
     let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
     let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
@@ -141,9 +139,13 @@ const createIndependentVoice = (
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null
 ) => {
+    // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
+    const now = ctx.currentTime;
+    const playTime = isFinite(when) ? Math.max(when, now) : now;
+    if (playTime < 0) return;
+
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams);
-    const now = Math.max(when, ctx.currentTime);
     
     const voiceGain = ctx.createGain();
     voiceGain.gain.value = 0;
@@ -157,9 +159,9 @@ const createIndependentVoice = (
         const wave = ctx.createPeriodicWave(real, imag);
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(wave);
-        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.setValueAtTime(f0, playTime);
         osc.connect(voiceGain);
-        osc.start(now);
+        osc.start(playTime);
         nodes.push(osc);
     } else if (type === 'organ') {
         const real = new Float32Array(17), imag = new Float32Array(17);
@@ -169,20 +171,20 @@ const createIndependentVoice = (
         const wave = ctx.createPeriodicWave(real, imag);
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(wave);
-        osc.frequency.setValueAtTime(f0, now);
+        osc.frequency.setValueAtTime(f0, playTime);
         osc.connect(voiceGain);
-        osc.start(now);
+        osc.start(playTime);
         nodes.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
         oscConfigs.forEach((o: any) => {
             const osc = ctx.createOscillator();
             osc.type = o.type;
-            osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
+            osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), playTime);
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
-            osc.start(now);
+            osc.start(playTime);
             nodes.push(osc, g);
         });
     }
@@ -226,22 +228,22 @@ const createIndependentVoice = (
     chainHead.connect(output);
 
     const peak = velocity * 0.8;
-    voiceGain.gain.setValueAtTime(0.0001, now);
-    voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
-    voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
+    voiceGain.gain.setValueAtTime(0.0001, playTime);
+    voiceGain.gain.exponentialRampToValueAtTime(peak, playTime + adsr.a);
+    voiceGain.gain.setTargetAtTime(peak * adsr.s, playTime + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-    const noteOffTime = now + duration;
+    const noteOffTime = playTime + duration;
     const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
-    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
+    const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type };
     globalActiveVoices.push(record);
     
     const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
     setTimeout(() => deepCleanup(record), totalLife * 1000 + 200);
 
     nodes.forEach(n => {
-        if (n instanceof OscillatorNode) n.stop(now + totalLife + 0.5);
+        if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 0.5);
     });
 };
 
