@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V21.0 — "L-Logic Activation".
- * #ЗАЧЕМ: Реализация ПЛАНА №1201. Возврат мутаций (Inversion, Retrograde, Jitter).
- * #ЧТО: 1. Мутации только после 12 такта. 2. Плотность ~2 на 12 тактов. 3. Вывод в логи.
+ * @fileOverview Reggae Brain V22.0 — "Continuous Riddim Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1202. Внедрение Gap-filling для мелодии.
+ * #ЧТО: Автоматическая генерация филлеров, если Наследие содержит пустые такты.
  */
 
 import type {
@@ -150,6 +150,9 @@ export class ReggaeBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
@@ -187,12 +190,12 @@ export class ReggaeBrain {
         this.currentTimeScale = 1;
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: ПЛАН №1201. Логика выбора мутации.
+        // --- MUTATION LOGIC ---
         if (epoch < 12) {
             this.currentMutationType = 'none';
         } else if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 40) { // 40% шанс на сохранение оригинала
+            if (roll < 40) {
                 this.currentMutationType = 'none';
             } else if (roll < 60) {
                 this.currentMutationType = 'inversion';
@@ -227,10 +230,7 @@ export class ReggaeBrain {
             } else {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
-                
-                if (epoch % 8 === 7) {
-                    events.push(...this.renderReggaeFills(epoch, tension));
-                }
+                if (epoch % 8 === 7) events.push(...this.renderReggaeFills(epoch, tension));
             }
         }
 
@@ -264,11 +264,22 @@ export class ReggaeBrain {
             events.push(...p.events);
         }
 
-        // 4. MELODY
+        // 4. MELODY (with GAP-FILLING)
+        let melodyLabel = 'none';
         if (hints.melody) {
-            const m = (this.currentTheme && epoch < this.currentTheme.endBar)
-                ? this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale)
-                : this.renderGapFiller(epoch, resChord, tension);
+            let m: FractalEvent[] = [];
+            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+                m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
+            }
+            
+            // #ЗАЧЕМ: ПЛАН №1202. Если Наследие молчит - заполняем пустоту.
+            if (m.length === 0) {
+                m = this.renderGapFiller(epoch, resChord, tension);
+                melodyLabel = 'Gap-Filler';
+            } else {
+                melodyLabel = this.currentTheme?.id || 'DNA';
+            }
+
             events.push(...m);
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
         }
@@ -279,11 +290,11 @@ export class ReggaeBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: { 
-                melody: this.currentTheme?.id || 'Gap-Filler', 
+                melody: melodyLabel, 
                 drums: isDrumResting ? 'BREATH' : `Riddim Sync [${this.getStyleName(epoch, tension)}]`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub'
             },
-            narrative: isDrumResting ? `Drums are taking a breath.` : `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            narrative: `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
 
@@ -296,33 +307,20 @@ export class ReggaeBrain {
     private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kickEnabled = epoch % 2 === 0;
-        
         if (kickEnabled) {
-            events.push({ 
-                type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
-                duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
-            });
+            events.push({ type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         }
-        
-        events.push({ 
-            type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, 
-            duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-        });
+        events.push({ type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
 
         bassTicks.forEach(t => {
             if (Math.abs(t - 6) > 0.1) {
                 if (!kickEnabled) return;
-                const isDownbeat = t < 1.0;
-                const kickWeight = isDownbeat ? 0.35 : 0.95;
-                if (kickWeight > 0.4 || this.random.next() < 0.4) {
-                    events.push({ 
-                        type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, 
-                        duration: 0.1, weight: kickWeight, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-                    });
+                const weight = t < 1.0 ? 0.35 : 0.95;
+                if (weight > 0.4 || this.random.next() < 0.4) {
+                    events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
                 }
             }
         });
-
         events.push(...this.renderOrganicHats(epoch, tension, kit, bassTicks));
         return events;
     }
@@ -331,45 +329,22 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); 
         const mainOffbeats = [1.5, 4.5, 7.5, 10.5];
-        
         if (patternIdx === 0) { 
             mainOffbeats.forEach((t, i) => {
                 if (i % 2 === (epoch % 2)) {
-                    const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
-                    events.push({
-                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                        duration: 0.1, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-                    });
+                    events.push({ type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
                 }
             });
-        } 
-        else if (patternIdx === 1) { 
+        } else if (patternIdx === 1) { 
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
-                const isSyncWithBass = bassTicks.has(t);
-                const prob = isSyncWithBass ? 0.15 : 0.45;
-                if (this.random.next() < prob) {
-                    events.push({
-                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                        duration: 0.05, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-                    });
+                if (this.random.next() < (bassTicks.has(t) ? 0.15 : 0.45)) {
+                    events.push({ type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.5, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
                 }
             }
-        }
-        else { 
+        } else { 
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
-                const weight = (t % 6 === 0) ? 0.20 : 0.45;
-                events.push({
-                    type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
-                    duration: 0.05, weight, technique: 'ghost', dynamics: 'p', phrasing: 'staccato'
-                });
+                events.push({ type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: (t % 6 === 0) ? 0.20 : 0.45, technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
             }
-        }
-
-        if (epoch % 8 === 7 && this.random.next() < 0.5) {
-            events.push({
-                type: 'drum_open_hh_top2', note: 46, time: 11 * TICK_TO_BEAT,
-                duration: 0.4, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato'
-            });
         }
         return events;
     }
@@ -378,11 +353,7 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         [9, 10, 11].forEach((t, i) => {
-            events.push({
-                type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2,
-                weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato',
-                pan: -0.6 + (i * 0.6)
-            });
+            events.push({ type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: -0.6 + (i * 0.6) });
         });
         events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.7, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         return events;
@@ -393,10 +364,7 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
-        
         let barNotes = this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-        
-        // #ЗАЧЕМ: ПЛАН №1201. Применение мутаций.
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
@@ -421,10 +389,7 @@ export class ReggaeBrain {
         const totalBars = Math.ceil((this.currentAxiomMaxTick) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        
         let barNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        
-        // #ЗАЧЕМ: ПЛАН №1201. Применение мутаций к мелодии.
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
@@ -440,10 +405,7 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        
         let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        
-        // Применяем те же мутации к слоям аккомпанемента для консистентности ансамбля
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
@@ -492,12 +454,32 @@ export class ReggaeBrain {
         };
     }
 
+    // #ЗАЧЕМ: ПЛАН №1202. Мелодический филлер для регги.
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (this.random.next() > 0.5) return [];
-        return [{
-            type: 'melody', note: chord.rootNote + 12, time: 0, duration: 2.0, weight: 0.6,
-            technique: 'vb', dynamics: 'p', phrasing: 'legato'
-        }];
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 12;
+        const isMinor = chord.chordType === 'minor';
+        const scale = isMinor ? [0, 3, 5, 7, 10] : [0, 4, 7, 9]; 
+        
+        const count = calculateMusiNum(epoch, 7, this.seed, 3) + 1; 
+        const offbeats = [1.5, 3.0, 4.5, 7.5, 9.0, 10.5];
+        
+        for (let i = 0; i < count; i++) {
+            const tIdx = calculateMusiNum(epoch + i, 11, this.seed, offbeats.length);
+            const time = offbeats[tIdx];
+            const degIdx = calculateMusiNum(epoch + i, 13, this.seed, scale.length);
+            const note = root + scale[degIdx];
+            
+            events.push({
+                type: 'melody',
+                note: Math.min(note, this.MELODY_CEILING),
+                time: time * TICK_TO_BEAT,
+                duration: 0.5 * TICK_TO_BEAT, 
+                weight: 0.6 + (tension * 0.2),
+                technique: 'pick', dynamics: 'p', phrasing: 'staccato'
+            });
+        }
+        return events;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
