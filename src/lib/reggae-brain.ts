@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Reggae Brain V18.0 — "Transparent Kitchen Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1180. Разрежение хэтов в 2 раза.
- * #ЧТО: Шаг сетки хэта увеличен, вероятность ударов снижена для создания большего "воздуха".
+ * @fileOverview Reggae Brain V19.0 — "Sparse Kick Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1186. Кик играет "через раз".
+ * #ЧТО: Внедрена проверка четности такта для всех ударов бочки. 
+ *       Это создает классическое даб-чередование "плотных" и "пустых" тактов.
  */
 
 import type {
@@ -266,12 +267,18 @@ export class ReggaeBrain {
 
     private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
+        // ПЛАН №1186: Бочка играет "через раз" (на четных тактах)
+        const kickEnabled = epoch % 2 === 0;
         
         // 1. ONE DROP ANCHOR (Tick 6)
-        events.push({ 
-            type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
-            duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
-        });
+        if (kickEnabled) {
+            events.push({ 
+                type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
+                duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+            });
+        }
+        
+        // Малый барабан (Rimshot) остается в каждом такте — он держит скелет риддима
         events.push({ 
             type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, 
             duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
@@ -280,6 +287,9 @@ export class ReggaeBrain {
         // 2. BASS SYNC KICKS
         bassTicks.forEach(t => {
             if (Math.abs(t - 6) > 0.1) {
+                // Если кик выключен в этом такте, пропускаем и синхронизированные удары
+                if (!kickEnabled) return;
+
                 const isDownbeat = t < 1.0;
                 const kickWeight = isDownbeat ? 0.35 : 0.95;
                 if (kickWeight > 0.4 || this.random.next() < 0.4) {
@@ -305,12 +315,10 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); 
         
-        // Регги-хэт любит подчеркивать офф-биты
         const mainOffbeats = [1.5, 4.5, 7.5, 10.5];
         
         if (patternIdx === 0) { // STYLE: LAZY_OFF (Разреженный офф-бит)
             mainOffbeats.forEach((t, i) => {
-                // ПЛАН №1180: Играем только каждый второй удар (зависит от такта)
                 if (i % 2 === (epoch % 2)) {
                     const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
                     events.push({
@@ -321,7 +329,6 @@ export class ReggaeBrain {
             });
         } 
         else if (patternIdx === 1) { // STYLE: TRIPLET_FLOW (Разреженное триольное кружево)
-            // ПЛАН №1180: Шаг увеличен до 3.0
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
                 const isSyncWithBass = bassTicks.has(t);
                 const prob = isSyncWithBass ? 0.15 : 0.45;
@@ -334,7 +341,6 @@ export class ReggaeBrain {
             }
         }
         else { // STYLE: GHOST_PULSE (Разреженный призрачный пульс)
-            // ПЛАН №1180: Шаг увеличен до 3.0
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
                 const weight = (t % 6 === 0) ? 0.20 : 0.45;
                 events.push({
@@ -344,7 +350,6 @@ export class ReggaeBrain {
             }
         }
 
-        // Open Hat "Slurp" (Раз в 8 тактов на конце фразы для чистоты)
         if (epoch % 8 === 7 && this.random.next() < 0.5) {
             events.push({
                 type: 'drum_open_hh_top2', note: 46, time: 11 * TICK_TO_BEAT,
@@ -464,5 +469,3 @@ export class ReggaeBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return v; }
 }
-
-    
