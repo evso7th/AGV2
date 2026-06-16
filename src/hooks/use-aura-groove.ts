@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V26.0 — "Chrono-Stabilization Protocol".
- * #ЗАЧЕМ: Устранение бага перепрыгивания маршрута при старте.
- * #ЧТО: ПЛАН №1164 — Сброс prevBarRef при любых действиях по инициализации или рефрешу.
+ * @fileOverview Music Control Hook V26.1 — "Master Channel Support".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1181. Добавление мастер-канала в системные пресеты.
  */
 'use client';
 
@@ -53,7 +52,7 @@ export interface AuraGrooveProps {
   instrumentSettings: InstrumentSettings;
   setInstrumentSettings: (part: keyof InstrumentSettings, name: any) => void;
   handleBassTechniqueChange: (technique: BassTechnique) => void;
-  handleVolumeChange: (part: InstrumentPart | 'sparkles' | 'sfx' | 'drums', value: number) => void;
+  handleVolumeChange: (part: InstrumentPart | 'sparkles' | 'sfx' | 'drums' | 'master', value: number) => void;
   textureSettings: TextureSettings;
   handleTextureEnabledChange: (part: 'sparkles' | 'sfx', enabled: boolean) => void;
   bpm: number;
@@ -190,6 +189,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     } else if (part === 'sparkles' || part === 'sfx') {
         setTextureSettings(prev => ({ ...prev, [part]: { ...prev[part as keyof typeof prev], volume: value } }));
     }
+    // Note: 'master' is handled inside setVolume -> setCalibrationGain in the context.
   }, [setVolume]);
 
   const handleEqChange = useCallback((idx: number, val: number) => {
@@ -200,6 +200,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [eqSettings, setEQGain]);
 
   const applyCurrentMixToEngine = useCallback(() => {
+      setVolume('master', calibrationGains.master);
       setVolume('bass', instrumentSettings.bass.volume);
       setVolume('melody', instrumentSettings.melody.volume);
       setVolume('accompaniment', instrumentSettings.accompaniment.volume);
@@ -208,7 +209,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setVolume('sparkles', textureSettings.sparkles.volume);
       setVolume('sfx', textureSettings.sfx.volume);
       setVolume('drums', drumSettings.volume);
-  }, [setVolume, instrumentSettings, textureSettings, drumSettings]);
+  }, [setVolume, instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
 
   const loadMixerPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(MIXER_PRESETS_KEY);
@@ -218,6 +219,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const target = list.find(p => p.id === id);
         if (target && target.values) {
             const v = target.values;
+            if (v.master !== undefined) handleVolumeChange('master', v.master);
             if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
             if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
             if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
@@ -235,6 +237,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const saveMixerPreset = useCallback((name: string) => {
     const values = {
+        master: calibrationGains.master,
         bass: instrumentSettings.bass.volume,
         melody: instrumentSettings.melody.volume,
         accompaniment: instrumentSettings.accompaniment.volume,
@@ -253,11 +256,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setActiveMixerPresetId(newPreset.id);
     localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
     toast({ title: "Mixer Preset Saved", description: name });
-  }, [instrumentSettings, textureSettings, drumSettings, toast]);
+  }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const updateActiveMixerPreset = useCallback(() => {
     if (!activeMixerPresetId) return;
     const values = {
+        master: calibrationGains.master,
         bass: instrumentSettings.bass.volume,
         melody: instrumentSettings.melody.volume,
         accompaniment: instrumentSettings.accompaniment.volume,
@@ -273,7 +277,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         return next;
     });
     toast({ title: "Mixer Preset Updated" });
-  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, toast]);
+  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const deleteMixerPreset = useCallback((id: string) => {
     setMixerPresets(prev => {
@@ -289,6 +293,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const resetMixerToSystem = useCallback(() => {
     const mix = GENRE_MASTER_MIX['ambient'];
+    handleVolumeChange('master', 1.0);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
@@ -365,6 +370,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const target = list.find((p: any) => p.id === activeId);
                 if (target && target.values) {
                     const v = target.values;
+                    if (v.master !== undefined) handleVolumeChange('master', v.master);
                     setInstrumentSettings(prev => ({
                         ...prev,
                         bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
@@ -517,12 +523,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
             applyCurrentMixToEngine();
             eqSettings.forEach((v, i) => setEQGain(i, v));
             if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
-            // #ЗАЧЕМ: ПЛАН №1164. Сброс истории тактов при старте.
             prevBarRef.current = 0; 
             setIsPlaying(true);
         }
     } else { 
-        // #ЗАЧЕМ: Сброс при возобновлении из паузы.
         if (!isPlaying) prevBarRef.current = 0;
         setIsPlaying(!isPlaying); 
     }
@@ -549,7 +553,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     clearCompositionFilters: useCallback(() => setSelectedCompositionIds([]), []), refreshCloudAxioms,
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: useCallback(() => { 
-        // #ЗАЧЕМ: ПЛАН №1164.
         prevBarRef.current = 0;
         setCurrentSeed(Date.now()); 
         setIsRegenerating(true); 
@@ -596,7 +599,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" });
             return;
         }
-        // #ЗАЧЕМ: ПЛАН №1164. Сброс истории перед перезапуском.
         prevBarRef.current = 0;
         refreshCloudAxioms();
         resetWorker();

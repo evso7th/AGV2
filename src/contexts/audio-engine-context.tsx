@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V51.1 — "Autonomous Broadcast Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1176. Бродкаст теперь не зависит от Плей.
- * #ЧТО: toggleBroadcast теперь сам инициализирует движок при необходимости.
+ * @fileOverview Audio Engine Context V51.2 — "Master Control Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1181. Добавлен мастер-канал в общий поток громкости.
+ * #ЧТО: setVolume теперь умеет управлять системным Master Gain.
  */
 'use client';
 
@@ -190,17 +190,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       return override ? { ...base, ...override } : base;
   }, []);
 
-  const setVolumeCallback = useCallback((part: string, volume: number) => {
-    if (!isFinite(volume)) return;
-    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
-    const gainNode = gainNodesRef.current[part];
-    if (gainNode && audioContextRef.current) {
-        const now = audioContextRef.current.currentTime;
-        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-        gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
-    }
-  }, []);
-
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
@@ -227,6 +216,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           return next;
       });
   }, [applyCalibration]);
+
+  const setVolumeCallback = useCallback((part: string, volume: number) => {
+    if (!isFinite(volume)) return;
+    
+    // #ЗАЧЕМ: ПЛАН №1181. Поддержка мастер-канала через системную калибровку.
+    if (part === 'master') {
+        setCalibrationGain('master', volume);
+        return;
+    }
+
+    const balancedVolume = volume * (VOICE_BALANCE[part] ?? 1);
+    const gainNode = gainNodesRef.current[part];
+    if (gainNode && audioContextRef.current) {
+        const now = audioContextRef.current.currentTime;
+        gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+        gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
+    }
+  }, [setCalibrationGain]);
 
   const setVoiceLimit = useCallback((limit: number) => {
       setVoiceLimitState(limit);
@@ -445,10 +452,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }
   }, [calibrationGains.master, stopAllSounds]);
 
-  /**
-   * #ЗАЧЕМ: Реализация автономного переключения бродкаста (ПЛАН №1176).
-   * #ЧТО: toggleBroadcast теперь async и сам вызывает initialize(), если нужно.
-   */
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) {
           const success = await initialize();

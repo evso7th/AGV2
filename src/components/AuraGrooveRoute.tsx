@@ -1,7 +1,7 @@
 
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.7 — "Navigator Mood Cleanup".
- * #ЧТО: ПЛАН №90 — Очистка списка настроений до 5 эталонных пунктов.
+ * #ЗАЧЕМ: UI AuraGroove V7.8 — "Master Mixer Control".
+ * #ЧТО: ПЛАН №1181 — Добавлен мастер-канал в Studio Mixer.
  */
 'use client';
 
@@ -64,6 +64,7 @@ const MOODS = [
 ];
 
 const MIXER_CHANNELS = [
+    { key: 'master', label: 'MST' },
     { key: 'bass', label: 'BASS' },
     { key: 'melody', label: 'LEAD' },
     { key: 'accompaniment', label: 'KEYB' },
@@ -512,17 +513,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
-                        const vol = ch.key === 'drums' 
-                            ? (props.drumSettings?.volume ?? 0.5) 
-                            : (['sparkles','sfx'].includes(ch.key) 
-                                ? (props.textureSettings?.[ch.key as keyof TextureSettings]?.volume ?? 0.5) 
-                                : (props.instrumentSettings?.[ch.key as keyof InstrumentSettings]?.volume ?? 0.5));
+                        const vol = ch.key === 'master' 
+                            ? (props.calibrationGains?.master ?? 1.0)
+                            : (ch.key === 'drums' 
+                                ? (props.drumSettings?.volume ?? 0.5) 
+                                : (['sparkles','sfx'].includes(ch.key) 
+                                    ? (props.textureSettings?.[ch.key as keyof TextureSettings]?.volume ?? 0.5) 
+                                    : (props.instrumentSettings?.[ch.key as keyof InstrumentSettings]?.volume ?? 0.5)));
                         
                         return (
                             <div key={ch.key} className="flex flex-col items-center gap-2 flex-1 h-full group">
                                 <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span>
                                 <Slider orientation="vertical" value={[vol]} max={1.0} step={0.01} onValueChange={v => props.handleVolumeChange(ch.key as any, v[0])} className="h-full" />
-                                <span className="text-[8px] font-black uppercase opacity-50 group-hover:text-primary">{ch.label}</span>
+                                <span className={cn("text-[8px] font-black uppercase opacity-50 group-hover:text-primary", ch.key === 'master' && "text-primary opacity-100")}>{ch.label}</span>
                             </div>
                         );
                     })}</div>

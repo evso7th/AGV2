@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview UI AuraGroove V5.1 — "Zero-Syntax Error Standard".
- * #ЗАЧЕМ: Окончательное решение проблемы "Unexpected token div" через атомарную пересборку.
- * #ЧТО: ПЛАН №109.1 — Тщательная проверка баланса скобок и вынос логики.
+ * @fileOverview UI AuraGroove V5.2 — "Unified Master Control".
+ * #ЗАЧЕМ: ПЛАН №1181. Добавление мастер-канала в Expert UI Mixer.
  */
 'use client';
 
@@ -69,8 +69,14 @@ const AVAILABLE_GENRES: Genre[] = ['psybient', 'ambient', 'progressive', 'rock',
 const AVAILABLE_MOODS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
 
 const DISPLAY_NAMES: Record<string, string> = {
-    'guitarChords': 'Acoustic Chords',
-    'neuro_f_matrix': 'Neuro F-Matrix',
+    'guitar': 'Dynamic Guitar',
+    'telecaster': 'Telecaster Clean',
+    'blackAcoustic': 'Black Acoustic',
+    'darkTelecaster': 'Dark Telecaster',
+    'cs80': 'CS-80 / Vangelis',
+    'guitar_shineOn': 'Shine On Lead',
+    'guitar_muffLead': 'Muff Lead',
+    'reggae_guitar': 'Roots Skank Guitar',
     'organ': 'Cathedral Organ',
     'organ_soft_jazz': 'Soft Jazz Organ',
     'organ_jimmy_smith': 'Jimmy Smith B3',
@@ -166,6 +172,7 @@ function MultiSelector<T extends string>({
 
 function getPartIcon(part: string) {
     switch(part) {
+        case 'master': return <Volume2 className="h-4 w-4 text-primary"/>;
         case 'bass': return <Waves className="h-4 w-4"/>;
         case 'melody': return <GitBranch className="h-4 w-4"/>;
         case 'accompaniment': return <Piano className="h-4 w-4"/>;
@@ -273,12 +280,13 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                         <div className="flex flex-col gap-6">
                             <h3 className="text-xs font-black uppercase text-primary mb-2 flex items-center gap-2"><Mic2 className="h-4 w-4" /> Mixer</h3>
                             <div className="flex gap-8 h-full pb-12">
-                              {(['bass', 'melody', 'accompaniment', 'pianoAccompaniment', 'harmony', 'drums', 'sparkles', 'sfx'] as const).map((partKey) => {
-                                const settings = partKey in instrumentSettings ? (instrumentSettings as any)[partKey] : ((textureSettings as any)[partKey] || drumSettings);
+                              {(['master', 'bass', 'melody', 'accompaniment', 'pianoAccompaniment', 'harmony', 'drums', 'sparkles', 'sfx'] as const).map((partKey) => {
+                                const isMaster = partKey === 'master';
+                                const settings = isMaster ? { volume: calibrationGains.master } : (partKey in instrumentSettings ? (instrumentSettings as any)[partKey] : ((textureSettings as any)[partKey] || drumSettings));
                                 let ilist: string[] = partKey === 'bass' ? bassInstrumentList : (partKey === 'melody' ? melodyInstrumentList : (partKey === 'accompaniment' ? textureInstrumentList : (partKey === 'harmony' ? harmonyInstrumentList : ['piano'])));
                                 
                                 return (
-                                    <div key={partKey} className="flex flex-col items-center gap-4 w-32 bg-card/30 rounded-xl p-4 border border-primary/5 group">
+                                    <div key={partKey} className={cn("flex flex-col items-center gap-4 w-32 bg-card/30 rounded-xl p-4 border border-primary/5 group", isMaster && "bg-primary/5 border-primary/20")}>
                                         <span className="text-[10px] font-mono opacity-50">{Math.round((settings.volume || 0) * 100)}%</span>
                                         <Slider value={[settings.volume || 0]} max={1} step={0.01} onValueChange={(v) => handleVolumeChange(partKey as any, v[0])} orientation="vertical" className="h-full" />
                                         <div className="w-full space-y-3 mt-auto">
@@ -295,7 +303,8 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                                                 </Select>
                                             )}
                                             {['sparkles', 'sfx'].includes(partKey) && <div className="flex justify-center py-1"><Switch checked={settings.enabled} onCheckedChange={(c) => handleTextureEnabledChange(partKey as any, c)} /></div>}
-                                            <Label className="text-[10px] font-black uppercase text-center block opacity-50 truncate w-full flex items-center justify-center gap-2">
+                                            {isMaster && <div className="h-8 flex items-center justify-center"><Badge variant="outline" className="text-[9px] font-black uppercase text-primary border-primary/30">Master</Badge></div>}
+                                            <Label className={cn("text-[10px] font-black uppercase text-center block opacity-50 truncate w-full flex items-center justify-center gap-2", isMaster && "text-primary opacity-100")}>
                                               {getPartIcon(partKey as string)}
                                               {partKey === 'pianoAccompaniment' ? 'Rhodes' : (partKey === 'harmony' ? 'RTM' : partKey)}
                                             </Label>
