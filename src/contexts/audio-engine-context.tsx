@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Audio Engine Context V51.0 — "Chrono-Stabilization Fix".
- * #ЗАЧЕМ: Исправление бага перепрыгивания маршрута при старте.
- * #ЧТО: ПЛАН №1164 — Сброс currentBar при ресете воркера.
+ * @fileOverview Audio Engine Context V51.1 — "Autonomous Broadcast Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1176. Бродкаст теперь не зависит от Плей.
+ * #ЧТО: toggleBroadcast теперь сам инициализирует движок при необходимости.
  */
 'use client';
 
@@ -445,7 +445,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }
   }, [calibrationGains.master, stopAllSounds]);
 
-  const toggleBroadcastCallback = useCallback(() => {
+  /**
+   * #ЗАЧЕМ: Реализация автономного переключения бродкаста (ПЛАН №1176).
+   * #ЧТО: toggleBroadcast теперь async и сам вызывает initialize(), если нужно.
+   */
+  const toggleBroadcastCallback = useCallback(async () => {
+      if (!isInitialized) {
+          const success = await initialize();
+          if (!success) return;
+      }
+
       if (broadcastEngineRef.current && audioContextRef.current && speakerGainNodeRef.current) {
           const now = audioContextRef.current.currentTime;
           if (isBroadcastActive) {
@@ -458,7 +467,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               setIsBroadcastActive(true);
           }
       }
-  }, [isBroadcastActive]);
+  }, [isInitialized, initialize, isBroadcastActive]);
 
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
