@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V16.0 — "One Drop Supremacy".
- * #ЗАЧЕМ: Реализация ПЛАНА №1178. Устранение рассинхрона баса и ударных.
- * #ЧТО: 1. Кик теперь дублирует онсеты баса. 2. 3-я доля (тик 6) — жесткий якорь для всех.
+ * @fileOverview Reggae Brain V17.0 — "Organic Kitchen Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1179. Хэты больше не стучат метрономом.
+ * #ЧТО: Внедрена адаптивная логика хэта, меняющая паттерны и акценты в зависимости от пульса баса.
  */
 
 import type {
@@ -151,7 +151,6 @@ export class ReggaeBrain {
         return undefined;
     }
 
-    // #ЗАЧЕМ: ПЛАН №1178. Предварительный расчет ритма баса для синхронизации.
     private getActiveBassTicks(epoch: number): Set<number> {
         const ticks = new Set<number>();
         if (this.currentBassTheme) {
@@ -164,9 +163,8 @@ export class ReggaeBrain {
                 }
             });
         } else {
-            // Темы One Drop для генеративного баса
             ticks.add(1.5);
-            ticks.add(6.0); // One Drop Anchor
+            ticks.add(6.0); 
             ticks.add(10.5);
         }
         return ticks;
@@ -192,7 +190,6 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: Сначала вычисляем пульс баса.
         const bassTicks = this.getActiveBassTicks(epoch);
 
         // 1. DRUMS
@@ -200,7 +197,6 @@ export class ReggaeBrain {
             if (isDrumResting) {
                 if (this.random.next() < 0.5) events.push(...this.renderPsybientKitchen(epoch, tension * 0.5, kit));
             } else {
-                // #ЗАЧЕМ: ПЛАН №1178. Передаем bassTicks для "склейки" риддима.
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
                 
@@ -268,12 +264,10 @@ export class ReggaeBrain {
         return 'Rockers';
     }
 
-    // #ЗАЧЕМ: ПЛАН №1178. Узаконивание One Drop и синхронизация якорей.
     private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. ПРИНУДИТЕЛЬНЫЙ ONE DROP (Тик 6 - 3-я доля)
-        // Малый барабан (Rimshot) + Бочка в одну точку.
+        // 1. ONE DROP ANCHOR (Tick 6)
         events.push({ 
             type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
             duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
@@ -283,14 +277,12 @@ export class ReggaeBrain {
             duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
         });
 
-        // 2. СИНХРОНИЗАЦИЯ С БАСОМ
-        // Кик дублирует онсеты баса (кроме сильной 1-й доли, если это One Drop).
+        // 2. BASS SYNC KICKS
         bassTicks.forEach(t => {
-            if (Math.abs(t - 6) > 0.1) { // Если это не основной One Drop удар
+            if (Math.abs(t - 6) > 0.1) {
                 const isDownbeat = t < 1.0;
-                // В One Drop стиле на 1-ю долю кик не бьет или бьет очень тихо.
-                const kickWeight = isDownbeat ? 0.3 : 0.95;
-                if (kickWeight > 0.4 || this.random.next() < 0.5) {
+                const kickWeight = isDownbeat ? 0.35 : 0.95;
+                if (kickWeight > 0.4 || this.random.next() < 0.4) {
                     events.push({ 
                         type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, 
                         duration: 0.1, weight: kickWeight, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
@@ -299,24 +291,67 @@ export class ReggaeBrain {
             }
         });
 
-        // 3. ДОПОЛНИТЕЛЬНЫЕ РИТМИЧЕСКИЕ СЛОИ (Rockers/Steppers)
-        const style = this.getStyleName(epoch, tension);
-        if (style === 'Steppers') {
-            [0, 3, 9].forEach(t => {
-                if (!bassTicks.has(t)) {
-                    events.push({ type: kit.kick[0] as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-                }
+        // 3. ORGANIC HI-HATS (ПЛАН №1179)
+        events.push(...this.renderOrganicHats(epoch, tension, kit, bassTicks));
+
+        return events;
+    }
+
+    /**
+     * #ЗАЧЕМ: Реализация живого, органического поведения хэта (ПЛАН №1179).
+     * #ЧТО: Паттерны хэта меняются каждые 4 такта, адаптируясь к энергии и басу.
+     */
+    private renderOrganicHats(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); // 3 стиля игры
+        
+        // Регги-хэт любит подчеркивать офф-биты (1.5, 4.5, 7.5, 10.5)
+        const mainOffbeats = [1.5, 4.5, 7.5, 10.5];
+        
+        if (patternIdx === 0) { // STYLE: LAZY_OFF (Классический ленивый офф-бит)
+            mainOffbeats.forEach(t => {
+                const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
+                events.push({
+                    type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
+                    duration: 0.1, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                });
             });
+        } 
+        else if (patternIdx === 1) { // STYLE: TRIPLET_FLOW (Триольное кружево)
+            for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
+                const isMainOff = mainOffbeats.includes(t);
+                const isSyncWithBass = bassTicks.has(t);
+                
+                // Хэт уступает место басу или акцентирует офф-бит
+                const prob = isMainOff ? 0.9 : (isSyncWithBass ? 0.2 : 0.4);
+                if (this.random.next() < prob) {
+                    const weight = isMainOff ? 0.6 : 0.35;
+                    events.push({
+                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
+                        duration: 0.05, weight, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                    });
+                }
+            }
+        }
+        else { // STYLE: GHOST_PULSE (Призрачный пульс)
+            for (let t = 0; t < TICKS_PER_BAR; t++) {
+                if (t % 1.5 === 0) {
+                    const weight = (t % 3 === 0) ? 0.25 : 0.55;
+                    events.push({
+                        type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT,
+                        duration: 0.05, weight, technique: 'ghost', dynamics: 'p', phrasing: 'staccato'
+                    });
+                }
+            }
         }
 
-        // 4. ХАЙ-ХЭТ (Стандартные "и" - 1.5, 4.5, 7.5, 10.5)
-        [1.5, 4.5, 7.5, 10.5].forEach(tick => {
-            events.push({ 
-                type: kit.hihat[0] as any, note: 42, 
-                time: tick * TICK_TO_BEAT, duration: 0.1, 
-                weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+        // Open Hat "Slurp" (Раз в 4-8 тактов на конце фразы)
+        if (epoch % 4 === 3 && this.random.next() < 0.6) {
+            events.push({
+                type: 'drum_open_hh_top2', note: 46, time: 11 * TICK_TO_BEAT,
+                duration: 0.4, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato'
             });
-        });
+        }
 
         return events;
     }
@@ -346,19 +381,18 @@ export class ReggaeBrain {
         }));
     }
 
-    // #ЗАЧЕМ: ПЛАН №1178. Узаконивание One Drop в генеративном басу.
     private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote - 12;
         return [
             { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
-            { type: 'bass', note: root, time: 6.0 * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached' }, // ONE DROP ANCHOR
+            { type: 'bass', note: root, time: 6.0 * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached' }, 
             { type: 'bass', note: root + 7, time: 10.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.7, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
         ];
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const effectiveScale = timeScale || 1;
+        const effectiveScale = 1; 
         const totalBars = Math.ceil((this.currentAxiomMaxTick * effectiveScale) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
         const window = TICKS_PER_BAR / effectiveScale;
