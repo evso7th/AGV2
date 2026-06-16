@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V79.5 — "Ultra-Soft Ride Calibration".
- * #ЗАЧЕМ: Радикальное смягчение переходных райдов по просьбе пользователя.
- * #ЧТО: ПЛАН №104 — Снижение weight до 0.12 для ride_wetter в переходах.
+ * @fileOverview Blues Brain V80.0 — "Rolling Ribbon Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
+ * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
  */
 
 import {
@@ -190,10 +190,16 @@ export class BluesBrain {
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
       if (totalBars <= 0) return 0;
+      
+      // #ЗАЧЕМ: Реализация ПЛАНА №1187. Посевное смещение для Rolling Ribbon.
+      const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
+      
       if (this.config.isImprovising) {
-          return calculateMusiNum(epoch, 7, this.seed, totalBars);
+          return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
       }
-      return (epoch - startEpoch) % totalBars;
+      
+      const barsElapsed = epoch - startEpoch;
+      return (barsElapsed + startOffset) % totalBars;
   }
 
   private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
@@ -289,16 +295,18 @@ export class BluesBrain {
                   basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
               }
 
+              // #ЗАЧЕМ: ПЛАН №1187. Вычисление границ ленты донора.
               const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-              const suitePlayhead = epoch % (maxDonorBars || 144);
               
-              let selected: any = null;
-              if (this.config.isImprovising) {
-                  selected = basePool[calculateMusiNum(this.seed, 17, epoch, basePool.length)];
-              } else {
-                  const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
-                  selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
-              }
+              // #ЧТО: Поиск целевого смещения с учетом Seeded Start.
+              const tension = dna.tensionMap?.[epoch] ?? 0.5;
+              const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+              
+              const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+              
+              // #ЧТО: Фиксация пути при наличии вариаций для одного такта.
+              const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
+              const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
               if (selected) {
                   this.currentTrackName = selected.compositionId;
@@ -491,7 +499,7 @@ export class BluesBrain {
         events, tension, beautyScore: 0.5,
         trackName: this.currentTrackName,
         mutationType: this.state.lastMutationType, newBpm,
-        instrumentOverrides, trackName: this.currentTrackName,
+        instrumentOverrides,
         activeAxioms: {
             melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
             ensemble: `${this.ensembleStatus} [${modeStr}]`,
@@ -771,25 +779,18 @@ export class BluesBrain {
       }
   }
 
-  /**
-   * #ЗАЧЕМ: Улучшенный переходной филл (ПЛАН №99).
-   * #ЧТО: Кик, Снейр, Томы, Хэт и самый мокрый райд.
-   */
   private renderLiquidBridge(epoch: number, chord: GhostChord, tension: number, hints: InstrumentHints): FractalEvent[] {
       const events: FractalEvent[] = []; 
       const root = chord.rootNote + this.currentTransposition + this.microTransposition; 
       const scale = [0, 2, 4, 5, 7, 9, 11];
       
-      // Бас и Пэд (стандартный легато-фундамент)
       [0, 3, 6, 9].forEach((t, i) => { 
           events.push({ type: 'bass', note: this.constrainBassOctave(root - 12 + scale[i % scale.length]), time: t * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 0.7, technique: 'pick', dynamics: 'p', phrasing: 'legate' }); 
       });
       events.push({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12), time: 0, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
       if (hints.melody) events.push({ type: 'melody', note: root + 24, time: 1.5, duration: 2.5, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
 
-      // --- TRANSITION DRUM FILL (ПЛАН №99) ---
       [0, 3, 6, 9].forEach(t => {
-          // #ЗАЧЕМ: ПЛАН №104. Ультра-мягкий райд в переходах (0.12).
           events.push({ 
               type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
               duration: 2.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
@@ -803,7 +804,6 @@ export class BluesBrain {
       events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
       events.push({ type: 'drum_snare', note: 38, time: 3 * TICK_TO_BEAT, duration: 0.1, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       
-      // Каскад томов
       events.push({ type: 'drum_Sonor_Classix_High_Tom', note: 40, time: 6 * TICK_TO_BEAT, duration: 0.3, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       
       if (epoch % 2 === 1) { 

@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Psybient Brain V48.2 — "Strict Heritage Filtering".
- * #ЗАЧЕМ: Устранение нецелевых подборов доноров.
- * #ЧТО: ПЛАН №111 — Фильтрация только по точному совпадению Жанра и Настроения.
+ * @fileOverview Psybient Brain V49.0 — "Rolling Ribbon Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
+ * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
  */
 
 import type {
@@ -99,11 +99,16 @@ export class TranceBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
+        
+        // #ЗАЧЕМ: ПЛАН №1187. Стартовое смещение ленты на основе Seed.
+        const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
+        
         if (this.isImprovising) {
-            return calculateMusiNum(epoch, 11, this.seed, totalBars);
+            return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
         }
+        
         const barsElapsed = epoch - startEpoch;
-        const linearIndex = barsElapsed % totalBars;
+        const linearIndex = (barsElapsed + startOffset) % totalBars;
         
         if (tension > 0.8) {
             const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
@@ -129,7 +134,6 @@ export class TranceBrain {
         if (effectiveAnchor) {
             filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
         } else {
-            // #ЗАЧЕМ: ПЛАН №111. Только строгое совпадение по Жанру и Настроению.
             filteredPool = poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -150,16 +154,17 @@ export class TranceBrain {
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
+                // #ЗАЧЕМ: Расчет границ Rolling Ribbon для Psybient.
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const suitePlayhead = epoch % (maxDonorBars || 144);
                 
-                let selected: any = null;
-                if (this.isImprovising) {
-                    selected = basePool[calculateMusiNum(this.seed, 17, epoch, basePool.length)];
-                } else {
-                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
-                    selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
-                }
+                const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                
+                // #ЧТО: Фиксация пути вариаций.
+                const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
+                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
@@ -356,7 +361,6 @@ export class TranceBrain {
                 }
             });
         }
-        const hhStep = tension > 0.7 ? 1.5 : 3.0;
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             const isStrong = t % 3 === 0;
             const chance = isStrong ? 100 : (tension * 60 + 10);
@@ -517,7 +521,7 @@ export class TranceBrain {
             if (i % 3 === 0) {
                 events.push({
                     ...m, type: 'pianoAccompaniment', note: m.note + thirdInterval,
-                    weight: 0.68, // Increased for audibility
+                    weight: 0.68, 
                     technique: 'hit', phrasing: 'staccato', params: { ...m.params, release: 2.5 }
                 });
             }
@@ -540,7 +544,7 @@ export class TranceBrain {
                     type: 'accompaniment', 
                     note: chord.rootNote + 12 + interval + this.spiralTransposition, 
                     time: t, 
-                    duration: 0.75, // 0.25 gap
+                    duration: 0.75, 
                     weight: 0.6 - (i * 0.05), 
                     technique: 'swell',
                     dynamics: 'p', 

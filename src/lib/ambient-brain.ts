@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V83.0 — "Six-Second Horizon Protocol".
- * #ЗАЧЕМ: Улучшение глубины и многослойности амбиент-полотна.
- * #ЧТО: ПЛАН №1170 — Расширение лимита длительности до 6.0с с сохранением плавности.
+ * @fileOverview Ambient Brain V84.0 — "Rolling Ribbon Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
+ * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
  */
 
 import type {
@@ -120,13 +120,21 @@ export class AmbientBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
+        
+        // #ЗАЧЕМ: Реализация ПЛАНА №1187. Смещение начала трека на основе Seed.
+        const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
+        
         if (this.isImprovising) {
-            return calculateMusiNum(epoch, 11, this.seed, totalBars);
+            return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
         }
+        
         const barsElapsed = epoch - startEpoch;
-        const linearIndex = barsElapsed % totalBars;
+        const linearIndex = (barsElapsed + startOffset) % totalBars;
+        
+        // Редкая вариация на высоком напряжении (небольшой прыжок)
         const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
-        if (tension > 0.8 && (rand < 0.15 || rand > 0.95)) return (linearIndex + 1) % totalBars;
+        if (tension > 0.85 && rand < 0.1) return (linearIndex + 1) % totalBars;
+        
         return linearIndex;
     }
 
@@ -160,23 +168,27 @@ export class AmbientBrain {
             if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
 
             if (basePool.length > 0) {
-                const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const suitePlayhead = epoch % (maxDonorBars || 144);
-                let selected: any = null;
-
-                if (this.isImprovising) {
-                    if (!effectiveAnchor) {
-                        const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                        this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
-                        effectiveAnchor = this.sessionAnchorId;
-                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
-                    }
-                    selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
-                } else {
-                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === (suitePlayhead % (maxDonorBars || 1)));
-                    selected = sameOffsetPool.length > 0 ? sameOffsetPool[0] : basePool[0];
+                if (!effectiveAnchor) {
+                    const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                    this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
+                    effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
+
+                // #ЗАЧЕМ: Определение границ "ленты" трека-донора.
+                const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                
+                // #ЧТО: Расчет целевого смещения с учетом Rolling Ribbon.
+                const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                
+                // #ЗАЧЕМ: Поиск аксиомы в ленте.
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                
+                // #ЧТО: Фиксация пути при наличии вариаций (ПЛАН №1187).
+                const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
+                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
@@ -188,6 +200,7 @@ export class AmbientBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
+                    // SIBLINGS также должны подчиняться Mosaic Index для синхронизации.
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
@@ -226,7 +239,6 @@ export class AmbientBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №1170. Лимит расширен до 6.0с для лучшей многослойности.
         if (e.duration < 4.0) return [e]; 
 
         const rippled: FractalEvent[] = [];
@@ -238,7 +250,6 @@ export class AmbientBrain {
         
         const ripplePool = rawType === 'melody' ? melodyRipplePool : textureRipplePool;
         
-        // Лимитируем общую длительность события новым законом (6 секунд)
         const totalDuration = Math.min(e.duration, 6.0);
         const numChunks = Math.ceil(totalDuration / 2.0); 
         const chunkDur = totalDuration / numChunks;
@@ -264,7 +275,7 @@ export class AmbientBrain {
                 ...e,
                 note: finalNote,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.1, // Легкое перекрытие для плавности
+                duration: chunkDur * 1.1, 
                 params: { 
                     ...e.params, 
                     attack: i === 0 ? (e.params?.attack || 0.8) : 1.2,
@@ -479,7 +490,7 @@ export class AmbientBrain {
                     type: 'accompaniment', 
                     note: this.constrainAccompanimentOctave(root + intervals[noteIdx]),
                     time: t * TICK_TO_BEAT, 
-                    duration: 6.0, // Expanded limit
+                    duration: 6.0, 
                     weight: 0.35 + (tension * 0.1), 
                     technique: 'swell', dynamics: 'p', phrasing: 'legato',
                     params: { attack: 1.8, release: 3.0, filterCutoff: 1000 + (tension * 600), mood: this.mood }
@@ -555,7 +566,7 @@ export class AmbientBrain {
         const shift = degrees[calculateMusiNum(epoch, 8, this.seed, 8)];
         const e: FractalEvent = {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + shift + this.currentTransposition + this.microTransposition),
-            time: 0, duration: 6.0, // Expanded limit
+            time: 0, duration: 6.0, 
             weight: 0.7, technique: 'drone' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 2.0, release: 3.0, filterCutoff: 300 + (tension * 200) }
         };
@@ -569,16 +580,14 @@ export class AmbientBrain {
         const barOffset = (mosaicBar * TICKS_PER_BAR) / timeScale;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
         return barNotes.map(n => {
-            const useVibrato = (localTension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn';
             const rawDur = (n.d * TICK_TO_BEAT * timeScale) * 1.5;
-            
             return {
                 type: type as any,
                 note: Math.min(chord.rootNote + 24 + this.registerShift + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
                 time: (n.t - barOffset) * TICK_TO_BEAT * timeScale, 
-                duration: Math.min(rawDur, 6.0), // Expanded limit
+                duration: Math.min(rawDur, 6.0), 
                 weight: 0.7,
-                technique: 'swell' as Technique, // ПЛАН №1165: Всегда swell в Амбиенте
+                technique: 'swell' as Technique,
                 dynamics: 'p' as Dynamics, 
                 phrasing: 'legato' as Phrasing,
                 params: { attack: 1.0, release: 2.5, filterCutoff: 2000 + (localTension * 1500), mood: this.mood }
@@ -597,21 +606,21 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: 'bass' as any, note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, 
-            duration: Math.min(n.d * TICK_TO_BEAT, 6.0), // Expanded limit
+            duration: Math.min(n.d * TICK_TO_BEAT, 6.0), 
             weight: 0.7, technique: 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { attack: 1.0, release: 2.0 }
         }));
     }
 
     private renderHeritageAccompaniment(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, dna: SuiteDNA, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentThemeMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const startEpoch = this.soloistBusyUntilBar - totalBars;
         const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.registerShift + this.currentTransposition + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, 
-            duration: Math.min(n.d * TICK_TO_BEAT, 6.0), // Expanded limit
+            duration: Math.min(n.d * TICK_TO_BEAT, 6.0), 
             weight: 0.45,
             technique: 'swell' as Technique, dynamics: 'p' as Dynamics, phrasing: 'legato' as Phrasing,
             params: { mood: this.mood, attack: 1.5, release: 3.0 }
@@ -623,7 +632,7 @@ export class AmbientBrain {
         return [{
             type: 'melody', note: Math.min(resChord.rootNote + 24 + this.registerShift + shift + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
             time: 0, 
-            duration: 6.0, // Expanded limit
+            duration: 6.0, 
             weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.0, release: 3.0, filterCutoff: 1800 + (tension * 1200), mood: this.mood }
         }];
@@ -677,15 +686,15 @@ export class AmbientBrain {
         const note = this.constrainAccompanimentOctave(root + colorDegree);
         
         return (timbre === 'guitarChords') 
-            ? [{ type: 'harmony', note: note, time: 0, duration: 6.0, // Expanded limit
+            ? [{ type: 'harmony', note: note, time: 0, duration: 6.0,
                  weight: 0.3, technique: 'swell', dynamics: 'p', phrasing: 'staccato', chordName: resChord.chordType === 'minor' ? 'Am' : 'A', params: { mood: this.mood, attack: 1.2, release: 2.5 } }]
-            : [{ type: 'harmony', note: note + 12, time: 0, duration: 6.0, // Expanded limit
+            : [{ type: 'harmony', note: note + 12, time: 0, duration: 6.0,
                  weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legate', params: { mood: this.mood, attack: 2.0, release: 3.5 } }];
     }
 
     private renderSparkle(chord: GhostChord, isPositive: boolean): FractalEvent {
         return { type: 'sparkle', note: chord.rootNote + 48, time: this.random.nextInt(TICKS_PER_BAR) * TICK_TO_BEAT, 
-                 duration: 6.0, // Back to 6.0
+                 duration: 6.0, 
                  weight: 0.65, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: (Math.random() * 1.8) - 0.9, params: { mood: this.mood, genre: this.genre, category: isPositive ? 'light' : 'ambient_common' } };
     }
 
@@ -766,6 +775,10 @@ export class AmbientBrain {
                 type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
                 duration: 4.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
             });
+            events.push({ 
+                type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
+                duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
+            });
         });
 
         events.push({ 
@@ -774,16 +787,6 @@ export class AmbientBrain {
             time: 0, 
             duration: 0.1, 
             weight: 0.8, 
-            technique: 'hit', 
-            dynamics: 'p', 
-            phrasing: 'staccato' 
-        });
-        events.push({ 
-            type: 'drum_snare_ghost_note', 
-            note: 38, 
-            time: 9 * TICK_TO_BEAT, 
-            duration: 0.1, 
-            weight: 0.3, 
             technique: 'hit', 
             dynamics: 'p', 
             phrasing: 'staccato' 

@@ -1,9 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V19.0 — "Sparse Kick Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1186. Кик играет "через раз".
- * #ЧТО: Внедрена проверка четности такта для всех ударов бочки. 
- *       Это создает классическое даб-чередование "плотных" и "пустых" тактов.
+ * @fileOverview Reggae Brain V20.0 — "Rolling Ribbon Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
+ * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
  */
 
 import type {
@@ -91,10 +90,18 @@ export class ReggaeBrain {
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
-    private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number): number {
+    private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number = 0.5): number {
         if (totalBars <= 0) return 0;
-        if (this.isImprovising) return calculateMusiNum(epoch, 11, this.seed, totalBars);
-        return (epoch - startEpoch) % totalBars;
+        
+        // #ЗАЧЕМ: ПЛАН №1187. Стартовое смещение ленты на основе Seed.
+        const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
+        
+        if (this.isImprovising) {
+            return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
+        }
+        
+        const barsElapsed = epoch - startEpoch;
+        return (barsElapsed + startOffset) % totalBars;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -123,7 +130,19 @@ export class ReggaeBrain {
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
                 }
-                const selected = basePool[calculateMusiNum(this.seed, 19, epoch, basePool.length)];
+
+                // #ЗАЧЕМ: Расчет границ Rolling Ribbon для Регги.
+                const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                
+                const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                
+                // #ЧТО: Фиксация пути вариаций (ПЛАН №1187).
+                const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
+                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
+
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
@@ -135,9 +154,6 @@ export class ReggaeBrain {
 
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
-
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -152,11 +168,11 @@ export class ReggaeBrain {
         return undefined;
     }
 
-    private getActiveBassTicks(epoch: number): Set<number> {
+    private getActiveBassTicks(epoch: number, tension: number = 0.5): Set<number> {
         const ticks = new Set<number>();
         if (this.currentBassTheme) {
             const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-            const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
+            const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
             const barOffset = mosaicBar * TICKS_PER_BAR;
             this.currentBassTheme.phrase.forEach(n => {
                 if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) {
@@ -191,7 +207,7 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        const bassTicks = this.getActiveBassTicks(epoch);
+        const bassTicks = this.getActiveBassTicks(epoch, tension);
 
         // 1. DRUMS
         if (hints.drums) {
@@ -267,10 +283,8 @@ export class ReggaeBrain {
 
     private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // ПЛАН №1186: Бочка играет "через раз" (на четных тактах)
         const kickEnabled = epoch % 2 === 0;
         
-        // 1. ONE DROP ANCHOR (Tick 6)
         if (kickEnabled) {
             events.push({ 
                 type: kit.kick[0] as any, note: 36, time: 6 * TICK_TO_BEAT, 
@@ -278,18 +292,14 @@ export class ReggaeBrain {
             });
         }
         
-        // Малый барабан (Rimshot) остается в каждом такте — он держит скелет риддима
         events.push({ 
             type: kit.snare[0] as any, note: 38, time: 6 * TICK_TO_BEAT, 
             duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
         });
 
-        // 2. BASS SYNC KICKS
         bassTicks.forEach(t => {
             if (Math.abs(t - 6) > 0.1) {
-                // Если кик выключен в этом такте, пропускаем и синхронизированные удары
                 if (!kickEnabled) return;
-
                 const isDownbeat = t < 1.0;
                 const kickWeight = isDownbeat ? 0.35 : 0.95;
                 if (kickWeight > 0.4 || this.random.next() < 0.4) {
@@ -301,23 +311,16 @@ export class ReggaeBrain {
             }
         });
 
-        // 3. ORGANIC HI-HATS (ПЛАН №1180)
         events.push(...this.renderOrganicHats(epoch, tension, kit, bassTicks));
-
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация живого, органического поведения хэта (ПЛАН №1180).
-     * #ЧТО: Плотность хэта снижена в 2 раза. Шаг увеличен до 3.0.
-     */
     private renderOrganicHats(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
         const events: FractalEvent[] = [];
         const patternIdx = calculateMusiNum(epoch, 3, this.seed, 3); 
-        
         const mainOffbeats = [1.5, 4.5, 7.5, 10.5];
         
-        if (patternIdx === 0) { // STYLE: LAZY_OFF (Разреженный офф-бит)
+        if (patternIdx === 0) { 
             mainOffbeats.forEach((t, i) => {
                 if (i % 2 === (epoch % 2)) {
                     const weight = 0.5 + (calculateMusiNum(t, 7, this.seed, 10) / 40);
@@ -328,7 +331,7 @@ export class ReggaeBrain {
                 }
             });
         } 
-        else if (patternIdx === 1) { // STYLE: TRIPLET_FLOW (Разреженное триольное кружево)
+        else if (patternIdx === 1) { 
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
                 const isSyncWithBass = bassTicks.has(t);
                 const prob = isSyncWithBass ? 0.15 : 0.45;
@@ -340,7 +343,7 @@ export class ReggaeBrain {
                 }
             }
         }
-        else { // STYLE: GHOST_PULSE (Разреженный призрачный пульс)
+        else { 
             for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
                 const weight = (t % 6 === 0) ? 0.20 : 0.45;
                 events.push({
@@ -356,7 +359,6 @@ export class ReggaeBrain {
                 duration: 0.4, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato'
             });
         }
-
         return events;
     }
 
@@ -377,7 +379,7 @@ export class ReggaeBrain {
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const barOffset = mosaicBar * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
@@ -396,22 +398,20 @@ export class ReggaeBrain {
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const effectiveScale = 1; 
-        const totalBars = Math.ceil((this.currentAxiomMaxTick * effectiveScale) / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars);
-        const window = TICKS_PER_BAR / effectiveScale;
-        const offset = mosaicBar * window;
+        const totalBars = Math.ceil((this.currentAxiomMaxTick) / TICKS_PER_BAR);
+        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
+        const offset = mosaicBar * TICKS_PER_BAR;
         
-        return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + window).map(n => ({
+        return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT * effectiveScale, duration: (n.d * TICK_TO_BEAT * effectiveScale) * 1.2,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.2,
             weight: 0.85, technique: n.tech === 'vb' ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
         }));
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars);
+        const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
