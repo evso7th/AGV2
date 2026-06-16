@@ -35,7 +35,8 @@ import {
   FileText,
   UploadCloud,
   ClipboardCheck,
-  CloudLightning
+  CloudLightning,
+  RefreshCw
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -94,7 +95,8 @@ import {
     TICKS_PER_BAR,
     TICK_TO_BEAT,
     mergeIdenticalNotes,
-    SEMITONE_TO_DEGREE
+    SEMITONE_TO_DEGREE,
+    normalizeStr
 } from '@/lib/music-theory';
 import { readProjectRootManifests } from '@/app/actions/manifest-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -200,12 +202,12 @@ const DISPLAY_NAMES: Record<string, string> = {
     'synth_cave_pad': 'Cave Pad (Dark)',
     'dynamicPad': '⚡ DYNAMIC PAD',
     'theremin': 'Vocal Theremin',
-    'mellotron': 'Mellotron Strings',
+    'mellotron': 'Majestic Strings',
+    'mellotron_flute_intimate': 'Intimate Flute',
+    'piano': 'Rhodes EPiano',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
-    'piano': 'Rhodes EPiano',
     'bass_jazz_warm': 'Warm Jazz Bass',
-    'blackAcoustic': 'Black Acoustic',
     'psybient': 'Psy-Ambient',
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
     'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
@@ -482,6 +484,42 @@ export default function HypercubeDashboard() {
     setConfirmOpen(true);
   };
 
+  const handleUidMigration = async () => {
+    if (!globalAxioms || globalAxioms.length === 0) return;
+    
+    setConfirmAction({
+        title: `UID MIGRATION (${globalAxioms.length} axioms)`,
+        desc: "CRITICAL: This will migrate ALL existing axioms to the new UID standard. Old records will be deleted and recreated with unique cryptographic IDs. Continue?",
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const snapshot = [...globalAxioms];
+                const CHUNK_SIZE = 450;
+                
+                // 1. Delete all old ones
+                for (let i = 0; i < snapshot.length; i += CHUNK_SIZE) {
+                    const chunk = snapshot.slice(i, i + CHUNK_SIZE);
+                    const batch = writeBatch(db);
+                    chunk.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
+                    await batch.commit();
+                }
+
+                // 2. Re-save with UID
+                for (let i = 0; i < snapshot.length; i++) {
+                    await saveHeritageAxiom(db, snapshot[i], i);
+                }
+                
+                toast({ title: "UID Migration Complete", description: "All heritage axioms are now unique." });
+            } catch (e) {
+                toast({ variant: "destructive", title: "Migration Failed", description: String(e) });
+            } finally {
+                setIsProcessing(false);
+            }
+        }
+    });
+    setConfirmOpen(true);
+  };
+
   const handleExportTrack = (compId: string, licks: any[]) => {
       const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
       const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
@@ -522,7 +560,6 @@ export default function HypercubeDashboard() {
             const calculatedNoteCount = Math.floor(repaired.length / 4);
             const narrative = ax.narrative || ax.instrument || "Heritage component.";
             
-            // #ЗАЧЕМ: ПЛАН №1188. Идентификатор в Staging тоже должен быть уникальным.
             const uniqueSuffix = Math.random().toString(36).substring(2, 8);
             
             return {
@@ -624,7 +661,6 @@ export default function HypercubeDashboard() {
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
       for (let i = 0; i < toInject.length; i++) {
-        // #ЗАЧЕМ: ПЛАН №1188. UID теперь генерируется внутри saveHeritageAxiom.
         await saveHeritageAxiom(db, { ...toInject[i], genre: selectedGenre }, i);
         count++;
       }
@@ -717,7 +753,10 @@ export default function HypercubeDashboard() {
                     <Input placeholder="Search..." className="h-9 w-[180px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                     <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
                     <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
-                    {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-2" /> Wipe ({selectedTrackGroups.size})</Button>}
+                    <div className="flex gap-1">
+                        {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-2" /> Wipe ({selectedTrackGroups.size})</Button>}
+                        <Button variant="outline" size="sm" onClick={handleUidMigration} disabled={isProcessing} className="h-9 text-[10px] font-black uppercase border-primary/20 hover:bg-primary/5 text-primary gap-2"><RefreshCw className={cn("h-4 w-4", isProcessing && "animate-spin")} /> Repair Global IDs</Button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -1002,3 +1041,4 @@ export default function HypercubeDashboard() {
     </div>
   );
 }
+
