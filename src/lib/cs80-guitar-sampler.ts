@@ -2,8 +2,8 @@
 import type { Note } from "@/types/music";
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.4 — "Three-Second Horizon".
- * #ЧТО: ПЛАН №1169 — Принудительное затухание через 3 секунды.
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.5 — "Imperial Volume Boost".
+ * #ЧТО: ПЛАН №1190 — Громкость увеличена в 2 раза (0.2 -> 0.4).
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -33,7 +33,7 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.2; 
+        this.preamp.gain.value = 0.4; // ПЛАН №1190: Увеличено с 0.2
         this.preamp.connect(this.destination);
     }
 

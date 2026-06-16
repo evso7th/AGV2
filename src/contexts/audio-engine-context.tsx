@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V52.0 — "Atomic Stability Update".
- * #ЗАЧЕМ: ПЛАН №1185. Устранение автопаузы при смене громкости и стабилизация ссылок.
+ * @fileOverview Audio Engine Context V53.0 — "Imperial Timbre Balance".
+ * #ЗАЧЕМ: ПЛАН №1190. Увеличение громкости CS80 в 2 раза для сольных партий.
  */
 'use client';
 
@@ -46,7 +46,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     electric: 0.15, 
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.2, 
+    cs80: 0.4, // ПЛАН №1190: Увеличено с 0.2 для сольной мощности
     chords: 1.2,
     bass: 1.0
 };
