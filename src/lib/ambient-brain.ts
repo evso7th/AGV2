@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V92.0 — "Live Landscape Protocol".
- * #ЗАЧЕМ: ПЛАН №1215 — Избавление от монотонного гудения.
- * #ЧТО: Внедрение Time Scaling для мелодии и риффо-пульсирующего баса.
+ * @fileOverview Ambient Brain V93.0 — "Masterpiece Gap-Filling Protocol".
+ * #ЗАЧЕМ: ПЛАН №1216 — Использование библиотеки ликов для осмысленных пауз.
+ * #ЧТО: Внедрение MASTERPIECE_LICKS в renderGapFiller.
  */
 
 import type {
@@ -33,6 +33,7 @@ import {
     applyRhythmicJitter
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
+import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -66,6 +67,7 @@ export class AmbientBrain {
     private currentNativeRoot: number | null = null;
     private currentPreferredInstrument: string | null = null;
     private currentMutationType: string = 'none';
+    private currentGapLickId: string = 'none';
 
     private readonly MELODY_CEILING = 78;
     private readonly BASS_FLOOR = 31;
@@ -187,6 +189,7 @@ export class AmbientBrain {
     ): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+        this.currentGapLickId = 'none';
 
         // --- Evolution & Mutation Logic ---
         if (epoch % 4 === 0) {
@@ -227,10 +230,9 @@ export class AmbientBrain {
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
 
-        // 3. Accompaniment & Piano
+        // 3. Accompaniment & Piano (Monolith Protocol)
         const usedLayers = new Set<string>();
         
-        // --- MONOLITH PROTOCOL ---
         if (hints.bass && hints.accompaniment) {
             const bassNotesInBar = events.filter(e => e.type === 'bass');
             if (bassNotesInBar.length > 0) {
@@ -275,12 +277,12 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentTheme ? `${this.currentTheme.id} (Cloud)` : 'Algorithmic',
+                melody: this.currentGapLickId !== 'none' ? `Gap-Fill [${this.currentGapLickId}]` : (this.currentTheme ? `${this.currentTheme.id} (Cloud)` : 'Algorithmic'),
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Drone',
                 drums: 'Sonic Landscape',
                 ensemble: 'SIBLING [MONOLITH]'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Landscape: Pumping Textures]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: Pumping Textures]`
         };
     }
 
@@ -316,7 +318,8 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        let barNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
@@ -335,7 +338,8 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
@@ -350,7 +354,6 @@ export class AmbientBrain {
 
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = this.constrainBassOctave(chord.rootNote - 12);
-        // #ЗАЧЕМ: ПЛАН №1215. Превращение монотонного баса в "риффо-пульсирующий".
         return [
             {
                 type: 'bass', note: root,
@@ -376,16 +379,44 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1216. Интеллектуальное заполнение пауз на основе библиотеки Masterpiece Licks.
+     */
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (this.random.next() > 0.4) return [];
-        const scale = [0, 2, 4, 7, 9, 11];
-        const shift = scale[calculateMusiNum(epoch, 5, this.seed, scale.length)];
-        return [{
-            type: 'melody', note: chord.rootNote + 24 + shift,
-            time: 1.5 * TICK_TO_BEAT, duration: 8.5, weight: 0.6,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 3.0, release: 10.0, genre: 'ambient' }
-        }];
+        // Редкое вступление, чтобы сохранить воздух
+        if (this.random.next() > (0.3 + tension * 0.2)) return [];
+        
+        // 1. Обращаемся к библиотеке мастер-писов (LN_ серия - нарративные предложения)
+        const lickKeys = Object.keys(BLUES_SOLO_LICKS).filter(k => k.startsWith('LN_'));
+        const lickId = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
+        const masterpiece = BLUES_SOLO_LICKS[lickId];
+        
+        if (!masterpiece) return [];
+        this.currentGapLickId = lickId;
+
+        // 2. Декомпрессия и нормализация лика
+        const phrase = decompressCompactPhrase(masterpiece.phrase as any);
+        const barInLick = epoch % 4; // Лики LN обычно 4-тактовые
+        const offset = barInLick * TICKS_PER_BAR;
+        
+        const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        
+        // 3. Превращение блюзового лика в Амбиент-текстуру
+        return barNotes.map(n => ({
+            type: 'melody',
+            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+            time: n.t * TICK_TO_BEAT,
+            duration: (n.d * TICK_TO_BEAT) * 2.0, // Удлиняем для амбиента
+            weight: 0.5 + (tension * 0.2),
+            technique: 'swell', // Принудительный swell
+            dynamics: 'p',
+            phrasing: 'legato',
+            params: { 
+                attack: 2.0 + this.random.next() * 1.5, 
+                release: 10.0,
+                genre: 'ambient'
+            }
+        }));
     }
 
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
@@ -405,13 +436,14 @@ export class AmbientBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-        if (e.duration < 3.0) return [e]; 
+        if (e.duration < 3.5) return [e]; 
 
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
-        const ripplePool = isMinor ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12]; 
+        const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
         
-        const numChunks = Math.min(3, Math.ceil(e.duration / 2.0)); 
+        const numChunks = Math.ceil(e.duration / 1.5); 
+        const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
         for (let i = 0; i < numChunks; i++) {
@@ -433,12 +465,12 @@ export class AmbientBrain {
             rippled.push({
                 ...e,
                 note: finalNote,
-                time: e.time + (i * 0.45), 
-                duration: e.duration * 1.8, 
+                time: e.time + (i * chunkDur),
+                duration: chunkDur * 1.15,
                 params: { 
                     ...e.params, 
-                    attack: 2.5 + (i * 0.8),
-                    release: 10.0 + (i * 2.0)
+                    attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
+                    release: 12.0 
                 }
             });
         }
