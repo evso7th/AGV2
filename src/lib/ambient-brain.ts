@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V94.0 — "Spectral Clarity Update".
- * #ЗАЧЕМ: ПЛАН №1217 — Устранение перегруза и гула.
- * #ЧТО: Сокращение релизов, снижение громкости и замена вибрато на плавный swell.
+ * @fileOverview Ambient Brain V95.0 — "Ethereal Sparkle Update".
+ * #ЗАЧЕМ: ПЛАН №1218 — Добавление редких мерцающих текстур.
+ * #ЧТО: Внедрение renderSparkles с низкой вероятностью для создания объема.
  */
 
 import type {
@@ -68,6 +68,7 @@ export class AmbientBrain {
     private currentPreferredInstrument: string | null = null;
     private currentMutationType: string = 'none';
     private currentGapLickId: string = 'none';
+    private lastSparkleBar: number = -1;
 
     private readonly MELODY_CEILING = 78;
     private readonly BASS_FLOOR = 31;
@@ -241,7 +242,7 @@ export class AmbientBrain {
                         ...be,
                         type: 'accompaniment',
                         note: be.note + (be.note < 40 ? 24 : 12),
-                        weight: be.weight * 0.45, // #ЗАЧЕМ: Снижение громкости для устранения перегруза.
+                        weight: be.weight * 0.45, 
                         technique: 'swell',
                         params: { ...be.params, attack: 2.0, release: 6.0, genre: 'ambient' }
                     });
@@ -264,9 +265,14 @@ export class AmbientBrain {
             events.push(...this.renderEvolvingPad(resChord, epoch, tension));
         }
 
-        // 4. Drums
+        // 4. Drums & Sparkles
         if (hints.drums) {
             events.push(...this.renderSonicLandscape(epoch, tension));
+        }
+        
+        const sparkleEvents = this.renderSparkles(epoch, tension);
+        if (sparkleEvents.length > 0) {
+            events.push(...sparkleEvents);
         }
 
         const modeStr = this.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
@@ -280,10 +286,37 @@ export class AmbientBrain {
                 melody: this.currentGapLickId !== 'none' ? `Gap-Fill [${this.currentGapLickId}]` : (this.currentTheme ? `${this.currentTheme.id} (Cloud)` : 'Algorithmic'),
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Drone',
                 drums: 'Sonic Landscape',
+                sparkles: sparkleEvents.length > 0 ? 'Active' : 'Silent',
                 ensemble: 'SIBLING [MONOLITH]'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: Pumping Textures]`
         };
+    }
+
+    private renderSparkles(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        // #ЗАЧЕМ: ПЛАН №1218. Вероятность 15-25% для искр ("без фанатизма").
+        if (this.random.next() < (0.15 + tension * 0.1)) {
+            const categories = ['light', 'ambient_common', 'root', 'promenade'];
+            const categoryIdx = calculateMusiNum(epoch, 17, this.seed, categories.length);
+            const category = categories[categoryIdx];
+            
+            this.lastSparkleBar = epoch;
+            
+            events.push({
+                type: 'sparkle',
+                note: 60, 
+                time: this.random.nextInt(12) * TICK_TO_BEAT,
+                duration: 4.0,
+                weight: 0.8 + (tension * 0.4),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                pan: (this.random.next() * 1.8) - 0.9,
+                params: { mood: this.mood, genre: this.genre, category }
+            });
+        }
+        return events;
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
@@ -306,8 +339,8 @@ export class AmbientBrain {
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, 
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
-            weight: 0.7, // Снижено с 0.8
-            technique: 'swell', // #ЗАЧЕМ: Устранение вибраций (замена vb на swell).
+            weight: 0.7, 
+            technique: 'swell', 
             dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 5.0, genre: 'ambient' }
         }));
@@ -328,7 +361,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9,
             technique: 'drone', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.0, release: 4.0, genre: 'ambient' }
         }));
@@ -339,16 +372,17 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT), weight: 0.35, // Снижено с 0.5
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35, 
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.5, release: 6.0, genre: 'ambient' } // #ЗАЧЕМ: Сокращение релиза для чистоты.
+            params: { attack: 2.5, release: 6.0, genre: 'ambient' } 
         }));
     }
 
