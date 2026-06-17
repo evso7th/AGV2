@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V93.0 — "Masterpiece Gap-Filling Protocol".
- * #ЗАЧЕМ: ПЛАН №1216 — Использование библиотеки ликов для осмысленных пауз.
- * #ЧТО: Внедрение MASTERPIECE_LICKS в renderGapFiller.
+ * @fileOverview Ambient Brain V94.0 — "Spectral Clarity Update".
+ * #ЗАЧЕМ: ПЛАН №1217 — Устранение перегруза и гула.
+ * #ЧТО: Сокращение релизов, снижение громкости и замена вибрато на плавный swell.
  */
 
 import type {
@@ -191,7 +191,6 @@ export class AmbientBrain {
         this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
         this.currentGapLickId = 'none';
 
-        // --- Evolution & Mutation Logic ---
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
             if (roll < 40) this.currentMutationType = 'none';
@@ -230,9 +229,10 @@ export class AmbientBrain {
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
 
-        // 3. Accompaniment & Piano (Monolith Protocol)
+        // 3. Accompaniment & Piano
         const usedLayers = new Set<string>();
         
+        // --- MONOLITH PROTOCOL ---
         if (hints.bass && hints.accompaniment) {
             const bassNotesInBar = events.filter(e => e.type === 'bass');
             if (bassNotesInBar.length > 0) {
@@ -241,9 +241,9 @@ export class AmbientBrain {
                         ...be,
                         type: 'accompaniment',
                         note: be.note + (be.note < 40 ? 24 : 12),
-                        weight: be.weight * 0.6,
+                        weight: be.weight * 0.45, // #ЗАЧЕМ: Снижение громкости для устранения перегруза.
                         technique: 'swell',
-                        params: { ...be.params, attack: 2.0, release: 12.0, genre: 'ambient' }
+                        params: { ...be.params, attack: 2.0, release: 6.0, genre: 'ambient' }
                     });
                 });
                 usedLayers.add('accompaniment');
@@ -305,10 +305,11 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, 
-            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.5, 
-            weight: 0.8,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.5, release: 12.0, genre: 'ambient' }
+            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
+            weight: 0.7, // Снижено с 0.8
+            technique: 'swell', // #ЗАЧЕМ: Устранение вибраций (замена vb на swell).
+            dynamics: 'p', phrasing: 'legato',
+            params: { attack: 1.5, release: 5.0, genre: 'ambient' }
         }));
     }
 
@@ -329,7 +330,7 @@ export class AmbientBrain {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8,
             technique: 'drone', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 8.0, genre: 'ambient' }
+            params: { attack: 1.0, release: 4.0, genre: 'ambient' }
         }));
     }
 
@@ -338,17 +339,16 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
+        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.5, weight: 0.5,
+            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT), weight: 0.35, // Снижено с 0.5
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 3.5, release: 15.0, genre: 'ambient' }
+            params: { attack: 2.5, release: 6.0, genre: 'ambient' } // #ЗАЧЕМ: Сокращение релиза для чистоты.
         }));
     }
 
@@ -357,13 +357,13 @@ export class AmbientBrain {
         return [
             {
                 type: 'bass', note: root,
-                time: 0, duration: 6.0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 1.5, release: 8.0, genre: 'ambient' }
+                time: 0, duration: 6.0, weight: 0.65, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 1.5, release: 4.0, genre: 'ambient' }
             },
             {
                 type: 'bass', note: root + (tension > 0.7 ? 7 : 0), 
-                time: 6.0 * TICK_TO_BEAT, duration: 6.0, weight: 0.55, technique: 'drone', dynamics: 'p', phrasing: 'legato',
-                params: { attack: 2.0, release: 6.0, genre: 'ambient' }
+                time: 6.0 * TICK_TO_BEAT, duration: 6.0, weight: 0.45, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 2.0, release: 3.0, genre: 'ambient' }
             }
         ];
     }
@@ -373,49 +373,35 @@ export class AmbientBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7, 10] : [0, 4, 7, 11];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: (i * 0.5) * TICK_TO_BEAT, duration: 12.0, weight: 0.4 - (i * 0.05),
+            time: (i * 0.5) * TICK_TO_BEAT, duration: 8.0, weight: 0.3 - (i * 0.05),
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 4.0 + i, release: 12.0, genre: 'ambient' }
+            params: { attack: 3.0 + i, release: 6.0, genre: 'ambient' }
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1216. Интеллектуальное заполнение пауз на основе библиотеки Masterpiece Licks.
-     */
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        // Редкое вступление, чтобы сохранить воздух
         if (this.random.next() > (0.3 + tension * 0.2)) return [];
-        
-        // 1. Обращаемся к библиотеке мастер-писов (LN_ серия - нарративные предложения)
         const lickKeys = Object.keys(BLUES_SOLO_LICKS).filter(k => k.startsWith('LN_'));
         const lickId = lickKeys[calculateMusiNum(epoch, 13, this.seed, lickKeys.length)];
         const masterpiece = BLUES_SOLO_LICKS[lickId];
-        
         if (!masterpiece) return [];
         this.currentGapLickId = lickId;
 
-        // 2. Декомпрессия и нормализация лика
         const phrase = decompressCompactPhrase(masterpiece.phrase as any);
-        const barInLick = epoch % 4; // Лики LN обычно 4-тактовые
+        const barInLick = epoch % 4; 
         const offset = barInLick * TICKS_PER_BAR;
-        
         const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
         
-        // 3. Превращение блюзового лика в Амбиент-текстуру
         return barNotes.map(n => ({
             type: 'melody',
             note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT,
-            duration: (n.d * TICK_TO_BEAT) * 2.0, // Удлиняем для амбиента
-            weight: 0.5 + (tension * 0.2),
-            technique: 'swell', // Принудительный swell
+            duration: (n.d * TICK_TO_BEAT) * 1.5,
+            weight: 0.4 + (tension * 0.15),
+            technique: 'swell', 
             dynamics: 'p',
             phrasing: 'legato',
-            params: { 
-                attack: 2.0 + this.random.next() * 1.5, 
-                release: 10.0,
-                genre: 'ambient'
-            }
+            params: { attack: 2.0, release: 5.0, genre: 'ambient' }
         }));
     }
 
@@ -427,7 +413,7 @@ export class AmbientBrain {
             const perc = kit.perc[calculateMusiNum(epoch + i, 11, this.seed, kit.perc.length)];
             events.push({
                 type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 6.0, weight: 0.3 + (this.random.next() * 0.3),
+                duration: 6.0, weight: 0.25 + (this.random.next() * 0.25),
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.8) - 0.9,
                 params: { genre: 'ambient' }
             });
@@ -437,12 +423,10 @@ export class AmbientBrain {
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
         if (e.duration < 3.5) return [e]; 
-
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
         const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
-        
-        const numChunks = Math.ceil(e.duration / 1.5); 
+        const numChunks = Math.ceil(e.duration / 2.0); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
 
@@ -455,7 +439,6 @@ export class AmbientBrain {
                 const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
                 note = baseOctaveMidi + ripplePool[idx];
             }
-
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             let finalNote = note;
             if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
@@ -466,12 +449,9 @@ export class AmbientBrain {
                 ...e,
                 note: finalNote,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.15,
-                params: { 
-                    ...e.params, 
-                    attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
-                    release: 12.0 
-                }
+                duration: chunkDur * 1.1,
+                weight: e.weight * 0.8,
+                params: { ...e.params, attack: i === 0 ? (e.params?.attack || 0.5) : 1.2, release: 5.0 }
             });
         }
         return rippled;
