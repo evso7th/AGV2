@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V91.1 — "Bugfix: Mutation Reassignment".
- * #ЗАЧЕМ: Исправление ошибки "cannot reassign to a variable declared with const".
- * #ЧТО: Замена const на let в методе renderHeritageLayer.
+ * @fileOverview Ambient Brain V92.0 — "Live Landscape Protocol".
+ * #ЗАЧЕМ: ПЛАН №1215 — Избавление от монотонного гудения.
+ * #ЧТО: Внедрение Time Scaling для мелодии и риффо-пульсирующего баса.
  */
 
 import type {
@@ -57,6 +57,7 @@ export class AmbientBrain {
     
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAxiomMaxTick: number = 0;
+    private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id?: string, endBar: number, preferredInstrument?: string }[] = [];
     
@@ -185,6 +186,7 @@ export class AmbientBrain {
         hints: InstrumentHints
     ): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
 
         // --- Evolution & Mutation Logic ---
         if (epoch % 4 === 0) {
@@ -211,10 +213,16 @@ export class AmbientBrain {
         }
 
         // 2. Melody
-        if (hints.melody && epoch < this.soloistBusyUntilBar) {
-            const m = this.currentTheme 
-                ? this.renderHeritageMelody(epoch, resChord, tension)
-                : this.renderGenerativeMelody(resChord, epoch, tension);
+        if (hints.melody) {
+            let m: FractalEvent[] = [];
+            if (this.currentTheme && epoch < this.currentTheme.endBar) {
+                m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
+            }
+            
+            if (m.length === 0) {
+                m = this.renderGapFiller(epoch, resChord, tension);
+            }
+
             events.push(...m);
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
@@ -268,7 +276,7 @@ export class AmbientBrain {
             instrumentOverrides,
             activeAxioms: {
                 melody: this.currentTheme ? `${this.currentTheme.id} (Cloud)` : 'Algorithmic',
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Drone',
+                bass: this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Drone',
                 drums: 'Sonic Landscape',
                 ensemble: 'SIBLING [MONOLITH]'
             },
@@ -276,13 +284,17 @@ export class AmbientBrain {
         };
     }
 
-    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number): FractalEvent[] {
         if (!this.currentTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
-        const offset = mosaicBar * TICKS_PER_BAR;
+        const totalBarsInPhrase = Math.ceil((this.currentAxiomMaxTick * timeScale) / TICKS_PER_BAR);
+        const startEpoch = this.soloistBusyUntilBar - totalBarsInPhrase;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBarsInPhrase, tension);
         
-        let barNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        const readingWindow = TICKS_PER_BAR / timeScale;
+        const barOffset = mosaicBar * readingWindow;
+        
+        const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: (n.t - barOffset) * timeScale }));
         
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
@@ -291,7 +303,7 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, 
-            duration: (n.d * TICK_TO_BEAT) * 2.2, 
+            duration: (n.d * TICK_TO_BEAT * timeScale) * 1.5, 
             weight: 0.8,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.5, release: 12.0, genre: 'ambient' }
@@ -312,7 +324,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 2.0, weight: 0.8,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8,
             technique: 'drone', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 8.0, genre: 'ambient' }
         }));
@@ -323,7 +335,6 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        // #ЗАЧЕМ: ПЛАН №1214. Исправление ошибки reassignment to const.
         let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
@@ -331,18 +342,27 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 2.0, weight: 0.5,
+            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.5, weight: 0.5,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 3.5, release: 15.0, genre: 'ambient' }
         }));
     }
 
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        return [{
-            type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12),
-            time: 0, duration: 8.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 3.5, release: 12.0, genre: 'ambient' }
-        }];
+        const root = this.constrainBassOctave(chord.rootNote - 12);
+        // #ЗАЧЕМ: ПЛАН №1215. Превращение монотонного баса в "риффо-пульсирующий".
+        return [
+            {
+                type: 'bass', note: root,
+                time: 0, duration: 6.0, weight: 0.75, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 1.5, release: 8.0, genre: 'ambient' }
+            },
+            {
+                type: 'bass', note: root + (tension > 0.7 ? 7 : 0), 
+                time: 6.0 * TICK_TO_BEAT, duration: 6.0, weight: 0.55, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+                params: { attack: 2.0, release: 6.0, genre: 'ambient' }
+            }
+        ];
     }
 
     private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -356,10 +376,12 @@ export class AmbientBrain {
         }));
     }
 
-    private renderGenerativeMelody(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const shift = [0, 2, 4, 7, 9][calculateMusiNum(epoch, 5, this.seed, 5)];
+    private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        if (this.random.next() > 0.4) return [];
+        const scale = [0, 2, 4, 7, 9, 11];
+        const shift = scale[calculateMusiNum(epoch, 5, this.seed, scale.length)];
         return [{
-            type: 'melody', note: resChord.rootNote + 24 + shift,
+            type: 'melody', note: chord.rootNote + 24 + shift,
             time: 1.5 * TICK_TO_BEAT, duration: 8.5, weight: 0.6,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 3.0, release: 10.0, genre: 'ambient' }
