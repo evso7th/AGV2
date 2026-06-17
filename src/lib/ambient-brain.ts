@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V84.0 — "Rolling Ribbon Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
- * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
+ * @fileOverview Ambient Brain V85.0 — "Monolith Foundation".
+ * #ЗАЧЕМ: Реализация Шага 1 ПЛАНА №1204 (Имперская Реформа).
+ * #ЧТО: Внедрение протокола Strict Octave Unison между Басом и Аккомпанементом.
  */
 
 import type {
@@ -35,6 +35,7 @@ import {
     normalizeStr
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
+import { GEO_ATLAS } from './music-theory';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -120,22 +121,12 @@ export class AmbientBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
-        
-        // #ЗАЧЕМ: Реализация ПЛАНА №1187. Смещение начала трека на основе Seed.
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-        
         if (this.isImprovising) {
             return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
         }
-        
         const barsElapsed = epoch - startEpoch;
-        const linearIndex = (barsElapsed + startOffset) % totalBars;
-        
-        // Редкая вариация на высоком напряжении (небольшой прыжок)
-        const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
-        if (tension > 0.85 && rand < 0.1) return (linearIndex + 1) % totalBars;
-        
-        return linearIndex;
+        return (barsElapsed + startOffset) % totalBars;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -169,24 +160,17 @@ export class AmbientBrain {
 
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
-                    const firstSelection = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(firstSelection.compositionId);
+                    const firstChoice = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                    this.sessionAnchorId = normalizeStr(firstChoice.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
                     filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                // #ЗАЧЕМ: Определение границ "ленты" трека-донора.
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                
-                // #ЧТО: Расчет целевого смещения с учетом Rolling Ribbon.
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
-                // #ЗАЧЕМ: Поиск аксиомы в ленте.
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                
-                // #ЧТО: Фиксация пути при наличии вариаций (ПЛАН №1187).
                 const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
                 const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
@@ -200,7 +184,6 @@ export class AmbientBrain {
 
                     const cid = normalizeStr(selected.compositionId);
                     
-                    // SIBLINGS также должны подчиняться Mosaic Index для синхронизации.
                     const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     if (bassSibling) {
                         this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4) };
@@ -355,6 +338,18 @@ export class AmbientBrain {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, localTension, 'melody', 'ambient');
         }
 
+        // --- 1. GENERATE BASS (FOUNDATION) ---
+        let bassEvents: FractalEvent[] = [];
+        if (hints.bass) {
+            if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
+                bassEvents = this.constrainBass(this.renderThemeBass(resChord, epoch, localTension, dna));
+            } else {
+                bassEvents = this.constrainBass(this.renderDroneBass(resChord, epoch, localTension));
+            }
+            events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+        }
+
+        // --- 2. GENERATE MELODY ---
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -367,11 +362,29 @@ export class AmbientBrain {
         melodyEvents.forEach(e => e.pan = -0.15); 
         events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
 
+        // --- 3. GENERATE ACCOMPANIMENT (MONOLITH UNISON PROTOCOL ACTIVE) ---
         let accStatus = 'none';
         const isAccompResting = epoch < this.accompanimentRestingUntilBar;
         const usedTargetLayers = new Set<string>();
         
         if (!isAccompResting) {
+            // #ЗАЧЕМ: ПЛАН №1204.1. Внедрение Strict Octave Unison.
+            // Если есть бас, аккомпанемент удваивает его фундамент.
+            if (hints.accompaniment && bassEvents.length > 0) {
+                const unisonEvents = bassEvents.map(be => ({
+                    ...be,
+                    type: 'accompaniment',
+                    note: this.constrainAccompanimentOctave(be.note + 12),
+                    weight: 0.4,
+                    technique: 'swell' as Technique,
+                    params: { ...be.params, attack: 1.5, release: 2.5, filterCutoff: 800 + (localTension * 400) }
+                }));
+                events.push(...unisonEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+                usedTargetLayers.add('accompaniment');
+                accStatus = 'Monolith Unison (gravity)';
+                this.ensembleStatus = 'SIBLING [MONOLITH]';
+            }
+
             this.currentAccompAxioms.forEach((ax) => {
                 const rawRole = ax.role.toLowerCase(); 
                 let targetType: InstrumentPart | null = null;
@@ -408,21 +421,6 @@ export class AmbientBrain {
                 events.push(...harEvents.flatMap(e => this.rippleLongNote(e, resChord)));
                 usedTargetLayers.add('harmony');
             }
-        }
-
-        let bassStatus = 'none';
-        if (hints.bass && this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
-            const themeBass = this.renderThemeBass(resChord, epoch, localTension, dna);
-            if (themeBass.length > 0) {
-                events.push(...this.constrainBass(themeBass).flatMap(e => this.rippleLongNote(e, resChord)));
-                bassStatus = 'Sibling DNA';
-            } else {
-                events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
-                bassStatus = 'Walking Drone (drone)';
-            }
-        } else if (hints.bass) {
-            events.push(...this.constrainBass(this.renderDroneBass(resChord, epoch, localTension)));
-            bassStatus = 'Walking Drone (drone)';
         }
 
         let pianoInfo = { style: 'none', count: 0 };
@@ -466,7 +464,7 @@ export class AmbientBrain {
             activeAxioms: {
                 melody: isSoloistResting ? 'Breath' : (melodyEvents.length > 0 ? this.currentTheme?.id || 'Generative' : 'Waiting'),
                 ensemble: `${this.ensembleStatus} [${modeStr}]`,
-                bass: bassStatus,
+                bass: bassEvents.length > 0 ? (this.currentBassTheme ? 'Sibling DNA' : 'Walking Drone') : 'none',
                 drums: 'Sonic Landscape', 
                 accompaniment: isAccompResting ? 'Breath' : accStatus,
                 piano: pianoInfo.count > 0 ? `${pianoInfo.style}` : 'none',
