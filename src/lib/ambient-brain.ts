@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V95.0 — "Ethereal Sparkle Update".
- * #ЗАЧЕМ: ПЛАН №1218 — Добавление редких мерцающих текстур.
- * #ЧТО: Внедрение renderSparkles с низкой вероятностью для создания объема.
+ * @fileOverview Ambient Brain V96.0 — "Spectral Transparency Update".
+ * #ЗАЧЕМ: ПЛАН №1219 — Устранение гула и «басовитости» в аккомпанементе.
+ * #ЧТО: Смещение регистра аккомпанемента вверх (C4-C6) и снижение весов.
  */
 
 import type {
@@ -70,7 +70,8 @@ export class AmbientBrain {
     private currentGapLickId: string = 'none';
     private lastSparkleBar: number = -1;
 
-    private readonly MELODY_CEILING = 78;
+    // #ЗАЧЕМ: ПЛАН №1219. Поднятие потолка для сольных партий.
+    private readonly MELODY_CEILING = 88;
     private readonly BASS_FLOOR = 31;
     private readonly BASS_CEILING = 47;
 
@@ -234,6 +235,7 @@ export class AmbientBrain {
         const usedLayers = new Set<string>();
         
         // --- MONOLITH PROTOCOL ---
+        // #ЗАЧЕМ: ПЛАН №1219. Смещение пэда еще выше и снижение веса для исключения гула.
         if (hints.bass && hints.accompaniment) {
             const bassNotesInBar = events.filter(e => e.type === 'bass');
             if (bassNotesInBar.length > 0) {
@@ -241,8 +243,8 @@ export class AmbientBrain {
                     events.push({
                         ...be,
                         type: 'accompaniment',
-                        note: be.note + (be.note < 40 ? 24 : 12),
-                        weight: be.weight * 0.45, 
+                        note: be.note + 24, // Жестко +2 октавы от баса
+                        weight: be.weight * 0.35, // Еще тише для прозрачности
                         technique: 'swell',
                         params: { ...be.params, attack: 2.0, release: 6.0, genre: 'ambient' }
                     });
@@ -289,13 +291,12 @@ export class AmbientBrain {
                 sparkles: sparkleEvents.length > 0 ? 'Active' : 'Silent',
                 ensemble: 'SIBLING [MONOLITH]'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: Pumping Textures]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: High Clarity Textures]`
         };
     }
 
     private renderSparkles(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: ПЛАН №1218. Вероятность 15-25% для искр ("без фанатизма").
         if (this.random.next() < (0.15 + tension * 0.1)) {
             const categories = ['light', 'ambient_common', 'root', 'promenade'];
             const categoryIdx = calculateMusiNum(epoch, 17, this.seed, categories.length);
@@ -372,15 +373,15 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        let barNotes = rawBarNotes;
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.35, 
+            type, note: this.constrainAccompanimentOctave(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.3, 
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.5, release: 6.0, genre: 'ambient' } 
         }));
@@ -403,11 +404,11 @@ export class AmbientBrain {
     }
 
     private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12;
+        const root = chord.rootNote + 24; // #ЗАЧЕМ: ПЛАН №1219. Смещение вверх.
         const intervals = chord.chordType === 'minor' ? [0, 3, 7, 10] : [0, 4, 7, 11];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: (i * 0.5) * TICK_TO_BEAT, duration: 8.0, weight: 0.3 - (i * 0.05),
+            time: (i * 0.5) * TICK_TO_BEAT, duration: 8.0, weight: 0.25 - (i * 0.05), // Тише
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 3.0 + i, release: 6.0, genre: 'ambient' }
         }));
@@ -455,42 +456,13 @@ export class AmbientBrain {
         return events;
     }
 
-    private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-        if (e.duration < 3.5) return [e]; 
-        const rippled: FractalEvent[] = [];
-        const isMinor = chord.chordType === 'minor';
-        const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
-        const numChunks = Math.ceil(e.duration / 2.0); 
-        const chunkDur = e.duration / numChunks;
-        const baseOctaveMidi = Math.floor(e.note / 12) * 12;
-
-        for (let i = 0; i < numChunks; i++) {
-            let note: number;
-            if (i === 0) {
-                note = e.note;
-            } else {
-                const seedOffset = Math.floor(e.time * 12);
-                const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
-                note = baseOctaveMidi + ripplePool[idx];
-            }
-            const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
-            let finalNote = note;
-            if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
-            else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
-            else finalNote = this.constrainAccompanimentOctave(note);
-
-            rippled.push({
-                ...e,
-                note: finalNote,
-                time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.1,
-                weight: e.weight * 0.8,
-                params: { ...e.params, attack: i === 0 ? (e.params?.attack || 0.5) : 1.2, release: 5.0 }
-            });
-        }
-        return rippled;
-    }
-
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return v; }
+    
+    // #ЗАЧЕМ: ПЛАН №1219. Очистка низов аккомпанемента.
+    private constrainAccompanimentOctave(n: number): number { 
+        let v = n; 
+        while (v > 84) v -= 12; 
+        while (v < 60) v += 12; // C4 - B5: Зона прозрачности
+        return v; 
+    }
 }
