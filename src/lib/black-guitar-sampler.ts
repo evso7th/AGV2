@@ -1,11 +1,10 @@
-
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V5.2 — "Range Security Protocol".
- * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V5.3 — "Eternal Tail Update".
+ * #ЧТО: ПЛАН №1213 — Увеличение времени затухания для Амбиента.
  */
 
 function makeAcousticWarmthCurve() {
@@ -242,7 +241,6 @@ export class BlackGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, name: string, mood?: string, isTransientMode: boolean = false) {
-        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
         const now = this.audioContext.currentTime;
         const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
         if (playTime < 0) return;
@@ -262,7 +260,8 @@ export class BlackGuitarSampler {
             source.start(playTime);
             source.stop(playTime + 0.05);
         } else {
-            gainNode.gain.setTargetAtTime(0, playTime + 6.0, 0.8);
+            // #ЗАЧЕМ: ПЛАН №1213. Увеличение хвоста затухания для Амбиента.
+            gainNode.gain.setTargetAtTime(0, playTime + 12.0, 1.2);
             source.start(playTime);
         }
         this.activeSources.add(source);

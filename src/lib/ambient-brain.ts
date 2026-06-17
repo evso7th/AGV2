@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V90.0 — "Intellectual Transplant".
- * #ЗАЧЕМ: ПЛАН №1212 — Пересадка архитектуры BluesBrain в тело Ambient.
- * #ЧТО: Удалена вся блюзовая специфика. Внедрена память, мутации и Rolling Ribbon.
+ * @fileOverview Ambient Brain V91.1 — "Bugfix: Mutation Reassignment".
+ * #ЗАЧЕМ: Исправление ошибки "cannot reassign to a variable declared with const".
+ * #ЧТО: Замена const на let в методе renderHeritageLayer.
  */
 
 import type {
@@ -50,13 +50,13 @@ export class AmbientBrain {
     private useHeritage: boolean;
     private isImprovising: boolean = false;
 
-    // --- State & Memory (Transplanted from Blues) ---
+    // --- State & Memory ---
     private history: { chord: GhostChord; tension: number; events: FractalEvent[] }[] = [];
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1;
     
     private currentTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
-    private currentThemeMaxTick: number = 0;
+    private currentAxiomMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id?: string, endBar: number, preferredInstrument?: string }[] = [];
     
@@ -221,6 +221,25 @@ export class AmbientBrain {
 
         // 3. Accompaniment & Piano
         const usedLayers = new Set<string>();
+        
+        // --- MONOLITH PROTOCOL ---
+        if (hints.bass && hints.accompaniment) {
+            const bassNotesInBar = events.filter(e => e.type === 'bass');
+            if (bassNotesInBar.length > 0) {
+                bassNotesInBar.forEach(be => {
+                    events.push({
+                        ...be,
+                        type: 'accompaniment',
+                        note: be.note + (be.note < 40 ? 24 : 12),
+                        weight: be.weight * 0.6,
+                        technique: 'swell',
+                        params: { ...be.params, attack: 2.0, release: 12.0, genre: 'ambient' }
+                    });
+                });
+                usedLayers.add('accompaniment');
+            }
+        }
+
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
@@ -248,11 +267,12 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentTheme ? this.currentTheme.id : 'Algorithmic',
+                melody: this.currentTheme ? `${this.currentTheme.id} (Cloud)` : 'Algorithmic',
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Drone',
-                drums: 'Sonic Landscape'
+                drums: 'Sonic Landscape',
+                ensemble: 'SIBLING [MONOLITH]'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Landscape: Pumping Textures]`
         };
     }
 
@@ -270,9 +290,11 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.5, weight: 0.8,
+            time: n.t * TICK_TO_BEAT, 
+            duration: (n.d * TICK_TO_BEAT) * 2.2, 
+            weight: 0.8,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.5, release: 3.0 }
+            params: { attack: 2.5, release: 12.0, genre: 'ambient' }
         }));
     }
 
@@ -284,11 +306,15 @@ export class AmbientBrain {
         
         let barNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
 
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+        else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
+
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.8,
+            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 2.0, weight: 0.8,
             technique: 'drone', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.0, release: 2.5 }
+            params: { attack: 1.5, release: 8.0, genre: 'ambient' }
         }));
     }
 
@@ -297,21 +323,25 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        // #ЗАЧЕМ: ПЛАН №1214. Исправление ошибки reassignment to const.
+        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.5,
+            time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 2.0, weight: 0.5,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 3.5 }
+            params: { attack: 3.5, release: 15.0, genre: 'ambient' }
         }));
     }
 
     private renderDroneBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         return [{
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12),
-            time: 0, duration: 6.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.5, release: 3.0 }
+            time: 0, duration: 8.0, weight: 0.7, technique: 'drone', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 3.5, release: 12.0, genre: 'ambient' }
         }];
     }
 
@@ -320,19 +350,19 @@ export class AmbientBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7, 10] : [0, 4, 7, 11];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: (i * 0.5) * TICK_TO_BEAT, duration: 5.0, weight: 0.4 - (i * 0.05),
+            time: (i * 0.5) * TICK_TO_BEAT, duration: 12.0, weight: 0.4 - (i * 0.05),
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0 + i, release: 4.0 }
+            params: { attack: 4.0 + i, release: 12.0, genre: 'ambient' }
         }));
     }
 
-    private renderGenerativeMelody(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    private renderGenerativeMelody(resChord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const shift = [0, 2, 4, 7, 9][calculateMusiNum(epoch, 5, this.seed, 5)];
         return [{
-            type: 'melody', note: chord.rootNote + 24 + shift,
-            time: 1.5 * TICK_TO_BEAT, duration: 4.5, weight: 0.6,
+            type: 'melody', note: resChord.rootNote + 24 + shift,
+            time: 1.5 * TICK_TO_BEAT, duration: 8.5, weight: 0.6,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.8, release: 2.5 }
+            params: { attack: 3.0, release: 10.0, genre: 'ambient' }
         }];
     }
 
@@ -344,11 +374,53 @@ export class AmbientBrain {
             const perc = kit.perc[calculateMusiNum(epoch + i, 11, this.seed, kit.perc.length)];
             events.push({
                 type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, 
-                duration: 2.0, weight: 0.3 + (this.random.next() * 0.3),
-                technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.8) - 0.9
+                duration: 6.0, weight: 0.3 + (this.random.next() * 0.3),
+                technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.8) - 0.9,
+                params: { genre: 'ambient' }
             });
         }
         return events;
+    }
+
+    private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+        if (e.duration < 3.0) return [e]; 
+
+        const rippled: FractalEvent[] = [];
+        const isMinor = chord.chordType === 'minor';
+        const ripplePool = isMinor ? [0, 3, 7, 10, 12] : [0, 4, 7, 11, 12]; 
+        
+        const numChunks = Math.min(3, Math.ceil(e.duration / 2.0)); 
+        const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+
+        for (let i = 0; i < numChunks; i++) {
+            let note: number;
+            if (i === 0) {
+                note = e.note;
+            } else {
+                const seedOffset = Math.floor(e.time * 12);
+                const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
+                note = baseOctaveMidi + ripplePool[idx];
+            }
+
+            const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+            let finalNote = note;
+            if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
+            else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
+            else finalNote = this.constrainAccompanimentOctave(note);
+
+            rippled.push({
+                ...e,
+                note: finalNote,
+                time: e.time + (i * 0.45), 
+                duration: e.duration * 1.8, 
+                params: { 
+                    ...e.params, 
+                    attack: 2.5 + (i * 0.8),
+                    release: 10.0 + (i * 2.0)
+                }
+            });
+        }
+        return rippled;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }

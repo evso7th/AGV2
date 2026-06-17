@@ -1,4 +1,3 @@
-
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -11,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза.
+ * #ЧТО: ПЛАН №1213 — Экстремальное увеличение окна жизни ноты для Амбиента.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -91,7 +90,7 @@ export class MelodySynthManagerV2 {
             if (oldInst) {
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 5000);
+                }, 10000); // Увеличено до 10с для безопасного фейда
             }
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
@@ -104,8 +103,9 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №85. Уменьшение хвостов для чистоты.
-            const extraDuration = 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1213. Для Амбиента увеличиваем окно жизни до 12 секунд.
+            const isAmbient = e.params?.genre === 'ambient';
+            const extraDuration = isAmbient ? 12.0 : 0.5; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -165,15 +165,15 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            if (this.instrument?.setPan && note.pan !== undefined) {
-                this.instrument.setPan(note.pan);
+            if (this.synth?.setPan && note.pan !== undefined) {
+                this.synth.setPan(note.pan);
             }
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration, note.params);
             }
         });
     }
@@ -191,7 +191,7 @@ export class MelodySynthManagerV2 {
        } else {
            if (this.synth) {
                const fadingSynth = this.synth;
-               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 5000);
+               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 10000);
                this.synth = null;
            }
            this.activePresetName = instrumentName;

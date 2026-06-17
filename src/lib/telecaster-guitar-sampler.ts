@@ -1,11 +1,10 @@
-
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V5.1 — "Range Security Update".
- * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
+ * #ЗАЧЕМ: Сэмплер Telecaster V5.2 — "Eternal Tail Update".
+ * #ЧТО: ПЛАН №1213 — Увеличение времени затухания для Амбиента.
  */
 
 function makeWarmthCurve() {
@@ -162,7 +161,6 @@ export class TelecasterGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
-        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
         const now = this.audioContext.currentTime;
         const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
         if (playTime < 0) return;
@@ -183,7 +181,8 @@ export class TelecasterGuitarSampler {
             source.start(playTime);
             source.stop(playTime + 0.05);
         } else {
-            gainNode.gain.setTargetAtTime(0, playTime + 6.0, 0.6);
+            // #ЗАЧЕМ: ПЛАН №1213. Увеличение хвоста затухания для Амбиента.
+            gainNode.gain.setTargetAtTime(0, playTime + 12.0, 1.0);
             source.start(playTime);
         }
         

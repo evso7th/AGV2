@@ -1,4 +1,3 @@
-
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -8,7 +7,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза для устранения гудения.
+ * #ЧТО: ПЛАН №1213 — Экстремальное увеличение окна жизни ноты для Амбиента.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -74,7 +73,7 @@ export class AccompanimentSynthManagerV2 {
             if (oldInst) {
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 5000); 
+                }, 10000); 
             }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
@@ -88,8 +87,9 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов для устранения гудения.
-            const extraDuration = 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1213. Увеличение релизов для устранения гудения и сохранения хвостов.
+            const isAmbient = e.params?.genre === 'ambient';
+            const extraDuration = isAmbient ? 12.0 : 0.5; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,
@@ -134,7 +134,7 @@ export class AccompanimentSynthManagerV2 {
                 this.instrument.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
+                 this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration, note.params);
             }
         });
     }
@@ -148,7 +148,7 @@ export class AccompanimentSynthManagerV2 {
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 5000);
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 10000);
                this.instrument = null;
            }
            this.activePresetName = instrumentName; 
