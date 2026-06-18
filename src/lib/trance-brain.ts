@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V49.0 — "Rolling Ribbon Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
- * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
+ * @fileOverview Psybient Brain V50.0 — "Transparency Enhancement".
+ * #ЗАЧЕМ: ПЛАН №1227 — Логирование всех каналов ансамбля.
  */
 
 import type {
@@ -99,22 +98,16 @@ export class TranceBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
-        
-        // #ЗАЧЕМ: ПЛАН №1187. Стартовое смещение ленты на основе Seed.
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-        
         if (this.isImprovising) {
             return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
         }
-        
         const barsElapsed = epoch - startEpoch;
         const linearIndex = (barsElapsed + startOffset) % totalBars;
-        
         if (tension > 0.8) {
             const rand = calculateMusiNum(epoch, 17, this.seed, 100) / 100;
             if (rand < 0.15) return (linearIndex + 1) % totalBars;
         }
-        
         return linearIndex;
     }
 
@@ -154,15 +147,10 @@ export class TranceBrain {
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                // #ЗАЧЕМ: Расчет границ Rolling Ribbon для Psybient.
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                
-                // #ЧТО: Фиксация пути вариаций.
                 const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
                 const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
@@ -239,6 +227,11 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
+        // #ЗАЧЕМ: ПЛАН №1227. Реестр аксиом.
+        const layerAxioms: Record<string, string> = {
+            melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
+        };
+
         if (this.currentPreferredInstrument && hints.melody && !isIntro) {
             instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
@@ -249,8 +242,10 @@ export class TranceBrain {
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
                 events.push(...this.renderNeuroBaseSupport(epoch, tension));
+                layerAxioms.drums = 'Heritage Sync';
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
+                layerAxioms.drums = 'Skilled Neuro';
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
@@ -263,8 +258,10 @@ export class TranceBrain {
         if (hints.bass) {
             if (this.currentBassTheme && epoch < this.currentBassTheme.endBar) {
                 events.push(...this.renderHeritageBass(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
+                layerAxioms.bass = 'Sibling DNA';
             } else {
                 events.push(...this.renderRollingBass(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
+                layerAxioms.bass = 'Neuro Rolling';
             }
         }
 
@@ -273,8 +270,10 @@ export class TranceBrain {
         if (hints.melody && !isIntro) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension);
+                layerAxioms.melody = this.currentTheme.id;
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
+                layerAxioms.melody = 'Spiral Narrative';
             }
             events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
         }
@@ -294,6 +293,10 @@ export class TranceBrain {
                     if (renders.length > 0) {
                         events.push(...renders.flatMap(e => this.rippleLongNote(e, resChord)));
                         usedTargetLayers.add(target);
+                        
+                        const axKey = target === 'pianoAccompaniment' ? 'piano' : (target === 'accompaniment' ? 'accompaniment' : 'harmony');
+                        layerAxioms[axKey] = ax.id || 'Heritage DNA';
+
                         if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'psybient');
                     }
                 }
@@ -301,10 +304,14 @@ export class TranceBrain {
 
             if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
                 events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
+                layerAxioms.accompaniment = 'Sidechain Pad';
             }
             if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-                if (p.events.length > 0) events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord)));
+                if (p.events.length > 0) {
+                    events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord)));
+                    layerAxioms.piano = p.style;
+                }
             }
         }
 
@@ -313,6 +320,7 @@ export class TranceBrain {
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
             events.push(...harEvents.flatMap(e => this.rippleLongNote(e, resChord)));
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
+            layerAxioms.harmony = 'Derivative Layer';
         }
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
@@ -325,11 +333,12 @@ export class TranceBrain {
             newBpm,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentTheme ? `DNA: ${this.currentTheme.id}` : 'Spiral Narrative',
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro',
-                accompaniment: usedTargetLayers.has('accompaniment') ? 'Heritage DNA' : 'Sidechain Pad',
-                piano: usedTargetLayers.has('pianoAccompaniment') ? 'Heritage DNA' : 'Shadow Virtuoso'
+                melody: layerAxioms.melody,
+                bass: layerAxioms.bass,
+                drums: layerAxioms.drums,
+                accompaniment: layerAxioms.accompaniment,
+                harmony: layerAxioms.harmony,
+                piano: layerAxioms.piano
             },
             narrative: `Psybient Master: [DNA: ${this.currentTrackName}] [Heritage Layers: ${usedTargetLayers.size}] [Atmosphere: Wide]`
         };
@@ -461,7 +470,7 @@ export class TranceBrain {
                 weight: 1.0,
                 technique: useVibrato ? 'vb' as Technique : ('pick' as Technique), 
                 dynamics: 'mf', 
-                phrasing: 'legato'
+                phrasing: 'legate'
             };
         });
     }

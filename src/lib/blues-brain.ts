@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Blues Brain V80.0 — "Rolling Ribbon Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
- * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
+ * @fileOverview Blues Brain V81.0 — "Transparency Enhancement".
+ * #ЗАЧЕМ: ПЛАН №1227 — Логирование всех каналов ансамбля.
  */
 
 import {
@@ -190,14 +189,10 @@ export class BluesBrain {
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
       if (totalBars <= 0) return 0;
-      
-      // #ЗАЧЕМ: Реализация ПЛАНА №1187. Посевное смещение для Rolling Ribbon.
       const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-      
       if (this.config.isImprovising) {
           return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
       }
-      
       const barsElapsed = epoch - startEpoch;
       return (barsElapsed + startOffset) % totalBars;
   }
@@ -295,16 +290,10 @@ export class BluesBrain {
                   basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
               }
 
-              // #ЗАЧЕМ: ПЛАН №1187. Вычисление границ ленты донора.
               const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-              
-              // #ЧТО: Поиск целевого смещения с учетом Seeded Start.
               const tension = dna.tensionMap?.[epoch] ?? 0.5;
               const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-              
               const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-              
-              // #ЧТО: Фиксация пути при наличии вариаций для одного такта.
               const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
               const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
@@ -397,24 +386,29 @@ export class BluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
+    // #ЗАЧЕМ: ПЛАН №1227. Реестр активных аксиом для логирования.
+    const layerAxioms: Record<string, string> = {
+        melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
+    };
+
     if (isBridge) {
         events.push(...this.renderLiquidBridge(epoch, resChord, tension, hints));
         return {
             events, lickId: 'Liquid Bridge', mutationType: 'none',
             trackName: this.currentTrackName,
-            activeAxioms: { melody: 'Bridge Flow', ensemble: 'ORCHESTRA', bass: 'Scale Walk', drums: 'Soft Groove' },
+            activeAxioms: { melody: 'Bridge Flow', accompaniment: 'Soft Layer', harmony: 'Orchestra', piano: 'Support', bass: 'Scale Walk', drums: 'Soft Groove' },
             narrative: `Liquid Bridge: Full ensemble transition through ${navInfo.currentPart.name}`
         };
     }
 
     if (hints.drums) {
         events.push(...this.renderHybridDrums(epoch, tension, isSoloistResting));
+        layerAxioms.drums = isSoloistResting ? 'SOLO FILL' : 'Imperial Pulse';
     }
 
-    let bassStatus = 'none';
     const bassEvents = hints.bass ? this.renderSymbioticBass(resChord, epoch, tension, dna) : [];
     if (bassEvents.length > 0) {
-        bassStatus = this.currentBassAxiom.length > 0 ? 'Sibling DNA' : (tension > 0.7 ? 'Walking Bass' : 'Riff Bass');
+        layerAxioms.bass = this.currentBassAxiom.length > 0 ? 'Sibling DNA' : (tension > 0.7 ? 'Walking Bass' : 'Riff Bass');
     }
     events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord)));
 
@@ -436,15 +430,18 @@ export class BluesBrain {
             else if (this.state.lastMutationType === 'jitter') activeAxiom = applyRhythmicJitter(activeAxiom, this.seed + epoch);
             
             melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
+            layerAxioms.melody = currentLickDisplayId;
         }
         
         if (melodyEvents.length === 0) {
             melodyEvents = this.renderGapFiller(epoch, resChord, tension);
-            currentLickDisplayId = 'Gap-Filler';
+            layerAxioms.melody = 'Gap-Filler';
         }
 
         melodyEvents.forEach(e => e.pan = -0.15);
         events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+    } else if (isSoloistResting) {
+        layerAxioms.melody = 'Breath';
     }
 
     if (!isSoloistResting) {
@@ -460,6 +457,9 @@ export class BluesBrain {
                     if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
                     events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
                     usedTargetLayers.add(target);
+                    
+                    const axKey = target === 'pianoAccompaniment' ? 'piano' : (target === 'accompaniment' ? 'accompaniment' : 'harmony');
+                    layerAxioms[axKey] = ax.id || 'Heritage DNA';
                 }
             }
         });
@@ -469,6 +469,7 @@ export class BluesBrain {
             adaptiveAcc.forEach(e => e.pan = 0.1);
             events.push(...adaptiveAcc.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add('accompaniment');
+            layerAxioms.accompaniment = 'Adaptive Comping';
         }
     }
 
@@ -478,6 +479,7 @@ export class BluesBrain {
             pResult.events.forEach(e => e.pan = 0.2);
             events.push(...pResult.events.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add('pianoAccompaniment');
+            layerAxioms.piano = pResult.style;
         }
     }
 
@@ -490,6 +492,7 @@ export class BluesBrain {
             harmonyEvents.forEach(e => e.pan = 0.35);
             events.push(...harmonyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add('harmony');
+            layerAxioms.harmony = 'Derivative Harmony';
         }
     }
 
@@ -501,10 +504,13 @@ export class BluesBrain {
         mutationType: this.state.lastMutationType, newBpm,
         instrumentOverrides,
         activeAxioms: {
-            melody: isSoloistResting ? 'Breath' : currentLickDisplayId,
-            ensemble: `${this.ensembleStatus} [${modeStr}]`,
-            bass: bassStatus,
-            drums: isSoloistResting ? 'SOLO FILL' : 'Imperial Pulse'
+            melody: layerAxioms.melody,
+            bass: layerAxioms.bass,
+            drums: layerAxioms.drums,
+            accompaniment: layerAxioms.accompaniment,
+            harmony: layerAxioms.harmony,
+            piano: layerAxioms.piano,
+            ensemble: `${this.ensembleStatus} [${modeStr}]`
         },
         narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: ${isSoloistResting ? 'BREATHING' : 'PLAYING'}]`
     };
@@ -585,7 +591,7 @@ export class BluesBrain {
       
       events.push({ 
           type: 'drum_kick_reso', note: 36, time: 0, 
-          duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+          duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
       });
       
       if (tension > 0.6 || this.random.next() < 0.4) {

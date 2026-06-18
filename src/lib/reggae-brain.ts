@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Reggae Brain V23.0 — "Temporal Stability Update".
- * #ЗАЧЕМ: Исправление RangeError (ПЛАН №1203).
- * #ЧТО: Нормализация времени нот к 0 перед применением мутаций.
+ * @fileOverview Reggae Brain V24.0 — "Transparency Enhancement".
+ * #ЗАЧЕМ: ПЛАН №1227 — Логирование всех слоев ансамбля.
  */
 
 import type {
@@ -217,6 +216,11 @@ export class ReggaeBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
+        
+        // #ЗАЧЕМ: ПЛАН №1227. Реестр аксиом.
+        const layerAxioms: Record<string, string> = {
+            melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
+        };
 
         const bassTicks = this.getActiveBassTicks(epoch, tension);
 
@@ -224,10 +228,12 @@ export class ReggaeBrain {
         if (hints.drums) {
             if (isDrumResting) {
                 if (this.random.next() < 0.5) events.push(...this.renderPsybientKitchen(epoch, tension * 0.5, kit));
+                layerAxioms.drums = 'BREATH';
             } else {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
                 if (epoch % 8 === 7) events.push(...this.renderReggaeFills(epoch, tension));
+                layerAxioms.drums = `Riddim Sync [${this.getStyleName(epoch, tension)}]`;
             }
         }
 
@@ -237,6 +243,7 @@ export class ReggaeBrain {
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderGenerativeBass(epoch, resChord, tension);
             events.push(...b);
+            layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub';
         }
 
         // 3. HARMONY & PIANO
@@ -247,6 +254,10 @@ export class ReggaeBrain {
             if (target && hints[target] && !usedLayers.has(target)) {
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
                 usedLayers.add(target);
+                
+                const axKey = target === 'pianoAccompaniment' ? 'piano' : (target === 'accompaniment' ? 'accompaniment' : 'harmony');
+                layerAxioms[axKey] = ax.id || 'Heritage DNA';
+
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
             }
         });
@@ -254,26 +265,26 @@ export class ReggaeBrain {
         if (hints.harmony && !usedLayers.has('harmony')) {
             events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
             usedLayers.add('harmony');
+            layerAxioms.harmony = 'Generative Skank';
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension);
             events.push(...p.events);
+            layerAxioms.piano = p.style;
         }
 
-        // 4. MELODY (with GAP-FILLING)
-        let melodyLabel = 'none';
+        // 4. MELODY
         if (hints.melody) {
             let m: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
+                layerAxioms.melody = this.currentTheme.id;
             }
             
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
-                melodyLabel = 'Gap-Filler';
-            } else {
-                melodyLabel = this.currentTheme?.id || 'DNA';
+                layerAxioms.melody = 'Gap-Filler';
             }
 
             events.push(...m);
@@ -286,9 +297,12 @@ export class ReggaeBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: { 
-                melody: melodyLabel, 
-                drums: isDrumResting ? 'BREATH' : `Riddim Sync [${this.getStyleName(epoch, tension)}]`,
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub'
+                melody: layerAxioms.melody, 
+                drums: layerAxioms.drums,
+                bass: layerAxioms.bass,
+                accompaniment: layerAxioms.accompaniment,
+                harmony: layerAxioms.harmony,
+                piano: layerAxioms.piano
             },
             narrative: `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
@@ -360,8 +374,6 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        
-        // #ЗАЧЕМ: ПЛАН №1203. Нормализация времени перед мутацией.
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
@@ -389,8 +401,6 @@ export class ReggaeBrain {
         const totalBars = Math.ceil((this.currentAxiomMaxTick) / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        
-        // #ЗАЧЕМ: ПЛАН №1203. Глубокая нормализация времени для устранения RangeError.
         const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
@@ -409,7 +419,6 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        
         const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 

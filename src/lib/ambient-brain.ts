@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain V101.0 — "Fluid Spheres Protocol".
- * #ЗАЧЕМ: ПЛАН №1226 — Устранение статики в аккомпанементе.
- * #ЧТО: Динамическое дробление длинных нот, шахматное вступление голосов и внутреннее движение ступеней.
+ * @fileOverview Ambient Brain V102.0 — "Transparency Enhancement".
+ * #ЗАЧЕМ: ПЛАН №1227 — Детальное логирование всех слоев (ACC, HAR, PNO).
  */
 
 import type {
@@ -60,7 +60,7 @@ export class AmbientBrain {
     private currentAxiomMaxTick: number = 0;
     private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number } | null = null;
-    private currentAccompAxioms: { phrase: any[], role: string, id?: string, endBar: number, preferredInstrument?: string }[] = [];
+    private currentAccompAxioms: { phrase: any[], role: string, id: string, endBar: number, preferredInstrument?: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
@@ -206,6 +206,11 @@ export class AmbientBrain {
         const resChord = { ...currentChord, rootNote: resRoot };
         const events: FractalEvent[] = [];
         const instrumentOverrides: Partial<InstrumentHints> = {};
+        
+        // #ЗАЧЕМ: ПЛАН №1227. Реестр аксиом для прозрачного логирования.
+        const layerAxioms: Record<string, string> = {
+            melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
+        };
 
         // 1. Bass
         if (hints.bass) {
@@ -213,6 +218,7 @@ export class AmbientBrain {
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderPulsatingBass(resChord, epoch, tension);
             events.push(...b);
+            layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Pulse';
         }
 
         // 2. Melody
@@ -220,10 +226,16 @@ export class AmbientBrain {
             let m: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
+                layerAxioms.melody = this.currentTheme.id;
             }
             
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
+                if (this.currentGapLickId !== 'none') {
+                    layerAxioms.melody = `Gap-Fill [${this.currentGapLickId}]`;
+                } else {
+                    layerAxioms.melody = 'Algorithm';
+                }
             }
 
             events.push(...m);
@@ -248,6 +260,7 @@ export class AmbientBrain {
                     });
                 });
                 usedLayers.add('accompaniment');
+                layerAxioms.accompaniment = 'Bass Sync (Monolith)';
             }
         }
 
@@ -255,20 +268,25 @@ export class AmbientBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
-                // #ЗАЧЕМ: ПЛАН №1226. Дробление наследия для создания движения.
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
                 usedLayers.add(target);
+                
+                const axKey = target === 'pianoAccompaniment' ? 'piano' : (target === 'accompaniment' ? 'accompaniment' : 'harmony');
+                layerAxioms[axKey] = ax.id || 'Heritage DNA';
+
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
             }
         });
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension));
+            layerAxioms.accompaniment = 'Generative Pad';
         }
 
         // 4. Drums & Sparkles
         if (hints.drums) {
             events.push(...this.renderSonicLandscape(epoch, tension));
+            layerAxioms.drums = 'Sonic Landscape';
         }
         
         const sparkleEvents = this.renderSparkles(epoch, tension);
@@ -284,9 +302,12 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: {
-                melody: this.currentGapLickId !== 'none' ? `Gap-Fill [${this.currentGapLickId}]` : (this.currentTheme ? `${this.currentTheme.id}` : 'Algorithmic'),
-                bass: this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Pulse',
-                drums: 'Sonic Landscape',
+                melody: layerAxioms.melody,
+                bass: layerAxioms.bass,
+                drums: layerAxioms.drums,
+                accompaniment: layerAxioms.accompaniment,
+                harmony: layerAxioms.harmony,
+                piano: layerAxioms.piano,
                 ensemble: 'DYNAMIC FLOW [V2]'
             },
             narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Movement Active]`
@@ -351,9 +372,6 @@ export class AmbientBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1226. Дробление длинных нот наследия для создания "мерцающего" аккомпанемента.
-     */
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
@@ -366,7 +384,6 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         
         barNotes.forEach(n => {
-            // Если нота длиннее пол-такта, дробим её на 2-3 пульсации
             if (n.d > 6) {
                 const subDiv = n.d / 2;
                 [0, subDiv].forEach(st => {
@@ -408,20 +425,14 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1226. Пэд с эффектом сайдчейна и шахматным вступлением голосов.
-     */
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const isMinor = chord.chordType === 'minor';
         const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
         const events: FractalEvent[] = [];
 
-        // Дробление длинного пэда на 4 такта с перекрытием
         [0, 1.5, 3, 4.5].forEach((t, i) => {
             const interval = intervals[i % intervals.length];
             const octave = i === 3 ? 24 : 12;
-            
-            // Микро-движение голоса: смещение на соседнюю ступень раз в 4 такта
             const voiceLeading = (epoch % 4 === i) ? 2 : 0; 
 
             events.push({
@@ -438,7 +449,7 @@ export class AmbientBrain {
                     attack: 1.5, 
                     release: 5.0, 
                     genre: 'ambient',
-                    gainCurve: [1.0, 0.4, 0.9, 0.3, 1.0] // Микро-пульсация громкости
+                    gainCurve: [1.0, 0.4, 0.9, 0.3, 1.0] 
                 }
             });
         });
