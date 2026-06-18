@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V96.0 — "Spectral Transparency Update".
- * #ЗАЧЕМ: ПЛАН №1219 — Устранение гула и «басовитости» в аккомпанементе.
- * #ЧТО: Смещение регистра аккомпанемента вверх (C4-C6) и снижение весов.
+ * @fileOverview Ambient Brain V97.0 — "Spectral Transparency Update".
+ * #ЗАЧЕМ: ПЛАН №1222 — Устранение гула и перегруза в аккомпанементе.
+ * #ЧТО: Смещение регистра аккомпанемента вверх (C4-B5) и снижение весов.
  */
 
 import type {
@@ -70,7 +70,7 @@ export class AmbientBrain {
     private currentGapLickId: string = 'none';
     private lastSparkleBar: number = -1;
 
-    // #ЗАЧЕМ: ПЛАН №1219. Поднятие потолка для сольных партий.
+    // #ЗАЧЕМ: ПЛАН №1222. Поднятие потолка для сольных партий и очистка низа.
     private readonly MELODY_CEILING = 88;
     private readonly BASS_FLOOR = 31;
     private readonly BASS_CEILING = 47;
@@ -235,7 +235,8 @@ export class AmbientBrain {
         const usedLayers = new Set<string>();
         
         // --- MONOLITH PROTOCOL ---
-        // #ЗАЧЕМ: ПЛАН №1219. Смещение пэда еще выше и снижение веса для исключения гула.
+        // #ЗАЧЕМ: ПЛАН №1222. Устранение перегруза и гула.
+        // #ЧТО: Смещение на 2 октавы и снижение веса.
         if (hints.bass && hints.accompaniment) {
             const bassNotesInBar = events.filter(e => e.type === 'bass');
             if (bassNotesInBar.length > 0) {
@@ -243,8 +244,8 @@ export class AmbientBrain {
                     events.push({
                         ...be,
                         type: 'accompaniment',
-                        note: be.note + 24, // Жестко +2 октавы от баса
-                        weight: be.weight * 0.35, // Еще тише для прозрачности
+                        note: be.note + 24, // Смещение в C4-C6
+                        weight: be.weight * 0.25, // Снижение веса для прозрачности
                         technique: 'swell',
                         params: { ...be.params, attack: 2.0, release: 6.0, genre: 'ambient' }
                     });
@@ -291,7 +292,7 @@ export class AmbientBrain {
                 sparkles: sparkleEvents.length > 0 ? 'Active' : 'Silent',
                 ensemble: 'SIBLING [MONOLITH]'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: High Clarity Textures]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: High Spectral Clarity]`
         };
     }
 
@@ -328,7 +329,6 @@ export class AmbientBrain {
         
         const readingWindow = TICKS_PER_BAR / timeScale;
         const barOffset = mosaicBar * readingWindow;
-        
         const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= barOffset && n.t < barOffset + readingWindow);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: (n.t - barOffset) * timeScale }));
         
@@ -373,15 +373,15 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         
-        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
-        let barNotes = rawBarNotes;
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
 
         return barNotes.map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.3, 
+            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.25, // ПЛАН №1222: Снижено для прозрачности
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 2.5, release: 6.0, genre: 'ambient' } 
         }));
@@ -404,11 +404,12 @@ export class AmbientBrain {
     }
 
     private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24; // #ЗАЧЕМ: ПЛАН №1219. Смещение вверх.
+        // #ЗАЧЕМ: ПЛАН №1222. Смещение регистра вверх.
+        const root = chord.rootNote + 24; 
         const intervals = chord.chordType === 'minor' ? [0, 3, 7, 10] : [0, 4, 7, 11];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: (i * 0.5) * TICK_TO_BEAT, duration: 8.0, weight: 0.25 - (i * 0.05), // Тише
+            time: (i * 0.5) * TICK_TO_BEAT, duration: 8.0, weight: 0.22 - (i * 0.04), // ПЛАН №1222: Снижено
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 3.0 + i, release: 6.0, genre: 'ambient' }
         }));
@@ -458,11 +459,11 @@ export class AmbientBrain {
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     
-    // #ЗАЧЕМ: ПЛАН №1219. Очистка низов аккомпанемента.
+    // #ЗАЧЕМ: ПЛАН №1222. Очистка низов аккомпанемента. Удержание в зоне прозрачности C4 - B5.
     private constrainAccompanimentOctave(n: number): number { 
         let v = n; 
-        while (v > 84) v -= 12; 
-        while (v < 60) v += 12; // C4 - B5: Зона прозрачности
+        while (v > 83) v -= 12; 
+        while (v < 60) v += 12; 
         return v; 
     }
 }
