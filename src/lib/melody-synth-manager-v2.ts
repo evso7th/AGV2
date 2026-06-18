@@ -10,7 +10,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1213 — Экстремальное увеличение окна жизни ноты для Амбиента.
+ * #ЧТО: ПЛАН №1223 — Настройка окна жизни нот. Мелодия теперь "дышит" (4с), Бас держит фундамент (12с).
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -90,7 +90,7 @@ export class MelodySynthManagerV2 {
             if (oldInst) {
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 10000); // Увеличено до 10с для безопасного фейда
+                }, 10000); 
             }
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
@@ -103,9 +103,9 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1213. Для Амбиента увеличиваем окно жизни до 12 секунд.
+            // #ЗАЧЕМ: ПЛАН №1223. Мелодия должна дышать, а бас - гудеть.
             const isAmbient = e.params?.genre === 'ambient';
-            const extraDuration = isAmbient ? 12.0 : 0.5; 
+            const extraDuration = isAmbient ? (this.partName === 'bass' ? 12.0 : 4.0) : 0.5; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
