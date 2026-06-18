@@ -1,8 +1,9 @@
 
 /**
- * @fileOverview Psybient Brain V3.0 — "Spiral Alchemy Protocol".
+ * @fileOverview Psybient Brain V3.1 — "Spiral Alchemy Protocol".
  * #ЗАЧЕМ: Трансформация Хард-Рок Наследия в Псиамбиент.
  * #ЧТО: Циклическая ДНК-логика, Регги-ударные, ликвидация гудения через ритмическое сито.
+ * #ОБНОВЛЕНО (ПЛАН №1229): Добавлены редкие гармонии, спарклы и активное заполнение пауз.
  */
 
 import type {
@@ -96,7 +97,6 @@ export class TranceBrain {
         if (totalBars <= 0) return 0;
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
         if (this.isImprovising) {
-            // Psybient Improvisation: More structured than Ambient
             return calculateMusiNum(epoch + startOffset, 7, this.seed, totalBars);
         }
         const barsElapsed = epoch - startEpoch;
@@ -118,7 +118,6 @@ export class TranceBrain {
         let filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
-                // Psybient can use Rock and Trance DNA
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 return genres.includes('rock') || genres.includes('blues') || genres.includes('trance') || genres.includes('psybient');
             });
@@ -188,7 +187,7 @@ export class TranceBrain {
         const instrumentOverrides: Partial<InstrumentHints> = {};
         const layerAxioms: Record<string, string> = { melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none' };
 
-        // 1. DRUMS (Reggae Logic for Psybient)
+        // 1. DRUMS
         if (hints.drums) {
             const hDrums = this.renderHeritageDrums(epoch, tension);
             if (hDrums.length > 0) {
@@ -202,25 +201,25 @@ export class TranceBrain {
             if (epoch % 4 === 3) events.push(...this.renderNeuroFills(epoch, tension));
         }
 
-        // 2. BASS (Neuro-Rolling Rock)
+        // 2. BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderRollingBass(epoch, resChord, tension);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.4))); // Tight ripple for bass
+            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.4))); 
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Neuro-Rolling';
         }
 
-        // 3. ACCOMPANIMENT & PIANO (Articulated Fragments)
+        // 3. ACCOMPANIMENT & PIANO
         const usedLayers = new Set<string>();
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
                 const rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
-                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2))); // Wider ripple for pads
+                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
                 usedLayers.add(target);
-                layerAxioms[target === 'pianoAccompaniment' ? 'piano' : target] = ax.id;
+                layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'psybient');
             }
         });
@@ -236,6 +235,15 @@ export class TranceBrain {
             layerAxioms.piano = p.style;
         }
 
+        // --- NEW: HARMONY ACCENTS (Occasional Violin/Guitar Chords) ---
+        if (hints.harmony && !usedLayers.has('harmony')) {
+            const h = this.renderDerivativeHarmony(resChord, epoch, tension);
+            if (h.length > 0) {
+                events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
+                layerAxioms.harmony = 'Atmospheric Accents';
+            }
+        }
+
         // 4. MELODY
         if (hints.melody) {
             let m: FractalEvent[] = [];
@@ -244,11 +252,14 @@ export class TranceBrain {
                 layerAxioms.melody = this.currentTheme.id;
             } else {
                 m = this.renderGapFiller(epoch, resChord, tension);
-                layerAxioms.melody = 'Algorithm';
+                layerAxioms.melody = 'Algorithm Accents';
             }
             events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 0.6)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
+
+        // --- NEW: ATMOSPHERIC EVENTS (Sparkles & SFX) ---
+        events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
             events, tension, beautyScore: 0.85,
@@ -256,7 +267,7 @@ export class TranceBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Psybient Spiral: ${this.currentTrackName} [Cycle Active]`
+            narrative: `Psybient Spiral: ${this.currentTrackName} [Movement Active]`
         };
     }
 
@@ -269,7 +280,7 @@ export class TranceBrain {
             rippled.push({
                 ...e,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 0.9, // Short gap between ripples to kill humming
+                duration: chunkDur * 0.9,
                 weight: e.weight * (1.0 - (i * 0.05)),
                 technique: i === 0 ? e.technique : 'hit',
                 params: { ...e.params, attack: 0.05, release: chunkDur * 2 }
@@ -280,7 +291,6 @@ export class TranceBrain {
 
     private renderPsybientReggaeGroove(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // One Drop / Rockers hybrid
         const isOneDrop = tension < 0.6;
         if (!isOneDrop || epoch % 2 === 0) {
             events.push({ type: kit.kick[0] as any, note: 36, time: 0, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
@@ -375,7 +385,7 @@ export class TranceBrain {
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
             time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { gainCurve: [1.0, 0.2, 0.9, 0.3, 1.0] } // Psybient Sidechain
+            params: { gainCurve: [1.0, 0.2, 0.9, 0.3, 1.0] }
         }));
     }
 
@@ -392,11 +402,12 @@ export class TranceBrain {
     }
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (this.random.next() > 0.3) return [];
-        const scale = [0, 2, 3, 5, 7, 10];
+        if (this.random.next() > (0.4 + tension * 0.2)) return [];
+        const scale = [0, 2, 3, 5, 7, 10, 12];
+        const t = [1.5, 3.0, 4.5, 7.5, 9.0, 10.5][calculateMusiNum(epoch, 7, this.seed, 6)];
         return [{
-            type: 'melody', note: chord.rootNote + 12 + scale[this.random.nextInt(scale.length)],
-            time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.7,
+            type: 'melody', note: chord.rootNote + 12 + scale[calculateMusiNum(epoch + t, 11, this.seed, scale.length)],
+            time: t * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.75,
             technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }];
     }
@@ -413,21 +424,38 @@ export class TranceBrain {
         return events;
     }
 
-    private renderDerivativeHarmony(chord: GhostChord, epoch: number, timbre: string): FractalEvent[] {
+    private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        // Occasional harmonic accents (Violin/Guitar)
+        if (calculateMusiNum(epoch, 17, this.seed, 10) > 2) return [];
+        const root = chord.rootNote + 24;
         return [{
-            type: 'harmony', note: chord.rootNote + 24, time: 0, duration: 4.0, weight: 0.2,
+            type: 'harmony', note: this.constrainAccompanimentOctave(root),
+            time: 0, duration: 4.0, weight: 0.2,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }];
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        if (this.random.next() < 0.2) {
+        const rand = this.random.next();
+        
+        // Occasional Sparkles
+        if (rand < (0.15 + tension * 0.1)) {
             events.push({
-                type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 4.0, weight: 1.0,
-                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { category: 'light' }
+                type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.8,
+                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { category: 'electronic' }
             });
         }
+        
+        // Occasional SFX
+        if (this.random.next() < (0.1 + tension * 0.05)) {
+            events.push({
+                type: 'sfx', note: 60, time: 1.5 + this.random.next() * 2, duration: 4.0, weight: 0.7,
+                technique: 'hit', dynamics: 'p', phrasing: 'detached', 
+                params: { genre: 'psybient', category: this.random.next() < 0.5 ? 'voice' : 'laser' }
+            });
+        }
+        
         return events;
     }
 
