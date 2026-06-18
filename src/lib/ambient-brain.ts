@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V99.0 — "Live Articulation Protocol".
- * #ЗАЧЕМ: ПЛАН №1224 — Устранение эффекта "паровозного гудка".
- * #ЧТО: Резкое сокращение атаки мелодии, замена swell на vb/pick, пульсирующий бас.
+ * @fileOverview Ambient Brain V101.0 — "Fluid Spheres Protocol".
+ * #ЗАЧЕМ: ПЛАН №1226 — Устранение статики в аккомпанементе.
+ * #ЧТО: Динамическое дробление длинных нот, шахматное вступление голосов и внутреннее движение ступеней.
  */
 
 import type {
@@ -233,17 +233,18 @@ export class AmbientBrain {
         // 3. Accompaniment & Piano
         const usedLayers = new Set<string>();
         
-        if (hints.bass && hints.accompaniment) {
+        // Dynamic Monolith: Sync accompaniment with bass for "wall of light"
+        if (hints.bass && hints.accompaniment && (tension < 0.3 || tension > 0.8)) {
             const bassNotesInBar = events.filter(e => e.type === 'bass');
             if (bassNotesInBar.length > 0) {
-                bassNotesInBar.forEach(be => {
+                bassNotesInBar.forEach((be, i) => {
                     events.push({
                         ...be,
                         type: 'accompaniment',
                         note: be.note + 24, 
-                        weight: be.weight * 0.2, 
+                        weight: be.weight * 0.25, 
                         technique: 'swell',
-                        params: { ...be.params, attack: 1.5, release: 6.0, genre: 'ambient' }
+                        params: { ...be.params, attack: 1.2, release: 4.5, genre: 'ambient' }
                     });
                 });
                 usedLayers.add('accompaniment');
@@ -254,6 +255,7 @@ export class AmbientBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
+                // #ЗАЧЕМ: ПЛАН №1226. Дробление наследия для создания движения.
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
                 usedLayers.add(target);
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
@@ -261,7 +263,7 @@ export class AmbientBrain {
         });
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
-            events.push(...this.renderEvolvingPad(resChord, epoch, tension));
+            events.push(...this.renderSidechainedPad(epoch, resChord, tension));
         }
 
         // 4. Drums & Sparkles
@@ -285,9 +287,9 @@ export class AmbientBrain {
                 melody: this.currentGapLickId !== 'none' ? `Gap-Fill [${this.currentGapLickId}]` : (this.currentTheme ? `${this.currentTheme.id}` : 'Algorithmic'),
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Pulsating Pulse',
                 drums: 'Sonic Landscape',
-                ensemble: 'SIBLING [MONOLITH]'
+                ensemble: 'DYNAMIC FLOW [V2]'
             },
-            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Status: Adjusted Articulation]`
+            narrative: `Ambient ${modeStr}: ${this.currentTrackName} [Movement Active]`
         };
     }
 
@@ -325,7 +327,6 @@ export class AmbientBrain {
             time: n.t * TICK_TO_BEAT, 
             duration: (n.d * TICK_TO_BEAT * timeScale) * 1.25, 
             weight: 0.8, 
-            // #ЗАЧЕМ: Устранение гудка. Используем вибрато для длинных нот и щипок для коротких.
             technique: n.d > 3 ? 'vb' : 'pick', 
             dynamics: 'p', phrasing: 'legato',
             params: { attack: 0.15, release: 2.8, genre: 'ambient' }
@@ -337,6 +338,7 @@ export class AmbientBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
+        
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
@@ -349,25 +351,51 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1226. Дробление длинных нот наследия для создания "мерцающего" аккомпанемента.
+     */
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
-        return barNotes.map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.22,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 1.0, release: 6.0, genre: 'ambient' } 
-        }));
+
+        const events: FractalEvent[] = [];
+        
+        barNotes.forEach(n => {
+            // Если нота длиннее пол-такта, дробим её на 2-3 пульсации
+            if (n.d > 6) {
+                const subDiv = n.d / 2;
+                [0, subDiv].forEach(st => {
+                    events.push({
+                        type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+                        time: (n.t + st) * TICK_TO_BEAT, 
+                        duration: subDiv * TICK_TO_BEAT * 1.5, 
+                        weight: 0.25 - (st * 0.01),
+                        technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                        params: { attack: 0.8, release: 3.5, genre: 'ambient' } 
+                    });
+                });
+            } else {
+                events.push({
+                    type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+                    time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 0.22,
+                    technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                    params: { attack: 1.0, release: 4.5, genre: 'ambient' } 
+                });
+            }
+        });
+
+        return events;
     }
 
     private renderPulsatingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = this.constrainBassOctave(chord.rootNote - 12);
         const events: FractalEvent[] = [];
-        const pulseTicks = [0, 4.5, 9.0]; // Медленный триольный пульс
+        const pulseTicks = [0, 4.5, 9.0]; 
         pulseTicks.forEach((t, i) => {
             const isRoot = i === 0 || tension < 0.6;
             events.push({
@@ -380,15 +408,42 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderEvolvingPad(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24; 
-        const intervals = chord.chordType === 'minor' ? [0, 3, 7, 10] : [0, 4, 7, 11];
-        return intervals.map((interval, i) => ({
-            type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: (i * 0.75) * TICK_TO_BEAT, duration: 8.0, weight: 0.18 - (i * 0.03), 
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0 + i, release: 6.0, genre: 'ambient' }
-        }));
+    /**
+     * #ЗАЧЕМ: ПЛАН №1226. Пэд с эффектом сайдчейна и шахматным вступлением голосов.
+     */
+    private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const isMinor = chord.chordType === 'minor';
+        const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
+        const events: FractalEvent[] = [];
+
+        // Дробление длинного пэда на 4 такта с перекрытием
+        [0, 1.5, 3, 4.5].forEach((t, i) => {
+            const interval = intervals[i % intervals.length];
+            const octave = i === 3 ? 24 : 12;
+            
+            // Микро-движение голоса: смещение на соседнюю ступень раз в 4 такта
+            const voiceLeading = (epoch % 4 === i) ? 2 : 0; 
+
+            events.push({
+                type: 'accompaniment', 
+                note: this.constrainAccompanimentOctave(chord.rootNote + octave + interval + voiceLeading), 
+                time: t, 
+                duration: 4.5, 
+                weight: 0.2 - (i * 0.02), 
+                technique: 'swell',
+                dynamics: 'p', 
+                phrasing: 'legato', 
+                pan: (i % 2 === 0 ? -0.5 : 0.5), 
+                params: { 
+                    attack: 1.5, 
+                    release: 5.0, 
+                    genre: 'ambient',
+                    gainCurve: [1.0, 0.4, 0.9, 0.3, 1.0] // Микро-пульсация громкости
+                }
+            });
+        });
+        
+        return events;
     }
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -405,7 +460,6 @@ export class AmbientBrain {
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.5, weight: 0.45,
-            // #ЗАЧЕМ: Устранение гудка в Gap-Filler. Быстрая атака.
             technique: 'pick', dynamics: 'p', phrasing: 'legato',
             params: { attack: 0.2, release: 3.5, genre: 'ambient' }
         }));
