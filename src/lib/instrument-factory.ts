@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.2 — "Infinite Range Protection".
- * #ЗАЧЕМ: ПЛАН №1203 — Тотальная защита от RangeError в методах AudioParam.
+ * @fileOverview Центральная фабрика инструментов V8.3 — "LFO Breath Protocol".
+ * #ЗАЧЕМ: ПЛАН №1225 — Оживление модуляции LFO для устранения статичного звука.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -139,7 +139,6 @@ const createIndependentVoice = (
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null
 ) => {
-    // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
     const now = ctx.currentTime;
     const playTime = isFinite(when) ? Math.max(when, now) : now;
     if (playTime < 0) return;
@@ -151,6 +150,7 @@ const createIndependentVoice = (
     voiceGain.gain.value = 0;
     
     const nodes: AudioNode[] = [voiceGain];
+    const tonalOscillators: OscillatorNode[] = [];
     
     if (type === 'guitar') {
         const width = preset.osc?.width || 0.45;
@@ -163,6 +163,7 @@ const createIndependentVoice = (
         osc.connect(voiceGain);
         osc.start(playTime);
         nodes.push(osc);
+        tonalOscillators.push(osc);
     } else if (type === 'organ') {
         const real = new Float32Array(17), imag = new Float32Array(17);
         const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
@@ -175,6 +176,7 @@ const createIndependentVoice = (
         osc.connect(voiceGain);
         osc.start(playTime);
         nodes.push(osc);
+        tonalOscillators.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
         oscConfigs.forEach((o: any) => {
@@ -186,6 +188,7 @@ const createIndependentVoice = (
             osc.connect(g).connect(voiceGain);
             osc.start(playTime);
             nodes.push(osc, g);
+            tonalOscillators.push(osc);
         });
     }
 
@@ -220,6 +223,31 @@ const createIndependentVoice = (
     chainHead.connect(filter);
     chainHead = filter;
     nodes.push(filter);
+
+    // LFO Modulation Logic (ПЛАН №1225)
+    if (preset.lfo && preset.lfo.amount > 0) {
+        const lfo = ctx.createOscillator();
+        lfo.type = preset.lfo.shape || 'sine';
+        lfo.frequency.setValueAtTime(preset.lfo.rate || 5, playTime);
+        
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.setValueAtTime(preset.lfo.amount, playTime);
+        
+        lfo.connect(lfoGain);
+        
+        if (preset.lfo.target === 'pitch') {
+            // Modulate detune of sound sources (Vibrato)
+            tonalOscillators.forEach(osc => {
+                lfoGain.connect(osc.detune);
+            });
+        } else if (preset.lfo.target === 'filter') {
+            // Modulate filter cutoff (Breathing)
+            lfoGain.connect(filter.frequency);
+        }
+        
+        lfo.start(playTime);
+        nodes.push(lfo, lfoGain);
+    }
 
     if (sharedDelayNode && preset.delay?.mix > 0.01) {
         chainHead.connect(sharedDelayNode);
