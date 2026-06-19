@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V53.0 — "Imperial Timbre Balance".
- * #ЗАЧЕМ: ПЛАН №1190. Увеличение громкости CS80 в 2 раза для сольных партий.
+ * @fileOverview Audio Engine Context V54.0 — "Deep Reserve Update".
+ * #ЗАЧЕМ: ПЛАН №1244. Увеличение запаса хода (look-ahead) для стабильности тяжелых треков.
  */
 'use client';
 
@@ -46,7 +46,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     electric: 0.15, 
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.4, // ПЛАН №1190: Увеличено с 0.2 для сольной мощности
+    cs80: 0.4, 
     chords: 1.2,
     bass: 1.0
 };
@@ -220,7 +220,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           setIsPlayingState(true); 
           masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           stopAllSounds(); 
-          nextBarTimeRef.current = context.currentTime + 0.5; 
+          // #ЗАЧЕМ: ПЛАН №1244. Увеличение стартового буфера для предотвращения потери первой ноты.
+          nextBarTimeRef.current = context.currentTime + 1.2; 
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
@@ -357,7 +358,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    if (payload.barCount === 0 || scheduleTime < now - 0.1) { scheduleTime = now + 0.15; }
+                    // #ЗАЧЕМ: ПЛАН №1244. Более агрессивное обнаружение опозданий и глубокое восстановление графика.
+                    if (payload.barCount === 0 || scheduleTime < now + 0.1) { 
+                        scheduleTime = now + 0.5; 
+                    }
                     scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current = scheduleTime + payload.barDuration;
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
