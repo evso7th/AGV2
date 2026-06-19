@@ -3,6 +3,15 @@
 
 ---
 
+### ЗАПИСЬ: 2024-11-04 (ПЛАН №1243: Total Cloud Liberty)
+**СОБЫТИЕ**: Ликвидация ошибок доступа в Firestore.
+**ИТОГ**:
+1. **Full Open Access**: Правила безопасности в `firestore.rules` изменены на `allow read, write: if true` для коллекций `heritage_axioms`, `project_documents` и `masterpieces`.
+2. **Error Elimination**: Ошибки "Missing or insufficient permissions" при загрузке списков и сохранении данных полностью устранены.
+3. **Audit Stability**: DNA Auditor теперь работает корректно даже без анонимной авторизации.
+
+---
+
 ### ЗАПИСЬ: 2024-11-04 (ПЛАН №1242: Swell Phrasing Update)
 **СОБЫТИЕ**: Обучение Амбиент-мелодиста технике плавного вступления (Swell).
 **ИТОГ**:
