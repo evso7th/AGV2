@@ -1,6 +1,10 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
+/**
+ * #ЗАЧЕМ: Блюпринт "Focus Flow" (Contemplative Trance v2.1).
+ * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
+ */
 export const ContemplativeTranceBlueprint: MusicBlueprint = {
     id: 'contemplative_trance',
     name: 'Focus Flow',
@@ -8,7 +12,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
     mood: 'contemplative',
     musical: {
         key: { root: 'D', scale: 'ionian', octave: 3 },
-        bpm: { base: 78, range: [76, 82], modifier: 1.0 }, // SLOWED DOWN
+        bpm: { base: 78, range: [76, 82], modifier: 1.0 },
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'plateau', peakPosition: 0.2, curve: (p, pp) => p < pp ? p / pp : (p < 0.9 ? 1.0 : 1 - ((p - 0.9) / 0.1)) }
@@ -17,7 +21,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Focus', duration: { percent: 25 }, // INCREASED
+                id: 'INTRO', name: 'Focus', duration: { percent: 25 },
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: {
                     accompaniment: { 
@@ -28,7 +32,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true }, // SOFTER
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true },
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -36,7 +40,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'filter_sweep', duration: 2, parameters: {} },
             },
             {
-                id: 'MAIN', name: 'Deep Work', duration: { percent: 50 },
+                id: 'MAIN', name: 'Deep Work', duration: { percent: 71 }, // REBALANCED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { 
@@ -47,7 +51,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: false, useGhostHat: true }, // SOFTER
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: false, useGhostHat: true },
                     accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -57,7 +61,7 @@ export const ContemplativeTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'density_pause', duration: 4, parameters: { soloLayer: 'accompaniment'} },
             },
             {
-                id: 'OUTRO', name: 'Cool Down', duration: { percent: 25 }, // INCREASED
+                id: 'OUTRO', name: 'Cool Down', duration: { percent: 4 }, // REDUCED
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { 
                     accompaniment: { 

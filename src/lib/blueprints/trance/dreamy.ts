@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Мечтательный Транс (v1.1).
- * #ОБНОВЛЕНО (ПЛАН №430): glideBass заменен на bass_ambient.
+ * #ЗАЧЕМ: Мечтательный Транс (v1.2).
+ * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
  */
 export const DreamyTranceBlueprint: MusicBlueprint = {
     id: 'dreamy_trance',
@@ -28,7 +29,6 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                         v1Options: [{ name: 'synth', weight: 0.5 }, { name: 'ambientPad', weight: 0.5 }],
                         v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
                     },
-                    // #ЗАЧЕМ: Исключение glideBass.
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -40,7 +40,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'reverb_burst', duration: 4, parameters: {} },
             },
             {
-                id: 'BUILD', name: 'Starlight', duration: { percent: 25 },
+                id: 'BUILD', name: 'Starlight', duration: { percent: 41 }, // REBALANCED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { 
@@ -79,7 +79,7 @@ export const DreamyTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Echoes', duration: { percent: 20 },
+                id: 'OUTRO', name: 'Echoes', duration: { percent: 4 }, // REDUCED
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: { 
                     accompaniment: { 

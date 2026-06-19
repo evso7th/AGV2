@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Светлый Транс (v1.2).
- * #ОБНОВЛЕНО (ПЛАН №906): Сокращено INTRO до 3% для активации TranceBrain.
+ * #ЗАЧЕМ: Светлый Транс (v1.3).
+ * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
  */
 export const JoyfulTranceBlueprint: MusicBlueprint = {
     id: 'joyful_trance', name: 'Sunrise Pulse', description: 'Uplifting and energetic trance.', mood: 'joyful',
@@ -17,7 +17,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Sunrise', duration: { percent: 3 }, // ~4 bars
+                id: 'INTRO', name: 'Sunrise', duration: { percent: 3 },
                 layers: { accompaniment: true, drums: true, sfx: true, bass: true },
                 instrumentation: { 
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
@@ -31,7 +31,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Ascension', duration: { percent: 37 },
+                id: 'BUILD', name: 'Ascension', duration: { percent: 53 }, // REBALANCED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 } }
@@ -56,7 +56,7 @@ export const JoyfulTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Afterglow', duration: { percent: 20 },
+                id: 'OUTRO', name: 'Afterglow', duration: { percent: 4 }, // REDUCED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 bundles: [
                     { id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }

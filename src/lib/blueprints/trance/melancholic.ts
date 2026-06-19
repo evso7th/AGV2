@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Меланхоличный Транс (v1.2).
- * #ОБНОВЛЕНО (ПЛАН №906): Сокращено INTRO до 4 тактов для мгновенного старта TranceBrain.
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.3).
+ * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
  */
 export const MelancholicTranceBlueprint: MusicBlueprint = {
     id: 'melancholic_trance',
@@ -21,7 +21,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Ignition', duration: { percent: 3 }, // ~4 bars
+                id: 'INTRO', name: 'Ignition', duration: { percent: 3 },
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
                     accompaniment: { 
@@ -37,7 +37,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Journey', duration: { percent: 32 },
+                id: 'BUILD', name: 'Journey', duration: { percent: 43 }, // REBALANCED
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
@@ -63,7 +63,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 15 },
+                id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 4 }, // REDUCED
                 layers: { accompaniment: true, sfx: true },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
