@@ -1,3 +1,4 @@
+
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -7,7 +8,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1213 — Экстремальное увеличение окна жизни ноты для Амбиента.
+ * #ЧТО: ПЛАН №1241 — Реализация Eternal Tail. Увеличение окна жизни ноты для всех жанров.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -71,9 +72,10 @@ export class AccompanimentSynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
+                // Достаточно долгое ожидание перед дисконнектом для доигрывания хвостов
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 10000); 
+                }, 15000); 
             }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
@@ -87,9 +89,9 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №1213. Увеличение релизов для устранения гудения и сохранения хвостов.
-            const isAmbient = e.params?.genre === 'ambient';
-            const extraDuration = isAmbient ? 12.0 : 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1241. Увеличение релизов для всех жанров.
+            const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
+            const extraDuration = isAmbient ? 12.0 : 5.0; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,
@@ -148,7 +150,7 @@ export class AccompanimentSynthManagerV2 {
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 10000);
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 15000);
                this.instrument = null;
            }
            this.activePresetName = instrumentName; 

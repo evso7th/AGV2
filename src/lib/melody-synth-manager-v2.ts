@@ -1,3 +1,4 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,7 +11,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1223 — Настройка окна жизни нот. Мелодия теперь "дышит" (4с), Бас держит фундамент (12с).
+ * #ЧТО: ПЛАН №1241 — Реализация Eternal Tail. Увеличение времени затухания для всех жанров.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -88,9 +89,10 @@ export class MelodySynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
+                // Оставляем старый инструмент пожить, чтобы дозвучали хвосты
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 10000); 
+                }, 15000); 
             }
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
@@ -103,9 +105,11 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / tempo;
         
         const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1223. Мелодия должна дышать, а бас - гудеть.
-            const isAmbient = e.params?.genre === 'ambient';
-            const extraDuration = isAmbient ? (this.partName === 'bass' ? 12.0 : 4.0) : 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1241. Увеличение времени затухания.
+            const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
+            // Минимум 4 секунды для всех, 10-12 для медитативных жанров
+            const extraDuration = isAmbient ? (this.partName === 'bass' ? 12.0 : 8.0) : 4.0; 
+            
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -191,7 +195,7 @@ export class MelodySynthManagerV2 {
        } else {
            if (this.synth) {
                const fadingSynth = this.synth;
-               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 10000);
+               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 15000);
                this.synth = null;
            }
            this.activePresetName = instrumentName;

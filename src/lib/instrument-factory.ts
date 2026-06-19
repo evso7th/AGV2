@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.3 — "LFO Breath Protocol".
- * #ЗАЧЕМ: ПЛАН №1225 — Оживление модуляции LFO для устранения статичного звука.
+ * @fileOverview Центральная фабрика инструментов V8.4 — "Eternal Tail Protocol".
+ * #ЗАЧЕМ: ПЛАН №1241 — Исправление RangeError и обеспечение плавного затухания.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -27,9 +27,23 @@ export const setGlobalVoiceLimit = (limit: number) => {
     }
 };
 
+/**
+ * #ЗАЧЕМ: ПЛАН №1241. Плавная очистка всех голосов.
+ */
 export const globalAllNotesOff = () => {
-    [...globalActiveVoices].forEach(v => deepCleanup(v));
-    globalActiveVoices = [];
+    const now = globalActiveVoices.length > 0 ? 0 : 0; // dummy for context
+    [...globalActiveVoices].forEach(v => {
+        if (v.voiceState && v.voiceState.node) {
+            const ctx = v.voiceState.node.context;
+            const currentTime = ctx.currentTime;
+            v.voiceState.node.gain.cancelScheduledValues(currentTime);
+            // Плавное затухание перед уничтожением
+            v.voiceState.node.gain.setTargetAtTime(0.0001, currentTime, 0.15);
+            setTimeout(() => deepCleanup(v), 1500);
+        } else {
+            deepCleanup(v);
+        }
+    });
 };
 
 const deepCleanup = (voiceRecord: any) => {
@@ -75,7 +89,7 @@ const enforceVoiceLimit = () => {
             const stealFadeOut = 0.5; 
             try {
                 voiceNode.gain.cancelScheduledValues(now);
-                voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
+                voiceNode.gain.setTargetAtTime(0.0001, now, stealFadeOut / 4);
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
@@ -224,27 +238,18 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
-    // LFO Modulation Logic (ПЛАН №1225)
     if (preset.lfo && preset.lfo.amount > 0) {
         const lfo = ctx.createOscillator();
         lfo.type = preset.lfo.shape || 'sine';
         lfo.frequency.setValueAtTime(preset.lfo.rate || 5, playTime);
-        
         const lfoGain = ctx.createGain();
         lfoGain.gain.setValueAtTime(preset.lfo.amount, playTime);
-        
         lfo.connect(lfoGain);
-        
         if (preset.lfo.target === 'pitch') {
-            // Modulate detune of sound sources (Vibrato)
-            tonalOscillators.forEach(osc => {
-                lfoGain.connect(osc.detune);
-            });
+            tonalOscillators.forEach(osc => lfoGain.connect(osc.detune));
         } else if (preset.lfo.target === 'filter') {
-            // Modulate filter cutoff (Breathing)
             lfoGain.connect(filter.frequency);
         }
-        
         lfo.start(playTime);
         nodes.push(lfo, lfoGain);
     }
@@ -255,23 +260,25 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    const peak = velocity * 0.8;
+    // #ЗАЧЕМ: ПЛАН №1241. Исправление RangeError: peak не может быть 0 для exponentialRamp.
+    const peak = Math.max(0.0001, velocity * 0.8);
     voiceGain.gain.setValueAtTime(0.0001, playTime);
     voiceGain.gain.exponentialRampToValueAtTime(peak, playTime + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, playTime + adsr.a, Math.max(adsr.d / 3, 0.001));
 
     const noteOffTime = playTime + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
+    const releaseTimeConstant = Math.max(adsr.r / 3, 0.1); // ПЛАН №1241. Чуть медленнее релиз для мягкости.
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
-    setTimeout(() => deepCleanup(record), totalLife * 1000 + 200);
+    // #ЗАЧЕМ: ПЛАН №1241. Увеличение времени жизни перед очисткой для сохранения хвостов.
+    const totalLife = duration + (releaseTimeConstant * 10) + 2.0;
+    setTimeout(() => deepCleanup(record), totalLife * 1000 + 500);
 
     nodes.forEach(n => {
-        if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 0.5);
+        if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 1.0);
     });
 };
 
@@ -336,7 +343,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         },
         noteOff: () => {}, 
         allNotesOff: () => {
-            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
+            [...globalActiveVoices].filter(v => v.type === type).forEach(v => {
+                if (v.voiceState && v.voiceState.node) {
+                    const ct = v.voiceState.node.context.currentTime;
+                    v.voiceState.node.gain.cancelScheduledValues(ct);
+                    v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.2); // Плавное затухание
+                    setTimeout(() => deepCleanup(v), 2000);
+                } else {
+                    deepCleanup(v);
+                }
+            });
         },
         setPreset: (p) => { 
             const now = ctx.currentTime;
