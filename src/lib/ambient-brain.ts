@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V103.0 — "Cognitive Transplant Update".
- * #ЗАЧЕМ: ПЛАН №1239-R — Пересадка архитектуры BluesBrain в домен Амбиента.
- * #ЧТО: Sibling DNA, Sieve Rippling (Anti-Drone), Virtuoso Piano & Harmony Accents.
+ * @fileOverview Ambient Brain V104.0 — "Swell Phrasing Update".
+ * #ЗАЧЕМ: ПЛАН №1242 — Обучение мелодиста технике Swell.
+ * #ЧТО: Плавные атаки для всех сольных партий Амбиента.
  */
 
 import type {
@@ -108,7 +108,6 @@ export class AmbientBrain {
         if (e.duration < 1.1) return [e]; 
 
         const rippled: FractalEvent[] = [];
-        // Перекрытие на 150% для бесшовности
         const numChunks = Math.max(1, Math.ceil(e.duration / chunkDurBase));
         const chunkDur = e.duration / numChunks;
         
@@ -119,7 +118,7 @@ export class AmbientBrain {
                 duration: chunkDur * 1.5, 
                 weight: e.weight * (1.0 - (i * 0.05)),
                 technique: i === 0 ? e.technique : 'hit',
-                params: { ...e.params, attack: 0.2, release: chunkDur * 2.5 }
+                params: { ...e.params, attack: e.technique === 'swell' ? 0.6 : 0.2, release: chunkDur * 2.5 }
             });
         }
         return rippled;
@@ -175,6 +174,7 @@ export class AmbientBrain {
 
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
+                    this.currentLickId = selected.id;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
                     const cid = normalizeStr(selected.compositionId);
@@ -244,7 +244,7 @@ export class AmbientBrain {
                 layerAxioms.melody = this.currentTheme.id;
             } else {
                 m = this.renderGapFiller(epoch, resChord, tension);
-                layerAxioms.melody = 'Algorithm Accents';
+                layerAxioms.melody = 'Swell Accents';
             }
             events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
@@ -295,7 +295,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Transplant Standard]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Swell Phrasing Active]`
         };
     }
 
@@ -311,11 +311,20 @@ export class AmbientBrain {
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
 
-        return barNotes.map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.75,
-            technique: n.d > 3 ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato'
-        }));
+        return barNotes.map(n => {
+            const isLong = n.d > 3;
+            return {
+                type: 'melody', 
+                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                time: n.t * TICK_TO_BEAT, 
+                duration: n.d * TICK_TO_BEAT, 
+                weight: isLong ? 0.85 : 0.65,
+                technique: isLong ? 'swell' : 'pick', 
+                dynamics: 'p', 
+                phrasing: 'legato',
+                params: isLong ? { attack: 0.8, release: 2.5 } : { attack: 0.1, release: 1.5 }
+            };
+        });
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -391,7 +400,12 @@ export class AmbientBrain {
             type: 'melody', 
             note: chord.rootNote + 12 + scale[calculateMusiNum(epoch, 7, this.seed, scale.length)],
             time: [3, 6, 9][this.random.nextInt(3)] * TICK_TO_BEAT,
-            duration: 1.0, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'legato'
+            duration: 2.5, 
+            weight: 0.7, 
+            technique: 'swell', 
+            dynamics: 'p', 
+            phrasing: 'legato',
+            params: { attack: 1.2, release: 3.5 }
         }];
     }
 
