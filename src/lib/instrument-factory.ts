@@ -1,12 +1,16 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.5 — "Deep Ethereal Protocol".
- * #ЗАЧЕМ: ПЛАН №1248 — Ликвидация перегрузов и обеспечение бесконечного затухания.
+ * @fileOverview Центральная фабрика инструментов V8.6 — "GC Elimination Update".
+ * #ЗАЧЕМ: ПЛАН №1258 (Этап 1) — Внедрение кэширования волн и кривых для устранения затыков.
  */
+
+// ───── GLOBAL CACHES (Eliminating GC Pressure) ─────
+
+const waveCache = new Map<string, PeriodicWave>();
+const curveCache = new Map<string, Float32Array>();
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-// #ЗАЧЕМ: ПЛАН №1254. Увеличение лимита для мощных систем (ПК).
 let globalVoiceLimit = 1024; 
 
 const STEAL_PRIORITY: Record<string, number> = {
@@ -37,7 +41,6 @@ export const globalAllNotesOff = () => {
             const currentTime = ctx.currentTime;
             try {
                 v.voiceState.node.gain.cancelScheduledValues(currentTime);
-                // ПЛАН №1248: Глубокое растворение в тишине.
                 v.voiceState.node.gain.setTargetAtTime(0.0001, currentTime, 0.4); 
                 setTimeout(() => deepCleanup(v), 4000);
             } catch (e) { deepCleanup(v); }
@@ -104,6 +107,57 @@ const enforceVoiceLimit = () => {
     });
 };
 
+// ───── CACHED RESOURCE GENERATORS ─────
+
+const getCachedWave = (ctx: AudioContext, type: 'guitar' | 'organ', params: any): PeriodicWave => {
+    const cacheKey = type === 'guitar' 
+        ? `wave_guitar_${(params.width || 0.45).toFixed(3)}`
+        : `wave_organ_${(params.drawbars || []).join(',')}`;
+    
+    let wave = waveCache.get(cacheKey);
+    if (!wave) {
+        if (type === 'guitar') {
+            const width = params.width || 0.45;
+            const real = new Float32Array(32), imag = new Float32Array(32);
+            for (let n = 1; n < 32; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width);
+            wave = ctx.createPeriodicWave(real, imag);
+        } else {
+            const real = new Float32Array(17), imag = new Float32Array(17);
+            const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
+            const drawbars = params.drawbars || [8,0,8,0,0,0,0,0,0];
+            drawbars.forEach((v: number, i: number) => { if (v > 0) real[indices[i]] = v / 8; });
+            wave = ctx.createPeriodicWave(real, imag);
+        }
+        waveCache.set(cacheKey, wave);
+    }
+    return wave;
+};
+
+const getCachedCurve = (type: 'muff' | 'soft', amount: number): Float32Array => {
+    const cacheKey = `curve_${type}_${amount.toFixed(3)}`;
+    let curve = curveCache.get(cacheKey);
+    if (!curve) {
+        const n = 4096;
+        const c = new Float32Array(n);
+        if (type === 'muff') {
+            const k = 1 + clamp(amount, 0, 1) * 6;
+            for (let i = 0; i < n; i++) {
+                const x = (i / (n - 1)) * 2 - 1;
+                c[i] = Math.tanh(x * k);
+            }
+        } else {
+            const k = amount * 4;
+            for (let i = 0; i < n; i++) {
+                const x = (i / (n - 1)) * 2 - 1;
+                c[i] = x / (1 + k * Math.abs(x));
+            }
+        }
+        curve = c;
+        curveCache.set(cacheKey, curve);
+    }
+    return curve;
+};
+
 // ───── HELPERS ─────
 
 const midiToHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
@@ -116,28 +170,6 @@ const getADSR = (p: any, params?: any) => {
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
     let rawR = isFinite(params?.release) ? params.release : (isFinite(a.r) ? a.r : (isFinite(a.release) ? a.release : 0.3));
     return { a: rawA, d: rawD, s: rawS, r: rawR };
-};
-
-const makeMuff = (gain = 0.65) => {
-    const n = 4096;
-    const c = new Float32Array(n);
-    const k = 1 + clamp(gain, 0, 1) * 6;
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(x * k);
-    }
-    return c;
-};
-
-const makeSoftDrive = (amount = 0.2) => {
-    const n = 4096;
-    const c = new Float32Array(n);
-    const k = amount * 4;
-    for (let i = 0; i < n; i++) {
-        const x = (i / (n - 1)) * 2 - 1;
-        c[i] = x / (1 + k * Math.abs(x));
-    }
-    return c;
 };
 
 // ───── VOICE INSTANTIATION ─────
@@ -168,10 +200,7 @@ const createIndependentVoice = (
     const tonalOscillators: OscillatorNode[] = [];
     
     if (type === 'guitar') {
-        const width = preset.osc?.width || 0.45;
-        const real = new Float32Array(32), imag = new Float32Array(32);
-        for (let n = 1; n < 32; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width);
-        const wave = ctx.createPeriodicWave(real, imag);
+        const wave = getCachedWave(ctx, 'guitar', { width: preset.osc?.width });
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(wave);
         osc.frequency.setValueAtTime(f0, playTime);
@@ -180,11 +209,7 @@ const createIndependentVoice = (
         nodes.push(osc);
         tonalOscillators.push(osc);
     } else if (type === 'organ') {
-        const real = new Float32Array(17), imag = new Float32Array(17);
-        const indices = [1, 3, 2, 4, 6, 8, 10, 12, 16];
-        const drawbars = preset.drawbars || [8,0,8,0,0,0,0,0,0];
-        drawbars.forEach((v: number, i: number) => { if (v > 0) real[indices[i]] = v / 8; });
-        const wave = ctx.createPeriodicWave(real, imag);
+        const wave = getCachedWave(ctx, 'organ', { drawbars: preset.drawbars });
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(wave);
         osc.frequency.setValueAtTime(f0, playTime);
@@ -211,7 +236,7 @@ const createIndependentVoice = (
 
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
-        shaper.curve = preset.drive.type === 'muff' ? makeMuff(preset.drive.amount) : makeSoftDrive(preset.drive.amount);
+        shaper.curve = getCachedCurve(preset.drive.type === 'muff' ? 'muff' : 'soft', preset.drive.amount);
         shaper.oversample = 'none'; 
         chainHead.connect(shaper);
         chainHead = shaper;
@@ -261,25 +286,22 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    // #ЗАЧЕМ: ПЛАН №1248. Усиленная защита огибающей.
     const peak = Math.max(0.0001, velocity * 0.7);
     voiceGain.gain.setValueAtTime(0.0001, playTime);
     try {
         voiceGain.gain.exponentialRampToValueAtTime(peak, playTime + adsr.a);
         voiceGain.gain.setTargetAtTime(peak * adsr.s, playTime + adsr.a, Math.max(adsr.d / 3, 0.001));
     } catch (e) {
-        // Fallback to linear if exponential fails due to 0-values
         voiceGain.gain.linearRampToValueAtTime(peak, playTime + adsr.a);
     }
 
     const noteOffTime = playTime + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 2.5, 0.2); // ПЛАН №1248. Более плавный релиз.
+    const releaseTimeConstant = Math.max(adsr.r / 2.5, 0.2); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // #ЗАЧЕМ: ПЛАН №1248. Огромное окно жизни для сохранения хвостов (15с).
     const totalLife = duration + (releaseTimeConstant * 12) + 5.0;
     setTimeout(() => deepCleanup(record), totalLife * 1000);
 
@@ -354,7 +376,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                     const ct = v.voiceState.node.context.currentTime;
                     try {
                         v.voiceState.node.gain.cancelScheduledValues(ct);
-                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.35); // Глубокое затухание
+                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.35); 
                         setTimeout(() => deepCleanup(v), 3000);
                     } catch (e) { deepCleanup(v); }
                 } else {
