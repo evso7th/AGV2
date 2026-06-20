@@ -1,3 +1,4 @@
+
 import type { Note } from "@/types/music";
 
 type VelocitySample = {
@@ -10,8 +11,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.3 — "Active Sources Fix".
- * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
+ * #ЗАЧЕМ: Сэмплер скрипки V4.4 — "Audibility Boost".
+ * #ЧТО: ПЛАН №1252 — Значительное повышение преампа для слышимости в Амбиенте.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -25,7 +26,8 @@ export class ViolinSamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.29; 
+        // ПЛАН №1252: Буст с 0.29 до 0.85
+        this.preamp.gain.value = 0.85; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }

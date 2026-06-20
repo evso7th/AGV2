@@ -1,16 +1,16 @@
 
 /**
- * @fileOverview Master Mix Registry V2.2 — "The Imperial Equilibrium".
- * #ЗАЧЕМ: ПЛАН №1251 — Снижение гейна мелодии на 30% и значительный буст слоя Harmony.
+ * @fileOverview Master Mix Registry V2.3 — "Harmony Visibility Protocol".
+ * #ЗАЧЕМ: ПЛАН №1252 — Усиление гармонии и разделение слоев.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.15,        // ПЛАН №1251: Снижено с 0.21 на 30%
-    accompaniment: 0.10, 
-    harmony: 0.35,       // ПЛАН №1251: Значительно повышено для слышимости гитар/скрипок
+    melody: 0.15,        
+    accompaniment: 0.12, 
+    harmony: 0.45,       // ПЛАН №1252: Максимальный буст для слышимости гитар/скрипок
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.12,      
@@ -24,7 +24,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
         drums: 0.22,      
-        harmony: 0.025    
+        harmony: 0.05    
     },
     progressive: { ...UNIVERSAL_IMPERIAL_MIX },
     rock: { ...UNIVERSAL_IMPERIAL_MIX },
