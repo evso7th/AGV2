@@ -1,13 +1,9 @@
 /**
  * #ЗАЧЕМ: Эта библиотека сопоставляет имена гитарных аккордов с путями к их
  *          аудиосэмплам (Telecaster Clean).
- * #ЧТО: Экспортирует константу TELECASTER_CHORD_SAMPLES.
- * #СВЯЗИ: Используется `telecaster-chords-sampler.ts` для загрузки и
- *          воспроизведения правильных аккордов.
- * #ОБНОВЛЕНО (ПЛАН №672): Все сэмплы из каталога clear_telecaster закомментированы.
+ * #ЧТО: ПЛАН №1255 — Полная активация путей для clear_telecaster.
  */
 export const TELECASTER_CHORD_SAMPLES: Record<string, string> = {
-    /*
     'Dm': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
     'G': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
     'Em': '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
@@ -22,6 +18,8 @@ export const TELECASTER_CHORD_SAMPLES: Record<string, string> = {
     'C': '/assets/guitars_hords_samples/clear_telecaster/591204__telecaster-clean-c-hi-r.ogg',
     'Bm': '/assets/guitars_hords_samples/clear_telecaster/591206__telecaster-clean-bm-hi-r.ogg',
     'A': '/assets/guitars_hords_samples/clear_telecaster/591167__telecaster-clean-a-hi-r.ogg',
-    'B': '/assets/guitars_hords_samples/clear_telecaster/591173__telecaster-clean-b-hi-r.ogg'
-    */
+    'B': '/assets/guitars_hords_samples/clear_telecaster/591173__telecaster-clean-b-hi-r.ogg',
+    'Ab': '/assets/guitars_hords_samples/clear_telecaster/591165__telecaster-clean-ab-low-r.ogg',
+    'Bbm': '/assets/guitars_hords_samples/clear_telecaster/591200__telecaster-clean-bbm-hi-r.ogg',
+    'Cm': '/assets/guitars_hords_samples/clear_telecaster/591185__telecaster-clean-cm-hi-r.ogg'
 };

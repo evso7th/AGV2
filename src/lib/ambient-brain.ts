@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V109.0 — "Deep Sparkle Protocol".
- * #ЗАЧЕМ: ПЛАН №1253 — Добавление редких Dark и Electro спарклов.
- * #ЧТО: Внедрение метода renderAtmosphericSparkles с низким порогом вероятности (8%).
+ * @fileOverview Ambient Brain V110.0 — "Telecaster Harmony Protocol".
+ * #ЗАЧЕМ: ПЛАН №1255 — Аккорды только из clear_telecaster, макс. частота 1/2 такта.
+ * #ЧТО: Привязка вероятности гармонии к Tension.
  */
 
 import type {
@@ -40,6 +40,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
+
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
@@ -283,14 +285,13 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: ПЛАН №1252. ГАРАНТИРОВАННАЯ активация Harmony.
+        // #ЗАЧЕМ: ПЛАН №1255. Активация Гармонии с T-зависимостью и 1/2 такта лимитом.
         if (hints.harmony && !usedLayers.has('harmony')) {
             const h = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (h.length > 0) {
+                // ПРИМЕЧАНИЕ: rippleLongNote ПРОПУСКАЕТ события с chordName (защита гитарных rolls)
                 events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
-                const hasViolin = h.some(e => !e.chordName);
-                const hasGuitar = h.some(e => !!e.chordName);
-                layerAxioms.harmony = (hasViolin && hasGuitar) ? 'Strings & Guitar' : (hasViolin ? 'Rare Violin' : 'Soft Chord');
+                layerAxioms.harmony = 'Telecaster & Orchestral';
             }
         }
 
@@ -309,7 +310,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Atmospherics Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Telecaster Harmony Active]`
         };
     }
 
@@ -402,15 +403,22 @@ export class AmbientBrain {
         };
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1255. Генерация гармонии: Телекастер + Скрипки.
+     * #ЧТО: Ограничение частоты гитар (1 раз в 2 такта) и привязка к Tension.
+     */
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const rootNote = chord.rootNote;
-        const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-        const rootName = noteNames[rootNote % 12] || 'C';
-        const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
-
-        // 1. Гитарные аккорды (Rolls) - 60% шанс
-        if (calculateMusiNum(epoch, 11, this.seed, 100) < 60) {
+        
+        // 1. CLEAR TELECASTER CHORDS (Max 1/2 bars, Probability = Tension)
+        const canPlayGuitar = (epoch % 2 === 0);
+        const guitarProbability = tension; // Прямая зависимость от Напряжения
+        
+        if (canPlayGuitar && this.random.next() < guitarProbability) {
+            const rootNote = chord.rootNote;
+            const rootName = NOTE_NAMES[rootNote % 12] || 'C';
+            const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
+            
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(rootNote + 12),
@@ -421,15 +429,16 @@ export class AmbientBrain {
                 dynamics: 'p',
                 phrasing: 'staccato',
                 chordName: chordName,
-                pan: 0.45 // Справа
+                pan: 0.45, // Справа
+                params: { genre: 'ambient' } // Для триггера Telecaster sampler
             });
         }
 
-        // 2. Редкие скрипки - 50% шанс
-        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 50) {
+        // 2. RARE VIOLINS (10% constant probability)
+        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 10) {
             events.push({
                 type: 'harmony',
-                note: this.constrainAccompanimentOctave(rootNote + 24),
+                note: this.constrainAccompanimentOctave(chord.rootNote + 24),
                 time: 1.5 * TICK_TO_BEAT,
                 duration: 3.5,
                 weight: 0.8, 
@@ -473,10 +482,6 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1253. Генерация редких атмосферных спарклов.
-     * #ЧТО: Специфические категории DARK и ELECTRONIC для глубины.
-     */
     private renderAtmosphericSparkles(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         

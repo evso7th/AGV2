@@ -3,14 +3,15 @@ import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
 import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
+import { TelecasterChordsSampler } from '@/lib/telecaster-chords-sampler';
 import { VIOLIN_SAMPLES } from "@/lib/samples";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V4.3 — "Strict Lazy Load Fix".
- * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки.
+ * #ЗАЧЕМ: Менеджер слоя гармонии V4.5 — "Telecaster Protocol".
+ * #ЧТО: ПЛАН №1255 — Добавлен TelecasterChordsSampler для чистого звука в Амбиенте.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -20,6 +21,7 @@ export class HarmonySynthManager {
     private isFullyInitialized = false;
 
     private guitarChords: GuitarChordsSampler;
+    private telecasterChords: TelecasterChordsSampler;
     private violin: ViolinSamplerPlayer;
     
     private synth: any | null = null;
@@ -30,6 +32,7 @@ export class HarmonySynthManager {
         this.destination = destination;
 
         this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
+        this.telecasterChords = new TelecasterChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
 
@@ -42,13 +45,18 @@ export class HarmonySynthManager {
         
         if (minimal) {
             console.log('%c[HarmonyManager] Level 1: Initializing CORE Guitar Chords...', 'color: #DA70D6;');
-            await this.guitarChords.init(true);
+            await Promise.all([
+                this.guitarChords.init(true),
+                this.telecasterChords.init()
+            ]);
             this.isInitialized = true;
             this.guitarChords.setVolume(1.0);
+            this.telecasterChords.setVolume(1.0);
         } else {
             console.log('%c[HarmonyManager] Level 2: Finishing Chords & Loading Violin...', 'color: #DA70D6;');
             await Promise.all([
                 this.guitarChords.init(false),
+                this.telecasterChords.init(),
                 this.violin.loadInstrument('violin', VIOLIN_SAMPLES)
             ]);
             this.violin.setVolume(1.0);
@@ -99,25 +107,23 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        // #ЗАЧЕМ: ПЛАН №1250. Интеллектуальное распределение между сэмплерами.
-        // Мы игнорируем targetInstrument, если в нотах есть явные указания на гитарные аккорды.
         const guitarNotes = notes.filter(n => !!n.chordName);
         const pureMelodicNotes = notes.filter(n => !n.chordName);
 
         if (guitarNotes.length > 0) {
-            this.guitarChords.schedule(guitarNotes, barStartTime);
+            // #ЗАЧЕМ: ПЛАН №1255. В Амбиенте используем Telecaster для чистоты.
+            const isAmbient = guitarNotes.some(n => n.params?.genre === 'ambient' || n.params?.genre === 'psybient');
+            if (isAmbient) {
+                this.telecasterChords.schedule(guitarNotes, barStartTime);
+            } else {
+                this.guitarChords.schedule(guitarNotes, barStartTime);
+            }
         }
 
         if (pureMelodicNotes.length > 0) {
             if (['guitarChords', 'violin'].includes(targetInstrument)) {
-                if (targetInstrument === 'violin') {
-                    this.violin.schedule(pureMelodicNotes, barStartTime);
-                } else {
-                    // Если просили гитару, но нота мелодическая - скрипка хороший нейтральный fallback
-                    this.violin.schedule(pureMelodicNotes, barStartTime);
-                }
+                this.violin.schedule(pureMelodicNotes, barStartTime);
             } else {
-                // Synth logic
                 if (this.activeSynthPreset !== targetInstrument) {
                     await this.loadSynth(targetInstrument);
                 }
@@ -142,12 +148,14 @@ export class HarmonySynthManager {
 
     public setVolume(volume: number) {
         this.guitarChords.setVolume(volume);
+        this.telecasterChords.setVolume(volume);
         this.violin.setVolume(volume);
         if (this.synth) this.synth.setVolume(volume);
     }
 
     public allNotesOff() {
         this.guitarChords.stopAll();
+        this.telecasterChords.stopAll();
         this.violin.stopAll();
         if (this.synth) this.synth.allNotesOff();
     }
@@ -156,6 +164,7 @@ export class HarmonySynthManager {
     public dispose() {
         this.stop();
         this.guitarChords.dispose();
+        this.telecasterChords.dispose();
         this.violin.dispose();
         if (this.synth) this.synth.disconnect();
     }
