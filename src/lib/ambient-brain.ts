@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V108.0 — "Harmony Visibility Update".
- * #ЗАЧЕМ: ПЛАН №1252 — Обеспечение слышимости слоя Harmony.
- * #ЧТО: Повышение вероятностей, фиксация панорамы и защита гитарных перекатов от дробления.
+ * @fileOverview Ambient Brain V109.0 — "Deep Sparkle Protocol".
+ * #ЗАЧЕМ: ПЛАН №1253 — Добавление редких Dark и Electro спарклов.
+ * #ЧТО: Внедрение метода renderAtmosphericSparkles с низким порогом вероятности (8%).
  */
 
 import type {
@@ -101,7 +101,7 @@ export class AmbientBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
-        // #ЗАЧЕМ: ПЛАН №1252. Гитарные перекаты НЕЛЬЗЯ дробить (они сэмплерные).
+        // Гитарные перекаты НЕЛЬЗЯ дробить (они сэмплерные).
         if (e.chordName) return [e];
         if (e.duration < 1.1) return [e]; 
 
@@ -262,7 +262,7 @@ export class AmbientBrain {
             if (target && hints[target] && !usedLayers.has(target)) {
                 const rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 if (rendered.length > 0) {
-                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.8)));
+                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
                     usedLayers.add(target);
                     layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
                     if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
@@ -300,13 +300,16 @@ export class AmbientBrain {
             layerAxioms.drums = 'Sonic Landscape';
         }
 
+        // 5. Atmospheric Events (NEW SPARKLES)
+        events.push(...this.renderAtmosphericSparkles(epoch, tension));
+
         return {
             events, tension, beautyScore: 0.9,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Harmony Level Boosted]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Atmospherics Active]`
         };
     }
 
@@ -406,7 +409,6 @@ export class AmbientBrain {
         const rootName = noteNames[rootNote % 12] || 'C';
         const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
 
-        // #ЗАЧЕМ: ПЛАН №1252. Повышение вероятности и разнесение по панораме.
         // 1. Гитарные аккорды (Rolls) - 60% шанс
         if (calculateMusiNum(epoch, 11, this.seed, 100) < 60) {
             events.push({
@@ -468,6 +470,46 @@ export class AmbientBrain {
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
             });
         }
+        return events;
+    }
+
+    /**
+     * #ЗАЧЕМ: ПЛАН №1253. Генерация редких атмосферных спарклов.
+     * #ЧТО: Специфические категории DARK и ELECTRONIC для глубины.
+     */
+    private renderAtmosphericSparkles(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        
+        // 1. Rare Dark Sparkles (8% probability)
+        if (calculateMusiNum(epoch, 13, this.seed, 100) < 8) {
+            events.push({
+                type: 'sparkle',
+                note: 60,
+                time: this.random.next() * 3, // В первой половине такта
+                duration: 4.0,
+                weight: 0.7,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { category: 'DARK' }
+            });
+        }
+
+        // 2. Rare Electro Sparkles (8% probability)
+        if (calculateMusiNum(epoch + 1, 17, this.seed, 100) < 8) {
+            events.push({
+                type: 'sparkle',
+                note: 60,
+                time: 1.0 + this.random.next() * 2, // В середине такта
+                duration: 4.0,
+                weight: 0.6,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { category: 'ELECTRONIC' }
+            });
+        }
+
         return events;
     }
 
