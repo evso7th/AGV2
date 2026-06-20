@@ -1,3 +1,4 @@
+
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { SamplerPlayer } from '@/lib/sampler-player';
@@ -98,21 +99,33 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        const isSampler = ['guitarChords', 'violin'].includes(targetInstrument);
+        // #ЗАЧЕМ: ПЛАН №1250. Интеллектуальное распределение между сэмплерами.
+        // Мы игнорируем targetInstrument, если в нотах есть явные указания на гитарные аккорды.
+        const guitarNotes = notes.filter(n => !!n.chordName);
+        const pureMelodicNotes = notes.filter(n => !n.chordName);
 
-        if (isSampler) {
-            switch (targetInstrument) {
-                case 'guitarChords': this.guitarChords.schedule(notes, barStartTime); break;
-                case 'violin': this.violin.schedule(notes, barStartTime); break;
-            }
-        } else {
-            if (this.activeSynthPreset !== targetInstrument) {
-                await this.loadSynth(targetInstrument);
-            }
-            if (this.synth) {
-                notes.forEach(note => {
-                    this.synth.noteOn(note.midi, barStartTime + note.time, note.velocity, note.duration);
-                });
+        if (guitarNotes.length > 0) {
+            this.guitarChords.schedule(guitarNotes, barStartTime);
+        }
+
+        if (pureMelodicNotes.length > 0) {
+            if (['guitarChords', 'violin'].includes(targetInstrument)) {
+                if (targetInstrument === 'violin') {
+                    this.violin.schedule(pureMelodicNotes, barStartTime);
+                } else {
+                    // Если просили гитару, но нота мелодическая - скрипка хороший нейтральный fallback
+                    this.violin.schedule(pureMelodicNotes, barStartTime);
+                }
+            } else {
+                // Synth logic
+                if (this.activeSynthPreset !== targetInstrument) {
+                    await this.loadSynth(targetInstrument);
+                }
+                if (this.synth) {
+                    pureMelodicNotes.forEach(note => {
+                        this.synth.noteOn(note.midi, barStartTime + note.time, note.velocity, note.duration);
+                    });
+                }
             }
         }
     }

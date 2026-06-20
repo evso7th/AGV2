@@ -329,7 +329,7 @@ export class AmbientBrain {
                 technique: isLong ? 'swell' : 'pick', 
                 dynamics: 'p', 
                 phrasing: 'legato',
-                params: isLong ? { attack: 1.0, release: 3.5 } : { attack: 0.15, release: 2.0 }
+                params: { attack: 1.0, release: 3.5 }
             };
         });
     }
