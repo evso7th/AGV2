@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Audio Engine Context V54.0 — "Deep Reserve Update".
  * #ЗАЧЕМ: ПЛАН №1244. Увеличение запаса хода (look-ahead) для стабильности тяжелых треков.
@@ -113,9 +112,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        return saved ? parseInt(saved, 10) : 512;
+        // #ЗАЧЕМ: ПЛАН №1254. Увеличение стандартного лимита до 1024 для ПК.
+        return saved ? parseInt(saved, 10) : 1024;
     }
-    return 512;
+    return 1024;
   });
 
   const [currentBar, setCurrentBar] = useState(0);

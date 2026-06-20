@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: UI AuraGroove V7.9 — "Syntax & DND Fix".
  * #ЧТО: ПЛАН №1185 — Исправление критической ошибки Unexpected token div.
@@ -455,7 +454,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         <Slider
                                             value={[props.voiceLimit]}
                                             min={32}
-                                            max={512}
+                                            // #ЗАЧЕМ: ПЛАН №1254. Увеличение макс. лимита для ПК.
+                                            max={1024}
                                             step={8}
                                             onValueChange={(v) => props.setVoiceLimit(v[0])}
                                         />
@@ -463,7 +463,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     </div>
                                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                                         <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
-                                            Lower limit saves CPU on mobile. Higher limit provides richer tails.
+                                            Lower limit saves CPU on mobile. Higher limit provides richer tails (up to 1024 on high-end systems).
                                         </p>
                                     </div>
                                 </div>

@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Центральная фабрика инструментов V8.5 — "Deep Ethereal Protocol".
  * #ЗАЧЕМ: ПЛАН №1248 — Ликвидация перегрузов и обеспечение бесконечного затухания.
@@ -7,7 +6,8 @@
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 512; 
+// #ЗАЧЕМ: ПЛАН №1254. Увеличение лимита для мощных систем (ПК).
+let globalVoiceLimit = 1024; 
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -244,7 +244,7 @@ const createIndependentVoice = (
         lfo.type = preset.lfo.shape || 'sine';
         lfo.frequency.setValueAtTime(preset.lfo.rate || 5, playTime);
         const lfoGain = ctx.createGain();
-        lfoGain.gain.setValueAtTime(preset.lfo.amount, playTime);
+        lfoGain.gain.setValueAtTime(preset.lfo.amount);
         lfo.connect(lfoGain);
         if (preset.lfo.target === 'pitch') {
             tonalOscillators.forEach(osc => lfoGain.connect(osc.detune));
