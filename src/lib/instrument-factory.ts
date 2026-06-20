@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Центральная фабрика инструментов V8.4 — "Eternal Tail Protocol".
- * #ЗАЧЕМ: ПЛАН №1241 — Исправление RangeError и обеспечение плавного затухания.
+ * @fileOverview Центральная фабрика инструментов V8.5 — "Deep Ethereal Protocol".
+ * #ЗАЧЕМ: ПЛАН №1248 — Ликвидация перегрузов и обеспечение бесконечного затухания.
  */
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
@@ -28,18 +28,19 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №1241. Плавная очистка всех голосов.
+ * #ЗАЧЕМ: ПЛАН №1248. Плавная, глубокая очистка голосов (Fade-Out 2.5с).
  */
 export const globalAllNotesOff = () => {
-    const now = globalActiveVoices.length > 0 ? 0 : 0; // dummy for context
     [...globalActiveVoices].forEach(v => {
         if (v.voiceState && v.voiceState.node) {
             const ctx = v.voiceState.node.context;
             const currentTime = ctx.currentTime;
-            v.voiceState.node.gain.cancelScheduledValues(currentTime);
-            // Плавное затухание перед уничтожением
-            v.voiceState.node.gain.setTargetAtTime(0.0001, currentTime, 0.15);
-            setTimeout(() => deepCleanup(v), 1500);
+            try {
+                v.voiceState.node.gain.cancelScheduledValues(currentTime);
+                // ПЛАН №1248: Глубокое растворение в тишине.
+                v.voiceState.node.gain.setTargetAtTime(0.0001, currentTime, 0.4); 
+                setTimeout(() => deepCleanup(v), 4000);
+            } catch (e) { deepCleanup(v); }
         } else {
             deepCleanup(v);
         }
@@ -86,18 +87,18 @@ const enforceVoiceLimit = () => {
         const voiceNode = oldest.voiceState?.node;
         if (voiceNode && !oldest.cleaned) {
             const now = voiceNode.context.currentTime;
-            const stealFadeOut = 0.5; 
+            const stealFadeOut = 0.8; 
             try {
                 voiceNode.gain.cancelScheduledValues(now);
                 voiceNode.gain.setTargetAtTime(0.0001, now, stealFadeOut / 4);
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                            try { n.stop(now + stealFadeOut + 0.1); } catch(e){}
+                            try { n.stop(now + stealFadeOut + 0.2); } catch(e){}
                         }
                     });
                 }
-                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 200);
+                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 500);
             } catch (e) { deepCleanup(oldest); }
         } else { deepCleanup(oldest); }
     });
@@ -260,22 +261,27 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    // #ЗАЧЕМ: ПЛАН №1241. Исправление RangeError: peak не может быть 0 для exponentialRamp.
-    const peak = Math.max(0.0001, velocity * 0.8);
+    // #ЗАЧЕМ: ПЛАН №1248. Усиленная защита огибающей.
+    const peak = Math.max(0.0001, velocity * 0.7);
     voiceGain.gain.setValueAtTime(0.0001, playTime);
-    voiceGain.gain.exponentialRampToValueAtTime(peak, playTime + adsr.a);
-    voiceGain.gain.setTargetAtTime(peak * adsr.s, playTime + adsr.a, Math.max(adsr.d / 3, 0.001));
+    try {
+        voiceGain.gain.exponentialRampToValueAtTime(peak, playTime + adsr.a);
+        voiceGain.gain.setTargetAtTime(peak * adsr.s, playTime + adsr.a, Math.max(adsr.d / 3, 0.001));
+    } catch (e) {
+        // Fallback to linear if exponential fails due to 0-values
+        voiceGain.gain.linearRampToValueAtTime(peak, playTime + adsr.a);
+    }
 
     const noteOffTime = playTime + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 3, 0.1); // ПЛАН №1241. Чуть медленнее релиз для мягкости.
+    const releaseTimeConstant = Math.max(adsr.r / 2.5, 0.2); // ПЛАН №1248. Более плавный релиз.
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type };
     globalActiveVoices.push(record);
     
-    // #ЗАЧЕМ: ПЛАН №1241. Увеличение времени жизни перед очисткой для сохранения хвостов.
-    const totalLife = duration + (releaseTimeConstant * 10) + 2.0;
-    setTimeout(() => deepCleanup(record), totalLife * 1000 + 500);
+    // #ЗАЧЕМ: ПЛАН №1248. Огромное окно жизни для сохранения хвостов (15с).
+    const totalLife = duration + (releaseTimeConstant * 12) + 5.0;
+    setTimeout(() => deepCleanup(record), totalLife * 1000);
 
     nodes.forEach(n => {
         if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 1.0);
@@ -346,9 +352,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => {
                 if (v.voiceState && v.voiceState.node) {
                     const ct = v.voiceState.node.context.currentTime;
-                    v.voiceState.node.gain.cancelScheduledValues(ct);
-                    v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.2); // Плавное затухание
-                    setTimeout(() => deepCleanup(v), 2000);
+                    try {
+                        v.voiceState.node.gain.cancelScheduledValues(ct);
+                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.35); // Глубокое затухание
+                        setTimeout(() => deepCleanup(v), 3000);
+                    } catch (e) { deepCleanup(v); }
                 } else {
                     deepCleanup(v);
                 }

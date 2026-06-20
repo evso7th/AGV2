@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V104.0 — "Swell Phrasing Update".
- * #ЗАЧЕМ: ПЛАН №1242 — Обучение мелодиста технике Swell.
- * #ЧТО: Плавные атаки для всех сольных партий Амбиента.
+ * @fileOverview Ambient Brain V105.0 — "Continuous Flow Protocol".
+ * #ЗАЧЕМ: ПЛАН №1248 — Ликвидация мертвых пауз и гудения.
+ * #ЧТО: Принудительное заполнение слоев BASS и ACC при отсутствии ДНК.
  */
 
 import type {
@@ -34,7 +34,6 @@ import {
     applyRhythmicJitter
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
-import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
 
 const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   epic: 'light', joyful: 'light', enthusiastic: 'light',
@@ -52,7 +51,7 @@ export class AmbientBrain {
     private useHeritage: boolean;
     private isImprovising: boolean = false;
 
-    // --- State & Memory (Transplanted from Blues) ---
+    // --- State & Memory ---
     private soloistBusyUntilBar: number = -1;
     private soloistRestingUntilBar: number = -1;
     
@@ -102,9 +101,9 @@ export class AmbientBrain {
 
     /**
      * #ЗАЧЕМ: Ритмическое сито (Anti-Drone).
-     * #ЧТО: Дробит длинные ноты на переливающиеся капли.
+     * #ЧТО: ПЛАН №1248 — Оптимизация под Swell. Увеличен сегмент сита до 1.5с.
      */
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.0): FractalEvent[] {
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
         if (e.duration < 1.1) return [e]; 
 
         const rippled: FractalEvent[] = [];
@@ -115,10 +114,10 @@ export class AmbientBrain {
             rippled.push({
                 ...e,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.5, 
-                weight: e.weight * (1.0 - (i * 0.05)),
+                duration: chunkDur * 1.6, // Большее перекрытие для слитности
+                weight: e.weight * (1.0 - (i * 0.03)),
                 technique: i === 0 ? e.technique : 'hit',
-                params: { ...e.params, attack: e.technique === 'swell' ? 0.6 : 0.2, release: chunkDur * 2.5 }
+                params: { ...e.params, attack: e.technique === 'swell' ? 0.9 : 0.25, release: chunkDur * 2.8 }
             });
         }
         return rippled;
@@ -174,7 +173,6 @@ export class AmbientBrain {
 
                 if (selected) {
                     this.currentTrackName = selected.compositionId;
-                    this.currentLickId = selected.id;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
                     const cid = normalizeStr(selected.compositionId);
@@ -227,12 +225,12 @@ export class AmbientBrain {
             melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
         };
 
-        // 1. Bass
+        // 1. Bass (Принудительное заполнение пауз)
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderPulsatingBass(resChord, epoch, tension);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.5)));
+            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.6)));
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Algorithm Pulse';
         }
 
@@ -246,7 +244,7 @@ export class AmbientBrain {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 layerAxioms.melody = 'Swell Accents';
             }
-            events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
+            events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 1.0)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
 
@@ -257,15 +255,16 @@ export class AmbientBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
                 const rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
-                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
+                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.8)));
                 usedLayers.add(target);
                 layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
             }
         });
 
+        // #ЗАЧЕМ: ПЛАН №1248. Гарантированный аккомпанемент при отсутствии ДНК.
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, 1.5)));
+            events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
             layerAxioms.accompaniment = 'Generative Cloud';
         }
 
@@ -278,7 +277,7 @@ export class AmbientBrain {
         if (hints.harmony && !usedLayers.has('harmony')) {
             const h = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (h.length > 0) {
-                events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
+                events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
                 layerAxioms.harmony = 'Orchestral Accents';
             }
         }
@@ -295,7 +294,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Swell Phrasing Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Continuity Active]`
         };
     }
 
@@ -322,7 +321,7 @@ export class AmbientBrain {
                 technique: isLong ? 'swell' : 'pick', 
                 dynamics: 'p', 
                 phrasing: 'legato',
-                params: isLong ? { attack: 0.8, release: 2.5 } : { attack: 0.1, release: 1.5 }
+                params: isLong ? { attack: 1.0, release: 3.5 } : { attack: 0.15, release: 2.0 }
             };
         });
     }
@@ -337,7 +336,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
             technique: 'pulse', dynamics: 'p', phrasing: 'detached'
         }));
     }
@@ -346,12 +345,13 @@ export class AmbientBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        let barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
 
-        return barNotes.map(n => ({
+        return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.5,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 1.2, release: 4.5 }
         }));
     }
 
@@ -368,40 +368,42 @@ export class AmbientBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: 0, duration: 4.0, weight: 0.25, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 2.0, release: 5.0 }
         }));
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number): { events: FractalEvent[], style: string } {
-        if (this.random.next() > 0.4) return { events: [], style: 'none' };
+        if (this.random.next() > 0.3) return { events: [], style: 'none' };
         const root = chord.rootNote + 24;
         return {
             style: 'Ambient Echoes',
             events: [{
                 type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
                 time: [1.5, 4.5, 7.5, 10.5][this.random.nextInt(4)] * TICK_TO_BEAT,
-                duration: 0.5, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
+                duration: 0.5, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             }]
         };
     }
 
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        if (calculateMusiNum(epoch, 13, this.seed, 10) > 2) return [];
+        if (calculateMusiNum(epoch, 13, this.seed, 10) > 3) return [];
         return [{
-            type: 'harmony', note: this.constrainAccompanimentOctave(chord.rootNote + 24),
-            time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            type: 'harmony', note: this.constrainAccompanimentOctave(chord.rootNote + 12),
+            time: 0, duration: 4.0, weight: 0.15, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 1.5, release: 4.0 }
         }];
     }
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        if (this.random.next() > 0.3) return [];
+        if (this.random.next() > 0.4) return [];
         const scale = [0, 2, 3, 5, 7, 10, 12];
         return [{
             type: 'melody', 
             note: chord.rootNote + 12 + scale[calculateMusiNum(epoch, 7, this.seed, scale.length)],
             time: [3, 6, 9][this.random.nextInt(3)] * TICK_TO_BEAT,
             duration: 2.5, 
-            weight: 0.7, 
+            weight: 0.65, 
             technique: 'swell', 
             dynamics: 'p', 
             phrasing: 'legato',
@@ -412,11 +414,11 @@ export class AmbientBrain {
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
-        const hitCount = 1 + calculateMusiNum(epoch, 3, this.seed, 3);
+        const hitCount = 2 + calculateMusiNum(epoch, 3, this.seed, 2);
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[calculateMusiNum(epoch + i, 11, this.seed, kit.perc.length)];
             events.push({
-                type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, duration: 2.0, weight: 0.3,
+                type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, duration: 3.0, weight: 0.25,
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.8) - 0.9
             });
         }
