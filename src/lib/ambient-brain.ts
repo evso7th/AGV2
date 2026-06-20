@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Ambient Brain V106.0 — "Infinite Continuity Protocol".
- * #ЗАЧЕМ: ПЛАН №1250 — Постоянный gap-filling и активация слоя Harmony.
- * #ЧТО: Ликвидация пауз в ДНК, редкие гитары/скрипки в гармонии, тихая мелодия.
+ * @fileOverview Ambient Brain V107.0 — "Imperial Harmony Protocol".
+ * #ЗАЧЕМ: ПЛАН №1251 — Гарантированные пэды, громкая гармония и исправление ReferenceError.
+ * #ЧТО: Ликвидация пауз, активация гитарных перекатов и скрипок в слое Harmony.
  */
 
 import type {
@@ -230,7 +230,7 @@ export class AmbientBrain {
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Algorithm Pulse';
         }
 
-        // 2. Melody (Constant Gap-filling)
+        // 2. Melody
         if (hints.melody) {
             let m: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -240,7 +240,6 @@ export class AmbientBrain {
                 }
             }
             
-            // Если ДНК нет или она пуста в этом такте — принудительно заполняем
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 layerAxioms.melody = 'Gap-Filler';
@@ -265,7 +264,6 @@ export class AmbientBrain {
             }
         });
 
-        // Гарантированный аккомпанемент при отсутствии ДНК
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
             layerAxioms.accompaniment = 'Generative Cloud';
@@ -279,13 +277,13 @@ export class AmbientBrain {
             }
         }
 
-        // Активация слоя Harmony (Редкие гитары и скрипки)
+        // #ЗАЧЕМ: ПЛАН №1251. Активация слоя Harmony (Постоянные гитары и редкие скрипки).
         if (hints.harmony && !usedLayers.has('harmony')) {
             const h = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (h.length > 0) {
                 events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
                 const hasViolin = h.some(e => !e.chordName);
-                const hasGuitar = h.some(e => e.chordName);
+                const hasGuitar = h.some(e => !!e.chordName);
                 layerAxioms.harmony = (hasViolin && hasGuitar) ? 'Strings & Guitar' : (hasViolin ? 'Rare Violin' : 'Soft Chord');
             }
         }
@@ -302,7 +300,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Continuity Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Harmony Active]`
         };
     }
 
@@ -372,12 +370,13 @@ export class AmbientBrain {
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: ПЛАН №1251. Убран гейт редкости (15%). Пэды звучат всегда.
         const root = chord.rootNote + 12;
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         return intervals.map((interval, i) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: 0, duration: 4.0, weight: 0.2, technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { attack: 2.0, release: 5.0 }
+            time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            params: { attack: 1.5, release: 5.0 }
         }));
     }
 
@@ -402,14 +401,15 @@ export class AmbientBrain {
         const rootName = noteNames[rootNote % 12] || 'C';
         const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
 
-        // 1. Редкие гитарные аккорды (Rolls) - 15% шанс
-        if (calculateMusiNum(epoch, 11, this.seed, 100) < 15) {
+        // #ЗАЧЕМ: ПЛАН №1251. Повышение вероятности и веса для слышимости.
+        // 1. Редкие гитарные аккорды (Rolls) - 35% шанс
+        if (calculateMusiNum(epoch, 11, this.seed, 100) < 35) {
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(rootNote + 12),
                 time: 0,
                 duration: 4.0,
-                weight: 0.4,
+                weight: 0.8, // ПЛАН №1251: Увеличен вес
                 technique: 'hit', // В фабрике/сэмплере hit + chordName активирует перекат
                 dynamics: 'p',
                 phrasing: 'staccato',
@@ -417,14 +417,14 @@ export class AmbientBrain {
             });
         }
 
-        // 2. Редкие скрипки - 10% шанс
-        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 10) {
+        // 2. Редкие скрипки - 25% шанс
+        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 25) {
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(rootNote + 24),
                 time: 1.5 * TICK_TO_BEAT,
                 duration: 3.0,
-                weight: 0.35,
+                weight: 0.7, // ПЛАН №1251: Увеличен вес
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -436,7 +436,7 @@ export class AmbientBrain {
     }
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        // Постоянное заполнение (без случайного return)
+        // Постоянное заполнение
         const scale = [0, 2, 3, 5, 7, 10, 12];
         return [{
             type: 'melody', 

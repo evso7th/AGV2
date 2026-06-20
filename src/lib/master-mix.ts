@@ -1,16 +1,16 @@
 
 /**
  * @fileOverview Master Mix Registry V2.2 — "The Imperial Equilibrium".
- * #ЗАЧЕМ: ПЛАН №1250 — Снижение гейна мелодии на 30% и буст слоя Harmony.
+ * #ЗАЧЕМ: ПЛАН №1251 — Снижение гейна мелодии на 30% и значительный буст слоя Harmony.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.15,        // ПЛАН №1250: Снижено с 0.21 на 30%
+    melody: 0.15,        // ПЛАН №1251: Снижено с 0.21 на 30%
     accompaniment: 0.10, 
-    harmony: 0.12,       // ПЛАН №1250: Повышено с 0.075 для отчетливости гитар/скрипок
+    harmony: 0.35,       // ПЛАН №1251: Значительно повышено для слышимости гитар/скрипок
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.12,      
