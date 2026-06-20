@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V2.3 — "Harmony Visibility Protocol".
- * #ЗАЧЕМ: ПЛАН №1252 — Усиление гармонии и разделение слоев.
+ * @fileOverview Master Mix Registry V2.4 — "Harmony Balance Protocol".
+ * #ЗАЧЕМ: ПЛАН №1256 — Снижение громкости гармонии в 3 раза.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -10,7 +10,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.15,        
     accompaniment: 0.12, 
-    harmony: 0.45,       // ПЛАН №1252: Максимальный буст для слышимости гитар/скрипок
+    harmony: 0.15,       // ПЛАН №1256: Снижено с 0.45 (в 3 раза) для деликатности
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.12,      
