@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V2.4 — "Harmony Balance Protocol".
- * #ЗАЧЕМ: ПЛАН №1256 — Снижение громкости гармонии в 3 раза.
+ * @fileOverview Master Mix Registry V2.5 — "Trance Impact Update".
+ * #ЗАЧЕМ: ПЛАН №1257 — Усиление ритм-секции для жанра Psybient.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -10,7 +10,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.15,        
     accompaniment: 0.12, 
-    harmony: 0.15,       // ПЛАН №1256: Снижено с 0.45 (в 3 раза) для деликатности
+    harmony: 0.15,       
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.12,      
@@ -18,7 +18,11 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 };
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
-    psybient: { ...UNIVERSAL_IMPERIAL_MIX },
+    psybient: { 
+        ...UNIVERSAL_IMPERIAL_MIX,
+        drums: 0.85,      // Усилено для трансового драйва
+        bass: 0.75        // Усилено для упругости
+    },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     blues: { ...UNIVERSAL_IMPERIAL_MIX },
     reggae: { 
