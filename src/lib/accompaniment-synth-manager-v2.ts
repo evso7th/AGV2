@@ -7,7 +7,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1265 — Ускорение ротации инструментов для предотвращения утечек.
+ * #ЧТО: ПЛАН №1269 — Внедрение страмминга (staggering) для устранения заиканий.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -71,10 +71,10 @@ export class AccompanimentSynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
-                // #ЗАЧЕМ: ПЛАН №1265. Снижено с 15 до 8 сек для предотвращения накопления неиспользуемых нод.
+                // #ЗАЧЕМ: ПЛАН №1269. Ускорена очистка до 6 сек для освобождения ресурсов.
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 8000); 
+                }, 6000); 
             }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
@@ -87,12 +87,24 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / tempo;
         const filtered = events.filter(e => e.type === 'accompaniment');
 
-        const notesToPlay = filtered.map(e => {
+        if (filtered.length === 0) return;
+
+        // #ЗАЧЕМ: ПЛАН №1269. Сортировка и группировка для страмминга.
+        const sortedEvents = [...filtered].sort((a, b) => a.time - b.time);
+        
+        const notesToPlay = sortedEvents.map((e, index) => {
             const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
-            const extraDuration = isAmbient ? 12.0 : 5.0; 
+            const extraDuration = isAmbient ? 8.0 : 4.0; 
+            
+            // Микро-лаг между нотами, стартующими одновременно (25 мс)
+            let staggerDelay = 0;
+            if (index > 0 && Math.abs(sortedEvents[index].time - sortedEvents[index-1].time) < 0.01) {
+                staggerDelay = 0.025; // 25ms
+            }
+
             return {
                 midi: e.note,
-                time: e.time * beatDuration,
+                time: e.time * beatDuration + staggerDelay,
                 duration: (e.duration * beatDuration) + extraDuration,
                 velocity: e.weight,
                 technique: e.technique,
@@ -111,7 +123,6 @@ export class AccompanimentSynthManagerV2 {
         }
 
         if (this.activePresetName === 'none') return;
-        if (notesToPlay.length === 0) return;
 
         if (this.activePresetName === 'blackAcoustic') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -148,7 +159,7 @@ export class AccompanimentSynthManagerV2 {
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 8000);
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 6000);
                this.instrument = null;
            }
            this.activePresetName = instrumentName; 

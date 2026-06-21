@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.7 — "Leak Suppression Update".
- * #ЗАЧЕМ: ПЛАН №1265 — Устранение утечек на пэдах и оптимизация лимитера.
+ * @fileOverview Центральная фабрика инструментов V8.8 — "Anti-Stutter Update".
+ * #ЗАЧЕМ: ПЛАН №1269 — Ужесточение политики очистки и ускорение затухания при краже голосов.
  */
 
 // ───── GLOBAL CACHES ─────
@@ -8,7 +8,6 @@ const waveCache = new Map<string, PeriodicWave>();
 const curveCache = new Map<string, Float32Array>();
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
-// #ЗАЧЕМ: Использование Set для O(1) удаления и сохранения порядка вставки (FIFO).
 let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 1024; 
 
@@ -63,9 +62,8 @@ const deepCleanup = (voiceRecord: any) => {
 const enforceVoiceLimit = () => {
     if (globalActiveVoices.size <= globalVoiceLimit) return;
 
-    // В Set порядок вставки сохраняется. Первые элементы — самые старые.
-    // Удаляем 10% старых голосов за раз для снижения частоты вызовов лимитера.
-    const toKillCount = Math.max(1, Math.floor(globalActiveVoices.size - globalVoiceLimit + (globalVoiceLimit * 0.1)));
+    // ПЛАН №1269: Удаляем 15% старых голосов при переполнении для запаса хода.
+    const toKillCount = Math.max(1, Math.floor(globalActiveVoices.size - globalVoiceLimit + (globalVoiceLimit * 0.15)));
     const iterator = globalActiveVoices.values();
     
     for (let i = 0; i < toKillCount; i++) {
@@ -75,10 +73,10 @@ const enforceVoiceLimit = () => {
         const voiceNode = oldest.voiceState?.node;
         if (voiceNode && !oldest.cleaned) {
             const now = voiceNode.context.currentTime;
-            const stealFadeOut = 0.4; // Быстрая деактивация при краже
+            const stealFadeOut = 0.3; // ПЛАН №1269: Ускоренное затухание щипка (было 0.4)
             try {
                 voiceNode.gain.cancelScheduledValues(now);
-                voiceNode.gain.setTargetAtTime(0.0001, now, 0.1);
+                voiceNode.gain.setTargetAtTime(0.0001, now, 0.08); // Более резкий, но безопасный фейд
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
@@ -86,7 +84,7 @@ const enforceVoiceLimit = () => {
                         }
                     });
                 }
-                setTimeout(() => deepCleanup(oldest), 600);
+                setTimeout(() => deepCleanup(oldest), 500);
             } catch (e) { deepCleanup(oldest); }
         } else { deepCleanup(oldest); }
     }
@@ -170,7 +168,7 @@ const createIndependentVoice = (
     duration: number,
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null,
-    instanceId: string // Добавлен для точечной очистки
+    instanceId: string 
 ) => {
     const now = ctx.currentTime;
     const playTime = isFinite(when) ? Math.max(when, now) : now;
@@ -282,17 +280,19 @@ const createIndependentVoice = (
     }
 
     const noteOffTime = playTime + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 2.5, 0.2); 
+    // ПЛАН №1269: Ускоренная деактивация нод для предотвращения переполнения.
+    const releaseTimeConstant = Math.max(adsr.r / 3.0, 0.15); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type, instanceId };
     globalActiveVoices.add(record);
     
-    const totalLife = duration + (releaseTimeConstant * 12) + 2.0;
+    // ПЛАН №1269: Сборщик мусора приходит на 2 сек раньше (было +2.0).
+    const totalLife = duration + (releaseTimeConstant * 10);
     setTimeout(() => deepCleanup(record), totalLife * 1000);
 
     nodes.forEach(n => {
-        if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 1.0);
+        if (n instanceof OscillatorNode) n.stop(playTime + totalLife + 0.5);
     });
 };
 
@@ -351,7 +351,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         id: instanceId,
         connect: (dest) => limiter.connect(dest || output),
         disconnect: () => {
-            // Очищаем только те голоса, что принадлежат этому экземпляру
             const voices = Array.from(globalActiveVoices).filter(v => v.instanceId === instanceId);
             voices.forEach(v => deepCleanup(v));
             [instrumentGain, expressionGain, panner, limiter, sharedDelayNode, feedbackGain, delayMixGain].forEach(n => { try { n.disconnect(); } catch(e){} });
@@ -368,8 +367,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                     const ct = v.voiceState.node.context.currentTime;
                     try {
                         v.voiceState.node.gain.cancelScheduledValues(ct);
-                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.3); 
-                        setTimeout(() => deepCleanup(v), 3000);
+                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.2); 
+                        setTimeout(() => deepCleanup(v), 2000);
                     } catch (e) { deepCleanup(v); }
                 } else {
                     deepCleanup(v);

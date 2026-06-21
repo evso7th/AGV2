@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1268): "Шелковый Протокол". Смягчение СЧ/ВЧ на пэдах.
+// #ОБНОВЛЕНО (ПЛАН №1269): Оптимизация релизов для предотвращения заиканий.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -13,14 +13,12 @@ export const V2_PRESETS = {
     type: 'synth',
     volume: 0.6,
     osc: [
-      // #ЗАЧЕМ: Снижение гейна пилы для мягкости тембра.
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.22 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.22 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.3 } 
     ],
     noise: { on: true, gain: 0.008 },
-    adsr: { a: 1.0, d: 1.5, s: 0.7, r: 3.0 },
-    // #ЗАЧЕМ: ПЛАН №1268. Глубокий срез ВЧ и минимизация резонанса.
+    adsr: { a: 1.0, d: 1.5, s: 0.7, r: 2.2 }, // ПЛАН №1269: Снижено с 3.0
     lpf: { cutoff: 800, q: 0.3 }, 
     reverbMix: 0
   },
@@ -31,12 +29,10 @@ export const V2_PRESETS = {
     volume: 0.55,
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.5 },
-      // #ЗАЧЕМ: Пила теперь лишь едва уловимый оттенок.
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.15 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.35 } 
     ],
-    adsr: { a: 2.5, d: 3.0, s: 0.8, r: 4.5 },
-    // #ЗАЧЕМ: Максимально мягкий "бархатный" фильтр.
+    adsr: { a: 2.5, d: 3.0, s: 0.8, r: 3.2 }, // ПЛАН №1269: Снижено с 4.5
     lpf: { cutoff: 650, q: 0.2 }, 
     reverbMix: 0
   },
@@ -50,7 +46,7 @@ export const V2_PRESETS = {
     name: 'Clean Organ',
     volume: 0.35, 
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0], 
-    adsr: { a: 0.05, d: 0.1, s: 0.9, r: 0.5 },
+    adsr: { a: 0.05, d: 0.1, s: 0.9, r: 0.4 }, // ПЛАН №1269
     lpf: 1600, 
     reverbMix: 0
   },
@@ -61,7 +57,7 @@ export const V2_PRESETS = {
     volume: 0.38, 
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0], 
     lpf: 1300, 
-    adsr: { a: 0.04, d: 0.1, s: 0.85, r: 0.4 },
+    adsr: { a: 0.04, d: 0.1, s: 0.85, r: 0.35 }, // ПЛАН №1269
     reverbMix: 0
   },
 
@@ -74,7 +70,7 @@ export const V2_PRESETS = {
     name: 'Clean Guitar',
     volume: 0.7,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.8 },
+    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.7 }, // ПЛАН №1269
     lpf: 3800,
     reverbMix: 0
   },
@@ -86,7 +82,7 @@ export const V2_PRESETS = {
     osc: { width: 0.46 }, 
     drive: { type: 'soft', amount: 0.22 }, 
     post: { lpf: 2600 }, 
-    adsr: { a: 0.025, d: 0.4, s: 0.8, r: 2.5 }, 
+    adsr: { a: 0.025, d: 0.4, s: 0.8, r: 1.8 }, // ПЛАН №1269: Снижено с 2.5
     delay: { time: 0.42, fb: 0.35, mix: 0.25 },
     reverbMix: 0
   },
@@ -98,7 +94,7 @@ export const V2_PRESETS = {
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.38 }, 
     post: { lpf: 2200 }, 
-    adsr: { a: 0.025, d: 0.6, s: 0.6, r: 1.5 },
+    adsr: { a: 0.025, d: 0.6, s: 0.6, r: 1.2 }, // ПЛАН №1269
     delay: { time: 0.32, fb: 0.2, mix: 0.15 },
     reverbMix: 0
   },
@@ -111,8 +107,7 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.55 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.12 }
     ],
-    adsr: { a: 0.012, d: 0.35, s: 0.6, r: 0.8 },
-    // #ЗАЧЕМ: Смягчение Rhodes для исключения звона.
+    adsr: { a: 0.012, d: 0.35, s: 0.6, r: 0.6 }, // ПЛАН №1269
     lpf: { cutoff: 1600, q: 0.5 }, 
     reverbMix: 0
   }
