@@ -1,12 +1,9 @@
-
 import type { Note as NoteEvent } from "@/types/music";
 import { TELECASTER_CHORD_SAMPLES } from "./assets/telecaster-chord-samples";
 
 /**
- * #ЗАЧЕМ: Этот сэмплер отвечает за воспроизведение аккордов гитары Telecaster.
- * #ЧТО: Он загружает сэмплы из `telecaster-chord-samples.ts` и проигрывает
- *       их на основе точного имени аккорда, полученного от композитора.
- * #СВЯЗИ: Управляется `HarmonySynthManager`.
+ * #ЗАЧЕМ: Сэмплер Telecaster Chords V2.4 — "Surgical Sample Protocol".
+ * #ЧТО: ПЛАН №1261 — Ограничение длительности воспроизведения 5 секундами.
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -59,14 +56,14 @@ export class TelecasterChordsSampler {
     public schedule(notes: (NoteEvent & { chordName?: string })[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
+        // #ЗАЧЕМ: ПЛАН №1261. Хирургическая отсечка длинных сэмплов.
+        const MAX_DUR = 5.0;
+        const FADE_START = 4.2;
+
         notes.forEach(note => {
-            // #ЗАЧЕМ: Использует точное имя аккорда, переданное от композитора.
-            // #ЧТО: Читает `note.chordName` и напрямую ищет сэмпл в карте.
-            // #СВЯЗИ: Устраняет необходимость в "угадывании" аккорда по MIDI-ноте.
             const chordName = this.findBestChordMatch(note.chordName || '');
             
             if (!chordName) {
-                console.warn(`[TelecasterSampler] Could not find a suitable match for chord: ${note.chordName}`);
                 return;
             }
 
@@ -76,18 +73,23 @@ export class TelecasterChordsSampler {
                 source.buffer = buffer;
                 
                 const noteGain = this.audioContext.createGain();
-                noteGain.gain.value = note.velocity ?? 0.7;
+                const playTime = startTime + note.time;
+                const velocity = note.velocity ?? 0.7;
                 
                 source.connect(noteGain);
                 noteGain.connect(this.preamp);
                 
-                source.start(startTime + note.time);
+                noteGain.gain.setValueAtTime(0, playTime);
+                noteGain.gain.linearRampToValueAtTime(velocity, playTime + 0.02);
+                
+                // Мягкое затухание в конце 5-секундного окна
+                noteGain.gain.setTargetAtTime(0.0001, playTime + FADE_START, 0.25);
+
+                source.start(playTime, 0, MAX_DUR);
 
                 source.onended = () => {
-                    noteGain.disconnect();
+                    try { noteGain.disconnect(); } catch(e) {}
                 };
-            } else {
-                console.warn(`[TelecasterSampler] Sample for resolved chord "${chordName}" not found.`);
             }
         });
     }
