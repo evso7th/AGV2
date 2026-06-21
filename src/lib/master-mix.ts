@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V2.6 — "Atmospheric Balance Update".
- * #ЗАЧЕМ: ПЛАН №1259 — Внедрение спарклов/sfx и снижение громкости аккомпанемента.
+ * @fileOverview Master Mix Registry V2.7 — "Harmony Balance Calibration".
+ * #ЗАЧЕМ: ПЛАН №1263 — Снижение громкости гармонии в 2 раза.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,12 +9,12 @@ import type { Genre, SoundMix } from '@/types/music';
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.15,        
-    accompaniment: 0.06, // Снижено в 2 раза (было 0.12)
-    harmony: 0.15,       
+    accompaniment: 0.06, 
+    harmony: 0.075,      // Снижено в 2 раза (было 0.15)
     pianoAccompaniment: 0.43,
     drums: 0.75,         
-    sparkles: 0.25,      // Установлено на 0.25
-    sfx: 0.25            // Установлено на 0.25
+    sparkles: 0.25,      
+    sfx: 0.25            
 };
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
