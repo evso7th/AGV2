@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V2.7 — "Harmony Balance Calibration".
- * #ЗАЧЕМ: ПЛАН №1263 — Снижение громкости гармонии в 2 раза.
+ * @fileOverview Master Mix Registry V2.8 — "Accompaniment Purity Update".
+ * #ЗАЧЕМ: ПЛАН №1264 — Снижение громкости аккомпанемента в 2 раза.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,8 +9,8 @@ import type { Genre, SoundMix } from '@/types/music';
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.15,        
-    accompaniment: 0.06, 
-    harmony: 0.075,      // Снижено в 2 раза (было 0.15)
+    accompaniment: 0.03, // Снижено в 2 раза (было 0.06)
+    harmony: 0.075,      
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.25,      

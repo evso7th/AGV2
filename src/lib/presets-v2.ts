@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1248): Глубокая фильтрация и анти-клиппинг для пэдов.
+// #ОБНОВЛЕНО (ПЛАН №1264): Устранение "пароходного" гудения. Радикальное снижение суб-гармоник.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -15,11 +15,13 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.35 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.35 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
+      // #ЗАЧЕМ: Снижение гейна суб-осциллятора для устранения гудения.
+      { type: 'sine', detune: 0, octave: -1, gain: 0.3 } 
     ],
     noise: { on: true, gain: 0.008 },
     adsr: { a: 1.0, d: 1.5, s: 0.7, r: 3.0 },
-    lpf: { cutoff: 850, q: 0.7 }, 
+    // #ЗАЧЕМ: Подъем фильтра выше "пароходной трубы".
+    lpf: { cutoff: 1200, q: 0.7 }, 
     reverbMix: 0
   },
 
@@ -30,11 +32,12 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.5 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.25 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
+      // #ЗАЧЕМ: ПЛАН №1264. Радикальное облегчение низа.
+      { type: 'sine', detune: 0, octave: -1, gain: 0.35 } 
     ],
     adsr: { a: 2.5, d: 3.0, s: 0.8, r: 4.5 },
-    // #ЗАЧЕМ: ПЛАН №1248. Снижение среза для мягкости и устранения гудения.
-    lpf: { cutoff: 650, q: 0.6 }, 
+    // #ЗАЧЕМ: Прозрачный фильтр без резонансного гула.
+    lpf: { cutoff: 950, q: 0.5 }, 
     reverbMix: 0
   },
 
