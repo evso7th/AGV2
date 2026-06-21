@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Blues Brain V81.0 — "Transparency Enhancement".
- * #ЗАЧЕМ: ПЛАН №1227 — Логирование всех каналов ансамбля.
+ * @fileOverview Blues Brain V82.0 — "Respiration Protocol Support".
+ * #ЗАЧЕМ: ПЛАН №1266 — Оживление длинных органов и пэдов.
  */
 
 import {
@@ -187,6 +187,48 @@ export class BluesBrain {
       }
   }
 
+  /**
+   * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
+   * #ЧТО: Оживление длинных органов и пэдов.
+   */
+  private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+    // Порог оживления: более 5 тиков (~1.5 сек)
+    if (e.duration < 5.0) return [e]; 
+
+    const rippled: FractalEvent[] = [];
+    const isMinor = chord.chordType === 'minor';
+    
+    // 50% Шанс на микро-лик (Lick Infusion)
+    const useLick = this.random.next() < 0.50;
+    const neighbor = isMinor ? 3 : 4; // Движение к терции
+
+    const numChunks = Math.max(2, Math.ceil(e.duration / 1.5)); 
+    const chunkDur = e.duration / numChunks;
+    const baseMidi = e.note;
+
+    for (let i = 0; i < numChunks; i++) {
+        let note = baseMidi;
+        if (useLick && i === 1 && numChunks >= 3) note += neighbor;
+
+        const jitter = 0.85 + (this.random.next() * 0.3); // Велосити джиттер
+
+        rippled.push({
+            ...e,
+            note: note,
+            time: e.time + (i * chunkDur),
+            duration: chunkDur * 1.25, // Мягкий нахлест
+            weight: e.weight * jitter,
+            params: { 
+                ...e.params, 
+                attack: 0.5, 
+                release: 2.0,
+                filterCutoff: 1200 + (this.random.next() * 1500) // Дыхание фильтра
+            }
+        });
+    }
+    return rippled;
+  }
+
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
       if (totalBars <= 0) return 0;
       const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
@@ -207,49 +249,6 @@ export class BluesBrain {
               this.activeHarmonyInstrument = (tension > 0.85 || tension < 0.15) ? 'violin' : 'guitarChords';
           }
       }
-  }
-
-  private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
-    if (e.duration < 3.5) return [e]; 
-
-    const rippled: FractalEvent[] = [];
-    const isMinor = chord.chordType === 'minor';
-    const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
-    
-    const numChunks = Math.ceil(e.duration / 1.5); 
-    const chunkDur = e.duration / numChunks;
-    const baseOctaveMidi = Math.floor(e.note / 12) * 12;
-
-    for (let i = 0; i < numChunks; i++) {
-        let note: number;
-        if (i === 0) {
-            note = e.note;
-        } else {
-            const seedOffset = Math.floor(e.time * 12);
-            const idx = calculateMusiNum(seedOffset + i, 13, this.seed, ripplePool.length);
-            note = baseOctaveMidi + ripplePool[idx];
-        }
-
-        const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
-        let finalNote = note;
-        
-        if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
-        else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
-        else finalNote = this.constrainAccompanimentOctave(note);
-
-        rippled.push({
-            ...e,
-            note: finalNote,
-            time: e.time + (i * chunkDur),
-            duration: chunkDur * 1.15,
-            params: { 
-                ...e.params, 
-                attack: i === 0 ? (e.params?.attack || 0.5) : 0.8,
-                release: 2.5 
-            }
-        });
-    }
-    return rippled;
   }
 
   private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -386,7 +385,6 @@ export class BluesBrain {
     const resChord = { ...currentChord, rootNote: resRoot };
     const events: FractalEvent[] = [];
 
-    // #ЗАЧЕМ: ПЛАН №1227. Реестр активных аксиом для логирования.
     const layerAxioms: Record<string, string> = {
         melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
     };
@@ -512,7 +510,7 @@ export class BluesBrain {
             piano: layerAxioms.piano,
             ensemble: `${this.ensembleStatus} [${modeStr}]`
         },
-        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Status: ${isSoloistResting ? 'BREATHING' : 'PLAYING'}]`
+        narrative: `Blues ${modeStr}: ${this.currentTrackName} [Respiration Protocol Active]`
     };
   }
 

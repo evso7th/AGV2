@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V111.0 — "Atmospheric Enrichment".
- * #ЗАЧЕМ: ПЛАН №1259 — Внедрение редких SFX и Sparkles (Dark/Electro).
+ * @fileOverview Ambient Brain V112.0 — "Respiration Update".
+ * #ЗАЧЕМ: ПЛАН №1266 — Оживление статичных пэдов через дробление и лики.
  */
 
 import type {
@@ -30,7 +30,8 @@ import {
     normalizeStr,
     invertPhrase,
     retrogradePhrase,
-    applyRhythmicJitter
+    applyRhythmicJitter,
+    safeSemitoneToDegree
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -101,22 +102,54 @@ export class AmbientBrain {
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
+    /**
+     * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
+     * #ЧТО: Дробление длинных нот, микро-лики (50%) и спектральное «дыхание».
+     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
-        if (e.chordName) return [e];
-        if (e.duration < 1.1) return [e]; 
+        if (e.chordName) return [e]; // Не дробим аккорды с явными именами
+        
+        // Порог оживления: более 2 секунд (при 60bpm это 6 тиков, при 120 - 12). 
+        // Используем 5.0 тиков как универсальный порог "застоя".
+        if (e.duration < 5.0) return [e]; 
 
         const rippled: FractalEvent[] = [];
-        const numChunks = Math.max(1, Math.ceil(e.duration / chunkDurBase));
+        
+        // 1. LICK INFUSION (50% Chance)
+        // #ЗАЧЕМ: Добавление гармонического движения вместо статичного гудения.
+        const useLick = this.random.next() < 0.50; 
+        
+        const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
         const chunkDur = e.duration / numChunks;
         
+        const baseMidi = e.note;
+        const isMinor = chord.chordType === 'minor';
+        const neighborSemitone = isMinor ? 3 : 2; // Малая терция или большая секунда для движения
+
         for (let i = 0; i < numChunks; i++) {
+            // Велосити джиттер: легкое покачивание громкости
+            const jitter = 0.9 + (this.random.next() * 0.2 - 0.1); 
+            
+            // Если выбран лик, меняем ноту во втором сегменте
+            let note = baseMidi;
+            if (useLick && i === 1 && numChunks >= 3) {
+                note += neighborSemitone;
+            }
+
             rippled.push({
                 ...e,
+                note: note,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.6, 
-                weight: e.weight * (1.0 - (i * 0.03)),
+                duration: chunkDur * 1.2, // Мягкий нахлест (Soft Overlap)
+                weight: e.weight * jitter,
                 technique: i === 0 ? e.technique : 'hit',
-                params: { ...e.params, attack: e.technique === 'swell' ? 0.9 : 0.25, release: chunkDur * 2.8 }
+                params: { 
+                    ...e.params, 
+                    attack: 0.8, 
+                    release: 2.5,
+                    // #ЗАЧЕМ: Спектральная анимация. Каждый кусок "дышит" фильтром.
+                    filterCutoff: 800 + (this.random.next() * 1200) 
+                }
             });
         }
         return rippled;
@@ -297,7 +330,7 @@ export class AmbientBrain {
             layerAxioms.drums = 'Sonic Landscape';
         }
 
-        // 5. Atmospheric Events (NEW SPARKLES & SFX)
+        // 5. Atmospheric Events
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -306,7 +339,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Atmospheric Layers Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Respiration Protocol Active]`
         };
     }
 
@@ -470,9 +503,6 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1259. Генерация нечастых Sparkles и SFX (без голосов).
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;

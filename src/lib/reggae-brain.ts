@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Reggae Brain V24.0 — "Transparency Enhancement".
- * #ЗАЧЕМ: ПЛАН №1227 — Логирование всех слоев ансамбля.
+ * @fileOverview Reggae Brain V25.0 — "Respiration Protocol Support".
+ * #ЗАЧЕМ: ПЛАН №1266 — Оживление органов и пэдов в Регги.
  */
 
 import type {
@@ -91,6 +91,44 @@ export class ReggaeBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
+    }
+
+    /**
+     * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
+     * #ЧТО: Оживление длинных органов и пэдов.
+     */
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.0): FractalEvent[] {
+        if (e.duration < 5.0) return [e]; 
+
+        const rippled: FractalEvent[] = [];
+        const isMinor = chord.chordType === 'minor';
+        
+        // 50% Шанс на лик
+        const useLick = this.random.next() < 0.50;
+        const neighbor = isMinor ? 3 : 4;
+
+        const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
+        const chunkDur = e.duration / numChunks;
+
+        for (let i = 0; i < numChunks; i++) {
+            let note = e.note;
+            if (useLick && i === 1 && numChunks >= 3) note += neighbor;
+
+            rippled.push({
+                ...e,
+                note: note,
+                time: e.time + (i * chunkDur),
+                duration: chunkDur * 1.1,
+                weight: e.weight * (0.9 + this.random.next() * 0.2),
+                params: { 
+                    ...e.params, 
+                    attack: 0.4, 
+                    release: 1.5,
+                    filterCutoff: 1000 + (this.random.next() * 1500) 
+                }
+            });
+        }
+        return rippled;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number = 0.5): number {
@@ -186,20 +224,12 @@ export class ReggaeBrain {
         this.currentTimeScale = 1;
         const events: FractalEvent[] = [];
         
-        // --- MUTATION LOGIC ---
-        if (epoch < 12) {
-            this.currentMutationType = 'none';
-        } else if (epoch % 4 === 0) {
+        if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 40) {
-                this.currentMutationType = 'none';
-            } else if (roll < 60) {
-                this.currentMutationType = 'inversion';
-            } else if (roll < 80) {
-                this.currentMutationType = 'retrograde';
-            } else {
-                this.currentMutationType = 'jitter';
-            }
+            if (roll < 40) this.currentMutationType = 'none';
+            else if (roll < 60) this.currentMutationType = 'inversion';
+            else if (roll < 80) this.currentMutationType = 'retrograde';
+            else this.currentMutationType = 'jitter';
         }
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
@@ -217,7 +247,6 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
         
-        // #ЗАЧЕМ: ПЛАН №1227. Реестр аксиом.
         const layerAxioms: Record<string, string> = {
             melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
         };
@@ -242,7 +271,7 @@ export class ReggaeBrain {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar) 
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderGenerativeBass(epoch, resChord, tension);
-            events.push(...b);
+            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord)));
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub';
         }
 
@@ -252,25 +281,24 @@ export class ReggaeBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
-                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension));
+                const rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
+                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
                 usedLayers.add(target);
-                
                 const axKey = target === 'pianoAccompaniment' ? 'piano' : (target === 'accompaniment' ? 'accompaniment' : 'harmony');
                 layerAxioms[axKey] = ax.id || 'Heritage DNA';
-
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
             }
         });
 
         if (hints.harmony && !usedLayers.has('harmony')) {
-            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
+            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension).flatMap(e => this.rippleLongNote(e, resChord)));
             usedLayers.add('harmony');
             layerAxioms.harmony = 'Generative Skank';
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension);
-            events.push(...p.events);
+            events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord)));
             layerAxioms.piano = p.style;
         }
 
@@ -281,13 +309,11 @@ export class ReggaeBrain {
                 m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
                 layerAxioms.melody = this.currentTheme.id;
             }
-            
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 layerAxioms.melody = 'Gap-Filler';
             }
-
-            events.push(...m);
+            events.push(...m.flatMap(e => this.rippleLongNote(e, resChord)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'reggae');
         }
 
@@ -296,15 +322,8 @@ export class ReggaeBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             instrumentOverrides,
-            activeAxioms: { 
-                melody: layerAxioms.melody, 
-                drums: layerAxioms.drums,
-                bass: layerAxioms.bass,
-                accompaniment: layerAxioms.accompaniment,
-                harmony: layerAxioms.harmony,
-                piano: layerAxioms.piano
-            },
-            narrative: `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            activeAxioms: layerAxioms,
+            narrative: `Reggae Evolution: ${this.currentTrackName} [Respiration Protocol Active]`
         };
     }
 
@@ -376,11 +395,9 @@ export class ReggaeBrain {
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
-
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
-
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
@@ -403,11 +420,9 @@ export class ReggaeBrain {
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
-
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
         else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
-
         return barNotes.map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.2,
@@ -419,13 +434,8 @@ export class ReggaeBrain {
         const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
-        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
-
-        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
-        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
-
-        return barNotes.map(n => ({
+        const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
@@ -475,23 +485,17 @@ export class ReggaeBrain {
         const root = chord.rootNote + 12;
         const isMinor = chord.chordType === 'minor';
         const scale = isMinor ? [0, 3, 5, 7, 10] : [0, 4, 7, 9]; 
-        
         const count = calculateMusiNum(epoch, 7, this.seed, 3) + 1; 
         const offbeats = [1.5, 3.0, 4.5, 7.5, 9.0, 10.5];
-        
         for (let i = 0; i < count; i++) {
             const tIdx = calculateMusiNum(epoch + i, 11, this.seed, offbeats.length);
             const time = offbeats[tIdx];
             const degIdx = calculateMusiNum(epoch + i, 13, this.seed, scale.length);
             const note = root + scale[degIdx];
-            
             events.push({
-                type: 'melody',
-                note: Math.min(note, this.MELODY_CEILING),
-                time: time * TICK_TO_BEAT,
-                duration: 0.5 * TICK_TO_BEAT, 
-                weight: 0.6 + (tension * 0.2),
-                technique: 'pick', dynamics: 'p', phrasing: 'staccato'
+                type: 'melody', note: Math.min(note, this.MELODY_CEILING),
+                time: time * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, 
+                weight: 0.6 + (tension * 0.2), technique: 'pick', dynamics: 'p', phrasing: 'staccato'
             });
         }
         return events;

@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V5.0 — "Atmospheric Evolution".
- * #ЗАЧЕМ: ПЛАН №1259 — Внедрение редких SFX и Sparkles (Dark/Electro).
+ * @fileOverview Psybient Brain V5.1 — "Respiration Protocol Support".
+ * #ЗАЧЕМ: ПЛАН №1266 — Оживление длинных пэдов и арпеджио.
  */
 
 import type {
@@ -89,6 +89,45 @@ export class TranceBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
+    }
+
+    /**
+     * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
+     * #ЧТО: Оживление длинных пэдов и арпеджио.
+     */
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 0.8): FractalEvent[] {
+        if (e.duration < 1.0) return [e]; 
+
+        const rippled: FractalEvent[] = [];
+        const baseMidi = e.note;
+        
+        // 50% Шанс на гармонический лик для очень длинных нот
+        const useLick = (e.duration > 3.0) && (this.random.next() < 0.50);
+        const interval = (chord.chordType === 'minor') ? 3 : 4;
+
+        const numChunks = Math.max(1, Math.ceil(e.duration / chunkDurBase));
+        const chunkDur = e.duration / numChunks;
+
+        for (let i = 0; i < numChunks; i++) {
+            let note = baseMidi;
+            if (useLick && i === 1 && numChunks >= 3) note += interval;
+
+            rippled.push({
+                ...e,
+                note: note,
+                time: e.time + (i * chunkDur),
+                duration: chunkDur * 0.9,
+                weight: e.weight * (0.85 + this.random.next() * 0.3),
+                technique: i === 0 ? e.technique : 'hit',
+                params: { 
+                    ...e.params, 
+                    attack: 0.05, 
+                    release: chunkDur * 2.5,
+                    filterCutoff: 1500 + (this.random.next() * 2000) 
+                }
+            });
+        }
+        return rippled;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
@@ -242,7 +281,7 @@ export class TranceBrain {
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
 
-        // 6. ATMOSPHERIC (NEW SPARKLES & SFX)
+        // 6. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -251,26 +290,8 @@ export class TranceBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Trance Spiral: ${this.currentTrackName} [Atmospheric Evolution Active]`
+            narrative: `Trance Spiral: ${this.currentTrackName} [Respiration Protocol Active]`
         };
-    }
-
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 0.8): FractalEvent[] {
-        if (e.duration < 1.0) return [e]; 
-        const rippled: FractalEvent[] = [];
-        const numChunks = Math.max(1, Math.ceil(e.duration / chunkDurBase));
-        const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < numChunks; i++) {
-            rippled.push({
-                ...e,
-                time: e.time + (i * chunkDur),
-                duration: chunkDur * 0.9,
-                weight: e.weight * (1.0 - (i * 0.05)),
-                technique: i === 0 ? e.technique : 'hit',
-                params: { ...e.params, attack: 0.05, release: chunkDur * 2.5 }
-            });
-        }
-        return rippled;
     }
 
     private renderRockTranceDrums(epoch: number, tension: number): FractalEvent[] {
@@ -382,9 +403,6 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1259. Генерация нечастых Sparkles и SFX для транса.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
@@ -424,5 +442,5 @@ export class TranceBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }
