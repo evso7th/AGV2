@@ -1,6 +1,6 @@
 
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1264): Устранение "пароходного" гудения. Радикальное снижение суб-гармоник.
+// #ОБНОВЛЕНО (ПЛАН №1268): "Шелковый Протокол". Смягчение СЧ/ВЧ на пэдах.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -13,15 +13,15 @@ export const V2_PRESETS = {
     type: 'synth',
     volume: 0.6,
     osc: [
-      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.35 },
-      { type: 'sawtooth', detune: +5, octave: 0, gain: 0.35 },
-      // #ЗАЧЕМ: Снижение гейна суб-осциллятора для устранения гудения.
+      // #ЗАЧЕМ: Снижение гейна пилы для мягкости тембра.
+      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.22 },
+      { type: 'sawtooth', detune: +5, octave: 0, gain: 0.22 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.3 } 
     ],
     noise: { on: true, gain: 0.008 },
     adsr: { a: 1.0, d: 1.5, s: 0.7, r: 3.0 },
-    // #ЗАЧЕМ: Подъем фильтра выше "пароходной трубы".
-    lpf: { cutoff: 1200, q: 0.7 }, 
+    // #ЗАЧЕМ: ПЛАН №1268. Глубокий срез ВЧ и минимизация резонанса.
+    lpf: { cutoff: 800, q: 0.3 }, 
     reverbMix: 0
   },
 
@@ -31,13 +31,13 @@ export const V2_PRESETS = {
     volume: 0.55,
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.5 },
-      { type: 'sawtooth', detune: +4, octave: 0, gain: 0.25 },
-      // #ЗАЧЕМ: ПЛАН №1264. Радикальное облегчение низа.
+      // #ЗАЧЕМ: Пила теперь лишь едва уловимый оттенок.
+      { type: 'sawtooth', detune: +4, octave: 0, gain: 0.15 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.35 } 
     ],
     adsr: { a: 2.5, d: 3.0, s: 0.8, r: 4.5 },
-    // #ЗАЧЕМ: Прозрачный фильтр без резонансного гула.
-    lpf: { cutoff: 950, q: 0.5 }, 
+    // #ЗАЧЕМ: Максимально мягкий "бархатный" фильтр.
+    lpf: { cutoff: 650, q: 0.2 }, 
     reverbMix: 0
   },
 
@@ -112,7 +112,8 @@ export const V2_PRESETS = {
       { type: 'triangle', octave: 1, detune: 0, gain: 0.12 }
     ],
     adsr: { a: 0.012, d: 0.35, s: 0.6, r: 0.8 },
-    lpf: { cutoff: 2200, q: 0.6 }, 
+    // #ЗАЧЕМ: Смягчение Rhodes для исключения звона.
+    lpf: { cutoff: 1600, q: 0.5 }, 
     reverbMix: 0
   }
 } as const;
