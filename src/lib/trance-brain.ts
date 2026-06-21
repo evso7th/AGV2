@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V4.0 — "Transplanted Spiral Protocol".
- * #ЗАЧЕМ: ПЛАН №1257 — Перенос успешной логики AmbientBrain в Транс.
- * #ЧТО: ДНК-логика, 4/4 Rock Drums, Rolling Bass, Sidechain-style Pads.
+ * @fileOverview Psybient Brain V5.0 — "Atmospheric Evolution".
+ * #ЗАЧЕМ: ПЛАН №1259 — Внедрение редких SFX и Sparkles (Dark/Electro).
  */
 
 import type {
@@ -178,13 +177,13 @@ export class TranceBrain {
         const instrumentOverrides: Partial<InstrumentHints> = {};
         const layerAxioms: Record<string, string> = { melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none' };
 
-        // 1. ROCK DRUMS (4/4 Four-on-the-floor)
+        // 1. ROCK DRUMS
         if (hints.drums) {
             events.push(...this.renderRockTranceDrums(epoch, tension));
             layerAxioms.drums = 'Rock 4/4 Drive';
         }
 
-        // 2. ROLLING BASS (Neuro Pulse)
+        // 2. ROLLING BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension)
@@ -243,7 +242,7 @@ export class TranceBrain {
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
 
-        // 6. ATMOSPHERIC
+        // 6. ATMOSPHERIC (NEW SPARKLES & SFX)
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -252,7 +251,7 @@ export class TranceBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Trance Spiral: ${this.currentTrackName} [Transplanted Brain Active]`
+            narrative: `Trance Spiral: ${this.currentTrackName} [Atmospheric Evolution Active]`
         };
     }
 
@@ -276,15 +275,12 @@ export class TranceBrain {
 
     private renderRockTranceDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // Four-on-the-floor Kick
         [0, 3, 6, 9].forEach(t => {
             events.push({ type: 'drum_kick_reso', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         });
-        // Rock Snare on 2 and 4
         [3, 9].forEach(t => {
             events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         });
-        // 16th Hats
         for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             const isOff = (t % 3 !== 0);
             events.push({ 
@@ -299,7 +295,6 @@ export class TranceBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12);
-        // Rolling pattern: . B B . B B . B B . B B (ticks 1, 2, 4, 5, 7, 8, 10, 11)
         [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
@@ -387,36 +382,44 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1259. Генерация нечастых Sparkles и SFX для транса.
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        if (calculateMusiNum(epoch, 13, this.seed, 100) < 12) {
+        const seedVal = this.seed + epoch;
+        
+        // 1. INFREQUENT SPARKLES (8% Probability, Categories: Dark/Electro)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
+            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'DARK' : 'ELECTRONIC';
             events.push({
-                type: 'sparkle', note: 60, time: this.random.next() * 4, duration: 4.0, weight: 0.8,
-                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { category: 'electronic' }
+                type: 'sparkle',
+                note: 60,
+                time: this.random.next() * 3.5, 
+                duration: 4.0,
+                weight: 0.7,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { category, genre: this.genre }
             });
         }
-        return events;
-    }
 
-    private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        const pool = kit.perc || [];
-        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
-            if (this.random.next() < (0.2 + tension * 0.1)) {
-                events.push({
-                    type: pool[this.random.nextInt(pool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
-                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
-                });
-            }
+        // 2. INFREQUENT SFX (7% Probability, Excluding Voice)
+        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 7) {
+            events.push({
+                type: 'sfx',
+                note: 60,
+                time: 1.5 + this.random.next() * 2.0,
+                duration: 4.0,
+                weight: 0.6,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { mood: this.mood, genre: this.genre }
+            });
         }
-        return events;
-    }
 
-    private renderNeuroFills(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        [10.5, 11, 11.5].forEach((t, i) => {
-            events.push({ type: 'drum_Sonor_Classix_Mid_Tom', note: 48, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
-        });
         return events;
     }
 

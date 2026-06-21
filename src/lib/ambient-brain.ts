@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V110.0 — "Telecaster Harmony Protocol".
- * #ЗАЧЕМ: ПЛАН №1255 — Аккорды только из clear_telecaster, макс. частота 1/2 такта.
- * #ЧТО: Привязка вероятности гармонии к Tension.
+ * @fileOverview Ambient Brain V111.0 — "Atmospheric Enrichment".
+ * #ЗАЧЕМ: ПЛАН №1259 — Внедрение редких SFX и Sparkles (Dark/Electro).
  */
 
 import type {
@@ -103,7 +102,6 @@ export class AmbientBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
-        // Гитарные перекаты НЕЛЬЗЯ дробить (они сэмплерные).
         if (e.chordName) return [e];
         if (e.duration < 1.1) return [e]; 
 
@@ -285,11 +283,9 @@ export class AmbientBrain {
             }
         }
 
-        // #ЗАЧЕМ: ПЛАН №1255. Активация Гармонии с T-зависимостью и 1/2 такта лимитом.
         if (hints.harmony && !usedLayers.has('harmony')) {
             const h = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (h.length > 0) {
-                // ПРИМЕЧАНИЕ: rippleLongNote ПРОПУСКАЕТ события с chordName (защита гитарных rolls)
                 events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
                 layerAxioms.harmony = 'Telecaster & Orchestral';
             }
@@ -301,8 +297,8 @@ export class AmbientBrain {
             layerAxioms.drums = 'Sonic Landscape';
         }
 
-        // 5. Atmospheric Events (NEW SPARKLES)
-        events.push(...this.renderAtmosphericSparkles(epoch, tension));
+        // 5. Atmospheric Events (NEW SPARKLES & SFX)
+        events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
             events, tension, beautyScore: 0.9,
@@ -310,7 +306,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Telecaster Harmony Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Atmospheric Layers Active]`
         };
     }
 
@@ -344,7 +340,7 @@ export class AmbientBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTickBass / TICKS_PER_BAR);
+        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
         const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
@@ -390,7 +386,6 @@ export class AmbientBrain {
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents?: FractalEvent[]): { events: FractalEvent[], style: string } {
-        // Редкое вступление генеративного пианиста (30%)
         if (this.random.next() > 0.3) return { events: [], style: 'none' };
         const root = chord.rootNote + 24;
         return {
@@ -403,16 +398,10 @@ export class AmbientBrain {
         };
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1255. Генерация гармонии: Телекастер + Скрипки.
-     * #ЧТО: Ограничение частоты гитар (1 раз в 2 такта) и привязка к Tension.
-     */
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // 1. CLEAR TELECASTER CHORDS (Max 1/2 bars, Probability = Tension)
         const canPlayGuitar = (epoch % 2 === 0);
-        const guitarProbability = tension; // Прямая зависимость от Напряжения
+        const guitarProbability = tension; 
         
         if (canPlayGuitar && this.random.next() < guitarProbability) {
             const rootNote = chord.rootNote;
@@ -429,12 +418,11 @@ export class AmbientBrain {
                 dynamics: 'p',
                 phrasing: 'staccato',
                 chordName: chordName,
-                pan: 0.45, // Справа
-                params: { genre: 'ambient' } // Для триггера Telecaster sampler
+                pan: 0.45, 
+                params: { genre: 'ambient' } 
             });
         }
 
-        // 2. RARE VIOLINS (10% constant probability)
         if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 10) {
             events.push({
                 type: 'harmony',
@@ -445,7 +433,7 @@ export class AmbientBrain {
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
-                pan: -0.45, // Слева
+                pan: -0.45, 
                 params: { attack: 2.0, release: 4.5 }
             });
         }
@@ -482,36 +470,41 @@ export class AmbientBrain {
         return events;
     }
 
-    private renderAtmosphericSparkles(epoch: number, tension: number): FractalEvent[] {
+    /**
+     * #ЗАЧЕМ: ПЛАН №1259. Генерация нечастых Sparkles и SFX (без голосов).
+     */
+    private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        const seedVal = this.seed + epoch;
         
-        // 1. Rare Dark Sparkles (8% probability)
-        if (calculateMusiNum(epoch, 13, this.seed, 100) < 8) {
+        // 1. INFREQUENT SPARKLES (8% Probability, Categories: Dark/Electro)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
+            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'DARK' : 'ELECTRONIC';
             events.push({
                 type: 'sparkle',
                 note: 60,
-                time: this.random.next() * 3, // В первой половине такта
+                time: this.random.next() * 3.5, 
                 duration: 4.0,
                 weight: 0.7,
                 technique: 'hit',
                 dynamics: 'p',
                 phrasing: 'legato',
-                params: { category: 'DARK' }
+                params: { category, genre: this.genre }
             });
         }
 
-        // 2. Rare Electro Sparkles (8% probability)
-        if (calculateMusiNum(epoch + 1, 17, this.seed, 100) < 8) {
+        // 2. INFREQUENT SFX (7% Probability, Excluding Voice)
+        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 7) {
             events.push({
-                type: 'sparkle',
+                type: 'sfx',
                 note: 60,
-                time: 1.0 + this.random.next() * 2, // В середине такта
+                time: 1.0 + this.random.next() * 2.5,
                 duration: 4.0,
                 weight: 0.6,
                 technique: 'hit',
                 dynamics: 'p',
                 phrasing: 'legato',
-                params: { category: 'ELECTRONIC' }
+                params: { mood: this.mood, genre: this.genre }
             });
         }
 
