@@ -315,6 +315,7 @@ export default function HypercubeDashboard() {
   const [axiomFilterOffset, setAxiomFilterOffset] = useState("");
 
   const [selectedTrackGroups, setSelectedTrackGroups] = useState<Set<string>>(new Set());
+  const [openItems, setOpenItems] = useState<string[]>([]);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmAction] = useState<{ title: string, desc: string, action: () => void } | null>(null);
@@ -342,6 +343,18 @@ export default function HypercubeDashboard() {
       try { setProcessedFiles(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
   }, []);
+
+  // #ЗАЧЕМ: ПЛАН №1260. Автоматическое раскрытие аккордеона при поиске по хэшу.
+  useEffect(() => {
+      if (explorerSearch.length > 3 && globalAxioms) {
+          const matchingAxiom = globalAxioms.find(ax => 
+              ax.id.toLowerCase().endsWith(explorerSearch.toLowerCase())
+          );
+          if (matchingAxiom && !openItems.includes(matchingAxiom.compositionId)) {
+              setOpenItems(prev => [...prev, matchingAxiom.compositionId]);
+          }
+      }
+  }, [explorerSearch, globalAxioms]);
 
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
@@ -763,7 +776,13 @@ export default function HypercubeDashboard() {
               <CardContent className="p-0 border-t flex-grow overflow-hidden">
                 <ScrollArea className="h-full px-4 py-2">
                   {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Cloud...</div> : (
-                    <Accordion type="multiple" className="space-y-2 pb-10">
+                    <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="space-y-2 pb-10">
+                      {groupedAxioms.length === 0 && explorerSearch.length > 0 && (
+                          <div className="py-20 text-center opacity-40">
+                              <Search className="h-10 w-10 mx-auto mb-2" />
+                              <p className="text-xs font-black uppercase tracking-widest">Nothing found. Try again with different data.</p>
+                          </div>
+                      )}
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                           <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
@@ -828,7 +847,12 @@ export default function HypercubeDashboard() {
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
-                                      <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
+                                      // #ЗАЧЕМ: ПЛАН №1260. Желтая подсветка найденной аксиомы.
+                                      <tr key={ax.id} className={cn(
+                                          "hover:bg-primary/5 transition-colors group/row", 
+                                          ax.ignored && "opacity-40",
+                                          explorerSearch.length > 3 && ax.id.toLowerCase().endsWith(explorerSearch.toLowerCase()) && "outline outline-1 outline-yellow-400 bg-yellow-400/5 shadow-[0_0_15px_rgba(250,204,21,0.1)]"
+                                      )}>
                                         <td className="p-3 pl-12 font-mono text-[10px] opacity-70">
                                             {ax.id.split('_').pop()}
                                         </td>
@@ -1041,4 +1065,3 @@ export default function HypercubeDashboard() {
     </div>
   );
 }
-

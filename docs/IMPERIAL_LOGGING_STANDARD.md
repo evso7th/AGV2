@@ -1,66 +1,59 @@
-# Стандарт «Имперских логов» AuraGroove (v1.0)
 
-Этот документ является эталонным описанием системы когнитивного логирования, внедренной в `ambient.worker.ts`. Лог предназначен для обеспечения полной прозрачности работы музыкального интеллекта и ансамбля.
+# Стандарт «Имперских логов» AuraGroove (v1.1 — Hash Density)
+
+Этот документ является эталонным описанием системы когнитивного логирования. Версия 1.1 переводит систему на использование коротких хэшей для максимальной читаемости.
 
 ---
 
-## 1. Образец лога (Эталон)
+## 1. Образец лога (Эталон V1.1)
 
 ```text
-[11:20:53] [Bar 130] [The Final Climax] [DNA: Eric Clapton-Wonderful Tonight] (Mut: retrograde) T:0.83 B:0.24 Axioms: [MEL: Wonderful_Tonight__...sz7ped] [BASS: Sibling DNA] [ACC: Wonderful_Tonight...m1qhzi] [DRUM: Imperial Pulse] [HAR: Derivative Harmony] [PNO: Wonderful_Tonight...sz7ped]
-  ↳ Narrative: Blues IMPROVISATION: Eric Clapton-Wonderful Tonight [Status: PLAYING]
+[11:20:53] [Bar 130] [The Final Climax] [DNA: tce8xn] (Mut: retrograde) T:0.83 B:0.24 Axioms: [MEL: tce8xn] [BASS: Sibling DNA] [ACC: m1qhzi] [DRUM: Imperial Pulse] [HAR: Derivative Harmony] [PNO: sz7ped]
+  ↳ Narrative: Blues IMPROVISATION: tce8xn [Status: PLAYING]
   | Timbres: [MEL: blackAcoustic] [BASS: bass_jazz_warm] [ACC: organ_soft_jazz] [HAR: violin] [PNO: ep_rhodes_warm]
 ```
 
 ---
 
-## 2. Анатомия лога: Источники данных
+## 2. Правила именования (The Hash Rule)
 
-### Строка 1: Техническая и Генетическая сводка
-*   **`[HH:MM:SS]`**: Системное время. Берется из функции `getTimestamp()` в воркере.
-*   **`[Bar N]`**: Текущий такт сессии. Источник: переменная `this.barCount` в `Scheduler.tick()`.
-*   **`[Section Name]`**: Название части Блюпринта. Источник: `payload.navInfo.currentPart.name`.
-*   **`[DNA: Track Name]`**: Имя трека-донора. Источник: `payload.trackName` (формируется в `AmbientBrain` или `BluesBrain`).
-*   **`(Mut: Type)`**: Активная мутация такта. Источник: `payload.mutationType`.
-*   **`T:0.XX`**: Текущий уровень Напряжения. Источник: `payload.tension` (из `SuiteDNA.tensionMap`).
-*   **`B:0.XX`**: Оценка красоты/резонанса. Источник: `payload.beautyScore` (результат работы Матрицы Резонанса).
-*   **`Axioms: [...]`**: Карта активных компонентов. Источник: объект `payload.activeAxioms`. Содержит ID аксиомы из Firestore или описание генеративного алгоритма для каждого из 6 каналов.
-
-### Строка 2: Нарративный слой
-*   **`↳ Narrative`**: Описание «души» такта. Источник: поле `payload.narrative` (формируется Мозгом жанра на основе данных Наследия).
-
-### Строка 3: Тембральный слой
-*   **`| Timbres`**: Список инструментов. Источник: объект `payload.instrumentHints`. Показывает, какие именно пресеты выбраны для исполнения партий.
+1.  **DNA Identifier**: Вместо полного имени трека в заголовке `[DNA: ...]` теперь используется хэш (последний сегмент ID) ведущей аксиомы (обычно Melody).
+2.  **Axiom Channels**: 
+    *   `MEL`, `ACC`, `PNO` — выводят только хэш аксиомы.
+    *   `BASS`, `DRUM`, `HAR` — выводят статус (например, "Sibling DNA" или "Algorithm").
+3.  **Narrative Substitution**: Все вхождения полного названия трека в поле `Narrative` должны быть принудительно заменены на хэш.
 
 ---
 
 ## 3. Сборка лога (Алгоритм)
 
-Лог собирается внутри метода `Scheduler.tick()` в файле `src/app/ambient.worker.ts` перед отправкой сообщения `SCORE_READY`. 
+Лог собирается внутри метода `Scheduler.tick()` в файле `src/app/ambient.worker.ts`.
 
-**Используемая стилизация:**
-*   Первая и третья строки: `%c` с цветом `#888` (серый).
-*   Вторая строка (Narrative): `%c` с цветом `#c084fc` (фиолетовый), чтобы выделить музыкальный смысл.
+**Функция извлечения хэша:**
+```typescript
+const getHash = (id: string) => id?.split('_').pop() || 'none';
+```
+
+**Применение:**
+```typescript
+const trackHash = ax.melody ? getHash(ax.melody) : 'none';
+const narrativeText = (payload.narrative || 'Algorithm').split(track).join(trackHash);
+```
 
 ---
 
 ## 4. Протокол Восстановления (Recovery)
 
-Если код логирования в `src/app/ambient.worker.ts` (район строки 257) был поврежден или утрачен, его необходимо восстановить следующим блоком:
+Если код логирования утрачен, восстановите его следующим блоком:
 
 ```typescript
-// #ЗАЧЕМ: ПЛАН №1227. Полное логирование всех 6 каналов ансамбля.
-const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-const ax = payload.activeAxioms || {};
-const hints = payload.instrumentHints || {};
-const track = payload.trackName || 'Generative';
-const t = payload.tension.toFixed(2);
-const b = (payload.beautyScore || 0.5).toFixed(2);
-const mut = payload.mutationType || 'none';
+const getHash = (id: string) => id?.split('_').pop() || 'none';
+const trackHash = ax.melody ? getHash(ax.melody) : 'none';
+const narrativeText = (payload.narrative || 'Algorithm').split(track).join(trackHash);
 
 console.log(
-    `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [ACC: ${ax.accompaniment || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
-    `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
+    `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${getHash(ax.melody)}] [BASS: ${ax.bass || 'none'}] [ACC: ${getHash(ax.accompaniment)}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${getHash(ax.piano)}]\n` +
+    `%c  ↳ Narrative: ${narrativeText}\n` +
     `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
     'color: #888;',
     'color: #c084fc;', 
@@ -69,4 +62,4 @@ console.log(
 ```
 
 ---
-*Статус стандарта: v1.0 — Imperial Standard. Утверждено.*
+*Статус стандарта: v1.1 — Hash Density. Утверждено.*

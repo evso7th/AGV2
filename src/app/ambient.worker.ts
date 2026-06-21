@@ -1,7 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker V6.2.0 — "Ensemble Transparency Update".
- * #ЗАЧЕМ: ПЛАН №1227 — Добавление сектора ACC в логи и полная прозрачность аксиом.
+ * @file AuraGroove Music Worker V6.3.0 — "Hash Density Update".
+ * #ЗАЧЕМ: ПЛАН №1260 — Переход на хэши в логах для когнитивной плотности.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -34,7 +34,6 @@ const Scheduler = {
     filterRotationIndex: 0, 
     playedTrackHistory: [] as string[], 
     
-    // BPM Control
     bpmLocked: false,
 
     settings: {
@@ -253,10 +252,16 @@ const Scheduler = {
         const b = (payload.beautyScore || 0.5).toFixed(2);
         const mut = payload.mutationType || 'none';
 
-        // #ЗАЧЕМ: ПЛАН №1227. Полное логирование всех 6 каналов ансамбля.
+        // #ЗАЧЕМ: ПЛАН №1260. Переход на хэши для когнитивной плотности.
+        const getHash = (id: string) => id?.split('_').pop() || 'none';
+        const trackHash = ax.melody ? getHash(ax.melody) : 'none';
+        
+        // Тотальная замена имени трека на хэш в нарративе
+        const narrativeText = (payload.narrative || 'Algorithm').split(track).join(trackHash);
+
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${track}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${ax.melody || 'none'}] [BASS: ${ax.bass || 'none'}] [ACC: ${ax.accompaniment || 'none'}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${ax.piano || 'none'}]\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${getHash(ax.melody)}] [BASS: ${ax.bass || 'none'}] [ACC: ${getHash(ax.accompaniment)}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${getHash(ax.piano)}]\n` +
+            `%c  ↳ Narrative: ${narrativeText}\n` +
             `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
             'color: #888;',
             'color: #c084fc;', 
