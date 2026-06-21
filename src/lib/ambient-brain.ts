@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V112.0 — "Respiration Update".
- * #ЗАЧЕМ: ПЛАН №1266 — Оживление статичных пэдов через дробление и лики.
+ * @fileOverview Ambient Brain V113.0 — "Anti-Pedal Protocol Active".
+ * #ЗАЧЕМ: ПЛАН №1267 — Ликвидация межтактовой статики (Уровень 4).
  */
 
 import type {
@@ -69,6 +69,9 @@ export class AmbientBrain {
     private currentPreferredInstrument: string | null = null;
     private currentMutationType: string = 'none';
 
+    // #ЗАЧЕМ: ПЛАН №1267. Межтактовая память для борьбы с гудением.
+    private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
+
     private readonly MELODY_CEILING = 88;
     private readonly BASS_FLOOR = 31;
     private readonly BASS_CEILING = 47;
@@ -107,16 +110,10 @@ export class AmbientBrain {
      * #ЧТО: Дробление длинных нот, микро-лики (50%) и спектральное «дыхание».
      */
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
-        if (e.chordName) return [e]; // Не дробим аккорды с явными именами
-        
-        // Порог оживления: более 2 секунд (при 60bpm это 6 тиков, при 120 - 12). 
-        // Используем 5.0 тиков как универсальный порог "застоя".
+        if (e.chordName) return [e]; 
         if (e.duration < 5.0) return [e]; 
 
         const rippled: FractalEvent[] = [];
-        
-        // 1. LICK INFUSION (50% Chance)
-        // #ЗАЧЕМ: Добавление гармонического движения вместо статичного гудения.
         const useLick = this.random.next() < 0.50; 
         
         const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
@@ -124,13 +121,10 @@ export class AmbientBrain {
         
         const baseMidi = e.note;
         const isMinor = chord.chordType === 'minor';
-        const neighborSemitone = isMinor ? 3 : 2; // Малая терция или большая секунда для движения
+        const neighborSemitone = isMinor ? 3 : 2; 
 
         for (let i = 0; i < numChunks; i++) {
-            // Велосити джиттер: легкое покачивание громкости
             const jitter = 0.9 + (this.random.next() * 0.2 - 0.1); 
-            
-            // Если выбран лик, меняем ноту во втором сегменте
             let note = baseMidi;
             if (useLick && i === 1 && numChunks >= 3) {
                 note += neighborSemitone;
@@ -140,19 +134,61 @@ export class AmbientBrain {
                 ...e,
                 note: note,
                 time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.2, // Мягкий нахлест (Soft Overlap)
+                duration: chunkDur * 1.2, 
                 weight: e.weight * jitter,
                 technique: i === 0 ? e.technique : 'hit',
                 params: { 
                     ...e.params, 
                     attack: 0.8, 
                     release: 2.5,
-                    // #ЗАЧЕМ: Спектральная анимация. Каждый кусок "дышит" фильтром.
                     filterCutoff: 800 + (this.random.next() * 1200) 
                 }
             });
         }
         return rippled;
+    }
+
+    /**
+     * #ЗАЧЕМ: Протокол «Анти-Педаль» (ПЛАН №1267).
+     * #ЧТО: Разрыв статики на 3-м такте удержания одной ноты.
+     */
+    private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
+        if (events.length === 0) return events;
+
+        // Определяем основную ноту такта
+        const primary = events.find(e => e.time === 0) || events[0];
+        const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
+
+        if (primary.note === state.midi) {
+            state.barCount++;
+        } else {
+            state.midi = primary.note;
+            state.barCount = 1;
+        }
+        this.heldNotesState.set(part, state);
+
+        // КРИЗИС 3-ГО ТАКТА
+        if (state.barCount >= 3) {
+            state.barCount = 0; // Сброс счетчика
+            const strategy = this.random.nextInt(3);
+
+            if (strategy === 0) {
+                // Стратегия "Вздох": Слой замолкает
+                return []; 
+            } else if (strategy === 1) {
+                // Стратегия "Гармонический прыжок": Уход в квинту
+                return events.map(e => ({ 
+                    ...e, 
+                    note: e.note + 7, 
+                    params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
+                }));
+            } else {
+                // Стратегия "Турбулентность": Усиленное дробление
+                return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
+            }
+        }
+
+        return events;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
@@ -262,9 +298,11 @@ export class AmbientBrain {
 
         // 1. Bass
         if (hints.bass) {
-            const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
+            let b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension)
                 : this.renderPulsatingBass(resChord, epoch, tension);
+            
+            b = this.applyAntiPedal('bass', b, resChord);
             events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.6)));
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Algorithm Pulse';
         }
@@ -283,6 +321,8 @@ export class AmbientBrain {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 layerAxioms.melody = 'Gap-Filler';
             }
+            
+            m = this.applyAntiPedal('melody', m, resChord);
             events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 1.0)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
@@ -293,25 +333,27 @@ export class AmbientBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
-                const rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
-                if (rendered.length > 0) {
-                    events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
-                    usedLayers.add(target);
-                    layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
-                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
-                }
+                let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
+                rendered = this.applyAntiPedal(target, rendered, resChord);
+                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
+                usedLayers.add(target);
+                layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
+                if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
             }
         });
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
+            let pad = this.renderSidechainedPad(epoch, resChord, tension);
+            pad = this.applyAntiPedal('accompaniment', pad, resChord);
+            events.push(...pad.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
             layerAxioms.accompaniment = 'Generative Cloud';
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension);
             if (p.events.length > 0) {
-                events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
+                const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
+                events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
                 layerAxioms.piano = p.style;
             }
         }
