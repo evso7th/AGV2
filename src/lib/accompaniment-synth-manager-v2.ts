@@ -1,4 +1,3 @@
-
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -8,7 +7,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1241 — Реализация Eternal Tail. Увеличение окна жизни ноты для всех жанров.
+ * #ЧТО: ПЛАН №1265 — Ускорение ротации инструментов для предотвращения утечек.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -72,10 +71,10 @@ export class AccompanimentSynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
-                // Достаточно долгое ожидание перед дисконнектом для доигрывания хвостов
+                // #ЗАЧЕМ: ПЛАН №1265. Снижено с 15 до 8 сек для предотвращения накопления неиспользуемых нод.
                 setTimeout(() => {
                     try { oldInst.disconnect(); } catch (e) {}
-                }, 15000); 
+                }, 8000); 
             }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
@@ -89,7 +88,6 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => e.type === 'accompaniment');
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №1241. Увеличение релизов для всех жанров.
             const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
             const extraDuration = isAmbient ? 12.0 : 5.0; 
             return {
@@ -150,7 +148,7 @@ export class AccompanimentSynthManagerV2 {
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 15000);
+               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 8000);
                this.instrument = null;
            }
            this.activePresetName = instrumentName; 

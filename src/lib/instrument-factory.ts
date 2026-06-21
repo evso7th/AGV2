@@ -1,28 +1,16 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.6 — "GC Elimination Update".
- * #ЗАЧЕМ: ПЛАН №1258 (Этап 1) — Внедрение кэширования волн и кривых для устранения затыков.
+ * @fileOverview Центральная фабрика инструментов V8.7 — "Leak Suppression Update".
+ * #ЗАЧЕМ: ПЛАН №1265 — Устранение утечек на пэдах и оптимизация лимитера.
  */
 
-// ───── GLOBAL CACHES (Eliminating GC Pressure) ─────
-
+// ───── GLOBAL CACHES ─────
 const waveCache = new Map<string, PeriodicWave>();
 const curveCache = new Map<string, Float32Array>();
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
-
-let globalActiveVoices: any[] = [];
+// #ЗАЧЕМ: Использование Set для O(1) удаления и сохранения порядка вставки (FIFO).
+let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 1024; 
-
-const STEAL_PRIORITY: Record<string, number> = {
-    'sparkle': 0,
-    'sfx': 0,
-    'melody': 1,
-    'drums': 1,
-    'accompaniment': 2,
-    'harmony': 2,
-    'bass': 3,
-    'pianoAccompaniment': 4 
-};
 
 export const setGlobalVoiceLimit = (limit: number) => {
     if (isFinite(limit) && limit > 0) {
@@ -32,10 +20,11 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 /**
- * #ЗАЧЕМ: ПЛАН №1248. Плавная, глубокая очистка голосов (Fade-Out 2.5с).
+ * #ЗАЧЕМ: ПЛАН №1248. Плавная очистка голосов.
  */
 export const globalAllNotesOff = () => {
-    [...globalActiveVoices].forEach(v => {
+    const voices = Array.from(globalActiveVoices);
+    voices.forEach(v => {
         if (v.voiceState && v.voiceState.node) {
             const ctx = v.voiceState.node.context;
             const currentTime = ctx.currentTime;
@@ -68,43 +57,39 @@ const deepCleanup = (voiceRecord: any) => {
     
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
-    
-    const idx = globalActiveVoices.indexOf(voiceRecord);
-    if (idx !== -1) globalActiveVoices.splice(idx, 1);
+    globalActiveVoices.delete(voiceRecord);
 };
 
 const enforceVoiceLimit = () => {
-    if (globalActiveVoices.length <= globalVoiceLimit) return;
+    if (globalActiveVoices.size <= globalVoiceLimit) return;
 
-    const voicesToConsider = [...globalActiveVoices].sort((a, b) => {
-        const prioA = STEAL_PRIORITY[a.type] ?? 1;
-        const prioB = STEAL_PRIORITY[b.type] ?? 1;
-        if (prioA !== prioB) return prioA - prioB;
-        return a.startTime - b.startTime;
-    });
-
-    const toKillCount = globalActiveVoices.length - globalVoiceLimit;
-    const targets = voicesToConsider.slice(0, toKillCount);
-
-    targets.forEach(oldest => {
+    // В Set порядок вставки сохраняется. Первые элементы — самые старые.
+    // Удаляем 10% старых голосов за раз для снижения частоты вызовов лимитера.
+    const toKillCount = Math.max(1, Math.floor(globalActiveVoices.size - globalVoiceLimit + (globalVoiceLimit * 0.1)));
+    const iterator = globalActiveVoices.values();
+    
+    for (let i = 0; i < toKillCount; i++) {
+        const oldest = iterator.next().value;
+        if (!oldest) break;
+        
         const voiceNode = oldest.voiceState?.node;
         if (voiceNode && !oldest.cleaned) {
             const now = voiceNode.context.currentTime;
-            const stealFadeOut = 0.8; 
+            const stealFadeOut = 0.4; // Быстрая деактивация при краже
             try {
                 voiceNode.gain.cancelScheduledValues(now);
-                voiceNode.gain.setTargetAtTime(0.0001, now, stealFadeOut / 4);
+                voiceNode.gain.setTargetAtTime(0.0001, now, 0.1);
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                            try { n.stop(now + stealFadeOut + 0.2); } catch(e){}
+                            try { n.stop(now + stealFadeOut + 0.1); } catch(e){}
                         }
                     });
                 }
-                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 500);
+                setTimeout(() => deepCleanup(oldest), 600);
             } catch (e) { deepCleanup(oldest); }
         } else { deepCleanup(oldest); }
-    });
+    }
 };
 
 // ───── CACHED RESOURCE GENERATORS ─────
@@ -184,7 +169,8 @@ const createIndependentVoice = (
     velocity: number, 
     duration: number,
     sharedDelayNode: AudioNode | null = null,
-    eventParams: any = null
+    eventParams: any = null,
+    instanceId: string // Добавлен для точечной очистки
 ) => {
     const now = ctx.currentTime;
     const playTime = isFinite(when) ? Math.max(when, now) : now;
@@ -299,10 +285,10 @@ const createIndependentVoice = (
     const releaseTimeConstant = Math.max(adsr.r / 2.5, 0.2); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
-    const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type };
-    globalActiveVoices.push(record);
+    const record = { nodes, voiceState: { node: voiceGain, startTime: playTime }, cleaned: false, type, instanceId };
+    globalActiveVoices.add(record);
     
-    const totalLife = duration + (releaseTimeConstant * 12) + 5.0;
+    const totalLife = duration + (releaseTimeConstant * 12) + 2.0;
     setTimeout(() => deepCleanup(record), totalLife * 1000);
 
     nodes.forEach(n => {
@@ -325,6 +311,7 @@ export interface InstrumentAPI {
     setPan: (level: number) => void;
     preset: any;
     type: string;
+    id: string;
 }
 
 export async function buildMultiInstrument(ctx: AudioContext, {
@@ -333,6 +320,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     output = ctx.destination
 } = {}): Promise<InstrumentAPI> {
     
+    const instanceId = Math.random().toString(36).substring(2, 15);
     let currentPreset = { ...preset };
     
     const instrumentGain = ctx.createGain(); 
@@ -360,23 +348,27 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     delayMixGain.connect(panner); 
 
     return {
+        id: instanceId,
         connect: (dest) => limiter.connect(dest || output),
         disconnect: () => {
-            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
+            // Очищаем только те голоса, что принадлежат этому экземпляру
+            const voices = Array.from(globalActiveVoices).filter(v => v.instanceId === instanceId);
+            voices.forEach(v => deepCleanup(v));
             [instrumentGain, expressionGain, panner, limiter, sharedDelayNode, feedbackGain, delayMixGain].forEach(n => { try { n.disconnect(); } catch(e){} });
         },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             enforceVoiceLimit();
-            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params);
+            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params, instanceId);
         },
         noteOff: () => {}, 
         allNotesOff: () => {
-            [...globalActiveVoices].filter(v => v.type === type).forEach(v => {
+            const voices = Array.from(globalActiveVoices).filter(v => v.instanceId === instanceId);
+            voices.forEach(v => {
                 if (v.voiceState && v.voiceState.node) {
                     const ct = v.voiceState.node.context.currentTime;
                     try {
                         v.voiceState.node.gain.cancelScheduledValues(ct);
-                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.35); 
+                        v.voiceState.node.gain.setTargetAtTime(0.0001, ct, 0.3); 
                         setTimeout(() => deepCleanup(v), 3000);
                     } catch (e) { deepCleanup(v); }
                 } else {
