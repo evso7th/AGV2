@@ -26,13 +26,17 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-4 sm:p-8">
-      <Card className="w-full max-w-lg shadow-2xl text-center">
+      <Card className="w-full max-w-lg shadow-2xl text-center border-primary/10">
         <CardHeader>
           <div className="mx-auto mb-4">
-            <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={80} height={80} className="rounded-full" />
+            <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={80} height={80} className="rounded-full shadow-lg border-2 border-primary/20" />
           </div>
-          <CardTitle className="font-headline text-4xl">Welcome to AuraGroove</CardTitle>
-          <CardDescription className="text-lg">Your personal pure digital neuro music generator. <br />v 2.7 Stream Bridge Imperial Sound</CardDescription>
+          <CardTitle className="font-headline text-4xl tracking-tight">Welcome to AuraGroove</CardTitle>
+          <CardDescription className="text-lg leading-relaxed pt-2">
+            <span className="text-white">Your personal digital live-music generator.</span><br />
+            <span className="text-primary font-bold bg-transparent">The Infinite Take Orchestra</span><br />
+            <span className="text-white opacity-90">v 0.3.62 stream bridge pwa edition</span>
+          </CardDescription>
         </CardHeader>
         <CardContent className="min-h-[60px] flex flex-col items-center justify-center">
           <p className="text-muted-foreground min-h-[20px]">
@@ -40,7 +44,7 @@ export default function Home() {
           </p>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleStart} className="w-full text-lg py-6" disabled={!isClient}>
+          <Button onClick={handleStart} className="w-full text-lg py-6 font-bold uppercase tracking-widest shadow-xl" disabled={!isClient}>
             <Music className="mr-2 h-6 w-6" />
             Start AuraGroove
           </Button>
