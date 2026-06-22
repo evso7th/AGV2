@@ -37,8 +37,8 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
             { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
         ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
-        // #ЗАЧЕМ: Естественное затухание щипка (Decay 2.8, Sustain 0.05).
-        adsr: { a: 0.03, d: 2.8, s: 0.05, r: 0.4 },
+        // #ЗАЧЕМ: ПЛАН №1276. Увеличен релиз для естественного затухания.
+        adsr: { a: 0.03, d: 2.8, s: 0.05, r: 1.5 },
         filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
         filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
@@ -78,7 +78,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         volume: 0.6,
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.4 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.4 } ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.4 },
-        adsr: { a: 0.025, d: 0.5, s: 0.75, r: 0.4 },
+        adsr: { a: 0.025, d: 0.5, s: 0.75, r: 1.2 },
         filter: { type: 'lowpass' as const, cutoff: 800, q: 1.0, keyTrack: 0.2 },
         filterEnv: { on: true, attack: 0.02, decay: 0.35, sustain: 0.3, release: 0.25, depth: 400, velocity: 0.4 },
         drive: { on: true, type: 'tube' as const, amount: 0.1, tone: 3000 },
@@ -94,7 +94,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         name: 'Blues Bass',
         volume: 0.6,
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: 3, gain: 0.3 } ],
-        adsr: { a: 0.012, d: 0.35, s: 0.65, r: 0.3 },
+        adsr: { a: 0.012, d: 0.35, s: 0.65, r: 1.0 },
         filter: { type: 'lowpass' as const, cutoff: 900, q: 0.6, keyTrack: 0.2 },
         filterEnv: { on: true, attack: 0.01, decay: 0.2, sustain: 0.25, release: 0.2, depth: 300, velocity: 0.4 },
         drive: { on: true, type: 'tube' as const, amount: 0.15, tone: 2000 },
@@ -130,7 +130,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
         name: 'Reggae Bass',
         volume: 0.65,
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
-        adsr: { attack: 0.008, decay: 0.25, sustain: 0.4, release: 0.15 },
+        adsr: { attack: 0.008, decay: 0.25, sustain: 0.4, release: 0.8 },
         filter: { type: 'lowpass' as const, cutoff: 600, q: 0.5 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
         effects: { distortion: 0, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0.375, feedback: 0.35, mix: 0.15 } }

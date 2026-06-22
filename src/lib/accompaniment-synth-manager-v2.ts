@@ -9,7 +9,7 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза для устранения гудения.
+ * #ЧТО: ПЛАН №1276 — Свободное затухание.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
@@ -106,8 +106,8 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов для устранения гудения.
-            const extraDuration = 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1276. Увеличение релиз-окна до 1.5с (Ambient Standard).
+            const extraDuration = 1.5; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,

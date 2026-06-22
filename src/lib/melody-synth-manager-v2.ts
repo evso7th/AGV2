@@ -12,7 +12,7 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза.
+ * #ЧТО: ПЛАН №1276 — Восстановление хвостов релиза.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
@@ -122,8 +122,8 @@ export class MelodySynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
 
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
-            // #ЗАЧЕМ: ПЛАН №85. Уменьшение хвостов для чистоты.
-            const extraDuration = 0.5; 
+            // #ЗАЧЕМ: ПЛАН №1276. Свободное затухание (2.5с запаса для баса).
+            const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
