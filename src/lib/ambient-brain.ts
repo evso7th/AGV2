@@ -42,6 +42,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
 
+const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export class AmbientBrain {
@@ -69,6 +71,7 @@ export class AmbientBrain {
     private currentPreferredInstrument: string | null = null;
     private currentMutationType: string = 'none';
 
+    // #ЗАЧЕМ: ПЛАН №1267. Межтактовая память для борьбы с гудением.
     private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
 
     private readonly MELODY_CEILING = 88;
@@ -104,6 +107,10 @@ export class AmbientBrain {
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
+    /**
+     * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
+     * #ЧТО: Дробление длинных нот, микро-лики (50%) и спектральное «дыхание».
+     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
         if (e.chordName) return [e]; 
         if (e.duration < 5.0) return [e]; 
@@ -143,8 +150,14 @@ export class AmbientBrain {
         return rippled;
     }
 
+    /**
+     * #ЗАЧЕМ: Протокол «Анти-Педаль» (ПЛАН №1267).
+     * #ЧТО: Разрыв статики на 3-м такте удержания одной ноты.
+     */
     private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return events;
+
+        // Определяем основную ноту такта
         const primary = events.find(e => e.time === 0) || events[0];
         const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
 
@@ -156,13 +169,27 @@ export class AmbientBrain {
         }
         this.heldNotesState.set(part, state);
 
+        // КРИЗИС 3-ГО ТАКТА
         if (state.barCount >= 3) {
-            state.barCount = 0;
+            state.barCount = 0; // Сброс счетчика
             const strategy = this.random.nextInt(3);
-            if (strategy === 0) return []; 
-            else if (strategy === 1) return events.map(e => ({ ...e, note: e.note + 7, params: { ...e.params, narrative: 'Anti-Pedal Jump' } }));
-            else return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
+
+            if (strategy === 0) {
+                // Стратегия "Вздох": Слой замолкает
+                return []; 
+            } else if (strategy === 1) {
+                // Стратегия "Гармонический прыжок": Уход в квинту
+                return events.map(e => ({ 
+                    ...e, 
+                    note: e.note + 7, 
+                    params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
+                }));
+            } else {
+                // Стратегия "Турбулентность": Усиленное дробление
+                return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
+            }
         }
+
         return events;
     }
 
@@ -594,3 +621,4 @@ export class AmbientBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
+
