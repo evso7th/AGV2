@@ -116,6 +116,7 @@ export class SamplerPlayer {
 
             source.onended = () => {
                 this.activeSources.delete(source);
+                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e) {}
             };
         });
@@ -142,6 +143,7 @@ export class SamplerPlayer {
     public stopAll() {
         this.activeSources.forEach(source => {
             try { source.stop(0); } catch(e) {}
+            try { source.disconnect(); } catch(e) {}
         });
         this.activeSources.clear();
     }

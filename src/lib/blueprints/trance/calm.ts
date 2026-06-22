@@ -1,15 +1,11 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
-/**
- * #ЗАЧЕМ: Блюпринт "Orbital Path" (Calm Trance v2.1).
- * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
- */
 export const CalmTranceBlueprint: MusicBlueprint = {
     id: 'calm_trance', name: 'Orbital Path', description: 'Steady and hypnotic trance.', mood: 'calm',
     musical: {
         key: { root: 'G', scale: 'mixolydian', octave: 3 },
-        bpm: { base: 80, range: [78, 84], modifier: 1.0 },
+        bpm: { base: 80, range: [78, 84], modifier: 1.0 }, // SLOWED DOWN
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [], tensionProfile: { type: 'plateau', peakPosition: 0.4, curve: (p, pp) => p < pp ? p / pp : (p < 0.8 ? 1.0 : 1 - ((p - 0.8) / 0.2)) }
     },
@@ -17,7 +13,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Launch', duration: { percent: 25 },
+                id: 'INTRO', name: 'Launch', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: { 
                     accompaniment: { 
@@ -29,7 +25,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     melody: { source: 'motif' },
-                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true }, // SOFTER
                     bass: { techniques: [{ value: 'pulse', weight: 1.0 }] }
                 },
                 bundles: [
@@ -38,7 +34,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Cruising', duration: { percent: 41 }, // REBALANCED
+                id: 'BUILD', name: 'Cruising', duration: { percent: 25 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true },
                 instrumentation: {
                     accompaniment: { 
@@ -49,7 +45,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'bass_jazz_warm', weight: 1.0 }], v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, usePerc: true },
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: true, usePerc: true }, // SOFTER
                     melody: { source: 'motif' } 
                 },
                 bundles: [
@@ -70,7 +66,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] }
                 },
                 instrumentRules: { 
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 },
+                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 }, // SOFTER
                     melody: { source: 'motif' } 
                 },
                 bundles: [
@@ -79,7 +75,7 @@ export const CalmTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'OUTRO', name: 'Re-entry', duration: { percent: 4 }, // REDUCED
+                id: 'OUTRO', name: 'Re-entry', duration: { percent: 20 },
                 layers: { accompaniment: true, sfx: true },
                 instrumentation: { 
                     accompaniment: { 

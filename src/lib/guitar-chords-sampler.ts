@@ -4,8 +4,8 @@ import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.5 — "Surgical Sample Protocol".
- * #ЧТО: ПЛАН №1261 — Ограничение длительности воспроизведения 5 секундами с мягким фейдом.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.4 — "Lazy Load Optimized".
+ * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки в фоновом режиме.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -16,6 +16,7 @@ export class GuitarChordsSampler {
     private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
+    private readonly MAX_CACHED_CHORDS = 50;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -64,6 +65,10 @@ export class GuitarChordsSampler {
 
     private async loadChordBuffers(chordName: string, urls: string[]) {
         if (!this.samples.has(chordName)) {
+            if (this.samples.size >= this.MAX_CACHED_CHORDS) {
+                const firstKey = this.samples.keys().next().value;
+                if (firstKey) this.samples.delete(firstKey);
+            }
             this.samples.set(chordName, []);
         }
         const bufferList = this.samples.get(chordName)!;
@@ -86,10 +91,6 @@ export class GuitarChordsSampler {
     public schedule(notes: (NoteEvent & { chordName?: string })[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
 
-        // #ЗАЧЕМ: ПЛАН №1261. Хирургическая отсечка длинных сэмплов.
-        const MAX_DUR = 5.0;
-        const FADE_START = 4.2;
-
         notes.forEach(note => {
             const matchedName = this.findBestChordMatch(note.chordName || '');
             if (!matchedName) return;
@@ -102,19 +103,23 @@ export class GuitarChordsSampler {
                 source.buffer = buffer;
                 
                 const noteGain = this.audioContext.createGain();
-                const playTime = startTime + note.time;
-                const velocity = note.velocity ?? 0.7;
-
+                noteGain.gain.value = note.velocity ?? 0.7;
+                
                 source.connect(noteGain);
                 noteGain.connect(this.preamp);
-                
-                noteGain.gain.setValueAtTime(0, playTime);
-                noteGain.gain.linearRampToValueAtTime(velocity, playTime + 0.02);
-                
-                // Мягкое затухание в конце 5-секундного окна
-                noteGain.gain.setTargetAtTime(0.0001, playTime + FADE_START, 0.25);
 
-                source.start(playTime, 0, MAX_DUR);
+                const t0 = startTime + note.time;
+                source.start(t0);
+
+                // #ЗАЧЕМ: кэп 5 c + плавный фейд — после 5 c в неочищенных сэмплах мусор.
+                // Чистые сэмплы короче 5 c играются целиком (фейд не навешиваем).
+                const CAP = 5.0, FADE = 0.6;
+                if (buffer.duration > CAP) {
+                    const vel = Math.max(note.velocity ?? 0.7, 0.0001);
+                    noteGain.gain.setValueAtTime(vel, t0 + CAP - FADE);
+                    noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + CAP);
+                    source.stop(t0 + CAP + 0.05);
+                }
 
                 source.onended = () => {
                     try { noteGain.disconnect(); } catch(e) {}

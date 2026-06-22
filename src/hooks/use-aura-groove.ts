@@ -25,8 +25,11 @@ const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
 const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
 const ACTIVE_EQ_ID_KEY = 'AuraGroove_ActiveEqPresetId';
 const ACTIVE_MIXER_ID_KEY = 'AuraGroove_ActiveMixerPresetId';
+// #ЗАЧЕМ: «последний использованный» пресет по жанру (для авто-применения при смене жанра).
+const LAST_MIX_BY_GENRE_KEY = 'AuraGroove_LastMixByGenre';
+const LAST_EQ_BY_GENRE_KEY = 'AuraGroove_LastEqByGenre';
 
-export type PresetItem = { id: string; name: string; values: any };
+export type PresetItem = { id: string; name: string; values: any; genre?: string };
 
 export interface AuraGrooveProps {
   isPlaying: boolean;
@@ -42,6 +45,7 @@ export interface AuraGrooveProps {
   toggleCompositionFilter: (id: string) => void;
   clearCompositionFilters: () => void;
   refreshCloudAxioms: () => Promise<void>;
+  syncDna: () => Promise<void>;
   handlePlayPause: () => void;
   handleRegenerate: () => void;
   handleToggleRecording: () => void;
@@ -114,12 +118,14 @@ export interface AuraGrooveProps {
   updateActiveEqPreset: () => void;
   loadEqPreset: (id: string) => void;
   deleteEqPreset: (id: string) => void;
+  setEqPresetGenre: (id: string, genre: string) => void;
   mixerPresets: PresetItem[];
   activeMixerPresetId: string | null;
   saveMixerPreset: (name: string) => void;
   updateActiveMixerPreset: () => void;
   loadMixerPreset: (id: string) => void;
   deleteMixerPreset: (id: string) => void;
+  setMixerPresetGenre: (id: string, genre: string) => void;
   resetMixerToSystem: () => void;
   useMelodyV2: boolean;
   toggleMelodyEngine: (val: boolean) => void;
@@ -129,7 +135,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const router = useRouter();
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
-    setIsPlaying, updateSettings, refreshCloudAxioms, setVolume, setInstrument, stopAllSounds,
+    setIsPlaying, updateSettings, refreshCloudAxioms, syncDna, setVolume, setInstrument, stopAllSounds,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
     setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
     resetWorker
@@ -238,6 +244,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
             setActiveMixerPresetId(id);
             localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
+            if (target.genre) {
+                try {
+                    const m = JSON.parse(localStorage.getItem(LAST_MIX_BY_GENRE_KEY) || '{}');
+                    m[target.genre] = id;
+                    localStorage.setItem(LAST_MIX_BY_GENRE_KEY, JSON.stringify(m));
+                } catch (e) {}
+            }
             toast({ title: "Mix Applied", description: `Loaded: ${target.name}` });
         }
     } catch (e) {}
@@ -300,13 +313,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [activeMixerPresetId]);
 
   const resetMixerToSystem = useCallback(() => {
-    const mix = GENRE_MASTER_MIX['ambient'];
+    // #ЗАЧЕМ: сброс к системному миксу ТЕКУЩЕГО жанра (а не захардкоженного ambient).
+    const mix = GENRE_MASTER_MIX[genre] ?? GENRE_MASTER_MIX['ambient'];
     handleVolumeChange('master', 1.0);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
     toast({ title: "System Mix Restored" });
-  }, [handleVolumeChange, toast]);
+  }, [handleVolumeChange, toast, genre]);
 
   const loadEqPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(EQ_PRESETS_KEY);
@@ -320,6 +334,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
             });
             setActiveEqPresetId(id);
             localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
+            if (target.genre) {
+                try {
+                    const m = JSON.parse(localStorage.getItem(LAST_EQ_BY_GENRE_KEY) || '{}');
+                    m[target.genre] = id;
+                    localStorage.setItem(LAST_EQ_BY_GENRE_KEY, JSON.stringify(m));
+                } catch (e) {}
+            }
             toast({ title: "EQ Applied", description: target.name });
         }
     } catch (e) {}
@@ -358,6 +379,63 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.removeItem(ACTIVE_EQ_ID_KEY);
     }
   }, [activeEqPresetId]);
+
+  // #ЗАЧЕМ: привязка пресета к жанру (для авто-применения при смене жанра). '' = снять привязку.
+  const setMixerPresetGenre = useCallback((id: string, g: string) => {
+    setMixerPresets(prev => {
+        const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+  }, []);
+
+  const setEqPresetGenre = useCallback((id: string, g: string) => {
+    setEqPresets(prev => {
+        const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
+        localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
+        return next;
+    });
+  }, []);
+
+  // Разрешение микса при смене жанра: привязанный пресет (last-used → любой с этим жанром) → иначе мастер-микс.
+  const applyGenreMix = useCallback((g: Genre) => {
+    let presets: PresetItem[] = [];
+    let lastMap: Record<string, string> = {};
+    try { presets = JSON.parse(localStorage.getItem(MIXER_PRESETS_KEY) || '[]'); } catch (e) {}
+    try { lastMap = JSON.parse(localStorage.getItem(LAST_MIX_BY_GENRE_KEY) || '{}'); } catch (e) {}
+    const chosen = presets.find(p => p.id === lastMap[g] && p.genre === g) || presets.find(p => p.genre === g);
+    if (chosen && chosen.values && !Array.isArray(chosen.values)) {
+        const v = chosen.values;
+        if (v.master !== undefined) handleVolumeChange('master', v.master);
+        if (v.bass !== undefined) handleVolumeChange('bass', v.bass);
+        if (v.melody !== undefined) handleVolumeChange('melody', v.melody);
+        if (v.accompaniment !== undefined) handleVolumeChange('accompaniment', v.accompaniment);
+        if (v.pianoAccompaniment !== undefined) handleVolumeChange('pianoAccompaniment', v.pianoAccompaniment);
+        if (v.harmony !== undefined) handleVolumeChange('harmony', v.harmony);
+        if (v.sparkles !== undefined) handleVolumeChange('sparkles', v.sparkles);
+        if (v.sfx !== undefined) handleVolumeChange('sfx', v.sfx);
+        if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
+        setActiveMixerPresetId(chosen.id);
+    } else {
+        const mix = GENRE_MASTER_MIX[g] ?? GENRE_MASTER_MIX['ambient'];
+        handleVolumeChange('master', 1.0);
+        Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
+        setActiveMixerPresetId(null);
+    }
+  }, [handleVolumeChange]);
+
+  // Разрешение EQ при смене жанра: привязанный пресет → иначе оставляем как есть (мастер-EQ не существует).
+  const applyGenreEq = useCallback((g: Genre) => {
+    let presets: PresetItem[] = [];
+    let lastMap: Record<string, string> = {};
+    try { presets = JSON.parse(localStorage.getItem(EQ_PRESETS_KEY) || '[]'); } catch (e) {}
+    try { lastMap = JSON.parse(localStorage.getItem(LAST_EQ_BY_GENRE_KEY) || '{}'); } catch (e) {}
+    const chosen = presets.find(p => p.id === lastMap[g] && p.genre === g) || presets.find(p => p.genre === g);
+    if (chosen && Array.isArray(chosen.values)) {
+        chosen.values.forEach((val: number, idx: number) => handleEqChange(idx, val));
+        setActiveEqPresetId(chosen.id);
+    }
+  }, [handleEqChange]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -474,24 +552,47 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
   }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker]);
 
+  const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
     if (activeRouteItemId) {
         const activeItem = route.find(it => it.id === activeRouteItemId);
         if (activeItem && activeItem.genre !== 'random' && activeItem.mood !== 'random') {
-            setGenreState(activeItem.genre as Genre);
+            const g = activeItem.genre as Genre;
+            setGenreState(g);
             setMoodState(activeItem.mood as Mood);
+            // #ЗАЧЕМ: при РЕАЛЬНОЙ смене жанра применяем привязанный пользовательский пресет
+            // (иначе мастер-микс) — для микса и EQ. Гард — чтобы не перетирать ручные правки.
+            if (g !== prevAppliedGenreRef.current) {
+                prevAppliedGenreRef.current = g;
+                applyGenreMix(g);
+                applyGenreEq(g);
+            }
         }
     }
-  }, [activeRouteItemId, route]);
+  }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
+  // #ЗАЧЕМ: ГЛАВНЫЙ ПОТОК — ХОЗЯИН перехода. Воркер на конце пьесы держит тишину и шлёт
+  // AG_SUITE_TRANSITION; решение «что дальше» принимаем здесь → одна ре-инициализация
+  // (раньше переход ловился по currentBar===0 ПОСЛЕ того, как воркер уже выбрал лишнюю пьесу).
   useEffect(() => {
-    if (isPlaying && currentBar === 0 && prevBarRef.current > 0 && route.length > 0) {
-        const nextIndex = activeRouteIndex + 1;
-        if (nextIndex < route.length) { setActiveRouteItemId(route[nextIndex].id); } 
-        else if (isRepeat) { setActiveRouteItemId(route[0].id); }
-    }
-    prevBarRef.current = currentBar;
-  }, [currentBar, isPlaying, route, activeRouteIndex, isRepeat]);
+    const onTransition = () => {
+        if (route.length > 0) {
+            const nextIndex = activeRouteIndex + 1;
+            if (nextIndex < route.length) { setActiveRouteItemId(route[nextIndex].id); return; }
+            if (isRepeat) {
+                // повтор маршрута с начала; если первый пункт = текущий id, смена id не запустит
+                // ре-инициализацию → подменяем seed для свежей пьесы.
+                if (route[0].id === activeRouteItemId) { setCurrentSeed(Date.now()); }
+                else { setActiveRouteItemId(route[0].id); }
+                return;
+            }
+        }
+        // непрерывно / нет маршрута / маршрут кончился без repeat → свежая пьеса тем же жанром.
+        setCurrentSeed(Date.now());
+    };
+    window.addEventListener('AG_SUITE_TRANSITION', onTransition);
+    return () => window.removeEventListener('AG_SUITE_TRANSITION', onTransition);
+  }, [route, activeRouteIndex, isRepeat, activeRouteItemId]);
 
   const handlePlayPauseCallback = useCallback(async () => { 
     if (!isInitialized) {
@@ -526,7 +627,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
-    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms,
+    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna,
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
@@ -550,23 +651,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
     route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
     removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
-    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" }); return; } prevBarRef.current = 0; refreshCloudAxioms(); resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } toast({ title: "Route Reset" }); }, 
+    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: "Action Blocked", description: "Available only in Pause state" }); return; } prevBarRef.current = 0; resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } toast({ title: "Refresh Path" }); },
     moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     saveRoute: (name: string) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     loadRoute, deleteSavedRoute: (id: string) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex, showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName,
-    eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset,
-    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, resetMixerToSystem,
+    eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre,
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
     useMelodyV2: true, toggleMelodyEngine: () => {}
   }), [
-      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms,
+      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, syncDna,
       handlePlayPauseCallback, isRecording, stopRecording, startRecording, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
       setInstrument, handleVolumeChange, textureSettings, bpm, setBpm, score, setScore, density, setDensity, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
       calibrationGains, setCalibrationGain, timerSettings, mood, genre, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
       savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, eqPresets, activeEqPresetId, 
-      saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset, 
-      updateActiveMixerPreset, deleteMixerPreset, resetMixerToSystem
+      saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre, mixerPresets, activeMixerPresetId, saveMixerPreset,
+      updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem
   ]);
 };

@@ -1,4 +1,3 @@
-
 import type { Note } from "@/types/music";
 
 type VelocitySample = {
@@ -11,8 +10,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.4 — "Audibility Boost".
- * #ЧТО: ПЛАН №1252 — Значительное повышение преампа для слышимости в Амбиенте.
+ * #ЗАЧЕМ: Сэмплер скрипки V4.3 — "Active Sources Fix".
+ * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -26,8 +25,7 @@ export class ViolinSamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        // ПЛАН №1252: Буст с 0.29 до 0.85
-        this.preamp.gain.value = 0.85; 
+        this.preamp.gain.value = 0.29; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
@@ -106,6 +104,19 @@ export class ViolinSamplerPlayer {
             source.playbackRate.value = playbackRate;
 
             source.start(startTime);
+
+            // #ЗАЧЕМ: кэп 5 c содержимого сэмпла + плавный фейд (после 5 c записи — мусор).
+            // playbackRate смещает темп, поэтому 5 c контента = 5/rate реального времени.
+            // Чистые сэмплы короче 5 c играются целиком.
+            const CAP = 5.0, FADE = 0.6;
+            if (buffer.duration > CAP) {
+                const realCap = CAP / playbackRate;
+                const fadeStart = Math.max(startTime + 0.01, startTime + realCap - FADE);
+                gainNode.gain.setValueAtTime(Math.max(velocity, 0.0001), fadeStart);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + realCap);
+                source.stop(startTime + realCap + 0.05);
+            }
+
             this.activeSources.add(source);
 
             source.onended = () => { 

@@ -6,12 +6,12 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { 
-  Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home, 
-  Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio, 
-  ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw, 
+import {
+  Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home,
+  Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio,
+  ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw,
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
-  Guitar, Lock, Dna, Settings2, Mic2, Activity, Navigation, Volume2
+  Guitar, Lock, Dna, Settings2, Mic2, Activity, Navigation, Volume2, Moon, Sun
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ import type { Mood, Genre, InstrumentPart } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { SpectrumAnalyzer } from "@/components/SpectrumAnalyzer";
+import { THEME_COLORS, type ThemeMode } from "@/lib/theme-colors";
 
 // ───── CONSTANTS ─────
 
@@ -209,6 +210,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
   const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
+  const [isDarkTheme, setIsDarkTheme] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
@@ -239,21 +241,30 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
 
   if (!isClient) return null;
 
+  const theme = isDarkTheme ? 'dark' : 'light';
+  const colors = THEME_COLORS[theme];
+  const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-neutral-50';
+  const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
+  const borderClass = isDarkTheme ? 'border-neutral-800' : 'border-gray-200';
+  const buttonBgClass = isDarkTheme
+    ? 'bg-violet-600 hover:bg-violet-500'
+    : 'bg-violet-600 hover:bg-violet-700';
+
   return (
-    <div className="w-full h-full flex flex-col p-3 bg-card overflow-hidden">
+    <div className={cn("w-full h-full flex flex-col p-3 overflow-hidden transition-colors duration-200", bgClass, textClass)}>
       {/* Header */}
-      <header className="flex-shrink-0 pb-2">
+      <header className={cn("flex-shrink-0 pb-2 border-b transition-colors", isDarkTheme ? borderClass : "border-gray-200")}>
         <div className="flex items-center justify-between">
           <div className="flex flex-row items-center gap-2 pl-1">
             <Image src="/assets/icon8.jpeg" alt="Logo" width={32} height={32} className="rounded-full" />
-            <h1 className="text-lg font-bold text-primary">AuraGroove</h1>
+            <h1 className={cn("text-lg font-bold", isDarkTheme ? "text-violet-400" : "text-violet-600")}>AuraGroove</h1>
           </div>
           <div className="flex items-center gap-1">
             <Button variant="ghost" size="icon" onClick={() => router.push('/home')} title="Navigator"><Navigation className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={() => router.push('/timbre-lab')} title="Lab"><Settings2 className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} title="DNA"><Database className="h-5 w-5" /></Button>
             <Button variant="ghost" size="icon" onClick={handleGoHome}><Home className="h-5 w-5" /></Button>
-            
+
             <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
                 <DialogTrigger asChild><Button variant="ghost" size="icon" className="hidden md:inline-flex"><SlidersHorizontal className="h-5 w-5" /></Button></DialogTrigger>
                 <DialogContent className="max-w-none w-screen h-screen m-0 p-0 border-0 rounded-none bg-background/95 backdrop-blur-3xl flex flex-col z-[100]">
@@ -337,11 +348,16 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
         </div>
         
         <div className="flex items-center justify-center gap-2 pt-2 pb-1.5">
-           <Button 
-            type="button" 
-            onClick={handlePlayPause} 
-            disabled={isInitializing} 
-            className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
+           <Button
+            type="button"
+            onClick={handlePlayPause}
+            disabled={isInitializing}
+            className={cn(
+              "h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md transition-all",
+              isDarkTheme
+                ? "bg-gradient-to-r from-violet-600 to-violet-400 hover:from-violet-500 hover:to-violet-300 text-white"
+                : "bg-violet-600 hover:bg-violet-700 text-white"
+            )}
            >
                 {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
                 {isPlaying ? "Pause" : "Play"}

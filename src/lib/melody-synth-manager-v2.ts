@@ -1,8 +1,10 @@
+
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
+import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
@@ -10,23 +12,24 @@ import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1265 — Ускорение ротации инструментов для предотвращения утечек.
+ * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза.
  */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
     public isInitialized = false;
     private partName: 'melody' | 'bass';
-    
-    private synth: any | null = null; 
+
+    private synth: any | null = null;
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
     private darkTelecasterSampler: DarkTelecasterSampler;
     private cs80Sampler: CS80GuitarSampler;
-    
+
     private activePresetName: string = 'none';
     private preamp: GainNode;
     private isChangingInstrument = false;
+    private cleanupControllers = new Map<string, AbortController>();
 
     constructor(
         audioContext: AudioContext, 
@@ -62,7 +65,19 @@ export class MelodySynthManagerV2 {
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
     }
-    
+
+    private scheduleCleanup(inst: any, delayMs: number, id: string) {
+        const controller = new AbortController();
+        this.cleanupControllers.set(id, controller);
+
+        setTimeout(() => {
+            if (!controller.signal.aborted) {
+                try { inst.disconnect(); } catch (e) {}
+                this.cleanupControllers.delete(id);
+            }
+        }, delayMs, controller.signal);
+    }
+
     private async loadInstrument(presetName: string, instrumentType: 'bass' | 'synth' | 'organ' | 'guitar' = 'synth') {
         if (this.isChangingInstrument) return;
         this.isChangingInstrument = true;
@@ -88,10 +103,7 @@ export class MelodySynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
-                // #ЗАЧЕМ: ПЛАН №1265. Снижено с 15 до 8 сек для ускорения очистки ресурсов.
-                setTimeout(() => {
-                    try { oldInst.disconnect(); } catch (e) {}
-                }, 8000); 
+                this.scheduleCleanup(oldInst, 5000, `loadInstrument-${Date.now()}`);
             }
         } catch (error) {
             console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
@@ -101,12 +113,17 @@ export class MelodySynthManagerV2 {
     }
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
-        const beatDuration = 60 / tempo;
-        
-        const notesToPlay = events.filter(e => e.type === this.partName).map(e => {
-            const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
-            const extraDuration = isAmbient ? (this.partName === 'bass' ? 12.0 : 8.0) : 4.0; 
-            
+        if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
+        if (barStartTime < this.audioContext.currentTime) {
+            console.warn(`[MelodySynthManagerV2] barStartTime in past: ${barStartTime} < ${this.audioContext.currentTime}`);
+            return;
+        }
+        const boundedTempo = Math.max(20, Math.min(300, tempo));
+        const beatDuration = 60 / boundedTempo;
+
+        const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
+            // #ЗАЧЕМ: ПЛАН №85. Уменьшение хвостов для чистоты.
+            const extraDuration = 0.5; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
@@ -166,15 +183,19 @@ export class MelodySynthManagerV2 {
         
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
-            if (this.synth?.setPan && note.pan !== undefined) {
-                this.synth.setPan(note.pan);
+            if (noteOnTime < this.audioContext.currentTime) {
+                console.warn(`[MelodySynthManagerV2] Skipped note in past: ${noteOnTime} < ${this.audioContext.currentTime}`);
+                return;
+            }
+            if (this.instrument?.setPan && note.pan !== undefined) {
+                this.instrument.setPan(note.pan);
             }
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration, note.params);
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }
         });
     }
@@ -192,7 +213,7 @@ export class MelodySynthManagerV2 {
        } else {
            if (this.synth) {
                const fadingSynth = this.synth;
-               setTimeout(() => { try { fadingSynth.disconnect(); } catch(e) {} }, 8000);
+               this.scheduleCleanup(fadingSynth, 5000, `setInstrument-${Date.now()}`);
                this.synth = null;
            }
            this.activePresetName = instrumentName;
@@ -210,8 +231,13 @@ export class MelodySynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { 
-        this.stop(); 
+
+    public dispose() {
+        this.stop();
+        for (const [, controller] of this.cleanupControllers) {
+            controller.abort();
+        }
+        this.cleanupControllers.clear();
         if (this.synth) this.synth.disconnect();
         this.preamp.disconnect();
     }

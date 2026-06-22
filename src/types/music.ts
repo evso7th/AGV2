@@ -292,6 +292,9 @@ export type BlueprintPart = {
       accompaniment?: InstrumentationRules<AccompanimentInstrument>;
       bass?: InstrumentationRules<BassInstrument>;
       harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>;
+      // #ЗАЧЕМ: блюпринты легитимно задают и эти слои (движок читает в рантайме) — тип был у́же реальности.
+      drums?: InstrumentationRules<any>;
+      pianoAccompaniment?: InstrumentationRules<any>;
   };
   stagedInstrumentation?: Stage[];
   instrumentRules: {

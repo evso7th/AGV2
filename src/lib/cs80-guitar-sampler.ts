@@ -1,9 +1,10 @@
 
 import type { Note } from "@/types/music";
+import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.6 — "Temporal Shield Protocol".
- * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
+ * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.5 — "Imperial Volume Boost".
+ * #ЧТО: ПЛАН №1190 — Громкость увеличена в 2 раза (0.2 -> 0.4).
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -27,14 +28,26 @@ export class CS80GuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private outputTrim: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.4; 
-        this.preamp.connect(this.destination);
+        this.preamp.gain.value = 0.4; // ПЛАН №1190: Увеличено с 0.2
+
+        // #ЗАЧЕМ: калибровочный трим — отдельный gain (отдельно от preamp/громкости).
+        this.outputTrim = this.audioContext.createGain();
+        this.outputTrim.gain.value = 1.0;
+
+        this.preamp.connect(this.outputTrim);
+        this.outputTrim.connect(this.destination);
+    }
+
+    /** Калибровочный трим громкости в дБ (отдельно от preamp). */
+    public setOutputTrim(db: number) {
+        if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
 
     public setPreampGain(gain: number) {
@@ -86,16 +99,16 @@ export class CS80GuitarSampler {
             const isLong = (note.duration || 0) >= barDuration;
 
             if (!layer) {
-                this.playClosest(note, time, isLong);
+                this.playClosest(note, time, isLong, tempo);
                 return;
             }
 
             const buffer = isLong ? layer.long : layer.norm;
-            this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7);
+            this.playSample(buffer, note.midi, note.midi, time + note.time, note.velocity || 0.7, tempo);
         });
     }
 
-    private playClosest(note: Note, time: number, isLong: boolean) {
+    private playClosest(note: Note, time: number, isLong: boolean, tempo: number = 72) {
         const keys = Array.from(this.buffers.keys());
         if (keys.length === 0) return;
         const closestMidi = keys.reduce((prev, curr) => 
@@ -108,31 +121,32 @@ export class CS80GuitarSampler {
         this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7);
     }
 
-    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
-        const now = this.audioContext.currentTime;
-        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
-        if (playTime < 0) return;
+    private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, tempo: number = 72) {
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
-        
+
         source.connect(gainNode).connect(this.preamp);
 
-        const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
-        source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
+        const pitchRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
+        const tempoScale = tempo / 72;
+        const playbackRate = (isFinite(pitchRate) ? pitchRate : 1.0) * tempoScale;
+        source.playbackRate.value = playbackRate;
 
-        gainNode.gain.setValueAtTime(0, playTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.01);
-        
-        gainNode.gain.setTargetAtTime(0, playTime + 3.0, 0.4);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
 
-        source.start(playTime);
+        // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
+        gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
+
+        source.start(startTime);
         this.activeSources.add(source);
-        
+
         source.onended = () => {
             this.activeSources.delete(source);
+            try { source.disconnect(); } catch(e) {}
             try { gainNode.disconnect(); } catch(e) {}
         };
     }
@@ -144,5 +158,5 @@ export class CS80GuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
 }

@@ -308,6 +308,8 @@ export default function HypercubeDashboard() {
   const [selectedGenre, setSelectedGenre] = useState<Genre[]>(['blues']);
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
   const [explorerSearch, setFilterSearchText] = useState("");
+  // #ЗАЧЕМ: треки, раскрытые вручную; при активном поиске раскрываем найденные автоматически.
+  const [manualOpenTracks, setManualOpenTracks] = useState<string[]>([]);
 
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
@@ -315,7 +317,8 @@ export default function HypercubeDashboard() {
   const [axiomFilterOffset, setAxiomFilterOffset] = useState("");
 
   const [selectedTrackGroups, setSelectedTrackGroups] = useState<Set<string>>(new Set());
-  const [openItems, setOpenItems] = useState<string[]>([]);
+  const [bulkMoodValue, setBulkMoodValue] = useState<Mood[]>([]);
+  const [bulkMoodOpen, setBulkMoodOpen] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmConfig, setConfirmAction] = useState<{ title: string, desc: string, action: () => void } | null>(null);
@@ -344,21 +347,9 @@ export default function HypercubeDashboard() {
     }
   }, []);
 
-  // #ЗАЧЕМ: ПЛАН №1260. Автоматическое раскрытие аккордеона при поиске по хэшу.
-  useEffect(() => {
-      if (explorerSearch.length > 3 && globalAxioms) {
-          const matchingAxiom = globalAxioms.find(ax => 
-              ax.id.toLowerCase().endsWith(explorerSearch.toLowerCase())
-          );
-          if (matchingAxiom && !openItems.includes(matchingAxiom.compositionId)) {
-              setOpenItems(prev => [...prev, matchingAxiom.compositionId]);
-          }
-      }
-  }, [explorerSearch, globalAxioms]);
-
   const globalStats = useMemo(() => {
-    if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
-    return globalAxioms.reduce((acc, ax) => {
+    if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {}, bytes: 0 };
+    const acc = globalAxioms.reduce((acc, ax) => {
       acc.total++;
       const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
       const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
@@ -368,16 +359,20 @@ export default function HypercubeDashboard() {
       commons.forEach(cm => { acc.commonMoods[cm] = (acc.commonMoods[cm] || 0) + 1; });
       return acc;
     }, { total: 0, genres: {} as Record<string, number>, moods: {} as Record<string, number>, commonMoods: {} as Record<string, number> });
+    // #ЗАЧЕМ: размер сырого JSON корпуса — оценка снапшота для локального кэша/автономности.
+    return { ...acc, bytes: JSON.stringify(globalAxioms).length };
   }, [globalAxioms]);
 
   const masterpieceStats = useMemo(() => {
-      if (!globalMasterpieces) return { total: 0, userLikes: 0, arbiterFinds: 0 };
-      return globalMasterpieces.reduce((acc, m) => {
+      if (!globalMasterpieces) return { total: 0, userLikes: 0, arbiterFinds: 0, bytes: 0 };
+      const acc = globalMasterpieces.reduce((acc, m) => {
           acc.total++;
           if (m.origin === 'AI_Arbiter') acc.arbiterFinds++;
           else acc.userLikes++;
           return acc;
       }, { total: 0, userLikes: 0, arbiterFinds: 0 });
+      // #ЗАЧЕМ: размер сырого JSON — для оценки футпринта (НЕ нужен для офлайн-генерации).
+      return { ...acc, bytes: JSON.stringify(globalMasterpieces).length };
   }, [globalMasterpieces]);
 
   const groupedAxioms = useMemo(() => {
@@ -403,6 +398,19 @@ export default function HypercubeDashboard() {
       })
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
+
+  // #ЗАЧЕМ: авто-раскрытие ТОЛЬКО при совпадении по короткому id аксиомы (сценарий из лога) —
+  // аддитивно и одноразово на смену запроса. Поиск по ИМЕНИ не форсит раскрытие: список
+  // просто фильтруется, аккордеоны сворачиваются/раскрываются вручную (управляются manualOpenTracks).
+  useEffect(() => {
+    const q = explorerSearch.trim().toLowerCase();
+    if (!q) return;
+    const idMatches = groupedAxioms
+      .filter(([, licks]) => (licks as any[]).some(ax => (ax.id.split('_').pop() || '').toLowerCase().includes(q)))
+      .map(([id]) => id);
+    if (idMatches.length) setManualOpenTracks(prev => Array.from(new Set([...prev, ...idMatches])));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [explorerSearch]);
 
   const radarData = useMemo(() => {
     if (!globalAxioms) return [];
@@ -495,6 +503,28 @@ export default function HypercubeDashboard() {
         }
     });
     setConfirmOpen(true);
+  };
+
+  // #ЗАЧЕМ: Групповое редактирование настроения. Перезаписывает mood/commonMood
+  //         у ВСЕХ аксиом выбранных треков. Пустой выбор = доступно для любого
+  //         настроения (правило "empty mood = any mood"). Чанкуем по 450 (лимит 500).
+  const handleBulkSetMood = async (moods: Mood[]) => {
+    const selected = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).flatMap(([, l]) => l) as any[];
+    if (selected.length === 0) return;
+    setIsProcessing(true);
+    try {
+        const newCommons = Array.from(new Set(moods.map((m: Mood) => MOOD_TO_COMMON[m]).filter(Boolean)));
+        const CHUNK_SIZE = 450;
+        for (let i = 0; i < selected.length; i += CHUNK_SIZE) {
+            const batch = writeBatch(db);
+            selected.slice(i, i + CHUNK_SIZE).forEach((ax: any) => batch.update(doc(db, 'heritage_axioms', ax.id), { mood: moods, commonMood: newCommons }));
+            await batch.commit();
+        }
+        toast({ title: "Moods Updated", description: `${selected.length} axioms across ${selectedTrackGroups.size} tracks${moods.length === 0 ? ' → available for ANY mood' : ''}` });
+        setSelectedTrackGroups(new Set());
+        setBulkMoodOpen(false);
+        setBulkMoodValue([]);
+    } finally { setIsProcessing(false); }
   };
 
   const handleUidMigration = async () => {
@@ -738,8 +768,8 @@ export default function HypercubeDashboard() {
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 shrink-0">
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div><div className="text-[10px] font-bold opacity-50 font-mono mt-1">~{globalStats.bytes > 1048576 ? (globalStats.bytes / 1048576).toFixed(2) + ' MB' : (globalStats.bytes / 1024).toFixed(0) + ' KB'} JSON</div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div><div className="text-[10px] font-bold opacity-50 font-mono mt-1">~{masterpieceStats.bytes > 1048576 ? (masterpieceStats.bytes / 1048576).toFixed(2) + ' MB' : (masterpieceStats.bytes / 1024).toFixed(0) + ' KB'} JSON</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase">Active</span></div></CardContent></Card>
         </div>
@@ -767,6 +797,29 @@ export default function HypercubeDashboard() {
                     <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
                     <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
                     <div className="flex gap-1">
+                        {groupedAxioms.length > 0 && (() => {
+                          const allSelected = groupedAxioms.every(([id]) => selectedTrackGroups.has(id));
+                          return (
+                            <Button variant="outline" size="sm" onClick={() => setSelectedTrackGroups(allSelected ? new Set() : new Set(groupedAxioms.map(([id]) => id)))} className="h-9 text-[10px] font-black uppercase gap-2">
+                              <ClipboardCheck className="h-4 w-4" /> {allSelected ? 'Deselect All' : `Select All (${groupedAxioms.length})`}
+                            </Button>
+                          );
+                        })()}
+                        {selectedTrackGroups.size > 0 && (
+                          <Popover open={bulkMoodOpen} onOpenChange={(o) => { setBulkMoodOpen(o); if (o) setBulkMoodValue([]); }}>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" disabled={isProcessing} className="h-9 text-[10px] font-black uppercase border-primary/40 text-primary hover:bg-primary/5 gap-2"><Heart className="h-4 w-4" /> Set Mood ({selectedTrackGroups.size})</Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-72 space-y-3">
+                              <div className="space-y-1">
+                                <Label className="text-[10px] uppercase font-black opacity-60">Bulk Mood Override</Label>
+                                <p className="text-[10px] text-muted-foreground leading-tight">Overwrites mood on all axioms of the {selectedTrackGroups.size} selected tracks. Leave empty = available for ANY mood.</p>
+                              </div>
+                              <MultiSelector options={AVAILABLE_MOODS} values={bulkMoodValue} onValuesChange={setBulkMoodValue} placeholder="Select moods..." className="w-full" />
+                              <Button size="sm" disabled={isProcessing} onClick={() => handleBulkSetMood(bulkMoodValue)} className="w-full h-8 text-[10px] font-black uppercase gap-2"><Check className="h-4 w-4" /> Apply to {selectedTrackGroups.size} Tracks</Button>
+                            </PopoverContent>
+                          </Popover>
+                        )}
                         {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-2" /> Wipe ({selectedTrackGroups.size})</Button>}
                         <Button variant="outline" size="sm" onClick={handleUidMigration} disabled={isProcessing} className="h-9 text-[10px] font-black uppercase border-primary/20 hover:bg-primary/5 text-primary gap-2"><RefreshCw className={cn("h-4 w-4", isProcessing && "animate-spin")} /> Repair Global IDs</Button>
                     </div>
@@ -776,13 +829,7 @@ export default function HypercubeDashboard() {
               <CardContent className="p-0 border-t flex-grow overflow-hidden">
                 <ScrollArea className="h-full px-4 py-2">
                   {isDbLoading ? <div className="py-20 text-center animate-pulse font-black opacity-40 uppercase tracking-widest text-xs">Accessing Cloud...</div> : (
-                    <Accordion type="multiple" value={openItems} onValueChange={setOpenItems} className="space-y-2 pb-10">
-                      {groupedAxioms.length === 0 && explorerSearch.length > 0 && (
-                          <div className="py-20 text-center opacity-40">
-                              <Search className="h-10 w-10 mx-auto mb-2" />
-                              <p className="text-xs font-black uppercase tracking-widest">Nothing found. Try again with different data.</p>
-                          </div>
-                      )}
+                    <Accordion type="multiple" value={manualOpenTracks} onValueChange={setManualOpenTracks} className="space-y-2 pb-10">
                       {groupedAxioms.map(([compId, licks]) => (
                         <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                           <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
@@ -847,11 +894,11 @@ export default function HypercubeDashboard() {
                                   </thead>
                                   <tbody className="divide-y divide-border/20">
                                     {licks.map((ax: any) => (
-                                      // #ЗАЧЕМ: ПЛАН №1260. Желтая подсветка найденной аксиомы.
                                       <tr key={ax.id} className={cn(
-                                          "hover:bg-primary/5 transition-colors group/row", 
+                                          "hover:bg-primary/5 transition-colors group/row",
                                           ax.ignored && "opacity-40",
-                                          explorerSearch.length > 3 && ax.id.toLowerCase().endsWith(explorerSearch.toLowerCase()) && "outline outline-1 outline-yellow-400 bg-yellow-400/5 shadow-[0_0_15px_rgba(250,204,21,0.1)]"
+                                          // #ЗАЧЕМ: узкая жёлтая рамка на аксиоме, чей короткий id совпал с поиском (из лога).
+                                          explorerSearch.trim() && (ax.id.split('_').pop() || '').toLowerCase().includes(explorerSearch.trim().toLowerCase()) && "ring-1 ring-inset ring-yellow-400"
                                       )}>
                                         <td className="p-3 pl-12 font-mono text-[10px] opacity-70">
                                             {ax.id.split('_').pop()}
@@ -1065,3 +1112,4 @@ export default function HypercubeDashboard() {
     </div>
   );
 }
+

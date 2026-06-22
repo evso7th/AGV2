@@ -2,10 +2,11 @@
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
+import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.3 — "Security Guard Update".
- * #ЧТО: ПЛАН №1203 — Добавлены защитные проверки времени для предотвращения RangeError.
+ * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.2 — "Gain Calibration".
+ * #ЧТО: Громкость снижена в 2 раза (0.04 -> 0.02).
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -64,14 +65,18 @@ export class DarkTelecasterSampler {
     private preamp: GainNode;
     private overdrive: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
+    private delay: DelayNode;
+    private feedbackGain: GainNode;
+    private delayMix: GainNode;
+    private outputTrim: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
-    
+
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.02; 
+        this.preamp.gain.value = 0.02; // Halved for calibration
 
         this.overdrive = this.audioContext.createWaveShaper();
         this.overdrive.curve = makeOverdriveCurve(0.42);
@@ -81,10 +86,35 @@ export class DarkTelecasterSampler {
         this.toneFilter.type = 'lowpass';
         this.toneFilter.frequency.value = 3600;
         this.toneFilter.Q.value = 0.7;
-        
+
+        // #ЗАЧЕМ: дилей с обратной связью — удлиняет звучание сэмпла (эхо-хвост, «тёмный» характер).
+        this.delay = this.audioContext.createDelay(2.0);
+        this.delay.delayTime.value = 0.33;
+        this.feedbackGain = this.audioContext.createGain();
+        this.feedbackGain.gain.value = 0.32;
+        this.delayMix = this.audioContext.createGain();
+        this.delayMix.gain.value = 0.30;
+
+        // #ЗАЧЕМ: калибровочный трим — отдельный пост-окрасочный gain (не трогает тембр).
+        this.outputTrim = this.audioContext.createGain();
+        this.outputTrim.gain.value = 1.0;
+
         this.preamp.connect(this.overdrive);
         this.overdrive.connect(this.toneFilter);
-        this.toneFilter.connect(this.destination);
+        // Сухой сигнал
+        this.toneFilter.connect(this.outputTrim);
+        // Дилей (wet): toneFilter → delay → delayMix → outputTrim, с петлёй обратной связи
+        this.toneFilter.connect(this.delay);
+        this.delay.connect(this.feedbackGain);
+        this.feedbackGain.connect(this.delay);
+        this.delay.connect(this.delayMix);
+        this.delayMix.connect(this.outputTrim);
+        this.outputTrim.connect(this.destination);
+    }
+
+    /** Калибровочный трим громкости в дБ (отдельно от preamp/тембра). */
+    public setOutputTrim(db: number) {
+        if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
 
     public setPreampGain(gain: number) {
@@ -177,10 +207,7 @@ export class DarkTelecasterSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number) {
-        // #ЗАЧЕМ: ПЛАН №1203. Защита от отрицательного времени и RangeError.
-        const now = this.audioContext.currentTime;
-        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
-        if (playTime < 0) return;
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -190,13 +217,13 @@ export class DarkTelecasterSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        gainNode.gain.setValueAtTime(0, playTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.005);
-        gainNode.gain.setTargetAtTime(0.0001, playTime + 0.022, 0.005);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
+        // #ЗАЧЕМ: полный сустейн по образцу Telecaster (исправлен артефакт транзиент-режима).
+        gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.6);
 
-        source.start(playTime);
-        source.stop(playTime + 0.05);
-        
+        source.start(startTime);
+
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);
@@ -229,5 +256,12 @@ export class DarkTelecasterSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() {
+        this.stopAll();
+        this.preamp.disconnect();
+        this.delay.disconnect();
+        this.feedbackGain.disconnect();
+        this.delayMix.disconnect();
+        this.outputTrim.disconnect();
+    }
 }

@@ -1,10 +1,12 @@
+
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V5.3 — "Eternal Tail Update".
- * #ЧТО: ПЛАН №1213 — Увеличение времени затухания для Амбиента.
+ * #ЗАЧЕМ: Сэмплер Black Acoustic V5.1 — "Zero-Choke Protocol".
+ * #ЧТО: ПЛАН №1171 — Удаление принудительного стопа для 100% плавного затухания.
  */
 
 function makeAcousticWarmthCurve() {
@@ -94,14 +96,15 @@ export class BlackGuitarSampler {
     private bodyFilter: BiquadFilterNode;
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
+    private outputTrim: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
-    
+
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15; 
+        this.preamp.gain.value = 0.15;
 
         this.bodyFilter = this.audioContext.createBiquadFilter();
         this.bodyFilter.type = 'peaking';
@@ -117,10 +120,20 @@ export class BlackGuitarSampler {
         this.toneFilter.frequency.value = 5500;
         this.toneFilter.Q.value = 0.5;
 
+        // #ЗАЧЕМ: калибровочный трим — отдельный пост-окрасочный gain (не трогает тембр).
+        this.outputTrim = this.audioContext.createGain();
+        this.outputTrim.gain.value = 1.0;
+
         this.preamp.connect(this.bodyFilter);
         this.bodyFilter.connect(this.saturation);
         this.saturation.connect(this.toneFilter);
-        this.toneFilter.connect(this.destination);
+        this.toneFilter.connect(this.outputTrim);
+        this.outputTrim.connect(this.destination);
+    }
+
+    /** Калибровочный трим громкости в дБ (отдельно от preamp/тембра). */
+    public setOutputTrim(db: number) {
+        if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
 
     public setPreampGain(gain: number) {
@@ -241,28 +254,24 @@ export class BlackGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, name: string, mood?: string, isTransientMode: boolean = false) {
-        const now = this.audioContext.currentTime;
-        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
-        if (playTime < 0) return;
-
+        if (!isFinite(startTime)) return;
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         const gainNode = this.audioContext.createGain();
         source.connect(gainNode).connect(this.preamp);
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
-        
-        gainNode.gain.setValueAtTime(0, playTime);
-        gainNode.gain.linearRampToValueAtTime(1.0, playTime + 0.005);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, playTime + 0.020, 0.005);
-            source.start(playTime);
-            source.stop(playTime + 0.05);
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.020, 0.005);
+            source.start(startTime);
+            source.stop(startTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1213. Увеличение хвоста затухания для Амбиента.
-            gainNode.gain.setTargetAtTime(0, playTime + 12.0, 1.2);
-            source.start(playTime);
+            // #ЗАЧЕМ: ПЛАН №1171. Убран стоп для полной естественности хвоста.
+            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.8);
+            source.start(startTime);
         }
         this.activeSources.add(source);
         source.onended = () => { this.activeSources.delete(source); try { gainNode.disconnect(); } catch(e) {} };
@@ -273,5 +282,5 @@ export class BlackGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
 }

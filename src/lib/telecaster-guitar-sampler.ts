@@ -1,10 +1,12 @@
+
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
+import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Telecaster V5.2 — "Eternal Tail Update".
- * #ЧТО: ПЛАН №1213 — Увеличение времени затухания для Амбиента.
+ * #ЗАЧЕМ: Сэмплер Telecaster V5.0 — "Extended Horizon Protocol".
+ * #ЧТО: ПЛАН №1170 — Принудительное затухание расширено до 6 секунд.
  */
 
 function makeWarmthCurve() {
@@ -59,6 +61,7 @@ export class TelecasterGuitarSampler {
     private preamp: GainNode;
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
+    private outputTrim: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -66,7 +69,7 @@ export class TelecasterGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.075; 
+        this.preamp.gain.value = 0.075;
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();
@@ -74,12 +77,22 @@ export class TelecasterGuitarSampler {
 
         this.toneFilter = this.audioContext.createBiquadFilter();
         this.toneFilter.type = 'lowpass';
-        this.toneFilter.frequency.value = 3800; 
+        this.toneFilter.frequency.value = 3800;
         this.toneFilter.Q.value = 0.7;
+
+        // #ЗАЧЕМ: калибровочный трим — отдельный пост-окрасочный gain (не трогает тембр).
+        this.outputTrim = this.audioContext.createGain();
+        this.outputTrim.gain.value = 1.0;
 
         this.preamp.connect(this.saturation);
         this.saturation.connect(this.toneFilter);
-        this.toneFilter.connect(this.destination);
+        this.toneFilter.connect(this.outputTrim);
+        this.outputTrim.connect(this.destination);
+    }
+
+    /** Калибровочный трим громкости в дБ (отдельно от preamp/тембра). */
+    public setOutputTrim(db: number) {
+        if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
 
     public setPreampGain(gain: number) {
@@ -145,7 +158,7 @@ export class TelecasterGuitarSampler {
                         const { buffer, midi: sampleMidi } = this.findBestSample(instrument, midiNote);
                         if (buffer) {
                              const playTime = barStartTime + noteTimeInBar + ((patternData.rollDuration / ticksPerBeat) * beatDuration * (voicing.length - 1 - stringIndex));
-                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7, false);
+                             this.playSample(buffer, sampleMidi, midiNote, playTime, note.velocity || 0.7);
                         }
                     }
                 }
@@ -161,9 +174,7 @@ export class TelecasterGuitarSampler {
     }
     
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, isTransientMode: boolean = false) {
-        const now = this.audioContext.currentTime;
-        const playTime = isFinite(startTime) ? Math.max(startTime, now) : now;
-        if (playTime < 0) return;
+        if (!isFinite(startTime) || !isFinite(velocity)) return;
 
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
@@ -173,17 +184,17 @@ export class TelecasterGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
 
-        gainNode.gain.setValueAtTime(0, playTime);
-        gainNode.gain.linearRampToValueAtTime(velocity, playTime + 0.022);
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
         
         if (isTransientMode) {
-            gainNode.gain.setTargetAtTime(0.0001, playTime + 0.022, 0.005);
-            source.start(playTime);
-            source.stop(playTime + 0.05);
+            gainNode.gain.setTargetAtTime(0.0001, startTime + 0.022, 0.005);
+            source.start(startTime);
+            source.stop(startTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1213. Увеличение хвоста затухания для Амбиента.
-            gainNode.gain.setTargetAtTime(0, playTime + 12.0, 1.0);
-            source.start(playTime);
+            // #ЗАЧЕМ: ПЛАН №1170. Горизонт расширен до 6 секунд. Плавное затухание.
+            gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.6);
+            source.start(startTime);
         }
         
         this.activeSources.add(source);
@@ -217,5 +228,5 @@ export class TelecasterGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
 }

@@ -1,22 +1,25 @@
+
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
 /**
  * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1269 — Внедрение страмминга (staggering) для устранения заиканий.
+ * #ЧТО: ПЛАН №85 — Сокращение хвостов релиза для устранения гудения.
  */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
     public isInitialized = false;
-    private instrument: any | null = null; 
+    private instrument: any | null = null;
     private activePresetName: string = 'none';
     private preamp: GainNode;
     private isChangingInstrument = false;
+    private cleanupControllers = new Map<string, AbortController>();
 
     private telecasterSampler: TelecasterGuitarSampler;
     private blackAcousticSampler: BlackGuitarSampler;
@@ -48,6 +51,18 @@ export class AccompanimentSynthManagerV2 {
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
     }
+
+    private scheduleCleanup(inst: any, delayMs: number, id: string) {
+        const controller = new AbortController();
+        this.cleanupControllers.set(id, controller);
+
+        setTimeout(() => {
+            if (!controller.signal.aborted) {
+                try { inst.disconnect(); } catch (e) {}
+                this.cleanupControllers.delete(id);
+            }
+        }, delayMs, controller.signal);
+    }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {
         if (this.isChangingInstrument) return;
@@ -71,10 +86,7 @@ export class AccompanimentSynthManagerV2 {
             this.activePresetName = presetName;
 
             if (oldInst) {
-                // #ЗАЧЕМ: ПЛАН №1269. Ускорена очистка до 6 сек для освобождения ресурсов.
-                setTimeout(() => {
-                    try { oldInst.disconnect(); } catch (e) {}
-                }, 6000); 
+                this.scheduleCleanup(oldInst, 5000, `loadInstrument-${Date.now()}`);
             }
         } catch (error) {
             console.error(`[AccompanimentManagerV2] Error loading:`, error);
@@ -84,27 +96,21 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
-        const beatDuration = 60 / tempo;
-        const filtered = events.filter(e => e.type === 'accompaniment');
+        if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
+        if (barStartTime < this.audioContext.currentTime) {
+            console.warn(`[AccompanimentSynthManagerV2] barStartTime in past: ${barStartTime} < ${this.audioContext.currentTime}`);
+            return;
+        }
+        const boundedTempo = Math.max(20, Math.min(300, tempo));
+        const beatDuration = 60 / boundedTempo;
+        const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
-        if (filtered.length === 0) return;
-
-        // #ЗАЧЕМ: ПЛАН №1269. Сортировка и группировка для страмминга.
-        const sortedEvents = [...filtered].sort((a, b) => a.time - b.time);
-        
-        const notesToPlay = sortedEvents.map((e, index) => {
-            const isAmbient = e.params?.genre === 'ambient' || e.params?.genre === 'psybient';
-            const extraDuration = isAmbient ? 8.0 : 4.0; 
-            
-            // Микро-лаг между нотами, стартующими одновременно (25 мс)
-            let staggerDelay = 0;
-            if (index > 0 && Math.abs(sortedEvents[index].time - sortedEvents[index-1].time) < 0.01) {
-                staggerDelay = 0.025; // 25ms
-            }
-
+        const notesToPlay = filtered.map(e => {
+            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов для устранения гудения.
+            const extraDuration = 0.5; 
             return {
                 midi: e.note,
-                time: e.time * beatDuration + staggerDelay,
+                time: e.time * beatDuration,
                 duration: (e.duration * beatDuration) + extraDuration,
                 velocity: e.weight,
                 technique: e.technique,
@@ -123,6 +129,7 @@ export class AccompanimentSynthManagerV2 {
         }
 
         if (this.activePresetName === 'none') return;
+        if (notesToPlay.length === 0) return;
 
         if (this.activePresetName === 'blackAcoustic') {
             this.blackAcousticSampler.schedule(notesToPlay, barStartTime, tempo);
@@ -137,6 +144,10 @@ export class AccompanimentSynthManagerV2 {
 
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
+            if (noteOnTime < this.audioContext.currentTime) {
+                console.warn(`[AccompanimentSynthManagerV2] Skipped note in past: ${noteOnTime} < ${this.audioContext.currentTime}`);
+                return;
+            }
             if (this.instrument.setPan && note.pan !== undefined) {
                 this.instrument.setPan(note.pan);
             }
@@ -145,24 +156,24 @@ export class AccompanimentSynthManagerV2 {
                 this.instrument.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration, note.params);
+                 this.instrument.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
             }
         });
     }
     
     public async setInstrument(instrumentName: string) {
        if (instrumentName === this.activePresetName) return;
-       
+
        const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
        if (newPreset) {
            await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
        } else {
            if (this.instrument) {
                const oldInst = this.instrument;
-               setTimeout(() => { try { oldInst.disconnect(); } catch(e) {} }, 6000);
+               this.scheduleCleanup(oldInst, 5000, `setInstrument-${Date.now()}`);
                this.instrument = null;
            }
-           this.activePresetName = instrumentName; 
+           this.activePresetName = instrumentName;
        }
     }
 
@@ -173,5 +184,14 @@ export class AccompanimentSynthManagerV2 {
     }
 
     public stop() { this.allNotesOff(); }
-    public dispose() { this.stop(); if (this.instrument) this.instrument.disconnect(); this.preamp.disconnect(); }
+
+    public dispose() {
+        this.stop();
+        for (const [, controller] of this.cleanupControllers) {
+            controller.abort();
+        }
+        this.cleanupControllers.clear();
+        if (this.instrument) this.instrument.disconnect();
+        this.preamp.disconnect();
+    }
 }

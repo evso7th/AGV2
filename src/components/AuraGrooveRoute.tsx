@@ -1,3 +1,4 @@
+
 /**
  * #ЗАЧЕМ: UI AuraGroove V7.9 — "Syntax & DND Fix".
  * #ЧТО: ПЛАН №1185 — Исправление критической ошибки Unexpected token div.
@@ -5,12 +6,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-    Plus, X, Shuffle, Music, Pause, Settings2, 
+import {
+    Plus, X, Shuffle, Music, Pause, Settings2,
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat
+    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -113,24 +114,28 @@ function SimpleVerticalList({
     );
 }
 
-function PresetManager({ 
-    presets, 
+const BIND_GENRES = GENRES.filter(g => g.id !== 'random');
+
+function PresetManager({
+    presets,
     activeId,
-    onSave, 
+    onSave,
     onUpdate,
-    onLoad, 
-    onDelete, 
+    onLoad,
+    onDelete,
     title,
-    onReset
-}: { 
-    presets: PresetItem[], 
+    onReset,
+    onSetGenre
+}: {
+    presets: PresetItem[],
     activeId: string | null,
-    onSave: (name: string) => void, 
+    onSave: (name: string) => void,
     onUpdate?: () => void,
-    onLoad: (id: string) => void, 
+    onLoad: (id: string) => void,
     onDelete: (id: string) => void,
     title: string,
-    onReset?: () => void
+    onReset?: () => void,
+    onSetGenre?: (id: string, genre: string) => void
 }) {
     const [name, setName] = useState("");
     const activePreset = presets.find(p => p.id === activeId);
@@ -151,17 +156,34 @@ function PresetManager({
                 </div>
             </div>
             
-            <div className="flex gap-2">
-                <Input placeholder="New Name" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background" />
-                <Button size="sm" onClick={() => { if(name.trim()){ onSave(name); setName(""); }}} className="h-8 px-3" title="Save New">
-                    <Save className="h-3.5 w-3.5" />
-                </Button>
-                {activeId && onUpdate && (
-                    <Button size="sm" variant="secondary" onClick={onUpdate} className="h-8 px-4 gap-2 font-black uppercase text-[10px]" title="Overwrite Current">
-                        <SaveAll className="h-3.5 w-3.5" />
-                        Save Changes
+            {/* #ЗАЧЕМ: адаптив — на мобильном инпут сверху, кнопки рядом снизу; на sm+ одна строка. */}
+            <div className="flex flex-col sm:flex-row gap-2">
+                <Input placeholder="New preset name…" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background w-full sm:flex-1 min-w-0" />
+                <div className="flex gap-2">
+                    {/* подпись + disabled-аффорданс — кнопка явно «создать новый из имени» */}
+                    <Button
+                        size="sm"
+                        disabled={!name.trim()}
+                        onClick={() => { if (name.trim()) { onSave(name); setName(""); } }}
+                        className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
+                        title="Create a new preset from the entered name"
+                    >
+                        <Save className="h-3.5 w-3.5" />
+                        Save New
                     </Button>
-                )}
+                    {activeId && onUpdate && (
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={onUpdate}
+                            className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
+                            title={`Overwrite loaded preset "${activePreset?.name ?? ''}"`}
+                        >
+                            <SaveAll className="h-3.5 w-3.5" />
+                            Save Changes
+                        </Button>
+                    )}
+                </div>
             </div>
             
             <ScrollArea className="h-32">
@@ -171,7 +193,21 @@ function PresetManager({
                             "flex items-center justify-between p-1.5 rounded border transition-all group",
                             p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
                         )}>
-                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow" onClick={() => onLoad(p.id)}>{p.name}</span>
+                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0" onClick={() => onLoad(p.id)}>{p.name}</span>
+                            {onSetGenre && (
+                                <select
+                                    value={p.genre || ''}
+                                    onChange={e => onSetGenre(p.id, e.target.value)}
+                                    onClick={e => e.stopPropagation()}
+                                    title="Bind to genre (auto-applied on genre change)"
+                                    className="h-7 mr-1 rounded bg-background border border-primary/20 text-[9px] font-bold uppercase px-1 w-[74px] shrink-0"
+                                >
+                                    <option value="">— genre —</option>
+                                    {BIND_GENRES.map(g => (
+                                        <option key={g.id} value={g.id}>{g.label}</option>
+                                    ))}
+                                </select>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                     ))}
@@ -181,18 +217,20 @@ function PresetManager({
     );
 }
 
-function SortableRouteItem({ 
-    item, 
-    isActive, 
+function SortableRouteItem({
+    item,
+    isActive,
     progress,
     onRemove,
-    onSelect 
-}: { 
-    item: RouteItem, 
-    isActive: boolean, 
+    onSelect,
+    isDarkTheme
+}: {
+    item: RouteItem,
+    isActive: boolean,
     progress?: number,
     onRemove: (id: string) => void,
-    onSelect: (id: string) => void
+    onSelect: (id: string) => void,
+    isDarkTheme: boolean
 }) {
     const {
         attributes,
@@ -209,10 +247,17 @@ function SortableRouteItem({
     };
 
     return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            onClick={() => !isActive && onSelect(item.id)} 
+        <div
+            ref={setNodeRef}
+            style={{
+                ...style,
+                ...(!isDarkTheme && !isDragging
+                    ? isActive
+                        ? { backgroundColor: '#EDE9FE', borderColor: '#8B5CF6', color: '#1F2937' }
+                        : { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB', color: '#1F2937' }
+                    : {})
+            }}
+            onClick={() => !isActive && onSelect(item.id)}
             className={cn(
                 "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
                 isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:border-primary/20",
@@ -220,10 +265,16 @@ function SortableRouteItem({
             )}
         >
             {isActive && progress !== undefined && (
-                <div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20">
-                    <div 
-                        className="h-full bg-primary transition-all duration-1000 ease-linear" 
-                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
+                <div
+                    className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20"
+                    style={!isDarkTheme ? { backgroundColor: '#DDD6FE' } : undefined}
+                >
+                    <div
+                        className="h-full bg-primary transition-all duration-1000 ease-linear"
+                        style={{
+                            width: `${Math.min(100, Math.max(0, progress * 100))}%`,
+                            ...(!isDarkTheme ? { backgroundColor: '#5B21B6' } : {})
+                        }}
                     />
                 </div>
             )}
@@ -267,6 +318,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
     const [isCapacityDialogOpen, setIsCapacityDialogOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
+    const [isDarkTheme, setIsDarkTheme] = useState(true);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { 
@@ -295,11 +347,22 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         }
     };
 
+    const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
+    const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
+    const borderClass = isDarkTheme ? 'border-neutral-800' : 'border-gray-200';
+    const headerBgClass = isDarkTheme ? 'bg-neutral-900/80' : 'bg-gray-50/80';
+    const buttonBgClass = isDarkTheme
+        ? 'bg-violet-600 hover:bg-violet-500 text-white'
+        : 'bg-violet-600 hover:bg-violet-700 text-white';
+    const outlineStyle = !isDarkTheme
+        ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
+        : undefined;
+
     return (
-        <div className="w-full h-full flex flex-col bg-card overflow-hidden">
-            {/* TOP 50%: Header + Selectors */}
-            <div className="h-1/2 flex flex-col shrink-0 overflow-hidden border-b border-primary/20">
-                <header className="p-3 bg-background/40 shrink-0">
+        <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
+            {/* TOP: Header + Selectors — natural height */}
+            <div className={cn("shrink-0 flex flex-col border-b transition-colors", borderClass)}>
+                <header className={cn("p-3 shrink-0 transition-colors", headerBgClass)}>
                     <div className="flex items-center justify-between mb-2">
                         <div 
                             onClick={props.handleGoHome}
@@ -331,16 +394,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
                         <div className="flex items-center gap-1">
                             <Button variant="ghost" size="icon" onClick={props.handleGoHome} className="h-8 w-8 shrink-0"><Home className="h-4 w-4" /></Button>
-                            <Button variant={props.isBroadcastActive ? "destructive" : "outline"} onClick={props.handleToggleBroadcast} className="h-8 w-8 p-0 shrink-0">
+                            <Button variant="outline" onClick={props.handleToggleBroadcast} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <TowerControl className={cn("h-4 w-4", props.isBroadcastActive && "animate-pulse text-primary")} />
                             </Button>
-                            <Button variant={props.isRecording ? "destructive" : "outline"} onClick={props.handleToggleRecording} className="h-8 w-8 p-0 shrink-0">
+                            <Button variant="outline" onClick={props.handleToggleRecording} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
-                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} className="h-8 w-8 p-0 shrink-0" title="Like">
+                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} style={outlineStyle} className="h-8 w-8 p-0 shrink-0" title="Like">
                                 <ThumbsUp className="h-4 w-4 text-primary" />
                             </Button>
-                            <Button variant="outline" onClick={props.handleRegenerate} className="h-8 w-8 p-0 shrink-0">
+                            <Button variant="outline" onClick={props.handleRegenerate} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} />
                             </Button>
                         </div>
@@ -351,39 +414,85 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
                 </header>
 
-                <div className="flex-grow grid grid-cols-2 gap-px bg-primary/10 overflow-hidden">
-                    <div className="bg-card flex flex-col h-full overflow-hidden">
-                        <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Genre</Label>
-                        <SimpleVerticalList items={GENRES} value={selectedGenre} onChange={setSelectedGenre} />
+                <div className="flex flex-col">
+                    <div className="px-3 py-2 flex-shrink-0">
+                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">Genre</Label>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {GENRES.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setSelectedGenre(item.id)}
+                                    style={
+                                        selectedGenre === item.id
+                                            ? {}
+                                            : !isDarkTheme
+                                            ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
+                                            : {}
+                                    }
+                                    className={cn(
+                                        "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tight transition-all border",
+                                        selectedGenre === item.id
+                                            ? "bg-violet-600 text-white shadow-md"
+                                            : isDarkTheme
+                                            ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border-neutral-700"
+                                            : "hover:bg-gray-50"
+                                    )}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="bg-card flex flex-col h-full overflow-hidden">
-                        <Label className="text-[8px] font-black uppercase text-center py-1 opacity-50 tracking-[0.2em]">Mood</Label>
-                        <SimpleVerticalList items={MOODS} value={selectedMood} onChange={setSelectedMood} />
+                    <div className="px-3 py-2 flex-shrink-0">
+                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">Mood</Label>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {MOODS.map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setSelectedMood(item.id)}
+                                    style={
+                                        selectedMood === item.id
+                                            ? {}
+                                            : !isDarkTheme
+                                            ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
+                                            : {}
+                                    }
+                                    className={cn(
+                                        "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tight transition-all border",
+                                        selectedMood === item.id
+                                            ? "bg-violet-600 text-white shadow-md"
+                                            : isDarkTheme
+                                            ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border-neutral-700"
+                                            : "hover:bg-gray-50"
+                                    )}
+                                >
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* BOTTOM 50%: Controls + Path List + Footer */}
-            <div className="h-1/2 flex flex-col bg-muted/5 relative overflow-hidden">
-                <div className="p-2 flex gap-2 bg-background/20 shrink-0">
+            {/* BOTTOM: Controls + Path List + Footer — fills remaining space */}
+            <div className={cn("flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
+                <div className={cn("p-2 flex gap-2 shrink-0 transition-colors", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
                     <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg"><Plus className="h-4 w-4 mr-2" /> Add to Route</Button>
                     <div className="flex gap-1">
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
-                            <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
+                            <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Capture Journey</DialogTitle></DialogHeader><div className="py-4"><Input placeholder="Name..." value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">Store Journey</Button></DialogFooter></DialogContent>
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
-                            <DialogTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
+                            <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Library</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} steps</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
                         </Dialog>
-                        <div className="flex gap-px bg-muted border rounded-md overflow-hidden">
-                             <Button variant="ghost" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} className={cn("h-10 w-9 rounded-none border-0", props.isShuffle && "bg-primary/10 text-primary")} title="Shuffle">
-                                <Shuffle className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={() => props.setRepeat(!props.isRepeat)} className={cn("h-10 w-9 rounded-none border-0", props.isRepeat && "bg-primary/10 text-primary")} title="Loop Journey">
-                                <Repeat className="h-4 w-4" />
-                            </Button>
-                        </div>
+                        <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} style={outlineStyle} className="h-10 w-10" title="Shuffle">
+                            <Shuffle className="h-4 w-4" />
+                        </Button>
+                        <Button variant="outline" size="icon" onClick={() => props.syncDna()} style={outlineStyle} className="h-10 w-10" title="Sync DNA — refresh Heritage from cloud">
+                            <DownloadCloud className="h-4 w-4" />
+                        </Button>
                     </div>
                 </div>
 
@@ -397,36 +506,43 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         const isActive = idx === props.activeRouteIndex && props.isPlaying;
                                         const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
                                         return (
-                                            <SortableRouteItem 
-                                                key={item.id} 
-                                                item={item} 
+                                            <SortableRouteItem
+                                                key={item.id}
+                                                item={item}
                                                 isActive={isActive}
                                                 progress={progress}
                                                 onRemove={props.removeFromRoute}
                                                 onSelect={props.selectRouteItem}
+                                                isDarkTheme={isDarkTheme}
                                             />
                                         );
                                     })}
                                 </SortableContext>
                             </DndContext>
                             {props.route.length === 0 && (
-                                <div className="py-10 text-center opacity-30 flex flex-col items-center gap-2">
-                                    <TowerControl className="h-8 w-8" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">No Journey Defined</span>
+                                <div className={cn("py-10 text-center flex flex-col items-center gap-3 rounded-lg mx-4", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
+                                    <Sparkles className={cn("h-10 w-10 animate-pulse", isDarkTheme ? 'text-violet-500' : 'text-violet-400')} />
+                                    <div>
+                                        <p className={cn("text-[11px] font-black uppercase tracking-widest mb-1", isDarkTheme ? 'text-neutral-300' : 'text-gray-600')}>No journey yet</p>
+                                        <p className={cn("text-[9px] uppercase tracking-wide leading-relaxed", isDarkTheme ? 'text-neutral-500' : 'text-gray-500')}>
+                                            Pick a genre and mood<br />then tap <span className="font-black">+ Add to Route</span>
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     </ScrollArea>
                 </div>
 
-                <footer className="p-4 bg-background/80 backdrop-blur-sm border-t border-primary/10 flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40">
+                <footer className={cn("p-4 backdrop-blur-sm flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-colors border-t", isDarkTheme ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white/80 border-gray-200')}>
                     <div className="flex gap-1">
-                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-10 w-10" title="Spectrum"><Activity className="h-5 w-5" /></Button>
-                        <Button variant="outline" size="icon" onClick={props.refreshRoute} className="h-10 w-10" title="Refresh Path & DNA"><RefreshCw className="h-5 w-5 text-primary" /></Button>
-                        <Button 
-                            variant={props.useHeritage ? "default" : "outline"} 
-                            size="icon" 
-                            onClick={() => props.setUseHeritage(!props.useHeritage)} 
+                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10" title="Spectrum"><Activity className="h-5 w-5" /></Button>
+                        <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10" title="Refresh Path"><RefreshCw className="h-5 w-5 text-primary" /></Button>
+                        <Button
+                            variant={props.useHeritage ? "default" : "outline"}
+                            size="icon"
+                            onClick={() => props.setUseHeritage(!props.useHeritage)}
+                            style={!props.useHeritage ? outlineStyle : undefined}
                             className={cn("h-10 w-10", !props.useHeritage && "opacity-40")}
                             title={props.useHeritage ? "DNA Active" : "DNA Off"}
                         >
@@ -437,7 +553,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex gap-1 items-center">
                         <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" className="h-10 w-10" title="Voice Limit">
+                                <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10" title="Voice Limit">
                                     <Layers className="h-4 w-4" />
                                 </Button>
                             </DialogTrigger>
@@ -454,8 +570,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         <Slider
                                             value={[props.voiceLimit]}
                                             min={32}
-                                            // #ЗАЧЕМ: ПЛАН №1254. Увеличение макс. лимита для ПК.
-                                            max={1024}
+                                            max={512}
                                             step={8}
                                             onValueChange={(v) => props.setVoiceLimit(v[0])}
                                         />
@@ -463,17 +578,28 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     </div>
                                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                                         <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
-                                            Lower limit saves CPU on mobile. Higher limit provides richer tails (up to 1024 on high-end systems).
+                                            Lower limit saves CPU on mobile. Higher limit provides richer tails.
                                         </p>
                                     </div>
                                 </div>
                             </DialogContent>
                         </Dialog>
                         
+                        <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => setIsDarkTheme(!isDarkTheme)}
+                            style={outlineStyle}
+                            className="h-10 w-10"
+                            title={isDarkTheme ? 'Light mode' : 'Dark mode'}
+                        >
+                            {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                        </Button>
+
                         <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" className={cn("h-10 min-w-[100px] gap-2 font-black uppercase text-[10px] tracking-widest", props.timerSettings.isActive && "border-destructive text-destructive")}>
-                                    <Timer className="h-4 w-4" /> {props.timerSettings.isActive ? formatTime(props.timerSettings.timeLeft) : 'Timer'}
+                                <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")} title="Timer">
+                                    <Timer className="h-5 w-5" />
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
@@ -541,9 +667,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         activeId={props.activeMixerPresetId}
                         onSave={props.saveMixerPreset} 
                         onUpdate={props.updateActiveMixerPreset}
-                        onLoad={props.loadMixerPreset} 
-                        onDelete={props.deleteMixerPreset} 
+                        onLoad={props.loadMixerPreset}
+                        onDelete={props.deleteMixerPreset}
                         onReset={props.resetMixerToSystem}
+                        onSetGenre={props.setMixerPresetGenre}
                     />
                 </DialogContent>
             </Dialog>
@@ -558,8 +685,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         activeId={props.activeEqPresetId}
                         onSave={name => props.saveEqPreset(name)} 
                         onUpdate={props.updateActiveEqPreset}
-                        onLoad={id => props.loadEqPreset(id)} 
-                        onDelete={id => props.deleteEqPreset(id)} 
+                        onLoad={id => props.loadEqPreset(id)}
+                        onDelete={id => props.deleteEqPreset(id)}
+                        onSetGenre={props.setEqPresetGenre}
                     />
                 </DialogContent>
             </Dialog>

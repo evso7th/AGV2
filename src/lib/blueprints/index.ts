@@ -31,6 +31,9 @@ import { AnxiousBluesBlueprint } from './blues/anxious';
 import { ContemplativeBluesBlueprint } from './blues/contemplative';
 import { WinterBluesBlueprint } from './blues/winter';
 import { MelancholicReggaeBlueprint } from './reggae/melancholic';
+import { DreamyReggaeBlueprint } from './reggae/dreamy';
+import { CalmReggaeBlueprint } from './reggae/calm';
+import { JoyfulReggaeBlueprint } from './reggae/joyful';
 
 // --- Bridge Blueprints ---
 import { DarkBridgeBlueprint } from './bridges/dark';
@@ -73,13 +76,14 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
     },
     reggae: {
         melancholic: MelancholicReggaeBlueprint,
-        dark: MelancholicReggaeBlueprint, // Fallbacks for MVP
-        calm: MelancholicReggaeBlueprint,
-        dreamy: MelancholicReggaeBlueprint,
-        joyful: MelancholicReggaeBlueprint,
-        enthusiastic: MelancholicReggaeBlueprint,
-        contemplative: MelancholicReggaeBlueprint,
-        epic: MelancholicReggaeBlueprint,
+        dreamy: DreamyReggaeBlueprint,
+        calm: CalmReggaeBlueprint,
+        joyful: JoyfulReggaeBlueprint,
+        // Остальные настроения → ближайший по характеру (пока нет своих БП)
+        dark: MelancholicReggaeBlueprint,
+        enthusiastic: JoyfulReggaeBlueprint,
+        contemplative: CalmReggaeBlueprint,
+        epic: JoyfulReggaeBlueprint,
         anxious: MelancholicReggaeBlueprint,
     },
     progressive: {}, rock: {}, house: {}, rnb: {}, ballad: {}, celtic: {},

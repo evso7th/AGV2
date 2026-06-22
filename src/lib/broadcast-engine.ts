@@ -10,6 +10,7 @@ export class BroadcastEngine {
     private stream: MediaStream;
     private isRunning = false;
     private fadeInterval: any = null;
+    private cleanupAbortController: AbortController | null = null;
 
     constructor(audioContext: AudioContext, stream: MediaStream) {
         this.audioContext = audioContext;
@@ -38,24 +39,33 @@ export class BroadcastEngine {
         try {
             await this.audioElement.play();
             console.log('%c[Broadcast] Stream Bridge Playing. Background priority active.', 'color: #32CD32; font-weight: bold;');
-            
-            const fadeDuration = 1500; 
+
+            const fadeDuration = 1500;
             const steps = 30;
             const targetVolume = 1.0;
             const increment = (targetVolume - 0.01) / steps;
             let currentStep = 0;
 
-            this.fadeInterval = setInterval(() => {
-                if (!this.audioElement) {
-                    clearInterval(this.fadeInterval);
+            if (this.cleanupAbortController) {
+                this.cleanupAbortController.abort();
+            }
+            this.cleanupAbortController = new AbortController();
+            const signal = this.cleanupAbortController.signal;
+
+            const intervalId = setInterval(() => {
+                if (signal.aborted || !this.audioElement) {
+                    clearInterval(intervalId);
                     return;
                 }
                 currentStep++;
                 this.audioElement.volume = Math.min(targetVolume, 0.01 + currentStep * increment);
                 if (currentStep >= steps) {
-                    clearInterval(this.fadeInterval);
+                    clearInterval(intervalId);
                 }
             }, fadeDuration / steps);
+
+            this.fadeInterval = intervalId;
+            signal.addEventListener('abort', () => clearInterval(intervalId));
 
         } catch (e) {
             console.warn('[Broadcast] Play failed. Interaction required?', e);
@@ -66,7 +76,12 @@ export class BroadcastEngine {
     public stop() {
         if (!this.isRunning) return;
         this.isRunning = false;
-        
+
+        if (this.cleanupAbortController) {
+            this.cleanupAbortController.abort();
+            this.cleanupAbortController = null;
+        }
+
         if (this.fadeInterval) {
             clearInterval(this.fadeInterval);
             this.fadeInterval = null;

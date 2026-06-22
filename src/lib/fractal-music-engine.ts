@@ -122,12 +122,21 @@ export class FractalMusicEngine {
     const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
     const shuffled = this.random.shuffle(pool);
 
-    this.lotterySchedule.set(shuffled[0], 0);
-    this.lotterySchedule.set(shuffled[1], 0);
-    this.lotterySchedule.set(shuffled[2], 3);
-    this.lotterySchedule.set(shuffled[3], 3);
-    for (let i = 4; i < shuffled.length; i++) {
-        this.lotterySchedule.set(shuffled[i], 6);
+    if (this.config.genre === 'reggae') {
+        // #ЗАЧЕМ: короткое 4-тактовое интро (MistyMorning) — ансамбль собирается по-тактно.
+        // Порядок пар сохранён (как в общей лотерее), но шаг сжат до 1 такта: пары входят
+        // на тактах 0,1,2,3 → весь ансамбль в сборе к 5-му такту (старт MAIN, epoch 4).
+        for (let i = 0; i < shuffled.length; i++) {
+            this.lotterySchedule.set(shuffled[i], Math.floor(i / 2));
+        }
+    } else {
+        this.lotterySchedule.set(shuffled[0], 0);
+        this.lotterySchedule.set(shuffled[1], 0);
+        this.lotterySchedule.set(shuffled[2], 3);
+        this.lotterySchedule.set(shuffled[3], 3);
+        for (let i = 4; i < shuffled.length; i++) {
+            this.lotterySchedule.set(shuffled[i], 6);
+        }
     }
 
     this.suiteDNA = generateSuiteDNA(

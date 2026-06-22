@@ -1,7 +1,7 @@
 
 /**
- * @file AuraGroove Music Worker V6.3.0 — "Hash Density Update".
- * #ЗАЧЕМ: ПЛАН №1260 — Переход на хэши в логах для когнитивной плотности.
+ * @file AuraGroove Music Worker V6.1.0 — "Cognitive Log Update".
+ * #ЗАЧЕМ: ПЛАН №1201 — Отображение типа мутации в логах консоли.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -31,9 +31,15 @@ const Scheduler = {
     barCount: 0,
     sessionLickHistory: [] as string[],
     cloudAxiomPool: [] as any[], 
-    filterRotationIndex: 0, 
-    playedTrackHistory: [] as string[], 
+    filterRotationIndex: 0,
+    playedTrackHistory: [] as string[],
+    // #ЗАЧЕМ: главный поток — ХОЗЯИН перехода между пьесами. На конце пьесы воркер ждёт
+    // директиву (updateSettings/reset), не выбирая следующую пьесу сам. awaitingSince —
+    // для аварийного таймаута (анти-тишина), если директива не пришла.
+    awaitingDirective: false,
+    awaitingSince: 0,
     
+    // BPM Control
     bpmLocked: false,
 
     settings: {
@@ -83,8 +89,11 @@ const Scheduler = {
             
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                const moods = Array.isArray(ax.mood) ? ax.mood : [ax.mood];
-                return genres.includes(uiGenre) && moods.includes(uiMood);
+                // #ЗАЧЕМ: то же правило, что в мозгах — пустой/неуказанный mood = доступен
+                // для ЛЮБОГО настроения. Раньше фильтр был строгим (moods.includes), и треки
+                // с пустым mood (напр. после Bulk-Edit в DNA Auditor) никогда не попадали в якорь.
+                const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
+                return genres.includes(uiGenre) && (moods.length === 0 || moods.includes(uiMood));
             });
 
             if (matchingAxioms.length > 0) {
@@ -121,6 +130,7 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
+        this.awaitingDirective = false; // директива пришла — выходим из ожидания перехода
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
@@ -226,14 +236,26 @@ const Scheduler = {
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
         if (this.barCount >= totalBars) {
-             self.postMessage({ type: 'SUITE_TRANSITION' });
-             this.bpmLocked = false; 
-             this.filterRotationIndex++;
-             this.sessionLickHistory = []; 
-             this.settings.seed = generateTrueSeed(); 
-             this.initializeEngine(this.settings);
-             this.barCount = 0;
-             return 2000; 
+             // #ЗАЧЕМ: ГЛАВНЫЙ ПОТОК — ХОЗЯИН перехода. Раньше воркер сам выбирал следующую
+             // пьесу на СТАРЫХ settings и успевал сыграть лишнюю (баг «2× с 0-го такта»).
+             // Теперь: постим сигнал, держим тишину, ждём директиву (updateSettings/reset).
+             if (!this.awaitingDirective) {
+                 self.postMessage({ type: 'SUITE_TRANSITION' });
+                 this.bpmLocked = false;
+                 this.awaitingDirective = true;
+                 this.awaitingSince = Date.now();
+                 return 500;
+             }
+             // Аварийный таймаут (база): директива не пришла за 4с → сами возобновляем (анти-тишина).
+             if (Date.now() - this.awaitingSince > 4000) {
+                 this.filterRotationIndex++;
+                 this.sessionLickHistory = [];
+                 this.settings.seed = generateTrueSeed();
+                 this.initializeEngine(this.settings); // снимет awaitingDirective
+                 this.barCount = 0;
+                 return 2000;
+             }
+             return 500; // продолжаем ждать директиву
         }
 
         let payload: any;
@@ -252,19 +274,22 @@ const Scheduler = {
         const b = (payload.beautyScore || 0.5).toFixed(2);
         const mut = payload.mutationType || 'none';
 
-        // #ЗАЧЕМ: ПЛАН №1260. Переход на хэши для когнитивной плотности.
-        const getHash = (id: string) => id?.split('_').pop() || 'none';
-        const trackHash = ax.melody ? getHash(ax.melody) : 'none';
-        
-        // Тотальная замена имени трека на хэш в нарративе
-        const narrativeText = (payload.narrative || 'Algorithm').split(track).join(trackHash);
-
+        // #ЗАЧЕМ: ПЛАН №1201. Отображение мутации в логе.
+        // #ЗАЧЕМ: короткий суффикс аксиомы (напр. "..._tce8xn" → "tce8xn"); не-хэшевые ярлыки
+        // ("Sibling DNA", "Imperial Pulse", "none") остаются как есть.
+        const sfx = (n: any): string => {
+            const s = (n === undefined || n === null || n === '') ? 'none' : String(n);
+            const i = s.lastIndexOf('_');
+            return i >= 0 ? s.slice(i + 1) : s;
+        };
+        // DNA: короткий ид ПЕРВОЙ мелодической аксиомы трека; если хэша нет — имя трека.
+        const dnaDisplay = (ax.melody && String(ax.melody).includes('_')) ? sfx(ax.melody) : track;
         console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${getHash(ax.melody)}] [BASS: ${ax.bass || 'none'}] [ACC: ${getHash(ax.accompaniment)}] [DRUM: ${ax.drums || 'none'}] [HAR: ${ax.harmony || 'none'}] [PNO: ${getHash(ax.piano)}]\n` +
-            `%c  ↳ Narrative: ${narrativeText}\n` +
+            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${dnaDisplay}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${sfx(ax.melody)}] [BASS: ${sfx(ax.bass)}] [DRUM: ${sfx(ax.drums)}] [HAR: ${sfx(ax.harmony)}] [PNO: ${sfx(ax.piano)}]\n` +
+            `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
             `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
             'color: #888;',
-            'color: #c084fc;', 
+            'color: #c084fc;',
             'color: #888;'
         );
 

@@ -10,7 +10,7 @@ import Image from 'next/image';
 
 /**
  * #ЗАЧЕМ: Корневая страница.
- * #ЧТО: ПЛАН №1262 — Ребрендинг стартового текста: The Infinite Take Orchestra.
+ * #ЧТО: ПЛАН №1235 — Теперь ведет в /home по умолчанию.
  */
 export default function Home() {
   const router = useRouter();
@@ -32,11 +32,7 @@ export default function Home() {
             <Image src="/assets/icon8.jpeg" alt="AuraGroove Logo" width={80} height={80} className="rounded-full" />
           </div>
           <CardTitle className="font-headline text-4xl">Welcome to AuraGroove</CardTitle>
-          <CardDescription className="text-lg text-white mt-2">
-            Your personal digital live-music generator. <br />
-            <span className="text-primary font-bold">The Infinite Take Orchestra</span> <br />
-            v 0.3.62 stream bridge pwa edition
-          </CardDescription>
+          <CardDescription className="text-lg">Your personal pure digital neuro music generator. <br />v 2.7 Stream Bridge Imperial Sound</CardDescription>
         </CardHeader>
         <CardContent className="min-h-[60px] flex flex-col items-center justify-center">
           <p className="text-muted-foreground min-h-[20px]">

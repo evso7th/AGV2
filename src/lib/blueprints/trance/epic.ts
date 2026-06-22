@@ -1,10 +1,6 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
-/**
- * #ЗАЧЕМ: Величественный Транс (v1.2).
- * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 3% (5.4 такта для 180 бар).
- */
 export const EpicTranceBlueprint: MusicBlueprint = {
     id: 'epic_trance',
     name: 'Titan\'s Ascent',
@@ -12,7 +8,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
     mood: 'epic',
     musical: {
         key: { root: 'D', scale: 'ionian', octave: 2 },
-        bpm: { base: 80, range: [78, 85], modifier: 1.0 },
+        bpm: { base: 80, range: [78, 85], modifier: 1.0 }, // SLOWED DOWN
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.85, curve: (p, pp) => Math.pow(p, 1.8) }
@@ -21,7 +17,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 180 },
         parts: [
             {
-                id: 'INTRO', name: 'The Summoning', duration: { percent: 25 },
+                id: 'INTRO', name: 'The Summoning', duration: { percent: 25 }, // INCREASED
                 layers: { accompaniment: true, sfx: true, bass: true, drums: true },
                 instrumentation: {
                     accompaniment: { 
@@ -32,7 +28,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                     bass: { strategy: 'weighted', v1Options: [{ name: 'ambientDrone', weight: 1.0 }], v2Options: [{ name: 'ambientDrone', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, rareKick: true }, // SOFTER
                     bass: { techniques: [{ value: 'drone', weight: 1.0 }] },
                     melody: { source: 'harmony_top_note' }
                 },
@@ -40,7 +36,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 outroFill: { type: 'roll', duration: 4, parameters: { crescendo: true } },
             },
             {
-                id: 'BUILD', name: 'The Gathering', duration: { percent: 37 }, // REBALANCED
+                id: 'BUILD', name: 'The Gathering', duration: { percent: 30 },
                 layers: { accompaniment: true, bass: true, drums: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { 
@@ -52,8 +48,8 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                     harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, rareKick: true, usePerc: true },
-                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }] },
+                    drums: { pattern: 'composer', density: { min: 0.3, max: 0.5 }, useSnare: false, rareKick: true, usePerc: true }, // SOFTER
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }] }, // CHANGED from offbeat
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [
@@ -77,7 +73,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: {
                     melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, useSnare: true }
+                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1, useSnare: true } // SOFTER
                 },
                 bundles: [
                   { id: 'EPIC_PEAK_1', name: 'Vista', duration: { percent: 100 }, characteristics: {}, phrases: {} }
@@ -85,7 +81,7 @@ export const EpicTranceBlueprint: MusicBlueprint = {
                 outroFill: null
             },
             {
-                id: 'OUTRO', name: 'The Echoes', duration: { percent: 3 }, // REDUCED
+                id: 'OUTRO', name: 'The Echoes', duration: { percent: 10 },
                 layers: { accompaniment: true, sfx: true, sparkles: true },
                 instrumentation: {
                     accompaniment: { 

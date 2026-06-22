@@ -323,27 +323,70 @@ export function getScaleForMood(mood: Mood, key: number = 60): number[] {
     return intervals.map(i => (root + i) % 12);
 }
 
+// #ЗАЧЕМ: Рамка настроения для уникальной кривой T. volatility = амплитуда seed-свеллов
+//         (как сильно вторичные пики/провалы гуляют), bias = общий сдвиг арки вверх/вниз
+//         под характер настроения. Спокойные = тихий слой; тревожные/эпичные = подвижный.
+//         Рамка одна на все жанры — жанр влияет только через свой блюпринт (длительности частей).
+const MOOD_TENSION_FRAME: Record<string, { volatility: number; bias: number }> = {
+    calm:          { volatility: 0.05, bias: -0.05 },
+    dreamy:        { volatility: 0.06, bias: -0.03 },
+    winter:        { volatility: 0.07, bias: -0.04 },
+    melancholic:   { volatility: 0.08, bias: -0.02 },
+    contemplative: { volatility: 0.08, bias:  0.00 },
+    neutral:       { volatility: 0.08, bias:  0.00 },
+    gloomy:        { volatility: 0.09, bias: -0.03 },
+    joyful:        { volatility: 0.12, bias:  0.04 },
+    dark:          { volatility: 0.13, bias:  0.00 },
+    enthusiastic:  { volatility: 0.13, bias:  0.06 },
+    epic:          { volatility: 0.14, bias:  0.06 },
+    anxious:       { volatility: 0.15, bias:  0.03 },
+};
+
 export function generateTensionMap(seed: number, totalBars: number, mood: Mood, parts?: any[]): number[] {
     const map: number[] = [];
     const getJitter = (bar: number) => (calculateMusiNum(bar, 7, seed, 10) / 100) - 0.05;
+
+    // ─── Уникальный аддитивный слой свеллов (детерминирован по seed → кэшируемо) ───
+    // Две низкочастотные синусоиды через ВСЮ пьесу: разные seed → разные позиции
+    // вторичных пиков/провалов. Хребет (part-арка ниже) не трогаем — свелл едет поверх.
+    const frame = MOOD_TENSION_FRAME[mood] || { volatility: 0.08, bias: 0.0 };
+    const freq1 = 1.5 + (calculateMusiNum(seed, 31, 0, 100) / 100) * 2.0;          // 1.5..3.5 циклов
+    const phase1 = (calculateMusiNum(seed, 37, 0, 100) / 100) * Math.PI * 2;
+    const freq2 = 0.5 + (calculateMusiNum(seed, 41, 0, 100) / 100) * 1.5;          // 0.5..2.0 циклов (медленнее)
+    const phase2 = (calculateMusiNum(seed, 43, 0, 100) / 100) * Math.PI * 2;
+    const ampSplit = 0.6 + (calculateMusiNum(seed, 47, 0, 40) / 100);             // 0.6..1.0 вес быстрой компоненты
+    const swellAt = (gp: number) => {
+        const s1 = Math.sin(gp * Math.PI * 2 * freq1 + phase1);
+        const s2 = Math.sin(gp * Math.PI * 2 * freq2 + phase2);
+        return frame.volatility * (ampSplit * s1 + (1 - ampSplit) * s2);
+    };
+    // Свелл/биас приглушены во вступлении/коде (структуру сохраняем), полны в основной части.
+    const structureWeight = (partId: string) =>
+        (partId === 'INTRO' || partId === 'PROLOGUE' || partId === 'OUTRO') ? 0.4 : 1.0;
+
     let accumulatedBars = 0;
     parts?.forEach(part => {
         const partDuration = Math.round((part.duration.percent / 100) * totalBars);
+        const sw = structureWeight(part.id);
         for (let i = 0; i < partDuration; i++) {
             const progress = i / (partDuration || 1);
             let tension: number;
-            if (part.id === 'INTRO' || part.id === 'PROLOGUE') tension = 0.25 + (progress * 0.1); 
+            if (part.id === 'INTRO' || part.id === 'PROLOGUE') tension = 0.25 + (progress * 0.1);
             else if (part.id.startsWith('MAIN') || part.id.startsWith('THE_')) tension = 0.35 + 0.5 * Math.sin(progress * Math.PI);
-            else if (part.id === 'OUTRO') tension = 0.3 * (1 - progress * 0.6); 
+            else if (part.id === 'OUTRO') tension = 0.3 * (1 - progress * 0.6);
             else if (part.id.includes('BRIDGE')) tension = 0.45;
-            else tension = 0.4; 
-            map.push(Math.max(0.1, Math.min(0.95, tension + getJitter(accumulatedBars + i))));
+            else tension = 0.4;
+            const globalProgress = (accumulatedBars + i) / (totalBars || 1);
+            const unique = (swellAt(globalProgress) + frame.bias) * sw;
+            map.push(Math.max(0.1, Math.min(0.95, tension + unique + getJitter(accumulatedBars + i))));
         }
         accumulatedBars += partDuration;
     });
     while(map.length < totalBars) {
         const progress = map.length / totalBars;
-        map.push(0.4 + 0.3 * Math.sin(progress * Math.PI) + getJitter(map.length));
+        const base = 0.4 + 0.3 * Math.sin(progress * Math.PI);
+        const unique = swellAt(progress) + frame.bias;
+        map.push(Math.max(0.1, Math.min(0.95, base + unique + getJitter(map.length))));
     }
     return map;
 }
@@ -443,9 +486,9 @@ export function generateSuiteDNA(
     }
 
     const tensionMap = generateTensionMap(finalSeed, totalBars, mood, blueprintParts);
-    
-    return { 
-        harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking', 
+
+    return {
+        harmonyTrack, baseTempo, rhythmicFeel: 'shuffle', bassStyle: 'walking',
         drumStyle: 'shuffle_A', soloPlanMap: new Map(), tensionMap, 
         dynasty: genre === 'blues' ? getDynastyForMood(mood, finalSeed) : undefined,
         cloudAxioms, activeAnchorId,
@@ -488,7 +531,13 @@ export const GENRE_HARMONY_MATRICES: Record<string, number[][]> = {
 };
 
 export const GENRE_STATES: Record<string, number[]> = {
-    psybient: [0, 3, 5, 8, 10],      
-    ambient: [0, 5, 7, 9, 3, 10], 
-    blues: [0, 5, 7]             
+    psybient: [0, 3, 5, 8, 10],
+    ambient: [0, 5, 7, 9, 3, 10],
+    blues: [0, 5, 7]
 };
+
+export function normalizeEventType(event: FractalEvent): Set<string> {
+  return new Set(
+    Array.isArray(event.type) ? event.type : [event.type]
+  );
+}

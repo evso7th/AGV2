@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V54.0 — "Deep Reserve Update".
- * #ЗАЧЕМ: ПЛАН №1244. Увеличение запаса хода (look-ahead) для стабильности тяжелых треков.
+ * @fileOverview Audio Engine Context V53.0 — "Imperial Timbre Balance".
+ * #ЗАЧЕМ: ПЛАН №1190. Увеличение громкости CS80 в 2 раза для сольных партий.
  */
 'use client';
 
@@ -18,6 +19,8 @@ import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
+import { GUITAR_LOUDNESS_TRIM_DB } from '@/lib/guitar-loudness';
+import { loadDnaCache, saveDnaCache } from '@/lib/dna-cache';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
@@ -45,7 +48,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     electric: 0.15, 
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.4, 
+    cs80: 0.4, // ПЛАН №1190: Увеличено с 0.2 для сольной мощности
     chords: 1.2,
     bass: 1.0
 };
@@ -58,6 +61,8 @@ interface AudioEngineContextType {
   isBroadcastActive: boolean;
   isPreviewPlaying: boolean;
   isPreviewLooping: boolean;
+  backgroundLoadInProgress: boolean;
+  backgroundLoadComplete: boolean;
   availableCompositions: { id: string; count: number; genres: string[]; moods: string[] }[];
   currentBar: number;
   totalBars: number;
@@ -66,6 +71,7 @@ interface AudioEngineContextType {
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
   refreshCloudAxioms: () => Promise<void>;
+  syncDna: () => Promise<void>;
   resetWorker: () => void;
   setVolume: (part: string, volume: number) => void;
   setInstrument: (part: 'bass' | 'melody' | 'accompaniment' | 'harmony' | 'pianoAccompaniment', name: any) => void;
@@ -108,14 +114,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
-  
+  const [backgroundLoadInProgress, setBackgroundLoadInProgress] = useState(false);
+  const [backgroundLoadComplete, setBackgroundLoadComplete] = useState(false);
+
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        // #ЗАЧЕМ: ПЛАН №1254. Увеличение стандартного лимита до 1024 для ПК.
-        return saved ? parseInt(saved, 10) : 1024;
+        return saved ? parseInt(saved, 10) : 512;
     }
-    return 1024;
+    return 512;
   });
 
   const [currentBar, setCurrentBar] = useState(0);
@@ -220,8 +227,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           setIsPlayingState(true); 
           masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           stopAllSounds(); 
-          // #ЗАЧЕМ: ПЛАН №1244. Увеличение стартового буфера для предотвращения потери первой ноты.
-          nextBarTimeRef.current = context.currentTime + 1.2; 
+          nextBarTimeRef.current = context.currentTime + 0.5; 
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
@@ -230,6 +236,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           stopAllSounds(); 
       }
   }, [stopAllSounds]);
+
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+      if (mediaRecorderRef.current) {
+        try { mediaRecorderRef.current.stop(); } catch(e) {}
+        mediaRecorderRef.current = null;
+      }
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch(e) {}
+      }
+    };
+  }, []);
 
   const setCalibrationGain = useCallback((key: string, val: number) => {
       setCalibrationGains(prev => {
@@ -280,28 +302,58 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
+  // Скормить аксиомы движку (воркеру) + пересчитать метаданные композиций. Общий код для кэша и сети.
+  const applyAxiomsToEngine = useCallback((rawAxioms: any[]) => {
+    workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
+    const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
+    rawAxioms.forEach(data => {
+        const compId = data.compositionId;
+        if (compId) {
+            if (!compMeta[compId]) { compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() }; }
+            compMeta[compId].count++;
+            const genres = Array.isArray(data.genre) ? data.genre : [data.genre];
+            genres.forEach(g => compMeta[compId].genres.add(g));
+            const moods = Array.isArray(data.mood) ? data.mood : [data.mood];
+            moods.forEach(m => compMeta[compId].moods.add(m));
+        }
+    });
+    const meta = Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id));
+    setAvailableCompositions(meta);
+  }, []);
+
+  // Сетевой синк: тянем ОБЕ коллекции (axioms + masterpieces), кормим движок аксиомами,
+  // сохраняем обе в IndexedDB. Мастерписы пока ТОЛЬКО кэшируем (пайплайн в генерацию — отдельно).
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
-      const snapshot = await getDocs(query(collection(db, 'heritage_axioms')));
-      const rawAxioms = snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
-      workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
-      const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
-      rawAxioms.forEach(data => {
-          const compId = data.compositionId;
-          if (compId) {
-              if (!compMeta[compId]) { compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() }; }
-              compMeta[compId].count++;
-              const genres = Array.isArray(data.genre) ? data.genre : [data.genre];
-              genres.forEach(g => compMeta[compId].genres.add(g));
-              const moods = Array.isArray(data.mood) ? data.mood : [data.mood];
-              moods.forEach(m => compMeta[compId].moods.add(m));
-          }
-      });
-      const meta = Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id));
-      setAvailableCompositions(meta);
-    } catch (e) { console.error('[AudioEngine] Failed to refresh axioms:', e); }
-  }, [db]);
+      console.log('%c[DNA Sync] Cloud sync started…', 'color: #00BCD4; font-weight: bold;');
+      const [axSnap, mpSnap] = await Promise.all([
+        getDocs(query(collection(db, 'heritage_axioms'))),
+        getDocs(query(collection(db, 'masterpieces'))),
+      ]);
+      const rawAxioms = axSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+      const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+      applyAxiomsToEngine(rawAxioms);
+      saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
+      console.log(`%c[DNA Sync] Cloud sync complete — transferred ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces`, 'color: #00BCD4; font-weight: bold;');
+    } catch (e) { console.error('[DNA Sync] Failed:', e); }
+  }, [db, applyAxiomsToEngine]);
+
+  // Кэш-фёрст: применяем локальный снапшот мгновенно (быстрый старт + офлайн). true, если кэш был.
+  const loadDnaFromCache = useCallback(async (): Promise<boolean> => {
+    const cache = await loadDnaCache();
+    if (cache.axioms && cache.axioms.length > 0) {
+      applyAxiomsToEngine(cache.axioms);
+      return true;
+    }
+    return false;
+  }, [applyAxiomsToEngine]);
+
+  // Принудительный синк по кнопке SyncDNA.
+  const syncDna = useCallback(async () => {
+    await refreshCloudAxioms();
+    toast({ title: 'DNA Synced', description: 'Heritage refreshed from cloud' });
+  }, [refreshCloudAxioms, toast]);
 
   const initialize = useCallback(async () => {
     if (isInitialized || initializationInFlightRef.current) return true;
@@ -347,7 +399,49 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
-        await Promise.all([ drumMachineRef.current.init(true), blackGuitarSamplerRef.current.init(true), telecasterSamplerRef.current.init(), accompanimentManagerV2Ref.current.init(), melodyManagerV2Ref.current.init(), bassManagerV2Ref.current.init(), pianoAccompanimentManagerRef.current.init(), harmonyManagerRef.current.init(true), sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5) ]);
+
+        // #ЗАЧЕМ: применяем калибровочные тримы громкости гитар (единый источник правды).
+        // Сейчас все 0 дБ → без слышимых изменений; наполним числами позже.
+        blackGuitarSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.blackAcoustic);
+        telecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.telecaster);
+        darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
+        cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
+
+        // PHASE 1: Core assets (Ready-to-Play, 3-5 seconds)
+        console.log('%c[HybridLoader] Phase 1: Loading core assets...', 'color: #FF6B6B; font-weight: bold;');
+        await Promise.all([
+          drumMachineRef.current.init(true),                              // Blues kit only
+          blackGuitarSamplerRef.current.init(true),                       // First RR variation only
+          harmonyManagerRef.current.init(true),                           // Basic chords
+          pianoAccompanimentManagerRef.current.init(),                    // Piano/Rhodes
+          sparklePlayerRef.current.init(5),                               // 5 random sparkles
+          sfxSynthManagerRef.current.init(5)                              // 5 random SFX
+        ]);
+        console.log('%c[HybridLoader] Phase 1 Complete: Ready to play!', 'color: #51CF66; font-weight: bold;');
+
+        // PHASE 2: Background replenishment (starts 5 sec after core, non-blocking)
+        console.log('%c[HybridLoader] Phase 2: Scheduling background assets (5 sec delay)...', 'color: #FFD93D; font-weight: bold;');
+        setBackgroundLoadInProgress(true);
+        setTimeout(async () => {
+          try {
+            console.log('%c[HybridLoader] Phase 2: Loading remaining assets...', 'color: #6BCB77; font-weight: bold;');
+            await Promise.all([
+              telecasterSamplerRef.current?.init(),                       // All RR variations
+              darkTelecasterSamplerRef.current?.init(),                   // All variations
+              cs80SamplerRef.current?.init(),                             // Full CS80 library
+              accompanimentManagerV2Ref.current?.init(),                  // Full accompaniment
+              melodyManagerV2Ref.current?.init(),                         // Full melody
+              bassManagerV2Ref.current?.init()                            // Full bass
+            ]);
+            console.log('%c[HybridLoader] Phase 2 Complete: All assets loaded!', 'color: #51CF66; font-weight: bold;');
+            setBackgroundLoadInProgress(false);
+            setBackgroundLoadComplete(true);
+          } catch (bgError) {
+            console.error('[HybridLoader] Background load error:', bgError);
+            setBackgroundLoadInProgress(false);
+          }
+        }, 5000);
+
         if (!workerRef.current) {
             workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
             workerRef.current.onmessage = (e) => {
@@ -358,22 +452,37 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    // #ЗАЧЕМ: ПЛАН №1244. Более агрессивное обнаружение опозданий и глубокое восстановление графика.
-                    if (payload.barCount === 0 || scheduleTime < now + 0.1) { 
-                        scheduleTime = now + 0.5; 
-                    }
+                    // #ЗАЧЕМ: если такт уже в прошлом ИЛИ слишком близко к now (джиттер главного потока),
+                    // перепланируем в безопасное будущее. Запас 30 мс покрывает синхронную работу
+                    // scheduleEvents (drum/bass/accomp) до melody-менеджера — иначе тот ронял такт.
+                    if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
                     scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current = scheduleTime + payload.barDuration;
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
+                else if (type === 'SUITE_TRANSITION') { window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); }
                 else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
+            // #ЗАЧЕМ: восстановить ПЕРСОНАЛЬНУЮ историю треков из localStorage в воркер.
+            // HISTORY_UPDATE её только СОХРАНЯЛ (запись без чтения) — при перезагрузке «окно
+            // уникальности» обнулялось и недавний трек мог зазвучать снова. Прокидываем через
+            // штатный init-обработчик воркера (он уже принимает data.playedTrackHistory).
+            try {
+                const savedHist = localStorage.getItem('AuraGroove_TrackHistory');
+                const parsed = savedHist ? JSON.parse(savedHist) : null;
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: parsed } });
+                }
+            } catch (e) { /* битый localStorage → стартуем с чистой историей */ }
         }
-        await refreshCloudAxioms(); applyCalibration(calibrationGainsRef.current);
+        // #ЗАЧЕМ: кэш-фёрст — мгновенный старт/офлайн из IndexedDB; сеть только фоновой ревалидацией.
+        const hadCache = await loadDnaFromCache();
+        if (hadCache) { void refreshCloudAxioms(); } else { await refreshCloudAxioms(); }
+        applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { toast({ variant: "destructive", title: "Audio Error" }); return false; }
-  }, [auth, refreshCloudAxioms, db, applyCalibration, scheduleEvents, voiceLimit, toast]);
+  }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast]);
 
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) { const success = await initialize(); if (!success) return; }
@@ -392,11 +501,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [isInitialized, initialize, isBroadcastActive]);
 
   const contextValue = useMemo(() => ({
-      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, availableCompositions, initialize,
+      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete, availableCompositions, initialize,
       analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
       setIsPlaying: handleTogglePlay,
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
-      refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => { setCurrentBar(0); workerRef.current?.postMessage({ command: 'reset' }); }, 
+      refreshCloudAxioms, syncDna, getWorker: () => workerRef.current, resetWorker: () => { setCurrentBar(0); workerRef.current?.postMessage({ command: 'reset' }); },
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
@@ -405,8 +514,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const previewInst = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = previewInst; const scheduleSeq = () => { const now = audioContextRef.current!.currentTime + 0.1; const seq = [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}]; seq.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); }); const totalDur = 4.0; if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSeq, totalDur * 1000); } else { previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), totalDur * 1000); } }; scheduleSeq(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
-      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, 
-      availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, 
+      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete,
+      availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, syncDna,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, 
       stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, scheduleEvents
   ]);

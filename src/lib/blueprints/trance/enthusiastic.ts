@@ -1,10 +1,6 @@
 
 import type { MusicBlueprint } from '@/types/music';
 
-/**
- * #ЗАЧЕМ: Энергичный Транс (v1.2).
- * #ЧТО: ПЛАН №1230 — Сокращение OUTRO до 4%.
- */
 export const EnthusiasticTranceBlueprint: MusicBlueprint = {
     id: 'enthusiastic_trance',
     name: 'Radiant Ascent',
@@ -12,7 +8,7 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
     mood: 'enthusiastic',
     musical: {
         key: { root: 'E', scale: 'lydian', octave: 3 },
-        bpm: { base: 84, range: [82, 90], modifier: 1.0 },
+        bpm: { base: 84, range: [82, 90], modifier: 1.0 }, // SLOWED DOWN
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
         tensionProfile: { type: 'crescendo', peakPosition: 0.8, curve: (p, pp) => Math.pow(p, 1.5) }
@@ -21,7 +17,7 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Ignition', duration: { percent: 20 },
+                id: 'INTRO', name: 'Ignition', duration: { percent: 20 }, // INCREASED
                 layers: { accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true, bass: true },
                 instrumentation: {
                     accompaniment: { 
@@ -35,7 +31,7 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                 instrumentRules: {
                     accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }], density: { min: 0.5, max: 0.7 } },
                     melody: { density: { min: 0.3, max: 0.5 }, source: 'harmony_top_note' },
-                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 }
+                    drums: { pattern: 'ambient_beat', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 } // SOFTER
                 },
                 bundles: [{ id: 'ENT_INTRO_1', name: 'Spark', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: {} },
@@ -53,8 +49,8 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'theremin', weight: 0.5 }], v2Options: [{ name: 'guitar_muffLead', weight: 0.5 }, { name: 'theremin', weight: 0.5 }] }
                 },
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.6, max: 0.8 } },
-                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } },
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.6, max: 0.8 } }, // CHANGED from rolling
+                    drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 } }, // SOFTER
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_BUILD_1', name: 'Climb', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
@@ -73,15 +69,15 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'guitar_muffLead', weight: 1.0 }], v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },
                 instrumentRules: {
-                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.8, max: 1.0 } },
-                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1, useSnare: true },
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }], density: { min: 0.8, max: 1.0 } }, // CHANGED from rolling
+                    drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.1, useSnare: true }, // SOFTER
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_PEAK_1', name: 'Peak', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
-                id: 'RELEASE', name: 'Soaring', duration: { percent: 16 }, // REBALANCED
+                id: 'RELEASE', name: 'Soaring', duration: { percent: 15 },
                 layers: { accompaniment: true, melody: true, drums: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { 
@@ -92,14 +88,14 @@ export const EnthusiasticTranceBlueprint: MusicBlueprint = {
                     melody: { strategy: 'weighted', v1Options: [{ name: 'synth', weight: 1.0 }], v2Options: [{ name: 'synth', weight: 1.0 }] },
                 },
                 instrumentRules: {
-                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } },
+                    drums: { pattern: 'ambient_beat', density: { min: 0.4, max: 0.6 } }, // SOFTER
                     melody: { source: 'harmony_top_note' }
                 },
                 bundles: [{ id: 'ENT_RELEASE_1', name: 'Glide', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'accompaniment' } },
             },
             {
-                id: 'OUTRO', name: 'Starlight', duration: { percent: 4 }, // REDUCED
+                id: 'OUTRO', name: 'Starlight', duration: { percent: 5 },
                 layers: { accompaniment: true, sparkles: true, sfx: true, harmony: true },
                 instrumentation: {
                     accompaniment: { 
