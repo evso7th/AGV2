@@ -44,8 +44,8 @@ export default function Home() {
           </p>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleStart} className="w-full text-lg py-6 font-bold uppercase tracking-widest shadow-xl" disabled={!isClient}>
-            <Music className="mr-2 h-6 w-6" />
+          <Button onClick={handleStart} className="w-full text-sm py-6 uppercase tracking-widest shadow-xl" disabled={!isClient}>
+            <Music className="mr-2 h-5 w-5" />
             Start AuraGroove
           </Button>
         </CardFooter>
