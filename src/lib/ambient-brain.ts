@@ -583,10 +583,14 @@ export class AmbientBrain {
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
+        // #ЗАЧЕМ: Протокол «Atmospheric Thinning». Блокировка в первые 12 тактов + разрежение.
+        if (epoch < 12) return [];
+        
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
+        // 1. INFREQUENT SPARKLES (4% Probability, Categories: Dark/Electro)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 4) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'DARK' : 'ELECTRONIC';
             events.push({
                 type: 'sparkle',
@@ -601,7 +605,8 @@ export class AmbientBrain {
             });
         }
 
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 7) {
+        // 2. INFREQUENT SFX (4% Probability, Excluding Voice)
+        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 4) {
             events.push({
                 type: 'sfx',
                 note: 60,
@@ -621,4 +626,3 @@ export class AmbientBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
-
