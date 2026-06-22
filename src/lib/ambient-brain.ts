@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V116.0 — "Golden Narrative Active".
- * #ЗАЧЕМ: ПЛАН №1273 — Внедрение «Золотых Нот» и тайм-скейлинга для мелодии.
- * #ЧТО: Обучение амбиент-солиста логике динамического прореживания и акцентирования из BluesBrain.
+ * @fileOverview Ambient Brain V117.0 — "Whispering Harmony Active".
+ * #ЗАЧЕМ: ПЛАН №1275 — Активация слоя гармонии с редкими тихими аккордами и скрипками.
  */
 
 import type {
@@ -157,7 +156,6 @@ export class AmbientBrain {
     private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return events;
 
-        // Определяем основную ноту такта
         const primary = events.find(e => e.time === 0) || events[0];
         const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
 
@@ -169,23 +167,19 @@ export class AmbientBrain {
         }
         this.heldNotesState.set(part, state);
 
-        // КРИЗИС 3-ГО ТАКТА
         if (state.barCount >= 3) {
-            state.barCount = 0; // Сброс счетчика
+            state.barCount = 0; 
             const strategy = this.random.nextInt(3);
 
             if (strategy === 0) {
-                // Стратегия "Вздох": Слой замолкает
                 return []; 
             } else if (strategy === 1) {
-                // Стратегия "Гармонический прыжок": Уход в квинту
                 return events.map(e => ({ 
                     ...e, 
                     note: e.note + 7, 
                     params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
                 }));
             } else {
-                // Стратегия "Турбулентность": Усиленное дробление
                 return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
             }
         }
@@ -261,10 +255,7 @@ export class AmbientBrain {
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
-                    
-                    // #ЗАЧЕМ: ПЛАН №1273. Тайм-скейл влияет на реальную длительность соло.
-                    const realBars = Math.ceil(baseBars * (this.currentTimeScale || 1));
-                    this.soloistBusyUntilBar = epoch + realBars;
+                    this.soloistBusyUntilBar = epoch + Math.ceil(baseBars * (this.currentTimeScale || 1));
                     return selected.nativeBpm || undefined;
                 }
             }
@@ -317,7 +308,7 @@ export class AmbientBrain {
         if (hints.melody) {
             let m: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
-                m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale, navInfo.currentPart.instrumentRules?.melody?.density);
+                m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale);
                 if (m.length > 0) {
                     layerAxioms.melody = this.currentTheme.id;
                 }
@@ -353,6 +344,7 @@ export class AmbientBrain {
             pad = this.applyAntiPedal('accompaniment', pad, resChord);
             events.push(...pad.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
             layerAxioms.accompaniment = 'Generative Cloud';
+            usedLayers.add('accompaniment');
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
@@ -361,14 +353,18 @@ export class AmbientBrain {
                 const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
                 events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
                 layerAxioms.piano = p.style;
+                usedLayers.add('pianoAccompaniment');
             }
         }
 
+        // #ЗАЧЕМ: ПЛАН №1275. Активация слоя гармонии.
         if (hints.harmony && !usedLayers.has('harmony')) {
-            const h = this.renderDerivativeHarmony(resChord, epoch, tension);
-            if (h.length > 0) {
-                events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
-                layerAxioms.harmony = 'Telecaster & Orchestral';
+            const hResult = this.renderDerivativeHarmony(resChord, epoch, tension);
+            if (hResult.events.length > 0) {
+                events.push(...hResult.events.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
+                layerAxioms.harmony = hResult.instrument === 'violin' ? 'Violin Whisper' : 'Guitar Chord';
+                if (hResult.instrument) instrumentOverrides.harmony = hResult.instrument;
+                usedLayers.add('harmony');
             }
         }
 
@@ -387,7 +383,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Narrative Filter Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Respiration Protocol Active]`
         };
     }
 
@@ -406,10 +402,8 @@ export class AmbientBrain {
         else if (this.currentMutationType === 'jitter') phrase = applyRhythmicJitter(phrase, this.seed + epoch);
 
         const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + readingWindow);
-        
-        // #ЗАЧЕМ: ПЛАН №1273. Золотые ноты (0, 3, 6, 9) получают сустейн и вибрато. Остальные — приглушаются.
-        const useNarrativeFilter = barNotes.length > 3;
         const goldenTicks = [0, 3, 6, 9];
+        const useNarrativeFilter = barNotes.length > 3;
 
         return barNotes.map(n => {
             const relativeTick = n.t - offset;
@@ -428,15 +422,11 @@ export class AmbientBrain {
                     weight = 0.3;        
                     durationScale = 0.4; 
                 }
-            } else {
-                if ((tension > 0.4 && n.d >= 3) || n.tech === 'vb' || n.tech === 'bn') {
-                    tech = 'vb';
-                }
             }
 
             return {
                 type: 'melody', 
-                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + (this.random.nextInt(3) * 12 - 12), this.MELODY_CEILING),
+                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: relativeTick * TICK_TO_BEAT * timeScale, 
                 duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale, 
                 weight: weight,
@@ -445,7 +435,7 @@ export class AmbientBrain {
                 phrasing: 'legato',
                 params: { attack: 1.0, release: 3.5 }
             };
-        });
+        }) as FractalEvent[];
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -510,22 +500,23 @@ export class AmbientBrain {
         };
     }
 
-    private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+    private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): { events: FractalEvent[], instrument: string | null } {
         const events: FractalEvent[] = [];
-        const canPlayGuitar = (epoch % 2 === 0);
-        const guitarProbability = tension; 
+        let instrument: string | null = null;
         
-        if (canPlayGuitar && this.random.next() < guitarProbability) {
+        // #ЗАЧЕМ: Редкие тихие гитарные аккорды (12%).
+        if (calculateMusiNum(epoch, 11, this.seed, 100) < 12) {
             const rootNote = chord.rootNote;
             const rootName = NOTE_NAMES[rootNote % 12] || 'C';
             const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
             
+            instrument = 'guitarChords';
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(rootNote + 12),
                 time: 0,
                 duration: 4.0,
-                weight: 0.85, 
+                weight: 0.35, 
                 technique: 'hit', 
                 dynamics: 'p',
                 phrasing: 'staccato',
@@ -533,15 +524,16 @@ export class AmbientBrain {
                 pan: 0.45, 
                 params: { genre: 'ambient' } 
             });
-        }
-
-        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 10) {
+        } 
+        // #ЗАЧЕМ: Еще более редкие тихие скрипки (6%).
+        else if (calculateMusiNum(epoch + 1, 13, this.seed, 100) < 6) {
+            instrument = 'violin';
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(chord.rootNote + 24),
-                time: 1.5 * TICK_TO_BEAT,
-                duration: 3.5,
-                weight: 0.8, 
+                time: 1.0 * TICK_TO_BEAT,
+                duration: 3.0,
+                weight: 0.3, 
                 technique: 'swell',
                 dynamics: 'p',
                 phrasing: 'legato',
@@ -550,7 +542,7 @@ export class AmbientBrain {
             });
         }
 
-        return events;
+        return { events, instrument };
     }
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -575,7 +567,7 @@ export class AmbientBrain {
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[calculateMusiNum(epoch + i, 11, this.seed, kit.perc.length)];
             events.push({
-                type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, duration: 3.0, weight: 0.25,
+                type: perc as any, note: 48, time: (this.random.next() * TICKS_PER_BAR) * TICK_TO_BEAT, duration: 0.5, weight: 0.25,
                 technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
             });
         }
@@ -583,46 +575,26 @@ export class AmbientBrain {
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
-        // #ЗАЧЕМ: Протокол «Atmospheric Thinning». Блокировка в первые 12 тактов + разрежение.
         if (epoch < 12) return [];
-        
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
-        
-        // 1. INFREQUENT SPARKLES (4% Probability, Categories: Dark/Electro)
         if (calculateMusiNum(seedVal, 13, 0, 100) < 4) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'DARK' : 'ELECTRONIC';
             events.push({
-                type: 'sparkle',
-                note: 60,
-                time: this.random.next() * 3.5, 
-                duration: 4.0,
-                weight: 0.7,
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: { category, genre: this.genre }
+                type: 'sparkle', note: 60, time: this.random.next() * 3.5, duration: 4.0, weight: 0.7,
+                technique: 'hit', dynamics: 'p', phrasing: 'legate', params: { category, genre: this.genre }
             });
         }
-
-        // 2. INFREQUENT SFX (4% Probability, Excluding Voice)
         if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 4) {
             events.push({
-                type: 'sfx',
-                note: 60,
-                time: 1.0 + this.random.next() * 2.5,
-                duration: 4.0,
-                weight: 0.6,
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: { mood: this.mood, genre: this.genre }
+                type: 'sfx', note: 60, time: 1.0 + this.random.next() * 2.5, duration: 4.0, weight: 0.6,
+                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood, genre: this.genre }
             });
         }
-
         return events;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
+
