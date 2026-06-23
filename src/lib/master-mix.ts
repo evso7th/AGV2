@@ -10,7 +10,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.21,        
     accompaniment: 0.10, 
-    harmony: 0.075,      // ПЛАН №1162: Снижено с 0.15 для прозрачности
+    harmony: 0.25,      // ПЛАН №1278: Осторожная активация (сбалансировано)
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.12,      
@@ -34,7 +34,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
         drums: 0.22,      
-        harmony: 0.025    // ПЛАН №1162: Снижено с 0.05 для минимального акцента
+        harmony: 0.15    
     },
     progressive: { ...UNIVERSAL_IMPERIAL_MIX },
     rock: { ...UNIVERSAL_IMPERIAL_MIX },
