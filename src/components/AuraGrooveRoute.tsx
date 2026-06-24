@@ -1,6 +1,6 @@
 /**
- * #ЗАЧЕМ: UI AuraGroove V7.9 — "Syntax & DND Fix".
- * #ЧТО: ПЛАН №1185 — Исправление критической ошибки Unexpected token div.
+ * @fileOverview UI AuraGroove V7.9 — "Syntax & DND Fix".
+ * #ЗАЧЕМ: Внедрение Инфо-центра с поддержкой HTML-документации.
  */
 'use client';
 
@@ -10,7 +10,7 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud
+    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -20,11 +20,13 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN } from '@/lib/info-docs';
 
 // DND Kit Imports
 import {
@@ -314,6 +316,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
     const [isStudioOpen, setIsStudioOpen] = useState(false);
     const [isEqOpen, setIsEqOpen] = useState(false);
+    const [isInfoOpen, setIsInfoOpen] = useState(false);
     const [isSaveRouteOpen, setIsSaveRouteOpen] = useState(false);
     const [isLoadRouteOpen, setIsLoadRouteOpen] = useState(false);
     const [isTimerDialogOpen, setIsTimerDialogOpen] = useState(false);
@@ -382,14 +385,24 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 </div>
                             </div>
                         </div>
-                        <Button 
-                            onClick={props.handlePlayPause} 
-                            disabled={props.isInitializing} 
-                            className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
-                        >
-                            {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
-                            {props.isPlaying ? "Pause" : "Play"}
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setIsInfoOpen(true)} 
+                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                            >
+                                <Info className="h-5 w-5" />
+                            </Button>
+                            <Button 
+                                onClick={props.handlePlayPause} 
+                                disabled={props.isInitializing} 
+                                className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
+                            >
+                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
+                                {props.isPlaying ? "Pause" : "Play"}
+                            </Button>
+                        </div>
                     </div>
                     
                     <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
@@ -695,6 +708,78 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader><div className="h-64"><SpectrumAnalyzer /></div></DialogContent>
+            </Dialog>
+
+            {/* INFO MODAL */}
+            <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
+                <DialogContent className="sm:max-w-2xl bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
+                            <CircleHelp className="h-5 w-5" /> Information Center
+                        </DialogTitle>
+                    </DialogHeader>
+                    <Tabs defaultValue="guide" className="w-full">
+                        <div className="px-6 flex items-center justify-between border-b border-primary/10">
+                            <TabsList className="bg-transparent border-none p-0 h-10 gap-6">
+                                <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">User Guide</TabsTrigger>
+                                <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">Disclaimer</TabsTrigger>
+                            </TabsList>
+                            <Tabs defaultValue="ru" className="h-8">
+                                <TabsList className="h-full bg-muted/30 p-1">
+                                    <TabsTrigger value="ru" className="text-[9px] font-black px-2 h-full">RU</TabsTrigger>
+                                    <TabsTrigger value="en" className="text-[9px] font-black px-2 h-full">EN</TabsTrigger>
+                                </TabsList>
+                                <div className="absolute top-0 left-0 w-0 h-0 overflow-hidden">
+                                    {/* These are hidden triggers to drive the language switch for BOTH Guide and Disclaimer */}
+                                </div>
+                            </Tabs>
+                        </div>
+                        
+                        <div className="p-0">
+                            <TabsContent value="guide" className="m-0">
+                                <Tabs defaultValue="ru">
+                                    <div className="flex justify-end px-6 pt-2">
+                                        <TabsList className="h-7 bg-muted/20">
+                                            <TabsTrigger value="ru" className="text-[8px] font-black px-2 h-full">RU</TabsTrigger>
+                                            <TabsTrigger value="en" className="text-[8px] font-black px-2 h-full">EN</TabsTrigger>
+                                        </TabsList>
+                                    </div>
+                                    <ScrollArea className="h-[50vh] px-6 pb-6">
+                                        <TabsContent value="ru" className="m-0 focus-visible:ring-0">
+                                            <div dangerouslySetInnerHTML={{ __html: GUIDE_RU }} />
+                                        </TabsContent>
+                                        <TabsContent value="en" className="m-0 focus-visible:ring-0">
+                                            <div dangerouslySetInnerHTML={{ __html: GUIDE_EN }} />
+                                        </TabsContent>
+                                    </ScrollArea>
+                                </Tabs>
+                            </TabsContent>
+                            
+                            <TabsContent value="disclaimer" className="m-0">
+                                <Tabs defaultValue="ru">
+                                    <div className="flex justify-end px-6 pt-2">
+                                        <TabsList className="h-7 bg-muted/20">
+                                            <TabsTrigger value="ru" className="text-[8px] font-black px-2 h-full">RU</TabsTrigger>
+                                            <TabsTrigger value="en" className="text-[8px] font-black px-2 h-full">EN</TabsTrigger>
+                                        </TabsList>
+                                    </div>
+                                    <ScrollArea className="h-[50vh] px-6 pb-6">
+                                        <TabsContent value="ru" className="m-0 focus-visible:ring-0">
+                                            <div dangerouslySetInnerHTML={{ __html: DISCLAIMER_RU }} />
+                                        </TabsContent>
+                                        <TabsContent value="en" className="m-0 focus-visible:ring-0">
+                                            <div dangerouslySetInnerHTML={{ __html: DISCLAIMER_EN }} />
+                                        </TabsContent>
+                                    </ScrollArea>
+                                </Tabs>
+                            </TabsContent>
+                        </div>
+                    </Tabs>
+                    <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6">
+                        <span className="text-[9px] font-black uppercase opacity-40">Infinite Take Orchestra v0.3.62</span>
+                        <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">Close</Button>
+                    </div>
+                </DialogContent>
             </Dialog>
         </div>
     );

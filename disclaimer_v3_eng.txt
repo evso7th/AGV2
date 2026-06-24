@@ -1,0 +1,78 @@
+﻿DISCLAIMER: AuraGroove V3 - Algorithmic Generative Music Engine
+1. What This Is (and What It Is Not)
+AuraGroove is not a neural network-based music generator (like SUNO, Udio, or other LLM-driven tools). It is a deterministic, algorithmic music engine that generates unique, continuous background music in real time using fractal mathematics, Markov chains, and genetic algorithms.
+* No AI-generated prompts: We do not accept or process user prompts to create music. Every sound is generated exclusively from the internal engine's state, with no external input beyond the initial session configuration.
+* No neural networks: The system is built entirely on mathematical transformations and probabilistic state machines, not deep learning models.
+* Not a playback engine: AuraGroove does not store or play pre-recorded tracks. All audio is synthesized on-the-fly from scratch during each session.
+* Supported Genres: The engine specializes in four distinct styles: Ambient, Blues, Psytrance, and Reggae. Each genre is powered by a dedicated "Brain" module with genre-specific rules and techniques.
+2. Core Principles
+A. Mathematical Sovereignty
+* 100% generative: Every note, rhythm, and texture is created algorithmically in real time. There is no sampling of existing music.
+* Fractal & Markov Foundations: Harmonic structures are built using fractal transformations (inversion, retrograde, transposition) and Markov chains for rhythmic and melodic progression.
+* Genetic Evolution: Each session inherits traits from a "genetic pool" of successful past sessions (masterpieces), but remains unique through bitwise crossover and mutation.
+B. No Playback, Only Generation
+* No MIDI or audio file playback: The engine never loads or plays external audio files. It synthesizes sound directly via the Web Audio API.
+* No "reproduction" of existing songs: The system is designed to create original music, not reinterpret or mimic existing works.
+C. Zero Data Collection
+* No telemetry: AuraGroove does not collect any usage statistics, analytics, or behavioral data.
+* No user profiles: We do not create, store, or track user accounts, preferences, or activity histories.
+* No personal data: The application does not request, access, or transmit any personally identifiable information.
+* Local-only storage: All session data (presets, paths, settings) remains exclusively on your device in localStorage or IndexedDB. Nothing is sent to servers unless you explicitly choose to share a recording via Web Share API.
+* Offline by design: The core engine functions fully without an internet connection. Firestore integration is optional and used only for genetic pool synchronization—if disabled, the system operates in pure mathematical mode.
+3. Key Limitations & Constraints
+A. Device & Performance Constraints
+⚠️ Mobile Device Warning
+Using AuraGroove on a phone you actively use daily is strongly discouraged. While the application will function, you should be aware of critical limitations:
+* Call Interruptions: Any incoming phone call will immediately stop audio playback. This is an operating system limitation, not an application bug.
+* Resource Contention: Opening any other application will steal CPU and memory resources from AuraGroove, potentially causing audio glitches, stuttering, or quality degradation.
+* Battery Saver Mode: When your device enters power-saving mode (low battery), the operating system may aggressively throttle or terminate background processes. This can cause severe audio distortion or complete application shutdown.
+* No OS Control: AuraGroove is a web application that generates sound in real time. It cannot control or override your operating system's resource management policies. This is a fundamental limitation of how mobile operating systems are designed.
+Voice Count & Audio Quality
+* Quality Dependency: Sound quality is directly proportional to the number of active voices. More simultaneous voices = richer, more nuanced audio. However, more voices also = higher CPU and memory requirements.
+* Minimum Threshold: 50 voices is the experimentally determined minimum for acceptable audio quality. Below this threshold, you will hear severe artifacts, including 8-bit-like distortion and clicking sounds. The system prevents you from setting values below 50 because we refuse to deliver sub-audible quality.
+* Recommended Maximum: 250 voices is the upper limit. This is more than sufficient to reproduce all musical nuances and provide full polyphonic richness. Values above 250 provide no audible benefit and waste system resources.
+* Dynamic Adjustment: You can adjust the voice limit in real-time through the ARP: Voice Limit control panel (accessed via the CPU chip icon  in the bottom control bar).
+How to Adjust Voice Limit:
+1. Tap the CPU chip icon  in the bottom control row
+2. Use the slider to set your desired limit (50-250 voices)
+3. Press "SAVE CHANGES"
+4. Important: If you change the limit during playback, press "Regenerate" to clear lingering voices and apply the new setting
+Finding Your Optimal Setting:
+* Start with the default value (usually 60-120 depending on platform)
+* If you experience glitches or stuttering, lower the limit gradually
+* If sound feels "thin" or lacks depth, increase the limit (if your device can handle it)
+* Desktop systems can typically handle 120-250 voices
+* Mobile devices should stay in the 50-120 range for stability
+B. Genre & Style Limitations
+* Four Specialized Brains: The system uses genre-specific "brains" (Blues, Ambient, Psytrance, Reggae), each with distinct rules and techniques. While all four are fully supported, the depth of technique libraries varies:
+	* Blues and Ambient have the most extensive technique sets.
+	* Psytrance and Reggae are fully functional but may have fewer niche variations.
+* No "Prompt-to-Music": You cannot input a text prompt like "happy jazz" and expect a specific track. The system generates music based on its internal state (e.g., Tension Map, Mood, Genre), not user-provided instructions.
+C. Audio Quality & Fidelity
+* Background-Optimized Output: AuraGroove is designed for background use, not studio-quality production. The "Velvet Standard 3.0" ensures warm, organic textures but may lack extreme dynamic range.
+* Crossover Artifacts: During transitions between dynamic groups (e.g., from Piano to Organ), a 5ms linear crossfade is applied, which may cause subtle volume dips (~-3dB) at the transition point.
+* No Mastering: The final mix is not professionally mastered. The -6dB Limiter prevents clipping but does not optimize for loudness war compliance.
+4. Special Features & Constraints
+A. Genetic System
+* Heritage Axioms: The system draws from a curated library of human-optimized musical phrases (legacy_axioms), but these are not directly played. Instead, they are used as "genetic templates" for mutation and evolution.
+* Sibling Sovereignty: When selecting a donor track, the engine prioritizes sibling axioms (notes recorded together) from the same source. This ensures stylistic coherence but limits diversity in some cases.
+* Mandatory Mutation: In Composer mode, improvisation (e.g., inversion, retrograde, rhythmic jitter) is always applied to prevent static repetition.
+B. User Interface & Experience
+* No Track Selection: You cannot choose specific songs or artists. The system auto-generates music based on the current seed, Tension Map, and genre settings.
+* Preview Before Share: A 30-second preview is available before sharing via Web Share API, but no full export of the audio file is provided.
+* Offline Mode: The system works offline with locally cached masterpieces, but no cloud synchronization occurs without an internet connection.
+5. Legal & Ethical Safeguards
+* No Copyright Claims: AuraGroove does not claim ownership of generated music. The system is designed to produce original, non-copyrightable content through mathematical generation.
+* No Data Collection: As stated above: zero telemetry, zero profiles, zero personal data. Period.
+* Transparency: The system does not hide its algorithmic nature. Users are informed that music is generated via fractals and Markov chains, not AI models.
+6. Final Note
+AuraGroove is not a replacement for traditional music production tools. It is a specialized generative music engine designed to provide a seamless, adaptive background atmosphere for focus, relaxation, or creativity. Its strength lies in its mathematical purity, real-time adaptability, and commitment to generating original music—not in mimicking existing works or responding to user prompts.
+Remember: This is not SUNO. This is not a neural network. This is algorithmic generative music, created from the ground up, for the present moment.
+For best results:
+* Use on a dedicated device or during periods when you won't need to make calls or use other apps
+* Keep your device plugged in or ensure sufficient battery to avoid power-saving interruptions
+* Adjust the voice limit based on your device's capabilities (start with defaults, tweak if needed)
+* Accept that mobile operating systems are hostile to background audio—this is not an AuraGroove limitation, but a platform reality
+Last Updated: May 2026
+Version: 3.7.0
+Privacy Promise: Zero telemetry. Zero tracking. Zero exceptions.
