@@ -1,4 +1,3 @@
-
 /**
  * #ЗАЧЕМ: UI AuraGroove V7.9 — "Syntax & DND Fix".
  * #ЧТО: ПЛАН №1185 — Исправление критической ошибки Unexpected token div.
@@ -48,7 +47,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const GENRES = [
-    { id: 'ambient', label: 'Deep Ambient' },
+    { id: 'ambient', label: 'Slow Fusion' },
     { id: 'psybient', label: 'Neuro Space' },
     { id: 'blues', label: "Cafe's Blues" },
     { id: 'reggae', label: 'Root Reggey' },
@@ -156,11 +155,9 @@ function PresetManager({
                 </div>
             </div>
             
-            {/* #ЗАЧЕМ: адаптив — на мобильном инпут сверху, кнопки рядом снизу; на sm+ одна строка. */}
             <div className="flex flex-col sm:flex-row gap-2">
                 <Input placeholder="New preset name…" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background w-full sm:flex-1 min-w-0" />
                 <div className="flex gap-2">
-                    {/* подпись + disabled-аффорданс — кнопка явно «создать новый из имени» */}
                     <Button
                         size="sm"
                         disabled={!name.trim()}
@@ -246,6 +243,10 @@ function SortableRouteItem({
         transition,
     };
 
+    // Helper to get labels from GENRES/MOODS
+    const getGenreLabel = (id: string) => GENRES.find(g => g.id === id)?.label || id;
+    const getMoodLabel = (id: string) => MOODS.find(m => m.id === id)?.label || id;
+
     return (
         <div
             ref={setNodeRef}
@@ -290,7 +291,7 @@ function SortableRouteItem({
                 </div>
                 <div className="truncate">
                     <div className="text-[11px] font-black uppercase tracking-tight">
-                        {item.genre} / {item.mood}
+                        {getGenreLabel(item.genre)} / {getMoodLabel(item.mood)}
                     </div>
                 </div>
             </div>
@@ -655,7 +656,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         
                         return (
                             <div key={ch.key} className="flex flex-col items-center gap-4 flex-1 h-full group">
-                                <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}</span>
+                                <span className="text-[8px] font-mono opacity-50">{Math.round(vol * 100)}%</span>
                                 <Slider orientation="vertical" value={[vol]} max={1.0} step={0.01} onValueChange={v => props.handleVolumeChange(ch.key as any, v[0])} className="h-full" />
                                 <span className={cn("text-[8px] font-black uppercase opacity-50 group-hover:text-primary", ch.key === 'master' && "text-primary opacity-100")}>{ch.label}</span>
                             </div>

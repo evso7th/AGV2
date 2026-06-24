@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview UI AuraGroove V5.2 — "Unified Master Control".
  * #ЗАЧЕМ: ПЛАН №1181. Добавление мастер-канала в Expert UI Mixer.
@@ -70,6 +69,8 @@ const AVAILABLE_GENRES: Genre[] = ['psybient', 'ambient', 'progressive', 'rock',
 const AVAILABLE_MOODS: Mood[] = ['epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'];
 
 const DISPLAY_NAMES: Record<string, string> = {
+    'genre_ambient': 'Slow Fusion',
+    'ambient': 'Slow Fusion',
     'guitar': 'Dynamic Guitar',
     'telecaster': 'Telecaster Clean',
     'blackAcoustic': 'Black Acoustic',
@@ -91,14 +92,10 @@ const DISPLAY_NAMES: Record<string, string> = {
     'theremin': 'Vocal Theremin',
     'mellotron': 'Majestic Strings',
     'mellotron_flute_intimate': 'Intimate Flute',
-    'guitar_shineOn': 'Shine On Guitar',
-    'guitar_muffLead': 'Muff Lead',
-    'reggae_guitar': 'Roots Skank Guitar',
     'piano': 'Rhodes EPiano',
     'violin': 'Solo Violin',
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
-    'blackAcoustic': 'Black Acoustic',
     'psybient': 'Psy-Ambient',
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
     'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
@@ -242,13 +239,9 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
   if (!isClient) return null;
 
   const theme = isDarkTheme ? 'dark' : 'light';
-  const colors = THEME_COLORS[theme];
   const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-neutral-50';
   const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
   const borderClass = isDarkTheme ? 'border-neutral-800' : 'border-gray-200';
-  const buttonBgClass = isDarkTheme
-    ? 'bg-violet-600 hover:bg-violet-500'
-    : 'bg-violet-600 hover:bg-violet-700';
 
   return (
     <div className={cn("w-full h-full flex flex-col p-3 overflow-hidden transition-colors duration-200", bgClass, textClass)}>
@@ -467,11 +460,11 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Atom className="h-4 w-4"/> Sampled Textures</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       <div className="p-2 border rounded-md bg-background/30 border-primary/10">
-                          <div className="flex justify-between items-center mb-1"><Label className="font-semibold flex items-center gap-1.5 text-sm"><Sparkles className="h-4 w-4"/>Sparkles</Label><Switch checked={textureSettings.sparkles.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sparkles', c)} /></div>
+                          <div className="flex justify-between items-center mb-1"><Label className="font-semibold flex items-center gap-1.5 text-sm"><Sparkles className="h-4 w-4"/>Sparkles</Label><Switch checked={textureSettings.sparkles.enabled} onCheckedChange={(checked) => handleTextureEnabledChange('sparkles', checked)} /></div>
                           <div className="flex items-center gap-2"><Label className="text-xs text-muted-foreground">Vol</Label><Slider value={[textureSettings.sparkles.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sparkles', v[0])} disabled={!textureSettings.sparkles.enabled}/><span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sparkles.volume * 100)}</span></div>
                       </div>
                       <div className="p-2 border rounded-md bg-background/30 border-primary/10">
-                          <div className="flex justify-between items-center mb-1"><Label className="font-semibold flex items-center gap-1.5 text-sm"><Sprout className="h-4 w-4"/>SFX</Label><Switch checked={textureSettings.sfx.enabled} onCheckedChange={(c) => handleTextureEnabledChange('sfx', c)} /></div>
+                          <div className="flex justify-between items-center mb-1"><Label className="font-semibold flex items-center gap-1.5 text-sm"><Sprout className="h-4 w-4"/>SFX</Label><Switch checked={textureSettings.sfx.enabled} onCheckedChange={(checked) => handleTextureEnabledChange('sfx', checked)} /></div>
                           <div className="flex items-center gap-2"><Label className="text-xs text-muted-foreground">Vol</Label><Slider value={[textureSettings.sfx.volume]} max={1} step={0.05} onValueChange={(v) => handleVolumeChange('sfx' as any, v[0])} disabled={!textureSettings.sfx.enabled}/><span className="text-xs w-8 text-right font-mono">{Math.round(textureSettings.sfx.volume * 100)}</span></div>
                       </div>
                        <div className="p-2 border rounded-md bg-background/30 border-primary/10">
