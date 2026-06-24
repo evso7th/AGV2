@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V27.2 — "Unified Stability Update".
- * #ЗАЧЕМ: ПЛАН №1185. Исправление ReferenceError и стабилизация UI-экшенов.
+ * @fileOverview Music Control Hook V27.3 — "Media Session Optimization".
+ * #ЗАЧЕМ: Устранение мигания обложки и лишних запросов к метаданным.
  */
 'use client';
 
@@ -25,7 +25,6 @@ const EQ_PRESETS_KEY = 'AuraGroove_EQPresets';
 const MIXER_PRESETS_KEY = 'AuraGroove_MixerPresets';
 const ACTIVE_EQ_ID_KEY = 'AuraGroove_ActiveEqPresetId';
 const ACTIVE_MIXER_ID_KEY = 'AuraGroove_ActiveMixerPresetId';
-// #ЗАЧЕМ: «последний использованный» пресет по жанру (для авто-применения при смене жанра).
 const LAST_MIX_BY_GENRE_KEY = 'AuraGroove_LastMixByGenre';
 const LAST_EQ_BY_GENRE_KEY = 'AuraGroove_LastEqByGenre';
 
@@ -313,7 +312,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [activeMixerPresetId]);
 
   const resetMixerToSystem = useCallback(() => {
-    // #ЗАЧЕМ: сброс к системному миксу ТЕКУЩЕГО жанра (а не захардкоженного ambient).
     const mix = GENRE_MASTER_MIX[genre] ?? GENRE_MASTER_MIX['ambient'];
     handleVolumeChange('master', 1.0);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
@@ -380,7 +378,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeEqPresetId]);
 
-  // #ЗАЧЕМ: привязка пресета к жанру (для авто-применения при смене жанра). '' = снять привязку.
   const setMixerPresetGenre = useCallback((id: string, g: string) => {
     setMixerPresets(prev => {
         const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
@@ -397,7 +394,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
   }, []);
 
-  // Разрешение микса при смене жанра: привязанный пресет (last-used → любой с этим жанром) → иначе мастер-микс.
   const applyGenreMix = useCallback((g: Genre) => {
     let presets: PresetItem[] = [];
     let lastMap: Record<string, string> = {};
@@ -424,7 +420,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [handleVolumeChange]);
 
-  // Разрешение EQ при смене жанра: привязанный пресет → иначе оставляем как есть (мастер-EQ не существует).
   const applyGenreEq = useCallback((g: Genre) => {
     let presets: PresetItem[] = [];
     let lastMap: Record<string, string> = {};
@@ -506,33 +501,51 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
+  /**
+   * #ЗАЧЕМ: ПЛАН №1283 — Оптимизация Media Session.
+   * #ЧТО: Отказ от Heartbeat (setInterval). Метаданные обновляются только при смене пьесы.
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-    if (isPlaying) { sessionStartTimeRef.current = Date.now(); } else { sessionStartTimeRef.current = 0; }
-    const updateMetadata = () => {
-        const origin = window.location.origin;
-        const version = Date.now(); 
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
-            artist: 'AuraGroove',
-            album: 'The Infinite Take Band',
-            artwork: [
-                { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
-                { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
-                { src: `assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
-            ]
-        });
-        navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-        if ('setPositionState' in navigator.mediaSession) {
-            const position = isPlaying && sessionStartTimeRef.current > 0 ? (Date.now() - sessionStartTimeRef.current) / 1000 : 0;
-            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
+
+    const origin = window.location.origin;
+    // #ЗАЧЕМ: Стабильный URL без Date.now() убирает мигание обложки.
+    const version = "1.1"; 
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
+        artist: currentTrackName !== 'Generative' ? currentTrackName : 'AuraGroove',
+        album: 'The Infinite Take Orchestra',
+        artwork: [
+            { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+        ]
+    });
+
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    if ('setPositionState' in navigator.mediaSession) {
+        if (isPlaying) {
+            if (sessionStartTimeRef.current === 0) sessionStartTimeRef.current = Date.now();
+            const position = (Date.now() - sessionStartTimeRef.current) / 1000;
+            try { 
+                navigator.mediaSession.setPositionState({ 
+                    duration: 7200, 
+                    playbackRate: 1.0, 
+                    position: Math.min(position, 7199) 
+                }); 
+            } catch(e) {}
+        } else {
+            sessionStartTimeRef.current = 0;
+            try {
+                navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 0, position: 0 });
+            } catch(e) {}
         }
-    };
-    updateMetadata();
-    const heartbeat = setInterval(updateMetadata, 2000);
+    }
+
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
@@ -545,12 +558,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         toast({ title: "Previous Pattern", description: "Restarting current DNA..." });
         resetWorker();
     });
-    return () => {
-        clearInterval(heartbeat);
-        const handlers: MediaSessionAction[] = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
-        handlers.forEach(action => { try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {} });
-    };
-  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker]);
+
+  }, [isPlaying, genre, mood, currentTrackName, setIsPlaying, stopAllSounds, toast, resetWorker]);
 
   const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
@@ -560,8 +569,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             const g = activeItem.genre as Genre;
             setGenreState(g);
             setMoodState(activeItem.mood as Mood);
-            // #ЗАЧЕМ: при РЕАЛЬНОЙ смене жанра применяем привязанный пользовательский пресет
-            // (иначе мастер-микс) — для микса и EQ. Гард — чтобы не перетирать ручные правки.
             if (g !== prevAppliedGenreRef.current) {
                 prevAppliedGenreRef.current = g;
                 applyGenreMix(g);
@@ -571,23 +578,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
-  // #ЗАЧЕМ: ГЛАВНЫЙ ПОТОК — ХОЗЯИН перехода. Воркер на конце пьесы держит тишину и шлёт
-  // AG_SUITE_TRANSITION; решение «что дальше» принимаем здесь → одна ре-инициализация
-  // (раньше переход ловился по currentBar===0 ПОСЛЕ того, как воркер уже выбрал лишнюю пьесу).
   useEffect(() => {
     const onTransition = () => {
         if (route.length > 0) {
             const nextIndex = activeRouteIndex + 1;
             if (nextIndex < route.length) { setActiveRouteItemId(route[nextIndex].id); return; }
             if (isRepeat) {
-                // повтор маршрута с начала; если первый пункт = текущий id, смена id не запустит
-                // ре-инициализацию → подменяем seed для свежей пьесы.
                 if (route[0].id === activeRouteItemId) { setCurrentSeed(Date.now()); }
                 else { setActiveRouteItemId(route[0].id); }
                 return;
             }
         }
-        // непрерывно / нет маршрута / маршрут кончился без repeat → свежая пьеса тем же жанром.
         setCurrentSeed(Date.now());
     };
     window.addEventListener('AG_SUITE_TRANSITION', onTransition);
