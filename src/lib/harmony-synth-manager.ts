@@ -8,8 +8,8 @@ import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 
 /**
- * #ЗАЧЕМ: Менеджер слоя гармонии V4.3 — "Strict Lazy Load Fix".
- * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки.
+ * @fileOverview Менеджер слоя гармонии V4.4 — "Silent Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -33,20 +33,15 @@ export class HarmonySynthManager {
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
 
-    /**
-     * #ЗАЧЕМ: Поэтапная загрузка.
-     */
     async init(minimal = false) {
         if (this.isFullyInitialized) return;
         if (minimal && this.isInitialized) return;
         
         if (minimal) {
-            console.log('%c[HarmonyManager] Level 1: Initializing CORE Guitar Chords...', 'color: #DA70D6;');
             await this.guitarChords.init(true);
             this.isInitialized = true;
             this.guitarChords.setVolume(1.0);
         } else {
-            console.log('%c[HarmonyManager] Level 2: Finishing Chords & Loading Violin...', 'color: #DA70D6;');
             await Promise.all([
                 this.guitarChords.init(false),
                 this.violin.loadInstrument('violin', VIOLIN_SAMPLES)
@@ -92,7 +87,7 @@ export class HarmonySynthManager {
             });
             this.activeSynthPreset = presetName;
         } catch (e) {
-            console.error('[HarmonyManager] Synth load failed:', e);
+            // console.error('[HarmonyManager] Synth load failed:', e);
         }
     }
 

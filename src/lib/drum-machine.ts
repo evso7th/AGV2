@@ -1,4 +1,3 @@
-
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -211,10 +210,8 @@ export class DrumMachine {
             
             let sampleName = eventType;
             
-            // #ЗАЧЕМ: Улучшенный маппинг для канала 'drums' (ПЛАН №987).
             if (eventType === 'drums' || eventType === 'drum') {
                 const n = event.note;
-                // Стандартный MIDI маппинг
                 if (n === 36) sampleName = 'drum_kick_reso';
                 else if (n === 38) sampleName = 'drum_snare';
                 else if (n === 42 || n === 44) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
@@ -228,7 +225,6 @@ export class DrumMachine {
 
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) {
-                // Пытаемся найти по префиксу роли
                 if (sampleName.includes('kick')) sampleName = 'drum_kick_reso';
                 else if (sampleName.includes('snare')) sampleName = 'drum_snare';
                 else if (sampleName.includes('hat')) sampleName = 'drum_25693__walter_odington__hackney-hat-1';

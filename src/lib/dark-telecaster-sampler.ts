@@ -1,12 +1,11 @@
-
 import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Dark Telecaster V5.2 — "Gain Calibration".
- * #ЧТО: Громкость снижена в 2 раза (0.04 -> 0.02).
+ * @fileOverview Сэмплер Dark Telecaster V5.3 — "Silent Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -76,7 +75,7 @@ export class DarkTelecasterSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.02; // Halved for calibration
+        this.preamp.gain.value = 0.02;
 
         this.overdrive = this.audioContext.createWaveShaper();
         this.overdrive.curve = makeOverdriveCurve(0.42);
@@ -87,7 +86,6 @@ export class DarkTelecasterSampler {
         this.toneFilter.frequency.value = 3600;
         this.toneFilter.Q.value = 0.7;
 
-        // #ЗАЧЕМ: дилей с обратной связью — удлиняет звучание сэмпла (эхо-хвост, «тёмный» характер).
         this.delay = this.audioContext.createDelay(2.0);
         this.delay.delayTime.value = 0.33;
         this.feedbackGain = this.audioContext.createGain();
@@ -95,15 +93,12 @@ export class DarkTelecasterSampler {
         this.delayMix = this.audioContext.createGain();
         this.delayMix.gain.value = 0.30;
 
-        // #ЗАЧЕМ: калибровочный трим — отдельный пост-окрасочный gain (не трогает тембр).
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
         this.preamp.connect(this.overdrive);
         this.overdrive.connect(this.toneFilter);
-        // Сухой сигнал
         this.toneFilter.connect(this.outputTrim);
-        // Дилей (wet): toneFilter → delay → delayMix → outputTrim, с петлёй обратной связи
         this.toneFilter.connect(this.delay);
         this.delay.connect(this.feedbackGain);
         this.feedbackGain.connect(this.delay);
@@ -112,7 +107,6 @@ export class DarkTelecasterSampler {
         this.outputTrim.connect(this.destination);
     }
 
-    /** Калибровочный трим громкости в дБ (отдельно от preamp/тембра). */
     public setOutputTrim(db: number) {
         if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
@@ -219,7 +213,6 @@ export class DarkTelecasterSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.022);
-        // #ЗАЧЕМ: полный сустейн по образцу Telecaster (исправлен артефакт транзиент-режима).
         gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.6);
 
         source.start(startTime);

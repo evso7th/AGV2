@@ -1,12 +1,11 @@
-
 import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Black Acoustic V5.1 — "Zero-Choke Protocol".
- * #ЧТО: ПЛАН №1171 — Удаление принудительного стопа для 100% плавного затухания.
+ * @fileOverview Сэмплер Black Acoustic V5.2 — "Silent Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 
 function makeAcousticWarmthCurve() {
@@ -120,7 +119,6 @@ export class BlackGuitarSampler {
         this.toneFilter.frequency.value = 5500;
         this.toneFilter.Q.value = 0.5;
 
-        // #ЗАЧЕМ: калибровочный трим — отдельный пост-окрасочный gain (не трогает тембр).
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
@@ -131,7 +129,6 @@ export class BlackGuitarSampler {
         this.outputTrim.connect(this.destination);
     }
 
-    /** Калибровочный трим громкости в дБ (отдельно от preamp/тембра). */
     public setOutputTrim(db: number) {
         if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
@@ -269,7 +266,6 @@ export class BlackGuitarSampler {
             source.start(startTime);
             source.stop(startTime + 0.05);
         } else {
-            // #ЗАЧЕМ: ПЛАН №1171. Убран стоп для полной естественности хвоста.
             gainNode.gain.setTargetAtTime(0, startTime + 6.0, 0.8);
             source.start(startTime);
         }

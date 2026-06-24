@@ -1,10 +1,9 @@
-
 import type { Note } from "@/types/music";
 import { dbToGain } from './guitar-loudness';
 
 /**
- * #ЗАЧЕМ: Сэмплер Yamaha CS-80 V4.5 — "Imperial Volume Boost".
- * #ЧТО: ПЛАН №1190 — Громкость увеличена в 2 раза (0.2 -> 0.4).
+ * @fileOverview Сэмплер Yamaha CS-80 V4.6 — "Silent Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -35,9 +34,8 @@ export class CS80GuitarSampler {
         this.audioContext = audioContext;
         this.destination = destination;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.4; // ПЛАН №1190: Увеличено с 0.2
+        this.preamp.gain.value = 0.4; 
 
-        // #ЗАЧЕМ: калибровочный трим — отдельный gain (отдельно от preamp/громкости).
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
@@ -45,7 +43,6 @@ export class CS80GuitarSampler {
         this.outputTrim.connect(this.destination);
     }
 
-    /** Калибровочный трим громкости в дБ (отдельно от preamp). */
     public setOutputTrim(db: number) {
         if (isFinite(db)) this.outputTrim.gain.setTargetAtTime(dbToGain(db), this.audioContext.currentTime, 0.02);
     }
@@ -59,8 +56,7 @@ export class CS80GuitarSampler {
     async init(): Promise<boolean> {
         if (this.isInitialized || this.isLoading) return true;
         this.isLoading = true;
-        console.log('%c[CS80Sampler] Initializing Blade Runner Spirit...', 'color: #00ced1; font-weight: bold;');
-
+        
         try {
             const loadSample = async (url: string) => {
                 const response = await fetch(url);
@@ -137,8 +133,6 @@ export class CS80GuitarSampler {
 
         gainNode.gain.setValueAtTime(0, startTime);
         gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.01);
-
-        // #ЗАЧЕМ: ПЛАН №1169. Затухание через 3 секунды.
         gainNode.gain.setTargetAtTime(0, startTime + 3.0, 0.4);
 
         source.start(startTime);

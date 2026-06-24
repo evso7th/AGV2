@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -68,18 +67,11 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/785805__alien_i_trust__sample-pack-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown.ogg',
         '/assets/music/sfx/voice/789675__alien_i_trust__synth-shot-1-by-alien-i-trust.ogg',
         '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
-        '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg.824252.wav',
         '/assets/music/sfx/voice/Hello_who_would_you_.ogg',
         '/assets/music/sfx/voice/I_m_afraid_of_nothin.ogg',
         '/assets/music/sfx/voice/Imagination_rules_th.ogg',
         '/assets/music/sfx/voice/It_s_better_to_have_.ogg',
         '/assets/music/sfx/voice/Launch_all_airships_.ogg',
-        '/assets/music/sfx/voice/Money_often_costs_to.ogg',
-        '/assets/music/sfx/voice/Never_look_back.ogg',
-        '/assets/music/sfx/voice/Nothing_is_certain_b.ogg',
-        '/assets/music/sfx/voice/Sitting_in_a_sandpit.ogg',
-        '/assets/music/sfx/voice/Time_is_the_great_he.ogg',
-        '/assets/music/sfx/voice/You_are_pulling_my_l.ogg',
         '/assets/music/sfx/voice/life_is_good_be_happ.ogg',
         '/assets/music/sfx/voice/mixkit-birds-chirping-near-the-river-2473.ogg',
         '/assets/music/sfx/voice/mixkit-birds-in-the-jungle-2434.ogg',
@@ -123,7 +115,7 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.55; // #ЗАЧЕМ: Значительное усиление для слышимости голосов.
+        this.preamp.gain.value = 0.55; 
         this.preamp.connect(destination);
     }
 
@@ -190,7 +182,7 @@ export class SfxSynthManager {
         }
         const rand = Math.random();
         if (genre === 'psybient') {
-            if (rand < 0.35) return 'voice'; // #ЗАЧЕМ: Повышенная вероятность голосов для Psybient.
+            if (rand < 0.35) return 'voice'; 
             if (rand < 0.7) return 'laser';
             return 'common';
         }

@@ -1,7 +1,6 @@
-
 /**
- * @file AuraGroove Music Worker V6.1.0 — "Cognitive Log Update".
- * #ЗАЧЕМ: ПЛАН №1201 — Отображение типа мутации в логах консоли.
+ * @file AuraGroove Music Worker V6.1.1 — "Stealth Deploy Mode".
+ * #ЗАЧЕМ: ПЛАН №1282 — Временное отключение телеметрии перед деплоем.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -33,9 +32,6 @@ const Scheduler = {
     cloudAxiomPool: [] as any[], 
     filterRotationIndex: 0,
     playedTrackHistory: [] as string[],
-    // #ЗАЧЕМ: главный поток — ХОЗЯИН перехода между пьесами. На конце пьесы воркер ждёт
-    // директиву (updateSettings/reset), не выбирая следующую пьесу сам. awaitingSince —
-    // для аварийного таймаута (анти-тишина), если директива не пришла.
     awaitingDirective: false,
     awaitingSince: 0,
     
@@ -89,9 +85,6 @@ const Scheduler = {
             
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                // #ЗАЧЕМ: то же правило, что в мозгах — пустой/неуказанный mood = доступен
-                // для ЛЮБОГО настроения. Раньше фильтр был строгим (moods.includes), и треки
-                // с пустым mood (напр. после Bulk-Edit в DNA Auditor) никогда не попадали в якорь.
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
                 return genres.includes(uiGenre) && (moods.length === 0 || moods.includes(uiMood));
             });
@@ -130,7 +123,7 @@ const Scheduler = {
     },
 
     initializeEngine(settings: WorkerSettings) {
-        this.awaitingDirective = false; // директива пришла — выходим из ожидания перехода
+        this.awaitingDirective = false;
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
@@ -236,9 +229,6 @@ const Scheduler = {
         const totalBars = fractalMusicEngine.navigator?.totalBars || 144;
         
         if (this.barCount >= totalBars) {
-             // #ЗАЧЕМ: ГЛАВНЫЙ ПОТОК — ХОЗЯИН перехода. Раньше воркер сам выбирал следующую
-             // пьесу на СТАРЫХ settings и успевал сыграть лишнюю (баг «2× с 0-го такта»).
-             // Теперь: постим сигнал, держим тишину, ждём директиву (updateSettings/reset).
              if (!this.awaitingDirective) {
                  self.postMessage({ type: 'SUITE_TRANSITION' });
                  this.bpmLocked = false;
@@ -246,26 +236,26 @@ const Scheduler = {
                  this.awaitingSince = Date.now();
                  return 500;
              }
-             // Аварийный таймаут (база): директива не пришла за 4с → сами возобновляем (анти-тишина).
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.sessionLickHistory = [];
                  this.settings.seed = generateTrueSeed();
-                 this.initializeEngine(this.settings); // снимет awaitingDirective
+                 this.initializeEngine(this.settings);
                  this.barCount = 0;
                  return 2000;
              }
-             return 500; // продолжаем ждать директиву
+             return 500; 
         }
 
         let payload: any;
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            console.error('[Worker] Evolution Error:', e);
             return this.barDuration * 1000;
         }
 
+        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли временно закомментирована.
+        /*
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
         const hints = payload.instrumentHints || {};
@@ -274,15 +264,11 @@ const Scheduler = {
         const b = (payload.beautyScore || 0.5).toFixed(2);
         const mut = payload.mutationType || 'none';
 
-        // #ЗАЧЕМ: ПЛАН №1201. Отображение мутации в логе.
-        // #ЗАЧЕМ: короткий суффикс аксиомы (напр. "..._tce8xn" → "tce8xn"); не-хэшевые ярлыки
-        // ("Sibling DNA", "Imperial Pulse", "none") остаются как есть.
         const sfx = (n: any): string => {
             const s = (n === undefined || n === null || n === '') ? 'none' : String(n);
             const i = s.lastIndexOf('_');
             return i >= 0 ? s.slice(i + 1) : s;
         };
-        // DNA: короткий ид ПЕРВОЙ мелодической аксиомы трека; если хэша нет — имя трека.
         const dnaDisplay = (ax.melody && String(ax.melody).includes('_')) ? sfx(ax.melody) : track;
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${dnaDisplay}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${sfx(ax.melody)}] [BASS: ${sfx(ax.bass)}] [DRUM: ${sfx(ax.drums)}] [HAR: ${sfx(ax.harmony)}] [PNO: ${sfx(ax.piano)}]\n` +
@@ -292,6 +278,7 @@ const Scheduler = {
             'color: #c084fc;',
             'color: #888;'
         );
+        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -304,8 +291,8 @@ const Scheduler = {
                 actualBpm: Math.round(this.settings.bpm),
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
-                trackName: track,
-                sectionName: sectionName
+                trackName: payload.trackName || 'Generative',
+                sectionName: payload.navInfo?.currentPart.name || 'Unknown'
             }
         });
 

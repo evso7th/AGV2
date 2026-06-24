@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V53.0 — "Imperial Timbre Balance".
- * #ЗАЧЕМ: ПЛАН №1190. Увеличение громкости CS80 в 2 раза для сольных партий.
+ * @fileOverview Audio Engine Context V53.1 — "Stealth Mode Active".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 'use client';
 
@@ -48,7 +47,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     electric: 0.15, 
     piano: 0.6,
     orchestral: 0.29,
-    cs80: 0.4, // ПЛАН №1190: Увеличено с 0.2 для сольной мощности
+    cs80: 0.4,
     chords: 1.2,
     bass: 1.0
 };
@@ -302,7 +301,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
-  // Скормить аксиомы движку (воркеру) + пересчитать метаданные композиций. Общий код для кэша и сети.
   const applyAxiomsToEngine = useCallback((rawAxioms: any[]) => {
     workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
     const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
@@ -321,12 +319,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setAvailableCompositions(meta);
   }, []);
 
-  // Сетевой синк: тянем ОБЕ коллекции (axioms + masterpieces), кормим движок аксиомами,
-  // сохраняем обе в IndexedDB. Мастерписы пока ТОЛЬКО кэшируем (пайплайн в генерацию — отдельно).
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
-      console.log('%c[DNA Sync] Cloud sync started…', 'color: #00BCD4; font-weight: bold;');
+      // console.log('%c[DNA Sync] Cloud sync started…', 'color: #00BCD4; font-weight: bold;');
       const [axSnap, mpSnap] = await Promise.all([
         getDocs(query(collection(db, 'heritage_axioms'))),
         getDocs(query(collection(db, 'masterpieces'))),
@@ -335,11 +331,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       applyAxiomsToEngine(rawAxioms);
       saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
-      console.log(`%c[DNA Sync] Cloud sync complete — transferred ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces`, 'color: #00BCD4; font-weight: bold;');
-    } catch (e) { console.error('[DNA Sync] Failed:', e); }
+      // console.log(`%c[DNA Sync] Cloud sync complete — transferred ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces`, 'color: #00BCD4; font-weight: bold;');
+    } catch (e) { /* console.error('[DNA Sync] Failed:', e); */ }
   }, [db, applyAxiomsToEngine]);
 
-  // Кэш-фёрст: применяем локальный снапшот мгновенно (быстрый старт + офлайн). true, если кэш был.
   const loadDnaFromCache = useCallback(async (): Promise<boolean> => {
     const cache = await loadDnaCache();
     if (cache.axioms && cache.axioms.length > 0) {
@@ -349,7 +344,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     return false;
   }, [applyAxiomsToEngine]);
 
-  // Принудительный синк по кнопке SyncDNA.
   const syncDna = useCallback(async () => {
     await refreshCloudAxioms();
     toast({ title: 'DNA Synced', description: 'Heritage refreshed from cloud' });
@@ -400,44 +394,37 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
         sfxSynthManagerRef.current = new SfxSynthManager(context, gainNodesRef.current.sfx);
 
-        // #ЗАЧЕМ: применяем калибровочные тримы громкости гитар (единый источник правды).
-        // Сейчас все 0 дБ → без слышимых изменений; наполним числами позже.
         blackGuitarSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.blackAcoustic);
         telecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.telecaster);
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
         cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
-        // PHASE 1: Core assets (Ready-to-Play, 3-5 seconds)
-        console.log('%c[HybridLoader] Phase 1: Loading core assets...', 'color: #FF6B6B; font-weight: bold;');
+        // PHASE 1
+        // console.log('%c[HybridLoader] Phase 1: Loading core assets...', 'color: #FF6B6B; font-weight: bold;');
         await Promise.all([
-          drumMachineRef.current.init(true),                              // Blues kit only
-          blackGuitarSamplerRef.current.init(true),                       // First RR variation only
-          harmonyManagerRef.current.init(true),                           // Basic chords
-          pianoAccompanimentManagerRef.current.init(),                    // Piano/Rhodes
-          sparklePlayerRef.current.init(5),                               // 5 random sparkles
-          sfxSynthManagerRef.current.init(5)                              // 5 random SFX
+          drumMachineRef.current.init(true),
+          blackGuitarSamplerRef.current.init(true),
+          harmonyManagerRef.current.init(true),
+          pianoAccompanimentManagerRef.current.init(),
+          sparklePlayerRef.current.init(5),
+          sfxSynthManagerRef.current.init(5)
         ]);
-        console.log('%c[HybridLoader] Phase 1 Complete: Ready to play!', 'color: #51CF66; font-weight: bold;');
 
-        // PHASE 2: Background replenishment (starts 5 sec after core, non-blocking)
-        console.log('%c[HybridLoader] Phase 2: Scheduling background assets (5 sec delay)...', 'color: #FFD93D; font-weight: bold;');
+        // PHASE 2
         setBackgroundLoadInProgress(true);
         setTimeout(async () => {
           try {
-            console.log('%c[HybridLoader] Phase 2: Loading remaining assets...', 'color: #6BCB77; font-weight: bold;');
             await Promise.all([
-              telecasterSamplerRef.current?.init(),                       // All RR variations
-              darkTelecasterSamplerRef.current?.init(),                   // All variations
-              cs80SamplerRef.current?.init(),                             // Full CS80 library
-              accompanimentManagerV2Ref.current?.init(),                  // Full accompaniment
-              melodyManagerV2Ref.current?.init(),                         // Full melody
-              bassManagerV2Ref.current?.init()                            // Full bass
+              telecasterSamplerRef.current?.init(),
+              darkTelecasterSamplerRef.current?.init(),
+              cs80SamplerRef.current?.init(),
+              accompanimentManagerV2Ref.current?.init(),
+              melodyManagerV2Ref.current?.init(),
+              bassManagerV2Ref.current?.init()
             ]);
-            console.log('%c[HybridLoader] Phase 2 Complete: All assets loaded!', 'color: #51CF66; font-weight: bold;');
             setBackgroundLoadInProgress(false);
             setBackgroundLoadComplete(true);
           } catch (bgError) {
-            console.error('[HybridLoader] Background load error:', bgError);
             setBackgroundLoadInProgress(false);
           }
         }, 5000);
@@ -452,9 +439,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    // #ЗАЧЕМ: если такт уже в прошлом ИЛИ слишком близко к now (джиттер главного потока),
-                    // перепланируем в безопасное будущее. Запас 30 мс покрывает синхронную работу
-                    // scheduleEvents (drum/bass/accomp) до melody-менеджера — иначе тот ронял такт.
                     if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
                     scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current = scheduleTime + payload.barDuration;
@@ -463,19 +447,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 else if (type === 'SUITE_TRANSITION') { window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); }
                 else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
             };
-            // #ЗАЧЕМ: восстановить ПЕРСОНАЛЬНУЮ историю треков из localStorage в воркер.
-            // HISTORY_UPDATE её только СОХРАНЯЛ (запись без чтения) — при перезагрузке «окно
-            // уникальности» обнулялось и недавний трек мог зазвучать снова. Прокидываем через
-            // штатный init-обработчик воркера (он уже принимает data.playedTrackHistory).
             try {
                 const savedHist = localStorage.getItem('AuraGroove_TrackHistory');
                 const parsed = savedHist ? JSON.parse(savedHist) : null;
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: parsed } });
                 }
-            } catch (e) { /* битый localStorage → стартуем с чистой историей */ }
+            } catch (e) {}
         }
-        // #ЗАЧЕМ: кэш-фёрст — мгновенный старт/офлайн из IndexedDB; сеть только фоновой ревалидацией.
         const hadCache = await loadDnaFromCache();
         if (hadCache) { void refreshCloudAxioms(); } else { await refreshCloudAxioms(); }
         applyCalibration(calibrationGainsRef.current);

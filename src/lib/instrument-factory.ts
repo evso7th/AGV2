@@ -1,8 +1,6 @@
-
 /**
- * @fileOverview Центральная фабрика инструментов V8.1 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: ПЛАН №1177 — Устранение эффекта "плавающей" громкости через строгую атомарность.
- * #ЧТО: Внедрение cancelScheduledValues во все узлы управления уровнем.
+ * @fileOverview Центральная фабрика инструментов V8.2 — "Silent Build Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -99,7 +97,6 @@ const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(ma
 
 const getADSR = (p: any, params?: any) => {
     const a = p.adsr || p;
-    // #ЗАЧЕМ: ПЛАН №1177. Приоритет параметров из FractalEvent для правильной отработки Swell.
     let rawA = isFinite(params?.attack) ? params.attack : (isFinite(a.a) ? a.a : (isFinite(a.attack) ? a.attack : 0.01));
     let rawD = isFinite(params?.decay) ? params.decay : (isFinite(a.d) ? a.d : (isFinite(a.decay) ? a.decay : 0.1));
     let rawS = isFinite(params?.sustain) ? params.sustain : (isFinite(a.s) ? a.s : (isFinite(a.sustain) ? a.sustain : 0.7));
@@ -129,14 +126,10 @@ const makeSoftDrive = (amount = 0.2) => {
     return c;
 };
 
-// ───── SHAPE/WAVE CACHES (#ЗАЧЕМ: устранение GC-шторма в горячем пути noteOn) ─────
-// Кривые WaveShaper и PeriodicWave зависят только от пресета, не от ноты,
-// поэтому вычисляются один раз и переиспользуются между голосами.
-
 const curveCache = new Map<string, Float32Array<ArrayBuffer>>();
 
 const getDriveCurve = (driveType: string, amount: number): Float32Array<ArrayBuffer> => {
-    const q = Math.round(amount * 1e4) / 1e4; // квантование ключа
+    const q = Math.round(amount * 1e4) / 1e4;
     const key = `${driveType === 'muff' ? 'm' : 's'}:${q}`;
     let curve = curveCache.get(key);
     if (!curve) {
@@ -146,7 +139,6 @@ const getDriveCurve = (driveType: string, amount: number): Float32Array<ArrayBuf
     return curve;
 };
 
-// PeriodicWave привязан к конкретному AudioContext, поэтому кэш — per-context.
 const waveCache = new WeakMap<AudioContext, Map<string, PeriodicWave>>();
 
 const getCachedWave = (ctx: AudioContext, key: string, build: () => PeriodicWave): PeriodicWave => {
@@ -179,13 +171,12 @@ const getOrganWave = (ctx: AudioContext, drawbars: number[]): PeriodicWave =>
         return ctx.createPeriodicWave(real, imag);
     });
 
-// Зацикленный буфер белого шума — один на контекст (источники переиспользуют его).
 const noiseBufferCache = new WeakMap<AudioContext, AudioBuffer>();
 
 const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     let buf = noiseBufferCache.get(ctx);
     if (!buf) {
-        const len = Math.floor(ctx.sampleRate * 2); // 2 c, бесшовно зацикливается
+        const len = Math.floor(ctx.sampleRate * 2);
         buf = ctx.createBuffer(1, len, ctx.sampleRate);
         const data = buf.getChannelData(0);
         for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
@@ -194,17 +185,10 @@ const getNoiseBuffer = (ctx: AudioContext): AudioBuffer => {
     return buf;
 };
 
-// ───── ATTACK-TRANSIENT BANK ─────
-// #ЗАЧЕМ: синтезированной гитаре не хватает «щипка». Прививаем первые ~22 мс реальной
-// атаки из сэмплов black-acoustic — ухо считывает артикуляцию по транзиенту, а тело
-// ноты остаётся синтетическим (электро-лид). Разреженный набор + питч-сдвиг по playbackRate.
-
 const TRANSIENT_DIR = '/assets/acoustic_guitar_samples/black/ord/';
-const TRANSIENT_MS = 22;          // длительность среза
-const TRANSIENT_FADE_MS = 6;      // фейд в конце среза, чтобы не было щелчка на стыке
+const TRANSIENT_MS = 22;          
+const TRANSIENT_FADE_MS = 6;      
 
-// Файлы выбраны из BLACK_GUITAR_MANIFEST (только гарантированно существующие слои),
-// ~каждые 3–4 полутона — ошибка питча транзиента на 20 мс неразличима на слух.
 const TRANSIENT_SOURCES: { m: number; file: string }[] = [
     { m: 52, file: 'twang_e3_f_rr2.ogg' },
     { m: 55, file: 'twang_g3_mf_rr1.ogg' },
@@ -236,7 +220,7 @@ const sliceTransient = (ctx: AudioContext, src: AudioBuffer): AudioBuffer => {
         const outData = out.getChannelData(ch);
         for (let i = 0; i < len; i++) {
             let g = 1;
-            if (i > len - fadeLen) g = (len - i) / fadeLen; // линейный фейд-аут хвоста
+            if (i > len - fadeLen) g = (len - i) / fadeLen;
             outData[i] = inData[i] * g;
         }
     }
@@ -249,7 +233,7 @@ const ensureTransientsLoaded = (ctx: AudioContext): void => {
         bank = { samples: [], midis: [], state: 'idle' };
         transientBanks.set(ctx, bank);
     }
-    if (bank.state !== 'idle') return; // уже грузится или готов
+    if (bank.state !== 'idle') return; 
     bank.state = 'loading';
 
     Promise.all(TRANSIENT_SOURCES.map(async ({ m, file }) => {
@@ -300,8 +284,6 @@ const createIndependentVoice = (
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
 
-    // #ЗАЧЕМ (#2): per-note humanize — две одинаковые ноты не идентичны (разброс контактов/
-    // тонколёс реального органа). Микро-разброс детюна/уровня/яркости. Нейтрально без флага.
     const hz = preset.humanize;
     const humDetune = hz ? (Math.random() * 2 - 1) * (isFinite(hz.detuneCents) ? hz.detuneCents : 2.5) : 0;
     const humLevel = hz ? 1 + (Math.random() * 2 - 1) * (isFinite(hz.levelPct) ? hz.levelPct : 0.05) : 1;
@@ -337,7 +319,6 @@ const createIndependentVoice = (
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
-            // #ЗАЧЕМ: расстройка осцилляторов даёт естественный хорус от биений (заложена в пресетах).
             if (isFinite(o.detune) && o.detune !== 0) osc.detune.setValueAtTime(o.detune, now);
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
@@ -347,7 +328,6 @@ const createIndependentVoice = (
         });
     }
 
-    // #ЗАЧЕМ: воздушный шумовой слой пресета (например synth.noise) — раньше игнорировался.
     if (preset.noise?.on && isFinite(preset.noise.gain) && preset.noise.gain > 0) {
         const noiseSrc = ctx.createBufferSource();
         noiseSrc.buffer = getNoiseBuffer(ctx);
@@ -361,17 +341,12 @@ const createIndependentVoice = (
 
     let chainHead: AudioNode = voiceGain;
 
-    // ───── Гибридная гитара: реальный транзиент + вибрато (только для флагнутых пресетов) ─────
     if (type === 'guitar' && (preset.attackTransient > 0 || preset.vibrato)) {
-        // colorInput суммирует синт (после ADSR) и сэмпл-транзиент ДО драйва/фильтра,
-        // чтобы оба прошли одинаковую «усилительную» окраску.
         const colorInput = ctx.createGain();
         voiceGain.connect(colorInput);
         nodes.push(colorInput);
         chainHead = colorInput;
 
-        // Транзиент: первые ~22 мс реальной атаки, питч-сдвинутые к ноте. Своя огибающая
-        // запечена в сэмпле, поэтому в обход ADSR — даёт «щипок», а тело остаётся синтетическим.
         if (preset.attackTransient > 0) {
             const t = getTransient(ctx, midi);
             if (t) {
@@ -387,7 +362,6 @@ const createIndependentVoice = (
             }
         }
 
-        // Вибрато «поющего» лида: появляется с задержкой, чтобы короткие ноты были чистыми.
         if (preset.vibrato && guitarOsc) {
             const { rate = 5.2, depthCents = 7, delay = 0.35 } = preset.vibrato;
             const lfo = ctx.createOscillator();
@@ -404,8 +378,6 @@ const createIndependentVoice = (
     if (preset.drive?.amount > 0.01) {
         const shaper = ctx.createWaveShaper();
         shaper.curve = getDriveCurve(preset.drive.type, preset.drive.amount);
-        // #ЗАЧЕМ: оверсэмплинг подавляет алиасинг от нелинейности (грязь на высоких нотах).
-        // muff агрессивнее (tanh) → 4x, soft мягче → 2x.
         shaper.oversample = preset.drive.type === 'muff' ? '4x' : '2x';
         chainHead.connect(shaper);
         chainHead = shaper;
@@ -428,11 +400,9 @@ const createIndependentVoice = (
     }
 
     const tempoScale = tempo / 72;
-    finalCutoff = finalCutoff * tempoScale * humBright; // humBright=1 без humanize
+    finalCutoff = finalCutoff * tempoScale * humBright;
 
     filter.Q.value = finalQ;
-    // #ЗАЧЕМ: у щипка атака ярче тела — фильтр стартует выше и оседает к finalCutoff.
-    // Глубину задаёт pluckBrightness, плюс связь со velocity (сильнее ударил → ярче).
     if (preset.pluckBrightness > 0) {
         const nyquist = ctx.sampleRate * 0.45;
         const peakCut = Math.min(finalCutoff * (1 + preset.pluckBrightness * (0.5 + velocity)), nyquist);
@@ -451,7 +421,7 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    const peak = velocity * 0.8 * humLevel; // humLevel=1 без humanize
+    const peak = velocity * 0.8 * humLevel;
     voiceGain.gain.setValueAtTime(0.0001, now);
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
@@ -497,8 +467,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     
     let currentPreset = { ...preset };
 
-    // #ЗАЧЕМ: гитарам с граф-транзиентом заранее (в фоне) грузим срезы атаки,
-    // чтобы к первой ноте банк был готов. Идемпотентно и кэшируется per-context.
     if (type === 'guitar' && currentPreset.attackTransient > 0) ensureTransientsLoaded(ctx);
 
     const instrumentGain = ctx.createGain();
@@ -507,8 +475,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const expressionGain = ctx.createGain();
     const panner = ctx.createStereoPanner();
     const limiter = ctx.createDynamicsCompressor();
-    // #ЗАЧЕМ: лимитер сделан ПРОЗРАЧНЫМ (ratio 1:1) — никакой динамической компрессии/«pumping».
-    // Требование: громкость = ровно как выставлено в микшере (не больше/не меньше), баланс сводится вручную.
     limiter.threshold.value = 0.0;
     limiter.ratio.value = 1.0;
 
@@ -524,49 +490,40 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     feedbackGain.gain.value = currentPreset.delay?.fb || 0.3;
     delayMixGain.gain.value = currentPreset.delay?.mix || 0;
 
-    // ───── Leslie / хорус органа (shared, один «вращающийся динамик» на инструмент) ─────
-    // #ЗАЧЕМ: drawbar-орган без вращения звучит стерильно. Имитируем Leslie тремя слоями:
-    //   • вибрато Доплера — модулированная задержка качает питч;
-    //   • противофазное тремоло L/R — эффект вращения в стерео;
-    // Создаётся один раз (не на ноту), поэтому на GC/CPU в горячем пути не влияет.
     const leslieNodes: AudioNode[] = [];
     let leslieLfo: OscillatorNode | null = null;
 
     if (type === 'organ' && currentPreset.leslie) {
         const cfg = currentPreset.leslie === true ? {} : currentPreset.leslie;
-        const rate = isFinite(cfg.rate) ? cfg.rate : 5.6;          // Гц (горн)
-        const pitchDepth = isFinite(cfg.pitchDepth) ? cfg.pitchDepth : 0.0012; // c, размах задержки
-        const ampDepth = isFinite(cfg.ampDepth) ? cfg.ampDepth : 0.22;         // глубина тремоло
-        const driftPct = isFinite(cfg.driftPct) ? cfg.driftPct : 0.18;         // ±дрейф скорости ротора
-        const driftRate = isFinite(cfg.driftRate) ? cfg.driftRate : 0.2;       // Гц «дыхания» мотора
+        const rate = isFinite(cfg.rate) ? cfg.rate : 5.6;          
+        const pitchDepth = isFinite(cfg.pitchDepth) ? cfg.pitchDepth : 0.0012; 
+        const ampDepth = isFinite(cfg.ampDepth) ? cfg.ampDepth : 0.22;         
+        const driftPct = isFinite(cfg.driftPct) ? cfg.driftPct : 0.18;         
+        const driftRate = isFinite(cfg.driftRate) ? cfg.driftRate : 0.2;       
 
         leslieLfo = ctx.createOscillator();
         leslieLfo.frequency.value = rate;
 
-        // #ЗАЧЕМ (#1): реальный мотор Leslie крутится неровно — скорость «гуляет».
-        // Очень медленный под-LFO качает частоту основного LFO на ±driftPct → вращение «дышит».
         if (driftPct > 0) {
             const driftLfo = ctx.createOscillator();
             driftLfo.frequency.value = driftRate;
             const driftGain = ctx.createGain();
-            driftGain.gain.value = rate * driftPct; // размах в Гц вокруг базовой скорости
+            driftGain.gain.value = rate * driftPct;
             driftLfo.connect(driftGain).connect(leslieLfo.frequency);
             driftLfo.start();
             leslieNodes.push(driftLfo, driftGain);
         }
 
-        // Вибрато Доплера: задержка ~3.5 мс, качаемая LFO.
         const vib = ctx.createDelay(0.05);
         vib.delayTime.value = 0.0035;
         const vibDepth = ctx.createGain();
         vibDepth.gain.value = pitchDepth;
         leslieLfo.connect(vibDepth).connect(vib.delayTime);
 
-        // Стерео-вращение: два канала с противофазным тремоло.
         const tremL = ctx.createGain(); tremL.gain.value = 1 - ampDepth;
         const tremR = ctx.createGain(); tremR.gain.value = 1 - ampDepth;
         const depthL = ctx.createGain(); depthL.gain.value = ampDepth;
-        const depthR = ctx.createGain(); depthR.gain.value = -ampDepth; // противофаза
+        const depthR = ctx.createGain(); depthR.gain.value = -ampDepth; 
         leslieLfo.connect(depthL).connect(tremL.gain);
         leslieLfo.connect(depthR).connect(tremR.gain);
 
@@ -582,9 +539,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         instrumentGain.connect(expressionGain);
     }
 
-    // #ЗАЧЕМ: пер-пресетный калибровочный трим громкости — ПОСТ-лимитерный (чистый dB,
-    // не меняет тембр и работу лимитера). Дефолт 0 дБ → узел не вставляется,
-    // поэтому бас/аккомпанемент/гармония/пиано (без флага) не затронуты.
     const calTrimDb = isFinite(currentPreset.calibrationTrimDb) ? currentPreset.calibrationTrimDb : 0;
     let outputTail: AudioNode = limiter;
     let calTrim: GainNode | null = null;
@@ -597,6 +551,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
     outputTail.connect(output);
     delayMixGain.connect(panner);
+
+    // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли временно закомментирована.
+    // console.log(`%c[Factory] ${type} built: ${currentPreset.name || 'Unnamed'}`, 'color: #32CD32;');
 
     return {
         connect: (dest) => outputTail.connect(dest || output),

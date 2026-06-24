@@ -1,9 +1,8 @@
-
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Обновление библиотеки Sparkles V5.0 — "Pure Droplets Focus".
- * #ЧТО: Использование только dark и electro из droplets согласно запросу.
+ * @fileOverview Обновление библиотеки Sparkles V5.1 — "Silent Protocol".
+ * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
  */
 const SPARKLE_SAMPLES = {
     DARK: [
@@ -128,7 +127,7 @@ export class SparklePlayer {
             this.isInitialized = true;
             if (limitPerCategory === -1) this.isFullyInitialized = true;
         } catch (e) {
-            console.error('[SparklePlayer] Failed to initialize:', e);
+            // console.error('[SparklePlayer] Failed to initialize:', e);
         }
     }
     
@@ -149,13 +148,11 @@ export class SparklePlayer {
         if (!this.isInitialized) return;
         let samplePool: AudioBuffer[] = [];
         
-        // #ЗАЧЕМ: Использование только разрешенных пулов.
         const cat = (category || '').toUpperCase();
 
         if (cat === 'ELECTRONIC' && this.electronicBuffers.length > 0) samplePool = this.electronicBuffers;
         else if (cat === 'DARK' && this.darkBuffers.length > 0) samplePool = this.darkBuffers;
         else {
-            // Default wide shuffle between the two allowed pools
             const allPools = [this.darkBuffers, this.electronicBuffers].filter(p => p.length > 0);
             if (allPools.length > 0) {
                 samplePool = allPools[Math.floor(Math.random() * allPools.length)];
