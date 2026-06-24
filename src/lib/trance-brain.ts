@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V52.0 — "Imperial Spiral Protocol".
- * #ЗАЧЕМ: ПЛАН №1280 — Синхронизация с "Золотым Стандартом" (Ensemble Sync + Golden Notes).
+ * @fileOverview Psybient Brain V53.0 — "Imperial Spiral Magnitude".
+ * #ЗАЧЕМ: ПЛАН №1281 — Добавление масштаба через саб-наполнение и расширение стереобазы.
  */
 
 import type {
@@ -103,14 +103,10 @@ export class TranceBrain {
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
         if (totalBars <= 0) return 0;
-        
-        // #ЗАЧЕМ: ПЛАН №1187. Посевное смещение для Rolling Ribbon.
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-        
         if (this.isImprovising) {
             return calculateMusiNum(epoch + startOffset, 7, this.seed, totalBars);
         }
-        
         const barsElapsed = epoch - startEpoch;
         return (barsElapsed + startOffset) % totalBars;
     }
@@ -185,6 +181,13 @@ export class TranceBrain {
         return undefined;
     }
 
+    private selectHarmonyInstrument(epoch: number) {
+        if (epoch % 8 === 0 && epoch !== this.lastHarmonySwitchBar) {
+            this.lastHarmonySwitchBar = epoch;
+            this.activeHarmonyInstrument = this.rng.next() < 0.5 ? 'violin' : 'guitarChords';
+        }
+    }
+
     public generateBar(
         epoch: number,
         currentChord: GhostChord,
@@ -220,7 +223,7 @@ export class TranceBrain {
         const resChord = { ...currentChord, rootNote: resRoot + this.spiralTransposition };
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ. Единая позиция для всего ансамбля.
+        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ.
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
@@ -237,11 +240,19 @@ export class TranceBrain {
             if (epoch % 4 === 3) events.push(...this.renderNeuroFills(epoch, tension));
         }
 
+        // BASS with Sub Support
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderRollingBass(epoch, resChord, tension);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord)));
+            
+            // #ЗАЧЕМ: ПЛАН №1281. Добавляем саб-наполнение при высокой энергии.
+            if (tension > 0.8) {
+                b.forEach(be => {
+                    events.push({ ...be, note: be.note - 12, weight: be.weight * 0.4, params: { ...be.params, attack: 0.1 } });
+                });
+            }
+            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, tension)));
         }
 
         let melodyEvents: FractalEvent[] = [];
@@ -251,12 +262,17 @@ export class TranceBrain {
             } else {
                 melodyEvents = this.renderLegacySolo(epoch, resChord, tension);
             }
-            events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+            // #ЗАЧЕМ: ПЛАН №1281. Панорамирование для масштаба.
+            melodyEvents.forEach(e => { e.pan = (this.rng.next() * 0.8 - 0.4); });
+            events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord, tension)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
 
         const usedTargetLayers = new Set<string>();
         if (!isIntro) {
+            // #ЗАЧЕМ: ПЛАН №1281. Монолитный Унисон (Strict Unison).
+            const useUnison = tension > 0.8 && melodyEvents.length > 0;
+
             this.currentAccompAxioms.forEach(ax => {
                 const role = ax.role.toLowerCase();
                 let target: InstrumentPart | null = null;
@@ -264,9 +280,18 @@ export class TranceBrain {
                 else if (role.includes('accomp')) target = 'accompaniment';
                 
                 if (target && hints[target] && !usedTargetLayers.has(target)) {
-                    const renders = this.renderSpecificHeritageAccompaniment(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                    let renders: FractalEvent[] = [];
+                    
+                    if (useUnison && target === 'accompaniment') {
+                        renders = melodyEvents.map(me => ({
+                            ...me, type: 'accompaniment', note: me.note - 12, weight: 0.5, pan: -me.pan!
+                        }));
+                    } else {
+                        renders = this.renderSpecificHeritageAccompaniment(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                    }
+
                     if (renders.length > 0) {
-                        events.push(...renders.flatMap(e => this.rippleLongNote(e, resChord)));
+                        events.push(...renders.flatMap(e => this.rippleLongNote(e, resChord, tension)));
                         usedTargetLayers.add(target);
                         if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'psybient');
                     }
@@ -274,18 +299,20 @@ export class TranceBrain {
             });
             
             if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-                events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord)));
+                events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, tension)));
             }
             if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
                 const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-                if (p.events.length > 0) events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord)));
+                if (p.events.length > 0) events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord, tension)));
             }
         }
 
         if (hints.harmony && !isIntro) {
             this.selectHarmonyInstrument(epoch);
             const harEvents = this.renderDerivativeHarmony(resChord, epoch, this.activeHarmonyInstrument);
-            events.push(...harEvents.flatMap(e => this.rippleLongNote(e, resChord)));
+            // #ЗАЧЕМ: ПЛАН №1281. Широкая панорама гармонии.
+            harEvents.forEach(e => { e.pan = 0.5; });
+            events.push(...harEvents.flatMap(e => this.rippleLongNote(e, resChord, tension)));
             instrumentOverrides.harmony = this.activeHarmonyInstrument;
         }
 
@@ -300,7 +327,7 @@ export class TranceBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
                 drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro'
             },
-            narrative: `Psybient Spiral: [DNA: ${this.currentTrackName}] [Mut: ${this.currentMutationType.toUpperCase()}]`
+            narrative: `Psybient Spiral: [Aura of Magnitude Active]`
         };
     }
 
@@ -509,7 +536,7 @@ export class TranceBrain {
     }
 
     private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 3.2, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
+        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 3.2, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legate' }];
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -552,14 +579,18 @@ export class TranceBrain {
         return events;
     }
 
-    private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {
         if (e.duration < 3.5) return [e]; 
         const rippled: FractalEvent[] = [];
         const isMinor = chord.chordType === 'minor';
         const ripplePool = isMinor ? [0, 3, 7, 8, 10] : [0, 4, 7, 9, 11]; 
-        const numChunks = Math.ceil(e.duration / 1.5); 
+        
+        // Масштабируем базу дробления (ПЛАН №1281)
+        const baseDur = currentTension > 0.7 ? 0.6 : 1.5;
+        const numChunks = Math.ceil(e.duration / baseDur); 
         const chunkDur = e.duration / numChunks;
         const baseOctaveMidi = Math.floor(e.note / 12) * 12;
+        
         for (let i = 0; i < numChunks; i++) {
             let note: number;
             if (i === 0) { note = e.note; } 

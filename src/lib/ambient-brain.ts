@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V120.0 — "Ensemble Sync Protocol Active".
- * #ЗАЧЕМ: ПЛАН №1279 — Синхронизация с логикой BluesBrain (Rolling Ribbon + Golden Notes).
+ * @fileOverview Ambient Brain V121.0 — "Aura of Magnitude Active".
+ * #ЗАЧЕМ: ПЛАН №1281 — Добавление масштаба через унисон и пространственное расширение.
  */
 
 import type {
@@ -109,15 +109,18 @@ export class AmbientBrain {
     /**
      * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
      * #ЧТО: Дробление длинных нот, микро-лики (50%) и спектральное «дыхание».
+     * #ОБНОВЛЕНО (ПЛАН №1281): Повышена частота дробления при высоком Tension.
      */
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5, currentTension: number = 0.5): FractalEvent[] {
         if (e.chordName) return [e]; 
         if (e.duration < 5.0) return [e]; 
 
         const rippled: FractalEvent[] = [];
         const useLick = this.random.next() < 0.50; 
         
-        const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
+        // Масштабируем базу дробления: чем выше напряжение, тем чаще дробление
+        const adjustedBase = currentTension > 0.7 ? chunkDurBase * 0.6 : chunkDurBase;
+        const numChunks = Math.max(2, Math.ceil(e.duration / adjustedBase));
         const chunkDur = e.duration / numChunks;
         
         const baseMidi = e.note;
@@ -151,12 +154,10 @@ export class AmbientBrain {
 
     /**
      * #ЗАЧЕМ: Протокол «Анти-Педаль» (ПЛАН №1267).
-     * #ЧТО: Разрыв статики на 3-м такте удержания одной ноты.
      */
     private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return events;
 
-        // Определяем основную ноту такта
         const primary = events.find(e => e.time === 0) || events[0];
         const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
 
@@ -168,23 +169,19 @@ export class AmbientBrain {
         }
         this.heldNotesState.set(part, state);
 
-        // КРИЗИС 3-ГО ТАКТА
         if (state.barCount >= 3) {
-            state.barCount = 0; // Сброс счетчика
+            state.barCount = 0; 
             const strategy = this.random.nextInt(3);
 
             if (strategy === 0) {
-                // Стратегия "Вздох": Слой замолкает
                 return []; 
             } else if (strategy === 1) {
-                // Стратегия "Гармонический прыжок": Уход в квинту
                 return events.map(e => ({ 
                     ...e, 
                     note: e.note + 7, 
                     params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
                 }));
             } else {
-                // Стратегия "Турбулентность": Усиленное дробление
                 return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
             }
         }
@@ -234,7 +231,6 @@ export class AmbientBrain {
                     filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
                 }
 
-                // #ЗАЧЕМ: ПЛАН №1279. Вычисление границ ленты донора (как в BluesBrain).
                 const maxDonorBars = Math.max(...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
@@ -301,19 +297,20 @@ export class AmbientBrain {
             melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
         };
 
-        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ. Единая позиция для всего ансамбля.
+        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ.
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
         // 1. Bass
+        let bassEvents: FractalEvent[] = [];
         if (hints.bass) {
-            let b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
+            bassEvents = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderPulsatingBass(resChord, epoch, tension);
             
-            b = this.applyAntiPedal('bass', b, resChord);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, 0.6)));
+            bassEvents = this.applyAntiPedal('bass', bassEvents, resChord);
+            events.push(...bassEvents.flatMap(e => this.rippleLongNote(e, resChord, 0.6, tension)));
             layerAxioms.bass = this.currentBassTheme ? 'Sibling DNA' : 'Algorithm Pulse';
         }
 
@@ -333,19 +330,40 @@ export class AmbientBrain {
             }
             
             m = this.applyAntiPedal('melody', m, resChord);
-            events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 1.0)));
+            // #ЗАЧЕМ: ПЛАН №1281. Расширение панорамы для мелодии.
+            m.forEach(e => { e.pan = (this.random.next() * 0.6 - 0.3); });
+            events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 1.0, tension)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
         }
 
         // 3. Accompaniment & Piano
         const usedLayers = new Set<string>();
+        
+        // #ЗАЧЕМ: ПЛАН №1281. Монолитный Унисон (Strict Unison).
+        // Если напряжение высокое (>0.75), слой аккомпанемента дублирует бас.
+        const useStrictUnison = tension > 0.75 && bassEvents.length > 0;
+
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
             if (target && hints[target] && !usedLayers.has(target)) {
-                let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                let rendered: FractalEvent[] = [];
+                
+                if (useStrictUnison && target === 'accompaniment') {
+                    // Клонируем бас в аккомпанемент (октавой выше)
+                    rendered = bassEvents.map(be => ({
+                        ...be,
+                        type: 'accompaniment',
+                        note: this.constrainAccompanimentOctave(be.note + 12),
+                        weight: 0.55,
+                        params: { ...be.params, narrative: 'Strict Unison Active' }
+                    }));
+                } else {
+                    rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                }
+
                 rendered = this.applyAntiPedal(target, rendered, resChord);
-                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
+                events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2, tension)));
                 usedLayers.add(target);
                 layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
@@ -353,17 +371,27 @@ export class AmbientBrain {
         });
 
         if (hints.accompaniment && !usedLayers.has('accompaniment')) {
-            let pad = this.renderSidechainedPad(epoch, resChord, tension);
+            let pad: FractalEvent[] = [];
+            if (useStrictUnison) {
+                 pad = bassEvents.map(be => ({
+                    ...be,
+                    type: 'accompaniment',
+                    note: this.constrainAccompanimentOctave(be.note + 12),
+                    weight: 0.55
+                }));
+            } else {
+                pad = this.renderSidechainedPad(epoch, resChord, tension);
+            }
             pad = this.applyAntiPedal('accompaniment', pad, resChord);
-            events.push(...pad.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
-            layerAxioms.accompaniment = 'Generative Cloud';
+            events.push(...pad.flatMap(e => this.rippleLongNote(e, resChord, 2.0, tension)));
+            layerAxioms.accompaniment = useStrictUnison ? 'Monolith Unison' : 'Generative Cloud';
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension);
             if (p.events.length > 0) {
                 const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
-                events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
+                events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8, tension)));
                 layerAxioms.piano = p.style;
             }
         }
@@ -371,7 +399,9 @@ export class AmbientBrain {
         if (hints.harmony && !usedLayers.has('harmony')) {
             const hResult = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (hResult.events.length > 0) {
-                events.push(...hResult.events.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
+                // #ЗАЧЕМ: ПЛАН №1281. Гармония на краях панорамы для масштаба.
+                hResult.events.forEach(e => { e.pan = 0.45; });
+                events.push(...hResult.events.flatMap(e => this.rippleLongNote(e, resChord, 2.5, tension)));
                 layerAxioms.harmony = hResult.instrument === 'violin' ? 'Violin Whisper' : 'Guitar Chord';
                 if (hResult.instrument) instrumentOverrides.harmony = hResult.instrument;
             }
@@ -392,7 +422,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Ensemble Sync Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Aura of Magnitude Active]`
         };
     }
 
