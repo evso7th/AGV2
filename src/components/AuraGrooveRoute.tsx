@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.1 — "Compact Mobile Logic".
- * #ЗАЧЕМ: Уплотнение интерфейса для мобильных устройств.
+ * @fileOverview UI AuraGroove V8.2 — "Genre Binding Restoration".
+ * #ЗАЧЕМ: Возврат возможности привязки пресета к жанру для автозагрузки в маршруте.
  */
 'use client';
 
@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
@@ -144,8 +145,26 @@ function PresetManager({
                             "flex items-center justify-between p-1.5 rounded border transition-all group",
                             p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
                         )}>
-                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0" onClick={() => onLoad(p.id)}>{p.name}</span>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                            <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0 mr-2" onClick={() => onLoad(p.id)}>{p.name}</span>
+                            
+                            {onSetGenre && (
+                                <Select 
+                                    value={p.genre || "none"} 
+                                    onValueChange={(v) => onSetGenre(p.id, v === "none" ? "" : v)}
+                                >
+                                    <SelectTrigger className="h-6 w-24 text-[9px] font-black uppercase px-2 bg-background/50 border-none shadow-none">
+                                        <SelectValue placeholder="Genre" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-card">
+                                        <SelectItem value="none" className="text-[10px] uppercase font-black">---</SelectItem>
+                                        {['ambient', 'psybient', 'blues', 'reggae'].map(g => (
+                                            <SelectItem key={g} value={g} className="text-[10px] uppercase font-black">{t(`g_${g}` as any)}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 shrink-0" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                     ))}
                 </div>
