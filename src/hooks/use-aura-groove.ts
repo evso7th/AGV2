@@ -1,6 +1,7 @@
 /**
- * @fileOverview Music Control Hook V28.0 — "Localization Engine".
- * #ЗАЧЕМ: Внедрение мультиязычности и авто-детекции локали.
+ * @fileOverview Music Control Hook V29.0 — "Media Session Stabilization".
+ * #ЗАЧЕМ: Стабилизация системных метаданных (Media Session API).
+ * #ЧТО: ПЛАН №1283 — Устранение мигания обложки, фиксация Artist/Album и переход на статический ассет.
  */
 'use client';
 
@@ -534,22 +535,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
+  /**
+   * #ЗАЧЕМ: Стабилизация Media Session API (ПЛАН №1283).
+   * #ЧТО: Удален Heartbeat-интервал, Artist/Album зафиксированы, обложка статична.
+   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
 
     const origin = window.location.origin;
-    const version = "1.1"; 
 
     navigator.mediaSession.metadata = new MediaMetadata({
         title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
-        artist: currentTrackName !== 'Generative' ? currentTrackName : 'AuraGroove',
+        artist: 'AuraGroove',
         album: 'The Infinite Take Orchestra',
         artwork: [
-            { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover.jpg`, sizes: '512x512', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover512.jpg`, sizes: '512x512', type: 'image/jpeg' }
         ]
     });
 
@@ -587,7 +588,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         resetWorker();
     });
 
-  }, [isPlaying, genre, mood, currentTrackName, setIsPlaying, stopAllSounds, toast, resetWorker, t]);
+  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker, t]);
 
   const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
@@ -652,9 +653,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [toast, t]);
 
   const syncDna = useCallback(async () => {
-    await engineSyncDna();
-    toast({ title: t('toast_dna_synced'), description: t('toast_dna_synced_desc') });
-  }, [engineSyncDna, toast, t]);
+    const l = getLanguage();
+    await refreshCloudAxioms();
+    toast({ title: TRANSLATIONS.toast_dna_synced[l], description: TRANSLATIONS.toast_dna_synced_desc[l] });
+  }, [refreshCloudAxioms, toast]);
 
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
