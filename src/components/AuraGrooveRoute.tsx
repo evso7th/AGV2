@@ -121,7 +121,7 @@ function PresetManager({
                         className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
                     >
                         <Save className="h-3.5 w-3.5" />
-                        {t('btn_capture_save')}
+                        {t('btn_preset_save')}
                     </Button>
                     {activeId && onUpdate && (
                         <Button
@@ -131,7 +131,7 @@ function PresetManager({
                             className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
                         >
                             <SaveAll className="h-3.5 w-3.5" />
-                            {t('btn_capture_save')}
+                            {t('btn_preset_update')}
                         </Button>
                     )}
                 </div>

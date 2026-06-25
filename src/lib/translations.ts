@@ -32,6 +32,10 @@ export const TRANSLATIONS = {
     dialog_capture_name: { ru: "Название...", en: "Name..." },
     btn_capture_save: { ru: "Запомнить путь", en: "Store Journey" },
     
+    // Preset Manager Specific (Mixer/EQ)
+    btn_preset_save: { ru: "1. ЗАПОМНИТЬ", en: "1. CAPTURE" },
+    btn_preset_update: { ru: "2. ОБНОВИТЬ", en: "2. UPDATE" },
+    
     dialog_library_title: { ru: "Библиотека маршрутов", en: "Library" },
     steps_count: { ru: "шагов", en: "steps" },
     
