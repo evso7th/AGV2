@@ -19,7 +19,7 @@ export const TRANSLATIONS = {
     // Selectors
     label_genre: { ru: "Жанр", en: "Genre" },
     label_mood: { ru: "Настроение", en: "Mood" },
-    btn_add_to_route: { ru: "Добавить в маршрут", en: "Add to Route" },
+    btn_add_to_route: { ru: "в маршрут", en: "to route" },
     
     // Route List
     label_current_path: { ru: "Текущий путь", en: "Current Path" },

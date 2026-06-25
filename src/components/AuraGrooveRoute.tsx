@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.0 — "Global Localization".
- * #ЗАЧЕМ: Реализация мультиязычного интерфейса и переключателя языков.
+ * @fileOverview UI AuraGroove V8.1 — "Compact Mobile Logic".
+ * #ЗАЧЕМ: Уплотнение интерфейса для мобильных устройств.
  */
 'use client';
 
@@ -311,16 +311,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            {/* Language Switch */}
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={props.toggleLanguage} 
-                                className="h-8 px-2 text-[10px] font-black uppercase tracking-widest text-primary border border-primary/20 hover:bg-primary/5"
-                            >
-                                {props.language}
-                            </Button>
+                        <div className="flex items-center gap-1">
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -340,8 +331,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     </div>
                     
-                    <div className="flex items-center justify-between gap-1 overflow-x-auto no-scrollbar">
-                        <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-between gap-0.5 overflow-x-auto no-scrollbar">
+                        <div className="flex items-center gap-0.5">
                             <Button variant="ghost" size="icon" onClick={props.handleGoHome} className="h-8 w-8 shrink-0"><Home className="h-4 w-4" /></Button>
                             <Button variant="outline" onClick={props.handleToggleBroadcast} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <TowerControl className={cn("h-4 w-4", props.isBroadcastActive && "animate-pulse text-primary")} />
@@ -355,8 +346,17 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant="outline" onClick={props.handleRegenerate} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <RefreshCw className={cn("h-4 w-4", props.isRegenerating && "animate-spin")} />
                             </Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={props.toggleLanguage} 
+                                style={outlineStyle}
+                                className="h-8 px-1.5 text-[10px] font-black uppercase tracking-tighter text-primary shrink-0"
+                            >
+                                {props.language}
+                            </Button>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5">
                             <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
                             <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
                         </div>
@@ -410,10 +410,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </div>
 
             {/* BOTTOM: Route List */}
-            <div className={cn("flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
+            <div className={cn("flex-1 min-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
                 <div className={cn("p-2 flex gap-2 shrink-0 transition-colors", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
-                    <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg">
-                        <Plus className="h-4 w-4 mr-2" /> {t('btn_add_to_route')}
+                    <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-tight h-10 shadow-lg px-1.5">
+                        <Plus className="h-4 w-4 mr-1" /> {t('btn_add_to_route')}
                     </Button>
                     <div className="flex gap-1">
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
