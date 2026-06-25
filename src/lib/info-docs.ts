@@ -1,96 +1,173 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
+ * #ОБНОВЛЕНО: Глубокая актуализация на основе Disclaimer V3.7.0.
  */
 
 export const GUIDE_RU = `
-<div class="prose-info">
-  <h2>Инструкция AuraGroove</h2>
-  <p><strong>Версия интерфейса:</strong> v3.1 Stable | <strong>Ядро:</strong> v3.7.0</p>
+<div class="prose-info text-[13px] leading-relaxed space-y-4">
+  <h2 class="text-xl font-black text-primary uppercase tracking-tighter border-b border-primary/20 pb-2">Инструкция AuraGroove</h2>
+  <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">Версия интерфейса: v3.1 Stable | Ядро: v3.7.0</p>
   
-  <h3>1. Введение</h3>
-  <p>AuraGroove — это детерминированный музыкальный движок, создающий уникальные звуковые ландшафты в реальном времени с помощью фрактальной математики и генетических алгоритмов. Это не ИИ в привычном понимании (как SUNO), здесь нет промптов — только чистая математика и музыкальные законы.</p>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">1. О приложении</h3>
+    <p>AuraGroove — это детерминированный музыкальный движок, создающий уникальные звуковые ландшафты в реальном времени. Это не ИИ в привычном понимании (здесь нет промптов) — только чистая математика, фракталы и генетические алгоритмы.</p>
+  </section>
 
-  <h3>2. Главный экран</h3>
-  <ul>
-    <li><strong>Regenerate ():</strong> Создает абсолютно новую пьесу с уникальной структурой.</li>
-    <li><strong>Like (M):</strong> Сохраняет текущую сессию в глобальный "генофонд" шедевров.</li>
-    <li><strong>DNA Anchor:</strong> Позволяет зафиксировать конкретный трек-донор из базы Наследия.</li>
-  </ul>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">2. Основные функции</h3>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>Regenerate (Refresh):</strong> Создает новую пьесу с уникальной структурой и семенем (Seed).</li>
+      <li><strong>Like (Thumbs Up):</strong> Сохраняет удачную комбинацию в глобальный "генофонд" шедевров.</li>
+      <li><strong>DNA Anchor:</strong> Позволяет зафиксировать конкретный трек-донор из базы Наследия.</li>
+      <li><strong>Direct Stream Bridge (Tower):</strong> Обеспечивает стабильное воспроизведение в фоновом режиме.</li>
+    </ul>
+  </section>
 
-  <h3>3. Студийный микшер</h3>
-  <table class="w-full border-collapse my-4">
-    <tr class="border-b border-primary/20"><th class="text-left p-2">Канал</th><th class="text-left p-2">Роль</th></tr>
-    <tr><td class="p-2 font-bold">Master (M)</td><td class="p-2">Общая громкость приложения</td></tr>
-    <tr><td class="p-2 font-bold">Bass (B)</td><td class="p-2">Фундамент грува</td></tr>
-    <tr><td class="p-2 font-bold">Lead (MEL)</td><td class="p-2">Ведущая мелодия</td></tr>
-    <tr><td class="p-2 font-bold">Keyb (ACC)</td><td class="p-2">Ритмические пэды</td></tr>
-    <tr><td class="p-2 font-bold">Drums (D)</td><td class="p-2">Ударная секция</td></tr>
-  </table>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">3. Лимит голосов (ARP)</h3>
+    <p>Качество звука напрямую зависит от количества активных голосов. Нажмите на иконку <strong>Layers</strong> в футере:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>Минимум 50:</strong> Порог приемлемого качества.</li>
+      <li><strong>Рекомендуемо 60-120:</strong> Для мобильных устройств.</li>
+      <li><strong>Максимум 250-512:</strong> Для мощных настольных систем.</li>
+    </ul>
+    <p class="text-[11px] italic opacity-70">Примечание: После смены лимита во время игры нажмите «Regenerate» для очистки старых хвостов.</p>
+  </section>
 
-  <h3>4. Управление голосами (ARP)</h3>
-  <p>Нажмите на иконку микросхемы (Layers) для настройки лимита голосов. <strong>Минимум: 50</strong> (для качества), <strong>Максимум: 512</strong> (для мощных систем). На мобильных устройствах рекомендуем 60-120.</p>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">4. Студийный микшер</h3>
+    <table class="w-full border-collapse text-[11px]">
+      <tr class="border-b border-primary/20"><th class="text-left py-1">Канал</th><th class="text-left py-1">Роль</th></tr>
+      <tr><td class="py-1 font-bold">Master</td><td class="py-1">Общая громкость приложения</td></tr>
+      <tr><td class="py-1 font-bold">Bass</td><td class="py-1">Фундамент и грув (G1 Standard)</td></tr>
+      <tr><td class="py-1 font-bold">Lead</td><td class="py-1">Ведущая мелодия</td></tr>
+      <tr><td class="py-1 font-bold">Keyb</td><td class="py-1">Ритмические пэды</td></tr>
+      <tr><td class="py-1 font-bold">Drums</td><td class="py-1">Ударная секция</td></tr>
+    </table>
+  </section>
 </div>
 `;
 
 export const GUIDE_EN = `
-<div class="prose-info">
-  <h2>AuraGroove Manual</h2>
-  <p><strong>UI Version:</strong> v3.1 Stable | <strong>Core Engine:</strong> v3.7.0</p>
+<div class="prose-info text-[13px] leading-relaxed space-y-4">
+  <h2 class="text-xl font-black text-primary uppercase tracking-tighter border-b border-primary/20 pb-2">AuraGroove Manual</h2>
+  <p class="text-[10px] font-bold opacity-50 uppercase tracking-widest">UI Version: v3.1 Stable | Core Engine: v3.7.0</p>
 
-  <h3>1. Introduction</h3>
-  <p>AuraGroove is a deterministic music engine that creates unique soundscapes in real-time using fractal mathematics and genetic algorithms. No prompts, no neural networks — just pure mathematical harmony.</p>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">1. Introduction</h3>
+    <p>AuraGroove is a deterministic music engine creating unique soundscapes in real-time. It's not prompt-based AI; it's pure mathematics, fractals, and genetic algorithms.</p>
+  </section>
 
-  <h3>2. Main Controls</h3>
-  <ul>
-    <li><strong>Regenerate ():</strong> Generates a completely new piece with a unique structure.</li>
-    <li><strong>Like (M):</strong> Saves the current session to the global "masterpieces" gene pool.</li>
-    <li><strong>DNA Anchor:</strong> Locks a specific donor track from the Heritage database.</li>
-  </ul>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">2. Key Controls</h3>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>Regenerate (Refresh):</strong> Generates a completely new piece with a unique structure and Seed.</li>
+      <li><strong>Like (Thumbs Up):</strong> Saves the current session to the global "masterpieces" gene pool.</li>
+      <li><strong>DNA Anchor:</strong> Locks a specific donor track from the Heritage database.</li>
+      <li><strong>Direct Stream Bridge (Tower):</strong> Ensures stable background playback.</li>
+    </ul>
+  </section>
 
-  <h3>3. Studio Mixer</h3>
-  <table class="w-full border-collapse my-4">
-    <tr class="border-b border-primary/20"><th class="text-left p-2">Channel</th><th class="text-left p-2">Role</th></tr>
-    <tr><td class="p-2 font-bold">Master (M)</td><td class="p-2">Overall application volume</td></tr>
-    <tr><td class="p-2 font-bold">Bass (B)</td><td class="p-2">Groove foundation</td></tr>
-    <tr><td class="p-2 font-bold">Lead (MEL)</td><td class="p-2">Main melodic theme</td></tr>
-    <tr><td class="p-2 font-bold">Keyb (ACC)</td><td class="p-2">Rhythmic pads</td></tr>
-    <tr><td class="p-2 font-bold">Drums (D)</td><td class="p-2">Percussion section</td></tr>
-  </table>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">3. Voice Limit (ARP)</h3>
+    <p>Sound quality is proportional to the number of active voices. Tap the <strong>Layers</strong> icon in the footer:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>Min 50:</strong> Minimum threshold for acceptable quality.</li>
+      <li><strong>60-120:</strong> Recommended for mobile devices.</li>
+      <li><strong>250-512:</strong> For high-performance desktop systems.</li>
+    </ul>
+    <p class="text-[11px] italic opacity-70">Note: If you change the limit during playback, press "Regenerate" to clear lingering voices.</p>
+  </section>
 
-  <h3>4. Voice Control (ARP)</h3>
-  <p>Tap the Layers icon to adjust the voice limit. <strong>Min: 50</strong> (for quality), <strong>Max: 512</strong> (for high-end systems). We recommend 60-120 for mobile devices.</p>
+  <section class="space-y-2">
+    <h3 class="text-sm font-black uppercase text-primary/80">4. Studio Mixer</h3>
+    <table class="w-full border-collapse text-[11px]">
+      <tr class="border-b border-primary/20"><th class="text-left py-1">Channel</th><th class="text-left py-1">Role</th></tr>
+      <tr><td class="py-1 font-bold">Master</td><td class="py-1">Overall application volume</td></tr>
+      <tr><td class="py-1 font-bold">Bass</td><td class="py-1">Groove foundation (G1 Standard)</td></tr>
+      <tr><td class="py-1 font-bold">Lead</td><td class="py-1">Main melodic theme</td></tr>
+      <tr><td class="py-1 font-bold">Keyb</td><td class="py-1">Rhythmic pads</td></tr>
+      <tr><td class="py-1 font-bold">Drums</td><td class="py-1">Percussion section</td></tr>
+    </table>
+  </section>
 </div>
 `;
 
 export const DISCLAIMER_RU = `
-<div class="prose-info">
-  <h2>Дисклеймер AuraGroove</h2>
-  <p>AuraGroove — это экспериментальный алгоритмический проект.</p>
+<div class="prose-info text-[12px] leading-relaxed space-y-4">
+  <h2 class="text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3</h2>
   
-  <h3>1. Технические ограничения</h3>
-  <p>Поскольку звук генерируется в реальном времени в браузере, входящие звонки или режим энергосбережения на смартфонах могут прерывать воспроизведение. Это ограничение операционной системы, а не ошибка приложения.</p>
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Что это такое (и чем не является)</h3>
+    <p>AuraGroove — это детерминированный алгоритмический музыкальный движок. Это не генератор на основе нейросетей (как SUNO или Udio).</p>
+    <ul class="list-disc pl-4 opacity-80">
+      <li>Без промптов: Мы не обрабатываем текстовые запросы.</li>
+      <li>Без нейросетей: Система построена на фракталах и цепях Маркова.</li>
+      <li>Не плеер: Весь звук синтезируется «на лету» с нуля.</li>
+    </ul>
+  </section>
 
-  <h3>2. Конфиденциальность</h3>
-  <p>Мы не собираем телеметрию и личные данные. Все ваши настройки (пресеты, маршруты) хранятся исключительно локально на вашем устройстве.</p>
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Основные Принципы</h3>
+    <p><strong>Математический Суверенитет:</strong> 100% генерация. Никакого семплирования существующей музыки.</p>
+    <p><strong>Приватность:</strong> Ноль телеметрии. Ноль профилей. Все настройки хранятся только локально на вашем устройстве.</p>
+  </section>
 
-  <h3>3. Использование контента</h3>
-  <p>Музыка генерируется на лету и предназначена для личного прослушивания. Любое коммерческое использование требует согласования с разработчиком.</p>
+  <section class="space-y-1 bg-destructive/5 p-2 rounded border border-destructive/10">
+    <h3 class="text-[11px] font-black uppercase text-destructive">3. Ограничения устройств</h3>
+    <p>Использование на смартфонах может быть ограничено политиками ОС:</p>
+    <ul class="list-disc pl-4">
+      <li>Входящие звонки немедленно остановят звук.</li>
+      <li>Режим энергосбережения может вызвать заикания звука.</li>
+      <li>Открытие тяжелых приложений может отнять ресурсы у движка.</li>
+    </ul>
+  </section>
+
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">4. Юридические гарантии</h3>
+    <p>AuraGroove не заявляет прав на сгенерированную музыку. Проект предназначен для личного использования и создания адаптивного фона.</p>
+  </section>
+
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 3.7.0</p>
 </div>
 `;
 
 export const DISCLAIMER_EN = `
-<div class="prose-info">
-  <h2>AuraGroove Disclaimer</h2>
-  <p>AuraGroove is an experimental algorithmic music project.</p>
+<div class="prose-info text-[12px] leading-relaxed space-y-4">
+  <h2 class="text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3</h2>
+  
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Definition</h3>
+    <p>AuraGroove is a deterministic, algorithmic music engine. It is NOT a neural network-based generator (like SUNO or Udio).</p>
+    <ul class="list-disc pl-4 opacity-80">
+      <li>No prompts: We do not process text-to-music requests.</li>
+      <li>No neural networks: Built entirely on fractal math and Markov chains.</li>
+      <li>Not a playback engine: Audio is synthesized on-the-fly from scratch.</li>
+    </ul>
+  </section>
 
-  <h3>1. Technical Constraints</h3>
-  <p>Since audio is generated in real-time within the browser, incoming calls or power-saving modes on smartphones may interrupt playback. This is an OS-level limitation, not an application bug.</p>
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Core Principles</h3>
+    <p><strong>Mathematical Sovereignty:</strong> 100% generative. No sampling of existing music.</p>
+    <p><strong>Zero Data Collection:</strong> No telemetry, no user profiles. All data remains locally on your device.</p>
+  </section>
 
-  <h3>2. Privacy</h3>
-  <p>We do not collect telemetry or personal data. All your settings (presets, routes) are stored exclusively on your local device.</p>
+  <section class="space-y-1 bg-destructive/5 p-2 rounded border border-destructive/10">
+    <h3 class="text-[11px] font-black uppercase text-destructive">3. Device Constraints</h3>
+    <p>Mobile usage is subject to OS limitations:</p>
+    <ul class="list-disc pl-4">
+      <li>Incoming calls will stop audio playback.</li>
+      <li>Battery Saver mode may throttle the audio engine.</li>
+      <li>Background resources are managed by the OS, not the app.</li>
+    </ul>
+  </section>
 
-  <h3>3. Content Usage</h3>
-  <p>Music is generated on-the-fly for personal listening. Any commercial use requires prior coordination with the developer.</p>
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">4. Legal Safeguards</h3>
+    <p>AuraGroove claims no ownership of generated music. The system produces original, non-copyrightable content through mathematical generation.</p>
+  </section>
+
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 3.7.0</p>
 </div>
 `;
