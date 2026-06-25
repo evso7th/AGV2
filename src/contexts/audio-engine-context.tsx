@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V53.1 — "Stealth Mode Active".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Audio Engine Context V54.0 — "Localized Signals".
+ * #ЗАЧЕМ: Поддержка локализованных уведомлений (Toasts).
  */
 'use client';
 
@@ -21,14 +21,14 @@ import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { GUITAR_LOUDNESS_TRIM_DB } from '@/lib/guitar-loudness';
 import { loadDnaCache, saveDnaCache } from '@/lib/dna-cache';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
-import { saveMasterpiece } from '@/lib/firebase-service';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
-import { collection, getDocs, query, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
+import { TRANSLATIONS, type Language } from '@/lib/translations';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.50,            
@@ -133,7 +133,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
-  const lastSavedArbiterSeedRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
@@ -155,7 +154,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const speakerGainNodeRef = useRef<GainNode | null>(null);
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
   const transitionGainRef = useRef<GainNode | null>(null);
-  const transitionBufferRef = useRef<AudioBuffer | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
@@ -185,6 +183,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const { toast } = useToast();
   const db = useFirestore();
   const auth = useAuth();
+
+  const getLanguage = (): Language => {
+    if (typeof window === 'undefined') return 'en';
+    const saved = localStorage.getItem('AuraGroove_Language') as Language;
+    if (saved) return saved;
+    const sysLang = navigator.language.toLowerCase();
+    return (sysLang.includes('ru') || sysLang.includes('uk') || sysLang.includes('be')) ? 'ru' : 'en';
+  };
 
   const getEffectivePreset = useCallback((presetName: string) => {
       const base = (V2_PRESETS as any)[presetName] || (BASS_PRESETS as any)[presetName];
@@ -235,22 +241,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           stopAllSounds(); 
       }
   }, [stopAllSounds]);
-
-  useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-      if (mediaRecorderRef.current) {
-        try { mediaRecorderRef.current.stop(); } catch(e) {}
-        mediaRecorderRef.current = null;
-      }
-      if (audioContextRef.current) {
-        try { audioContextRef.current.close(); } catch(e) {}
-      }
-    };
-  }, []);
 
   const setCalibrationGain = useCallback((key: string, val: number) => {
       setCalibrationGains(prev => {
@@ -322,7 +312,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
-      // console.log('%c[DNA Sync] Cloud sync started…', 'color: #00BCD4; font-weight: bold;');
       const [axSnap, mpSnap] = await Promise.all([
         getDocs(query(collection(db, 'heritage_axioms'))),
         getDocs(query(collection(db, 'masterpieces'))),
@@ -331,8 +320,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       applyAxiomsToEngine(rawAxioms);
       saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
-      // console.log(`%c[DNA Sync] Cloud sync complete — transferred ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces`, 'color: #00BCD4; font-weight: bold;');
-    } catch (e) { /* console.error('[DNA Sync] Failed:', e); */ }
+    } catch (e) {}
   }, [db, applyAxiomsToEngine]);
 
   const loadDnaFromCache = useCallback(async (): Promise<boolean> => {
@@ -345,8 +333,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [applyAxiomsToEngine]);
 
   const syncDna = useCallback(async () => {
+    const l = getLanguage();
     await refreshCloudAxioms();
-    toast({ title: 'DNA Synced', description: 'Heritage refreshed from cloud' });
+    toast({ title: TRANSLATIONS.toast_dna_synced[l], description: TRANSLATIONS.toast_dna_synced_desc[l] });
   }, [refreshCloudAxioms, toast]);
 
   const initialize = useCallback(async () => {
@@ -399,8 +388,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
         cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
-        // PHASE 1
-        // console.log('%c[HybridLoader] Phase 1: Loading core assets...', 'color: #FF6B6B; font-weight: bold;');
         await Promise.all([
           drumMachineRef.current.init(true),
           blackGuitarSamplerRef.current.init(true),
@@ -410,7 +397,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           sfxSynthManagerRef.current.init(5)
         ]);
 
-        // PHASE 2
         setBackgroundLoadInProgress(true);
         setTimeout(async () => {
           try {
@@ -445,7 +431,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
                 else if (type === 'SUITE_TRANSITION') { window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); }
-                else if (type === 'error') toast({ variant: "destructive", title: "Worker Error", description: error });
+                else if (type === 'error') {
+                    const l = getLanguage();
+                    toast({ variant: "destructive", title: TRANSLATIONS.toast_sync_fail[l], description: error });
+                }
             };
             try {
                 const savedHist = localStorage.getItem('AuraGroove_TrackHistory');
@@ -460,7 +449,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
-    } catch (e) { toast({ variant: "destructive", title: "Audio Error" }); return false; }
+    } catch (e) { return false; }
   }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast]);
 
   const toggleBroadcastCallback = useCallback(async () => {

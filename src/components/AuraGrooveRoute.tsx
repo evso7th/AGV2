@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V7.9 — "Syntax & DND Fix".
- * #ЗАЧЕМ: Внедрение Инфо-центра с поддержкой HTML-документации.
+ * @fileOverview UI AuraGroove V8.0 — "Global Localization".
+ * #ЗАЧЕМ: Реализация мультиязычного интерфейса и переключателя языков.
  */
 'use client';
 
@@ -22,11 +22,12 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
-import type { RouteItem } from "@/types/music";
+import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN } from '@/lib/info-docs';
+import type { Language } from '@/lib/translations';
 
 // DND Kit Imports
 import {
@@ -48,21 +49,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const GENRES = [
-    { id: 'ambient', label: 'Slow Fusion' },
-    { id: 'psybient', label: 'Neuro Space' },
-    { id: 'blues', label: "Cafe's Blues" },
-    { id: 'reggae', label: 'Root Reggey' },
-    { id: 'random', label: '⚡ SURPRISE' }
-];
-
-const MOODS = [
-    { id: 'melancholic', label: 'Melancholic' },
-    { id: 'dreamy', label: 'Dreamy' },
-    { id: 'calm', label: 'Calm' },
-    { id: 'joyful', label: 'Joyful' },
-    { id: 'random', label: '⚡ ANY' }
-];
+const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'random'];
+const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'random'];
 
 const MIXER_CHANNELS = [
     { key: 'master', label: 'MST' },
@@ -81,42 +69,6 @@ const EQ_BANDS = [
   { freq: '500', label: '500' }, { freq: '1k', label: '1k' }, { freq: '2k', label: '2k' }, { freq: '4k', label: '4k' },
 ];
 
-function SimpleVerticalList({ 
-    items, 
-    value, 
-    onChange 
-}: { 
-    items: {id: string, label: string}[], 
-    value: string, 
-    onChange: (id: string) => void 
-}) {
-    return (
-        <ScrollArea className="flex-grow w-full bg-background/10 border-r border-primary/5 last:border-r-0">
-            <div className="flex flex-col p-1 gap-1">
-                {items.map((item) => {
-                    const isActive = item.id === value;
-                    return (
-                        <button
-                            key={item.id}
-                            onClick={() => onChange(item.id)}
-                            className={cn(
-                                "flex items-center justify-center h-8 px-2 rounded-md transition-all text-[10px] font-black uppercase tracking-tight",
-                                isActive 
-                                    ? "bg-primary text-primary-foreground shadow-md scale-[0.98]" 
-                                    : "text-muted-foreground/60 hover:bg-muted hover:text-foreground"
-                            )}
-                        >
-                            {item.label}
-                        </button>
-                    );
-                })}
-            </div>
-        </ScrollArea>
-    );
-}
-
-const BIND_GENRES = GENRES.filter(g => g.id !== 'random');
-
 function PresetManager({
     presets,
     activeId,
@@ -126,7 +78,8 @@ function PresetManager({
     onDelete,
     title,
     onReset,
-    onSetGenre
+    onSetGenre,
+    t
 }: {
     presets: PresetItem[],
     activeId: string | null,
@@ -136,7 +89,8 @@ function PresetManager({
     onDelete: (id: string) => void,
     title: string,
     onReset?: () => void,
-    onSetGenre?: (id: string, genre: string) => void
+    onSetGenre?: (id: string, genre: string) => void,
+    t: (k: any) => string
 }) {
     const [name, setName] = useState("");
     const activePreset = presets.find(p => p.id === activeId);
@@ -150,7 +104,7 @@ function PresetManager({
                         {activeId ? activePreset?.name : "System Default"}
                     </Badge>
                     {onReset && (
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onReset} title="Reset to System">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onReset}>
                             <RotateCcw className="h-3 w-3" />
                         </Button>
                     )}
@@ -158,17 +112,16 @@ function PresetManager({
             </div>
             
             <div className="flex flex-col sm:flex-row gap-2">
-                <Input placeholder="New preset name…" value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background w-full sm:flex-1 min-w-0" />
+                <Input placeholder={t('dialog_capture_name')} value={name} onChange={e => setName(e.target.value)} className="h-8 text-xs bg-background w-full sm:flex-1 min-w-0" />
                 <div className="flex gap-2">
                     <Button
                         size="sm"
                         disabled={!name.trim()}
                         onClick={() => { if (name.trim()) { onSave(name); setName(""); } }}
                         className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
-                        title="Create a new preset from the entered name"
                     >
                         <Save className="h-3.5 w-3.5" />
-                        Save New
+                        {t('btn_capture_save')}
                     </Button>
                     {activeId && onUpdate && (
                         <Button
@@ -176,10 +129,9 @@ function PresetManager({
                             variant="secondary"
                             onClick={onUpdate}
                             className="h-8 px-3 gap-1.5 font-black uppercase text-[10px] flex-1 sm:flex-none"
-                            title={`Overwrite loaded preset "${activePreset?.name ?? ''}"`}
                         >
                             <SaveAll className="h-3.5 w-3.5" />
-                            Save Changes
+                            {t('btn_capture_save')}
                         </Button>
                     )}
                 </div>
@@ -193,20 +145,6 @@ function PresetManager({
                             p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
                         )}>
                             <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0" onClick={() => onLoad(p.id)}>{p.name}</span>
-                            {onSetGenre && (
-                                <select
-                                    value={p.genre || ''}
-                                    onChange={e => onSetGenre(p.id, e.target.value)}
-                                    onClick={e => e.stopPropagation()}
-                                    title="Bind to genre (auto-applied on genre change)"
-                                    className="h-7 mr-1 rounded bg-background border border-primary/20 text-[9px] font-bold uppercase px-1 w-[74px] shrink-0"
-                                >
-                                    <option value="">— genre —</option>
-                                    {BIND_GENRES.map(g => (
-                                        <option key={g.id} value={g.id}>{g.label}</option>
-                                    ))}
-                                </select>
-                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100" onClick={() => onDelete(p.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                     ))}
@@ -222,14 +160,16 @@ function SortableRouteItem({
     progress,
     onRemove,
     onSelect,
-    isDarkTheme
+    isDarkTheme,
+    t
 }: {
     item: RouteItem,
     isActive: boolean,
     progress?: number,
     onRemove: (id: string) => void,
     onSelect: (id: string) => void,
-    isDarkTheme: boolean
+    isDarkTheme: boolean,
+    t: (k: any) => string
 }) {
     const {
         attributes,
@@ -245,9 +185,8 @@ function SortableRouteItem({
         transition,
     };
 
-    // Helper to get labels from GENRES/MOODS
-    const getGenreLabel = (id: string) => GENRES.find(g => g.id === id)?.label || id;
-    const getMoodLabel = (id: string) => MOODS.find(m => m.id === id)?.label || id;
+    const getGenreLabel = (id: string) => t(`g_${id}` as any);
+    const getMoodLabel = (id: string) => t(`m_${id}` as any);
 
     return (
         <div
@@ -310,6 +249,7 @@ function SortableRouteItem({
 }
 
 export function AuraGrooveRoute(props: AuraGrooveProps) {
+    const { t } = props;
     const router = useRouter();
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
     const [selectedMood, setSelectedMood] = useState<any>('melancholic');
@@ -325,20 +265,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isDarkTheme, setIsDarkTheme] = useState(true);
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { 
-            activationConstraint: { 
-                distance: 8 
-            } 
-        }),
-        useSensor(TouchSensor, { 
-            activationConstraint: { 
-                delay: 250, 
-                tolerance: 5 
-            } 
-        }),
-        useSensor(KeyboardSensor, { 
-            coordinateGetter: sortableKeyboardCoordinates 
-        })
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
@@ -355,16 +284,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
     const borderClass = isDarkTheme ? 'border-neutral-800' : 'border-gray-200';
     const headerBgClass = isDarkTheme ? 'bg-neutral-900/80' : 'bg-gray-50/80';
-    const buttonBgClass = isDarkTheme
-        ? 'bg-violet-600 hover:bg-violet-500 text-white'
-        : 'bg-violet-600 hover:bg-violet-700 text-white';
     const outlineStyle = !isDarkTheme
         ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
         : undefined;
 
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
-            {/* TOP: Header + Selectors — natural height */}
+            {/* TOP: Header + Selectors */}
             <div className={cn("shrink-0 flex flex-col border-b transition-colors", borderClass)}>
                 <header className={cn("p-3 shrink-0 transition-colors", headerBgClass)}>
                     <div className="flex items-center justify-between mb-2">
@@ -386,6 +312,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
+                            {/* Language Switch */}
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={props.toggleLanguage} 
+                                className="h-8 px-2 text-[10px] font-black uppercase tracking-widest text-primary border border-primary/20 hover:bg-primary/5"
+                            >
+                                {props.language}
+                            </Button>
                             <Button 
                                 variant="ghost" 
                                 size="icon" 
@@ -400,7 +335,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
                             >
                                 {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
-                                {props.isPlaying ? "Pause" : "Play"}
+                                {props.isPlaying ? t('btn_pause') : t('btn_play')}
                             </Button>
                         </div>
                     </div>
@@ -414,7 +349,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant="outline" onClick={props.handleToggleRecording} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
                             </Button>
-                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} style={outlineStyle} className="h-8 w-8 p-0 shrink-0" title="Like">
+                            <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <ThumbsUp className="h-4 w-4 text-primary" />
                             </Button>
                             <Button variant="outline" onClick={props.handleRegenerate} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
@@ -430,57 +365,43 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                 <div className="flex flex-col">
                     <div className="px-3 py-2 flex-shrink-0">
-                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">Genre</Label>
+                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">{t('label_genre')}</Label>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {GENRES.map(item => (
+                            {GENRE_IDS.map(id => (
                                 <button
-                                    key={item.id}
-                                    onClick={() => setSelectedGenre(item.id)}
-                                    style={
-                                        selectedGenre === item.id
-                                            ? {}
-                                            : !isDarkTheme
-                                            ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
-                                            : {}
-                                    }
+                                    key={id}
+                                    onClick={() => setSelectedGenre(id)}
                                     className={cn(
                                         "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tight transition-all border",
-                                        selectedGenre === item.id
-                                            ? "bg-violet-600 text-white shadow-md"
+                                        selectedGenre === id
+                                            ? "bg-violet-600 text-white shadow-md border-violet-500"
                                             : isDarkTheme
                                             ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border-neutral-700"
-                                            : "hover:bg-gray-50"
+                                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                                     )}
                                 >
-                                    {item.label}
+                                    {t(`g_${id}` as any)}
                                 </button>
                             ))}
                         </div>
                     </div>
                     <div className="px-3 py-2 flex-shrink-0">
-                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">Mood</Label>
+                        <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">{t('label_mood')}</Label>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {MOODS.map(item => (
+                            {MOOD_IDS.map(id => (
                                 <button
-                                    key={item.id}
-                                    onClick={() => setSelectedMood(item.id)}
-                                    style={
-                                        selectedMood === item.id
-                                            ? {}
-                                            : !isDarkTheme
-                                            ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
-                                            : {}
-                                    }
+                                    key={id}
+                                    onClick={() => setSelectedMood(id)}
                                     className={cn(
                                         "px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-tight transition-all border",
-                                        selectedMood === item.id
-                                            ? "bg-violet-600 text-white shadow-md"
+                                        selectedMood === id
+                                            ? "bg-violet-600 text-white shadow-md border-violet-500"
                                             : isDarkTheme
                                             ? "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 border-neutral-700"
-                                            : "hover:bg-gray-50"
+                                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                                     )}
                                 >
-                                    {item.label}
+                                    {t(`m_${id}` as any)}
                                 </button>
                             ))}
                         </div>
@@ -488,30 +409,32 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </div>
 
-            {/* BOTTOM: Controls + Path List + Footer — fills remaining space */}
+            {/* BOTTOM: Route List */}
             <div className={cn("flex-1 min-h-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
                 <div className={cn("p-2 flex gap-2 shrink-0 transition-colors", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
-                    <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg"><Plus className="h-4 w-4 mr-2" /> Add to Route</Button>
+                    <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-widest h-10 shadow-lg">
+                        <Plus className="h-4 w-4 mr-2" /> {t('btn_add_to_route')}
+                    </Button>
                     <div className="flex gap-1">
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Capture Journey</DialogTitle></DialogHeader><div className="py-4"><Input placeholder="Name..." value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">Store Journey</Button></DialogFooter></DialogContent>
+                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader><div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Library</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} steps</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
+                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
                         </Dialog>
-                        <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} style={outlineStyle} className="h-10 w-10" title="Shuffle">
+                        <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} style={outlineStyle} className="h-10 w-10">
                             <Shuffle className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" size="icon" onClick={() => props.syncDna()} style={outlineStyle} className="h-10 w-10" title="Sync DNA — refresh Heritage from cloud">
+                        <Button variant="outline" size="icon" onClick={() => props.syncDna()} style={outlineStyle} className="h-10 w-10">
                             <DownloadCloud className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
 
                 <div className="flex-grow overflow-hidden flex flex-col p-3 pt-1 gap-2">
-                    <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">Current Path</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} steps</Badge></div>
+                    <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">{t('label_current_path')}</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} {t('label_steps')}</Badge></div>
                     <ScrollArea className="flex-grow pr-3">
                         <div className="space-y-1.5 pb-24">
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -528,6 +451,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                                 onRemove={props.removeFromRoute}
                                                 onSelect={props.selectRouteItem}
                                                 isDarkTheme={isDarkTheme}
+                                                t={t}
                                             />
                                         );
                                     })}
@@ -537,9 +461,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <div className={cn("py-10 text-center flex flex-col items-center gap-3 rounded-lg mx-4", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
                                     <Sparkles className={cn("h-10 w-10 animate-pulse", isDarkTheme ? 'text-violet-500' : 'text-violet-400')} />
                                     <div>
-                                        <p className={cn("text-[11px] font-black uppercase tracking-widest mb-1", isDarkTheme ? 'text-neutral-300' : 'text-gray-600')}>No journey yet</p>
+                                        <p className={cn("text-[11px] font-black uppercase tracking-widest mb-1", isDarkTheme ? 'text-neutral-300' : 'text-gray-600')}>{t('empty_route_title')}</p>
                                         <p className={cn("text-[9px] uppercase tracking-wide leading-relaxed", isDarkTheme ? 'text-neutral-500' : 'text-gray-500')}>
-                                            Pick a genre and mood<br />then tap <span className="font-black">+ Add to Route</span>
+                                            {t('empty_route_desc')}
                                         </p>
                                     </div>
                                 </div>
@@ -550,15 +474,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                 <footer className={cn("p-4 backdrop-blur-sm flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-colors border-t", isDarkTheme ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white/80 border-gray-200')}>
                     <div className="flex gap-1">
-                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10" title="Spectrum"><Activity className="h-5 w-5" /></Button>
-                        <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10" title="Refresh Path"><RefreshCw className="h-5 w-5 text-primary" /></Button>
+                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
+                        <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10"><RefreshCw className="h-5 w-5 text-primary" /></Button>
                         <Button
                             variant={props.useHeritage ? "default" : "outline"}
                             size="icon"
                             onClick={() => props.setUseHeritage(!props.useHeritage)}
                             style={!props.useHeritage ? outlineStyle : undefined}
                             className={cn("h-10 w-10", !props.useHeritage && "opacity-40")}
-                            title={props.useHeritage ? "DNA Active" : "DNA Off"}
                         >
                             <Dna className="h-5 w-5" />
                         </Button>
@@ -567,16 +490,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex gap-1 items-center">
                         <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10" title="Voice Limit">
+                                <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10">
                                     <Layers className="h-4 w-4" />
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                                 <DialogHeader>
                                     <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                        <Layers className="h-5 w-5" /> Polyphony Control
+                                        <Layers className="h-5 w-5" /> {t('dialog_capacity_title')}
                                     </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Global active voice limit</DialogDescription>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_capacity_desc')}</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-8 py-6">
                                     <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
@@ -592,7 +515,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                     </div>
                                     <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
                                         <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
-                                            Lower limit saves CPU on mobile. Higher limit provides richer tails.
+                                            {t('dialog_capacity_hint')}
                                         </p>
                                     </div>
                                 </div>
@@ -605,23 +528,22 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             onClick={() => setIsDarkTheme(!isDarkTheme)}
                             style={outlineStyle}
                             className="h-10 w-10"
-                            title={isDarkTheme ? 'Light mode' : 'Dark mode'}
                         >
                             {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                         </Button>
 
                         <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")} title="Timer">
+                                <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")}>
                                     <Timer className="h-5 w-5" />
                                 </Button>
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
                                 <DialogHeader>
                                     <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                        <Timer className="h-5 w-5" /> Sleep Timer
+                                        <Timer className="h-5 w-5" /> {t('dialog_timer_title')}
                                     </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Set session duration</DialogDescription>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_timer_desc')}</DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-8 py-6">
                                     <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
@@ -645,7 +567,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                         variant={props.timerSettings.isActive ? 'destructive' : 'default'}
                                         className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
                                     >
-                                        {props.timerSettings.isActive ? `Stop Timer` : 'Activate Timer'}
+                                        {props.timerSettings.isActive ? t('btn_timer_stop') : t('btn_timer_activate')}
                                     </Button>
                                 </div>
                             </DialogContent>
@@ -654,10 +576,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Modals */}
+            {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> Studio Mixer</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
@@ -685,13 +607,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         onDelete={props.deleteMixerPreset}
                         onReset={props.resetMixerToSystem}
                         onSetGenre={props.setMixerPresetGenre}
+                        t={t}
                     />
                 </DialogContent>
             </Dialog>
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
                 <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> Equalizer</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
@@ -702,6 +625,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         onLoad={id => props.loadEqPreset(id)}
                         onDelete={id => props.deleteEqPreset(id)}
                         onSetGenre={props.setEqPresetGenre}
+                        t={t}
                     />
                 </DialogContent>
             </Dialog>
@@ -710,74 +634,34 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader><div className="h-64"><SpectrumAnalyzer /></div></DialogContent>
             </Dialog>
 
-            {/* INFO MODAL */}
             <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2">
                         <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                            <CircleHelp className="h-5 w-5" /> Information Center
+                            <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
                     </DialogHeader>
-                    <Tabs defaultValue="guide" className="w-full">
+                    <Tabs defaultValue={props.language === 'ru' ? 'guide' : 'guide'} className="w-full">
                         <div className="px-6 flex items-center justify-between border-b border-primary/10">
                             <TabsList className="bg-transparent border-none p-0 h-10 gap-6">
-                                <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">User Guide</TabsTrigger>
-                                <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">Disclaimer</TabsTrigger>
+                                <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_user_guide')}</TabsTrigger>
+                                <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_disclaimer')}</TabsTrigger>
                             </TabsList>
-                            <Tabs defaultValue="ru" className="h-8">
-                                <TabsList className="h-full bg-muted/30 p-1">
-                                    <TabsTrigger value="ru" className="text-[9px] font-black px-2 h-full">RU</TabsTrigger>
-                                    <TabsTrigger value="en" className="text-[9px] font-black px-2 h-full">EN</TabsTrigger>
-                                </TabsList>
-                                <div className="absolute top-0 left-0 w-0 h-0 overflow-hidden">
-                                    {/* These are hidden triggers to drive the language switch for BOTH Guide and Disclaimer */}
-                                </div>
-                            </Tabs>
+                            <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
                         
-                        <div className="p-0">
-                            <TabsContent value="guide" className="m-0">
-                                <Tabs defaultValue="ru">
-                                    <div className="flex justify-end px-6 pt-2">
-                                        <TabsList className="h-7 bg-muted/20">
-                                            <TabsTrigger value="ru" className="text-[8px] font-black px-2 h-full">RU</TabsTrigger>
-                                            <TabsTrigger value="en" className="text-[8px] font-black px-2 h-full">EN</TabsTrigger>
-                                        </TabsList>
-                                    </div>
-                                    <ScrollArea className="h-[50vh] px-6 pb-6">
-                                        <TabsContent value="ru" className="m-0 focus-visible:ring-0">
-                                            <div dangerouslySetInnerHTML={{ __html: GUIDE_RU }} />
-                                        </TabsContent>
-                                        <TabsContent value="en" className="m-0 focus-visible:ring-0">
-                                            <div dangerouslySetInnerHTML={{ __html: GUIDE_EN }} />
-                                        </TabsContent>
-                                    </ScrollArea>
-                                </Tabs>
+                        <ScrollArea className="h-[50vh] px-6 py-6">
+                            <TabsContent value="guide" className="m-0 focus-visible:ring-0">
+                                <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                             </TabsContent>
-                            
-                            <TabsContent value="disclaimer" className="m-0">
-                                <Tabs defaultValue="ru">
-                                    <div className="flex justify-end px-6 pt-2">
-                                        <TabsList className="h-7 bg-muted/20">
-                                            <TabsTrigger value="ru" className="text-[8px] font-black px-2 h-full">RU</TabsTrigger>
-                                            <TabsTrigger value="en" className="text-[8px] font-black px-2 h-full">EN</TabsTrigger>
-                                        </TabsList>
-                                    </div>
-                                    <ScrollArea className="h-[50vh] px-6 pb-6">
-                                        <TabsContent value="ru" className="m-0 focus-visible:ring-0">
-                                            <div dangerouslySetInnerHTML={{ __html: DISCLAIMER_RU }} />
-                                        </TabsContent>
-                                        <TabsContent value="en" className="m-0 focus-visible:ring-0">
-                                            <div dangerouslySetInnerHTML={{ __html: DISCLAIMER_EN }} />
-                                        </TabsContent>
-                                    </ScrollArea>
-                                </Tabs>
+                            <TabsContent value="disclaimer" className="m-0 focus-visible:ring-0">
+                                <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? DISCLAIMER_RU : DISCLAIMER_EN }} />
                             </TabsContent>
-                        </div>
+                        </ScrollArea>
                     </Tabs>
                     <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6">
-                        <span className="text-[9px] font-black uppercase opacity-40">Infinite Take Orchestra v0.3.62</span>
-                        <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">Close</Button>
+                        <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v0.3.62</span>
+                        <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">{t('btn_close')}</Button>
                     </div>
                 </DialogContent>
             </Dialog>
