@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.2 — "Genre Binding Restoration".
- * #ЗАЧЕМ: Возврат возможности привязки пресета к жанру для автозагрузки в маршруте.
+ * @fileOverview UI AuraGroove V8.3 — "Interface Cleaning".
+ * #ЗАЧЕМ: Скрытие кнопки Наследия. Наследие теперь включено всегда по умолчанию.
  */
 'use client';
 
@@ -495,15 +495,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex gap-1">
                         <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
                         <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10"><RefreshCw className="h-5 w-5 text-primary" /></Button>
-                        <Button
-                            variant={props.useHeritage ? "default" : "outline"}
-                            size="icon"
-                            onClick={() => props.setUseHeritage(!props.useHeritage)}
-                            style={!props.useHeritage ? outlineStyle : undefined}
-                            className={cn("h-10 w-10", !props.useHeritage && "opacity-40")}
-                        >
-                            <Dna className="h-5 w-5" />
-                        </Button>
                     </div>
 
                     <div className="flex gap-1 items-center">
