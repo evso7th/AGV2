@@ -1,6 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V54.0 — "Localized Signals".
- * #ЗАЧЕМ: Поддержка локализованных уведомлений (Toasts).
+ * @fileOverview Audio Engine Context V54.1 — "Smart Session Naming".
+ * #ЗАЧЕМ: Реализация нового стандарта именования файлов записи.
+ * #ЧТО: Формат AuraGroove_genre-mood_date_uid.
  */
 'use client';
 
@@ -46,7 +47,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     acoustic: 0.15,
     electric: 0.15, 
     piano: 0.6,
-    orchestral: 0.29,
+    orchecial: 0.29,
     cs80: 0.4,
     chords: 1.2,
     bass: 1.0
@@ -477,7 +478,32 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
-      setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, startRecording: () => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `AuraGroove_Session_${new Date().toISOString()}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecording(true); }, stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
+      setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
+      startRecording: () => { 
+        if (!recDestRef.current || isRecording) return; 
+        recordedChunksRef.current = []; 
+        const mediaRecorder = new MediaRecorder(recDestRef.current.stream); 
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; 
+        mediaRecorder.onstop = () => { 
+            const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); 
+            const url = URL.createObjectURL(blob); 
+            const a = document.createElement('a'); 
+            a.href = url; 
+            
+            // #ЗАЧЕМ: Новый формат имени файла AuraGroove_genre-mood_date_uid.
+            const genreStr = settingsRef.current?.genre || 'ambient';
+            const moodStr = settingsRef.current?.mood || 'melancholic';
+            const dateStr = new Date().toISOString().split('T')[0];
+            const uidStr = Math.random().toString(36).substring(2, 7);
+            
+            a.download = `AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
+            a.click(); 
+        }; 
+        mediaRecorder.start(); 
+        mediaRecorderRef.current = mediaRecorder; 
+        setIsRecording(true); 
+      }, 
+      stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
       toggleBroadcast: toggleBroadcastCallback, 
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const previewInst = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = previewInst; const scheduleSeq = () => { const now = audioContextRef.current!.currentTime + 0.1; const seq = [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}]; seq.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); }); const totalDur = 4.0; if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSeq, totalDur * 1000); } else { previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), totalDur * 1000); } }; scheduleSeq(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
