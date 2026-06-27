@@ -491,97 +491,104 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </ScrollArea>
                 </div>
 
-                <footer className={cn("p-4 backdrop-blur-sm flex items-center justify-between shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-colors border-t", isDarkTheme ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white/80 border-gray-200')}>
-                    <div className="flex gap-1">
-                        <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                        <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10"><RefreshCw className="h-5 w-5 text-primary" /></Button>
-                    </div>
+                <footer className={cn("px-4 pt-3 pb-1 backdrop-blur-sm flex flex-col shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-colors border-t", isDarkTheme ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white/80 border-gray-200')}>
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex gap-1">
+                            <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
+                            <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10"><RefreshCw className="h-5 w-5 text-primary" /></Button>
+                        </div>
 
-                    <div className="flex gap-1 items-center">
-                        <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10">
-                                    <Layers className="h-4 w-4" />
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
-                                <DialogHeader>
-                                    <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                        <Layers className="h-5 w-5" /> {t('dialog_capacity_title')}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_capacity_desc')}</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-8 py-6">
-                                    <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
-                                        <Label className="text-right text-[10px] font-black uppercase opacity-50">Limit</Label>
-                                        <Slider
-                                            value={[props.voiceLimit]}
-                                            min={32}
-                                            max={512}
-                                            step={8}
-                                            onValueChange={(v) => props.setVoiceLimit(v[0])}
-                                        />
-                                        <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.voiceLimit}</span>
-                                    </div>
-                                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
-                                        <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
-                                            {t('dialog_capacity_hint')}
-                                        </p>
-                                    </div>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
-                        
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => setIsDarkTheme(!isDarkTheme)}
-                            style={outlineStyle}
-                            className="h-10 w-10"
-                        >
-                            {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                        </Button>
-
-                        <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")}>
-                                    <Timer className="h-5 w-5" />
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
-                                <DialogHeader>
-                                    <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
-                                        <Timer className="h-5 w-5" /> {t('dialog_timer_title')}
-                                    </DialogTitle>
-                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_timer_desc')}</DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-8 py-6">
-                                    <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
-                                        <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
-                                        <Slider
-                                            value={[props.timerSettings.duration / 60]}
-                                            min={0}
-                                            max={30}
-                                            step={5}
-                                            onValueChange={(v) => props.handleTimerDurationChange(v[0])}
-                                            disabled={props.timerSettings.isActive}
-                                        />
-                                        <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
-                                    </div>
-                                    <Button
-                                        onClick={() => {
-                                            props.handleToggleTimer();
-                                            if (!props.timerSettings.isActive) setIsTimerDialogOpen(false);
-                                        }}
-                                        disabled={props.timerSettings.duration === 0}
-                                        variant={props.timerSettings.isActive ? 'destructive' : 'default'}
-                                        className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
-                                    >
-                                        {props.timerSettings.isActive ? t('btn_timer_stop') : t('btn_timer_activate')}
+                        <div className="flex gap-1 items-center">
+                            <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10">
+                                        <Layers className="h-4 w-4" />
                                     </Button>
-                                </div>
-                            </DialogContent>
-                        </Dialog>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
+                                            <Layers className="h-5 w-5" /> {t('dialog_capacity_title')}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_capacity_desc')}</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-8 py-6">
+                                        <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
+                                            <Label className="text-right text-[10px] font-black uppercase opacity-50">Limit</Label>
+                                            <Slider
+                                                value={[props.voiceLimit]}
+                                                min={32}
+                                                max={512}
+                                                step={8}
+                                                onValueChange={(v) => props.setVoiceLimit(v[0])}
+                                            />
+                                            <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.voiceLimit}</span>
+                                        </div>
+                                        <div className="p-4 bg-primary/5 rounded-lg border border-primary/10">
+                                            <p className="text-[9px] text-muted-foreground uppercase leading-relaxed text-center font-bold">
+                                                {t('dialog_capacity_hint')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                            
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setIsDarkTheme(!isDarkTheme)}
+                                style={outlineStyle}
+                                className="h-10 w-10"
+                            >
+                                {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                            </Button>
+
+                            <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")}>
+                                        <Timer className="h-5 w-5" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+                                    <DialogHeader>
+                                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
+                                            <Timer className="h-5 w-5" /> {t('dialog_timer_title')}
+                                        </DialogTitle>
+                                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">{t('dialog_timer_desc')}</DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-8 py-6">
+                                        <div className="grid grid-cols-[1fr_2fr_auto] items-center gap-4 px-2">
+                                            <Label className="text-right text-[10px] font-black uppercase opacity-50">Minutes</Label>
+                                            <Slider
+                                                value={[props.timerSettings.duration / 60]}
+                                                min={0}
+                                                max={30}
+                                                step={5}
+                                                onValueChange={(v) => props.handleTimerDurationChange(v[0])}
+                                                disabled={props.timerSettings.isActive}
+                                            />
+                                            <span className="text-xs w-10 text-right font-mono font-bold text-primary">{props.timerSettings.duration / 60}</span>
+                                        </div>
+                                        <Button
+                                            onClick={() => {
+                                                props.handleToggleTimer();
+                                                if (!props.timerSettings.isActive) setIsTimerDialogOpen(false);
+                                            }}
+                                            disabled={props.timerSettings.duration === 0}
+                                            variant={props.timerSettings.isActive ? 'destructive' : 'default'}
+                                            className="w-full h-12 font-black uppercase tracking-widest text-xs shadow-lg"
+                                        >
+                                            {props.timerSettings.isActive ? t('btn_timer_stop') : t('btn_timer_activate')}
+                                        </Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </div>
+                    <div className="text-center mt-1.5 opacity-30 pointer-events-none select-none">
+                        <span className="text-[7px] font-black uppercase tracking-[0.1em]">
+                            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+                        </span>
                     </div>
                 </footer>
             </div>

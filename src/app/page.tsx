@@ -50,7 +50,7 @@ export default function Home() {
         <CardContent className="min-h-0 py-1 flex flex-col items-center justify-center">
           {/* Контент минимизирован для подтяжки кнопки вверх */}
         </CardContent>
-        <CardFooter className="pt-0">
+        <CardFooter className="pt-0 flex-col">
           <Button 
             onClick={handleStart} 
             className="w-full text-[11px] py-5 uppercase tracking-widest shadow-xl" 
@@ -59,6 +59,9 @@ export default function Home() {
             <Music className="mr-2 h-4 w-4" />
             {t('btn_start')}
           </Button>
+          <div className="mt-8 text-[9px] opacity-40 uppercase tracking-tighter whitespace-nowrap">
+            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+          </div>
         </CardFooter>
       </Card>
     </main>
