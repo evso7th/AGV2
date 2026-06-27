@@ -50,8 +50,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'random'];
-const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'random'];
+const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae'];
+const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
 
 const MIXER_CHANNELS = [
     { key: 'master', label: 'MST' },
