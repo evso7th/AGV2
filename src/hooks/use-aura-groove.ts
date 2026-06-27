@@ -1,7 +1,6 @@
 /**
- * @fileOverview Music Control Hook V29.0 — "Media Session Stabilization".
- * #ЗАЧЕМ: Стабилизация системных метаданных (Media Session API).
- * #ЧТО: ПЛАН №1283 — Устранение мигания обложки, фиксация Artist/Album и переход на статический ассет.
+ * @fileOverview Music Control Hook V29.1 — "Bug Fix: Missing Imports".
+ * #ЗАЧЕМ: Исправление ReferenceError при сохранении мастерписов.
  */
 'use client';
 
@@ -18,6 +17,7 @@ import { useToast } from "./use-toast";
 import { arrayMove } from "@dnd-kit/sortable";
 import { useFirestore } from "@/firebase/provider";
 import { TRANSLATIONS, type Language } from "@/lib/translations";
+import { saveMasterpiece } from "@/lib/firebase-service";
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
@@ -510,7 +510,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             setEqPresets(list);
             const activeId = localStorage.getItem(ACTIVE_EQ_ID_KEY);
             if (activeId) {
-                const target = list.find((p: any) => p.id === activeId);
+                const target = list.find(p => p.id === activeId);
                 if (target && Array.isArray(target.values)) {
                     setEqSettings(target.values);
                     setActiveEqPresetId(activeId);
