@@ -254,8 +254,7 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
-        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли временно закомментирована.
-        /*
+        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли активирована для "Имперского Мониторинга".
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
         const hints = payload.instrumentHints || {};
@@ -270,6 +269,7 @@ const Scheduler = {
             return i >= 0 ? s.slice(i + 1) : s;
         };
         const dnaDisplay = (ax.melody && String(ax.melody).includes('_')) ? sfx(ax.melody) : track;
+        
         console.log(
             `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${dnaDisplay}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${sfx(ax.melody)}] [BASS: ${sfx(ax.bass)}] [DRUM: ${sfx(ax.drums)}] [HAR: ${sfx(ax.harmony)}] [PNO: ${sfx(ax.piano)}]\n` +
             `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
@@ -278,7 +278,6 @@ const Scheduler = {
             'color: #c084fc;',
             'color: #888;'
         );
-        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 

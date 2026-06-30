@@ -443,12 +443,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
                         </Dialog>
-                        <Button variant="outline" size="icon" onClick={() => props.setShuffle(!props.isShuffle)} style={outlineStyle} className="h-10 w-10">
-                            <Shuffle className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="icon" onClick={() => props.syncDna()} style={outlineStyle} className="h-10 w-10">
-                            <DownloadCloud className="h-4 w-4" />
-                        </Button>
                     </div>
                 </div>
 
