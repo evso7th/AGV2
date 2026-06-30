@@ -1,9 +1,10 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Inner Dialogue" (Contemplative Blues v7.3).
  * #ЧТО: ПЛАН №817 — Добавлен Soft Jazz орган для глубоких размышлений.
- * #ОБНОВЛЕНО (ПЛАН №880): Rhodes заменен на Soft Jazz Organ в аккомпанементе.
+ * #ОБНОВЛЕНО: Скрипки исключены из гармонии. Используем только гитарные аккорды.
  */
 export const ContemplativeBluesBlueprint: MusicBlueprint = {
     id: 'contemplative_blues',
@@ -85,7 +86,7 @@ export const ContemplativeBluesBlueprint: MusicBlueprint = {
                            bass: { activationChance: 1.0, instrumentOptions: [ { name: 'bass_jazz_warm', weight: 1.0 } ] },
                            pianoAccompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'piano', weight: 1.0 } ] },
                            accompaniment: { activationChance: 1.0, instrumentOptions: [ { name: 'organ_soft_jazz', weight: 1.0 } ] },
-                           harmony: { activationChance: 1.0, instrumentOptions: [ { name: 'guitarChords', weight: 0.6 }, { name: 'violin', weight: 0.4 } ] }
+                           harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 1.0 } ] }
                         }
                     }
                 ],

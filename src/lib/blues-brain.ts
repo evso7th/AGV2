@@ -203,15 +203,8 @@ export class BluesBrain {
   }
 
   private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
-      if (epoch % 4 === 0 && epoch !== this.lastHarmonySwitchBar) {
-          this.lastHarmonySwitchBar = epoch;
-          const rand = this.random.next();
-          if (hasHeritageStrings) {
-              this.activeHarmonyInstrument = rand < 0.7 ? 'violin' : 'guitarChords';
-          } else {
-              this.activeHarmonyInstrument = (tension > 0.85 || tension < 0.15) ? 'violin' : 'guitarChords';
-          }
-      }
+      // #ЗАЧЕМ: ПЛАН №1278. Скрипки исключены из блюзовой гармонии. Используем только гитарные аккорды.
+      this.activeHarmonyInstrument = 'guitarChords';
   }
 
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
@@ -329,7 +322,7 @@ export class BluesBrain {
                   }));
 
                   const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                  this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role }));
+                  this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
                   const baseBars = selected.bars || 4;
                   this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;

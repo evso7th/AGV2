@@ -1,9 +1,11 @@
 
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
  * #ЗАЧЕМ: Блюпринт "The Imperial Narrative" (v35.0 — Transition Reform).
  * #ЧТО: ПЛАН №99 — Сокращение переходов до 2-х тактов (1.25%).
+ * #ОБНОВЛЕНО: Скрипки исключены из гармонии. Только гитарные аккорды.
  */
 export const WinterBluesBlueprint: MusicBlueprint = {
     id: 'winter_blues',
@@ -35,7 +37,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                    bass: { strategy: 'weighted', options: [ { name: 'bass', weight: 1.0 } ] },
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
                    melody: { strategy: 'weighted', options: [ { name: 'blackAcoustic', weight: 0.5 }, { name: 'telecaster', weight: 0.5 } ] },
-                   harmony: { strategy: 'weighted', options: [ { name: 'violin', weight: 0.7 }, { name: 'guitarChords', weight: 0.3 } ] },
+                   harmony: { strategy: 'weighted', options: [ { name: 'guitarChords', weight: 1.0 } ] },
                    sfx: { strategy: 'weighted', options: [ { name: 'voice', weight: 1.0 } ] }
                 },
                 instrumentRules: {
@@ -78,7 +80,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
                             melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
                             accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                         }
                     }
@@ -98,7 +100,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_soft_jazz', weight: 0.7 }, { name: 'organ', weight: 0.3 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
-                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.7, max: 0.9 } },
@@ -121,7 +123,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
                             melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
                             accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                         }
                     }
@@ -164,7 +166,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
                             melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
                             accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                         }
                     }
@@ -180,7 +182,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                 instrumentation: {
                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'organ_prog', weight: 1.0 }] },
                    melody: { strategy: 'weighted', v2Options: [{ name: 'cs80', weight: 1.0 }] },
-                   harmony: { strategy: 'weighted', options: [{ name: 'violin', weight: 1.0 }] }
+                   harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] }
                 },
                 instrumentRules: {
                     drums: { pattern: 'composer', kitName: 'blues_melancholic_master', density: { min: 0.9, max: 1.0 } },
@@ -203,7 +205,7 @@ export const WinterBluesBlueprint: MusicBlueprint = {
                             drums: { activationChance: 1.0, instrumentOptions: [{ name: 'melancholic', weight: 1.0 }] },
                             melody: { activationChance: 0.25, instrumentOptions: [{ name: 'melody', weight: 1.0 }] },
                             accompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'organ_soft_jazz', weight: 1.0 }] },
-                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'violin', weight: 1.0 }] },
+                            harmony: { activationChance: 0.25, instrumentOptions: [{ name: 'guitarChords', weight: 1.0 }] },
                             pianoAccompaniment: { activationChance: 0.25, instrumentOptions: [{ name: 'piano', weight: 1.0 }] }
                         }
                     }
