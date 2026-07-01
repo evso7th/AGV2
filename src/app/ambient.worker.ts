@@ -6,7 +6,7 @@ import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music'
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
-import { normalizeStr } from '@/lib/music-theory';
+import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -254,7 +254,8 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
-        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли активирована для "Имперского Мониторинга".
+        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли деактивирована для Silent Deploy.
+        /*
         const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
         const ax = payload.activeAxioms || {};
         const hints = payload.instrumentHints || {};
@@ -278,6 +279,7 @@ const Scheduler = {
             'color: #c084fc;',
             'color: #888;'
         );
+        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -321,10 +323,3 @@ self.onmessage = (event: MessageEvent) => {
         self.postMessage({ type: 'error', error: String(e) });
     }
 };
-
-function keyToMidiRoot(key: string | null | undefined): number | null {
-    if (!key) return null;
-    const noteMap: Record<string, number> = { 'C':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'F':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,'A#':10,'Bb':10,'B':11 };
-    const rootName = key.match(/^[A-G][#b]?/)?.[0] || 'C';
-    return 48 + (noteMap[rootName] || 0);
-}

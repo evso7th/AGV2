@@ -110,7 +110,7 @@ const makeMuff = (gain = 0.65) => {
     const k = 1 + clamp(gain, 0, 1) * 6;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        c[i] = Math.tanh(x * k);
+        curve[i] = Math.tanh(x * k);
     }
     return c;
 };
@@ -552,7 +552,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     outputTail.connect(output);
     delayMixGain.connect(panner);
 
-    // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли временно закомментирована.
+    // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли деактивирована.
     // console.log(`%c[Factory] ${type} built: ${currentPreset.name || 'Unnamed'}`, 'color: #32CD32;');
 
     return {
