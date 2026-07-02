@@ -110,7 +110,7 @@ const makeMuff = (gain = 0.65) => {
     const k = 1 + clamp(gain, 0, 1) * 6;
     for (let i = 0; i < n; i++) {
         const x = (i / (n - 1)) * 2 - 1;
-        curve[i] = Math.tanh(x * k);
+        c[i] = Math.tanh(x * k);
     }
     return c;
 };
@@ -126,9 +126,9 @@ const makeSoftDrive = (amount = 0.2) => {
     return c;
 };
 
-const curveCache = new Map<string, Float32Array<ArrayBuffer>>();
+const curveCache = new Map<string, Float32Array>();
 
-const getDriveCurve = (driveType: string, amount: number): Float32Array<ArrayBuffer> => {
+const getDriveCurve = (driveType: string, amount: number): Float32Array => {
     const q = Math.round(amount * 1e4) / 1e4;
     const key = `${driveType === 'muff' ? 'm' : 's'}:${q}`;
     let curve = curveCache.get(key);
@@ -551,9 +551,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     }
     outputTail.connect(output);
     delayMixGain.connect(panner);
-
-    // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли деактивирована.
-    // console.log(`%c[Factory] ${type} built: ${currentPreset.name || 'Unnamed'}`, 'color: #32CD32;');
 
     return {
         connect: (dest) => outputTail.connect(dest || output),
