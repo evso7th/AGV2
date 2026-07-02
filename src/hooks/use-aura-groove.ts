@@ -1,6 +1,7 @@
 /**
- * @fileOverview Music Control Hook V29.1 — "Bug Fix: Missing Imports".
- * #ЗАЧЕМ: Исправление ReferenceError при сохранении мастерписов.
+ * @fileOverview Music Control Hook V30.0 — "Final Media Session Alignment".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1283. Полный набор адаптивных обложек.
+ * #ЧТО: Пути исправлены на /assets/cover/cover[size].jpg.
  */
 'use client';
 
@@ -195,7 +196,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         setLanguage(saved);
     } else {
         const sysLang = navigator.language.toLowerCase();
-        // Детекция кириллических локалей (RU, UA, BE, KK)
         const isCyrillic = sysLang.includes('ru') || sysLang.includes('uk') || sysLang.includes('be') || sysLang.includes('kk');
         const detected: Language = isCyrillic ? 'ru' : 'en';
         setLanguage(detected);
@@ -537,7 +537,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   /**
    * #ЗАЧЕМ: Стабилизация Media Session API (ПЛАН №1283).
-   * #ЧТО: Удален Heartbeat-интервал, Artist/Album зафиксированы, обложка статична.
+   * #ЧТО: Полный набор адаптивных обложек (96-512px). Статичные пути из /assets/cover/.
    */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
@@ -549,7 +549,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
         artist: 'AuraGroove',
         album: 'The Infinite Take Orchestra',
         artwork: [
-            { src: `${origin}/assets/cover.jpg`, sizes: '512x512', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover96.jpg`, sizes: '96x96', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover128.jpg`, sizes: '128x128', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover192.jpg`, sizes: '192x192', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover256.jpg`, sizes: '256x256', type: 'image/jpeg' },
             { src: `${origin}/assets/cover/cover512.jpg`, sizes: '512x512', type: 'image/jpeg' }
         ]
     });
