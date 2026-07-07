@@ -1,4 +1,7 @@
-
+/**
+ * @fileOverview Accompaniment Synth Manager V2.1 — "Deterministic Gain Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ */
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -7,10 +10,6 @@ import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 
-/**
- * #ЗАЧЕМ: V2 менеджер для Аккомпанемента.
- * #ЧТО: ПЛАН №1276 — Свободное затухание.
- */
 export class AccompanimentSynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
@@ -48,6 +47,8 @@ export class AccompanimentSynthManagerV2 {
 
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
+            // #ЗАЧЕМ: Детерминированный сброс.
+            this.preamp.gain.cancelScheduledValues(this.audioContext.currentTime);
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
     }
@@ -89,7 +90,7 @@ export class AccompanimentSynthManagerV2 {
                 this.scheduleCleanup(oldInst, 5000, `loadInstrument-${Date.now()}`);
             }
         } catch (error) {
-            console.error(`[AccompanimentManagerV2] Error loading:`, error);
+            // console.error(`[AccompanimentManagerV2] Error loading:`, error);
         } finally {
             this.isChangingInstrument = false;
         }
@@ -98,7 +99,6 @@ export class AccompanimentSynthManagerV2 {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
-            console.warn(`[AccompanimentSynthManagerV2] barStartTime in past: ${barStartTime} < ${this.audioContext.currentTime}`);
             return;
         }
         const boundedTempo = Math.max(20, Math.min(300, tempo));
@@ -106,7 +106,6 @@ export class AccompanimentSynthManagerV2 {
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
         const notesToPlay = filtered.map(e => {
-            // #ЗАЧЕМ: ПЛАН №1276. Увеличение релиз-окна до 1.5с (Ambient Standard).
             const extraDuration = 1.5; 
             return {
                 midi: e.note,
@@ -145,7 +144,6 @@ export class AccompanimentSynthManagerV2 {
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
             if (noteOnTime < this.audioContext.currentTime) {
-                console.warn(`[AccompanimentSynthManagerV2] Skipped note in past: ${noteOnTime} < ${this.audioContext.currentTime}`);
                 return;
             }
             if (this.instrument.setPan && note.pan !== undefined) {

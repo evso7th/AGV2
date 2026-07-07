@@ -1,4 +1,7 @@
-
+/**
+ * @fileOverview Melody Synth Manager V2.1 — "Deterministic Gain Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ */
 import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
@@ -10,10 +13,6 @@ import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
 import type { DarkTelecasterSampler } from './dark-telecaster-sampler';
 import type { CS80GuitarSampler } from './cs80-guitar-sampler';
 
-/**
- * #ЗАЧЕМ: V2 менеджер для Мелодии и Баса.
- * #ЧТО: ПЛАН №1276 — Восстановление хвостов релиза.
- */
 export class MelodySynthManagerV2 {
     private audioContext: AudioContext;
     private destination: AudioNode;
@@ -62,6 +61,8 @@ export class MelodySynthManagerV2 {
 
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
+            // #ЗАЧЕМ: Детерминированный сброс.
+            this.preamp.gain.cancelScheduledValues(this.audioContext.currentTime);
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
     }
@@ -106,7 +107,7 @@ export class MelodySynthManagerV2 {
                 this.scheduleCleanup(oldInst, 5000, `loadInstrument-${Date.now()}`);
             }
         } catch (error) {
-            console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
+            // console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
         } finally {
             this.isChangingInstrument = false;
         }
@@ -115,14 +116,12 @@ export class MelodySynthManagerV2 {
     public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
-            console.warn(`[MelodySynthManagerV2] barStartTime in past: ${barStartTime} < ${this.audioContext.currentTime}`);
             return;
         }
         const boundedTempo = Math.max(20, Math.min(300, tempo));
         const beatDuration = 60 / boundedTempo;
 
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
-            // #ЗАЧЕМ: ПЛАН №1276. Свободное затухание (2.5с запаса для баса).
             const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
             return { 
                 midi: e.note, 
@@ -184,11 +183,10 @@ export class MelodySynthManagerV2 {
         notesToPlay.forEach(note => {
             const noteOnTime = barStartTime + note.time;
             if (noteOnTime < this.audioContext.currentTime) {
-                console.warn(`[MelodySynthManagerV2] Skipped note in past: ${noteOnTime} < ${this.audioContext.currentTime}`);
                 return;
             }
-            if (this.instrument?.setPan && note.pan !== undefined) {
-                this.instrument.setPan(note.pan);
+            if (this.synth.setPan && note.pan !== undefined) {
+                this.synth.setPan(note.pan);
             }
             if (note.params?.filterCutoff && this.synth.setParam) {
                 this.synth.setParam('filterCutoff', note.params.filterCutoff);

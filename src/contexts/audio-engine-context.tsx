@@ -1,7 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V54.1 — "Smart Session Naming".
- * #ЗАЧЕМ: Реализация нового стандарта именования файлов записи.
- * #ЧТО: Формат AuraGroove_genre-mood_date_uid.
+ * @fileOverview Audio Engine Context V55.0 — "Deterministic Gain Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ * #ЧТО: Внедрение cancelScheduledValues перед каждой установкой громкости.
  */
 'use client';
 
@@ -204,7 +204,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
       const m = gains.master ?? 1.0;
-      masterGainNodeRef.current?.gain.setTargetAtTime(m, now, 0.05);
+      
+      // #ЗАЧЕМ: Детерминированная калибровка.
+      if (masterGainNodeRef.current) {
+          masterGainNodeRef.current.gain.cancelScheduledValues(now);
+          masterGainNodeRef.current.gain.setTargetAtTime(m, now, 0.05);
+      }
+      
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); 
@@ -213,6 +219,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
       harmonyManagerRef.current?.setVolume(gains.orchestral || 1.0); 
+      
       const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
       if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * (gains.chords || 1.0));
   }, []);
@@ -231,13 +238,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
-          masterGainNodeRef.current?.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
+          
+          // #ЗАЧЕМ: Старт без «шлепка» громкости.
+          if (masterGainNodeRef.current) {
+              masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
+              masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
+          }
+          
           stopAllSounds(); 
           nextBarTimeRef.current = context.currentTime + 0.5; 
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
-          masterGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.01); 
+          
+          if (masterGainNodeRef.current) {
+              masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
+              masterGainNodeRef.current.gain.setTargetAtTime(0.0, context.currentTime, 0.01); 
+          }
+          
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
       }
@@ -262,6 +280,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
+        // #ЗАЧЕМ: Закон Микшера.
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
@@ -369,7 +388,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
-            if (!gainNodesRef.current[p]) { gainNodesRef.current[p] = context.createGain(); gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!); }
+            if (!gainNodesRef.current[p]) { 
+                gainNodesRef.current[p] = context.createGain(); 
+                gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!); 
+            }
         });
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
@@ -459,10 +481,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           const now = audioContextRef.current.currentTime;
           if (isBroadcastActive) {
               broadcastEngineRef.current.stop();
+              speakerGainNodeRef.current.gain.cancelScheduledValues(now);
               speakerGainNodeRef.current.gain.setTargetAtTime(1.0, now, 0.05);
               setIsBroadcastActive(false);
           } else {
               broadcastEngineRef.current.start();
+              speakerGainNodeRef.current.gain.cancelScheduledValues(now);
               speakerGainNodeRef.current.gain.setTargetAtTime(0.0, now, 0.05);
               setIsBroadcastActive(true);
           }
@@ -489,13 +513,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const url = URL.createObjectURL(blob); 
             const a = document.createElement('a'); 
             a.href = url; 
-            
-            // #ЗАЧЕМ: Новый формат имени файла AuraGroove_genre-mood_date_uid.
             const genreStr = settingsRef.current?.genre || 'ambient';
             const moodStr = settingsRef.current?.mood || 'melancholic';
             const dateStr = new Date().toISOString().split('T')[0];
             const uidStr = Math.random().toString(36).substring(2, 7);
-            
             a.download = `AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
             a.click(); 
         }; 

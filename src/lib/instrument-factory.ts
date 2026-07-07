@@ -1,6 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.2 — "Silent Build Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Центральная фабрика инструментов V8.3 — "Deterministic Gain Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ * #ЧТО: Внедрение cancelScheduledValues перед каждой установкой громкости.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -575,11 +576,17 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             const now = ctx.currentTime;
             currentPreset = { ...p };
             if (type === 'guitar' && currentPreset.attackTransient > 0) ensureTransientsLoaded(ctx);
+            
+            // #ЗАЧЕМ: Детерминированный сброс.
             instrumentGain.gain.cancelScheduledValues(now);
             instrumentGain.gain.setTargetAtTime(p.volume || 0.7, now, 0.05);
+            
             if (p.delay) {
+                sharedDelayNode.delayTime.cancelScheduledValues(now);
                 sharedDelayNode.delayTime.setTargetAtTime(p.delay.time || 0.4, now, 0.1);
+                feedbackGain.gain.cancelScheduledValues(now);
                 feedbackGain.gain.setTargetAtTime(p.delay.fb || 0.3, now, 0.1);
+                delayMixGain.gain.cancelScheduledValues(now);
                 delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, now, 0.1);
             }
         },
@@ -588,6 +595,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (!isFinite(v)) return;
             const bounded = Math.max(0, Math.min(1, v));
             const now = ctx.currentTime;
+            // #ЗАЧЕМ: Закон Микшера.
             instrumentGain.gain.cancelScheduledValues(now);
             instrumentGain.gain.setTargetAtTime(bounded, now, 0.02);
         },
