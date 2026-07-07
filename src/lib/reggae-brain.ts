@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Reggae Brain V22.0 — "Continuous Riddim Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1202. Внедрение Gap-filling для мелодии.
- * #ЧТО: Автоматическая генерация филлеров, если Наследие содержит пустые такты.
+ * @fileOverview Reggae Brain V23.0 — "Riddim Fill Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие ударных и сбивок.
+ * #ЧТО: Триольные пробежки по томам, очистка от крэшей, дозированный Ride Wetter.
  */
 
 import type {
@@ -62,6 +62,7 @@ export class ReggaeBrain {
     private currentTimeScale: number = 1;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
+    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
 
     private soloistBusyUntilBar: number = -1;
     private drumRestUntilBar: number = -1;
@@ -116,7 +117,6 @@ export class ReggaeBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                // #ЗАЧЕМ: пустой/неуказанный mood = доступен для ЛЮБОГО настроения (правило корпуса).
                 const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
                 return axGenres.includes(this.genre) && (axMoods.length === 0 || axMoods.includes(this.mood));
             });
@@ -185,8 +185,6 @@ export class ReggaeBrain {
         return ticks;
     }
 
-    // #ЗАЧЕМ: длина фразы сиблинга в тактах — для модуло по СВОЕЙ длине,
-    // если у баса/гармонии фраза иной длины, чем у мелодии.
     private phraseBarCount(phrase: any[]): number {
         if (!phrase || phrase.length === 0) return 1;
         let maxT = 0;
@@ -196,24 +194,15 @@ export class ReggaeBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        // #ЗАЧЕМ: тайм-скейл мелодии из блюпринта (как в блюзе) — анти-«пулемёт». Дефолт 1 = как было.
         this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
         const events: FractalEvent[] = [];
         
-        // --- MUTATION LOGIC ---
-        if (epoch < 12) {
-            this.currentMutationType = 'none';
-        } else if (epoch % 4 === 0) {
+        if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 40) {
-                this.currentMutationType = 'none';
-            } else if (roll < 60) {
-                this.currentMutationType = 'inversion';
-            } else if (roll < 80) {
-                this.currentMutationType = 'retrograde';
-            } else {
-                this.currentMutationType = 'jitter';
-            }
+            if (roll < 40) this.currentMutationType = 'none';
+            else if (roll < 60) this.currentMutationType = 'inversion';
+            else if (roll < 80) this.currentMutationType = 'retrograde';
+            else this.currentMutationType = 'jitter';
         }
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
@@ -231,8 +220,6 @@ export class ReggaeBrain {
         const kit = DRUM_KITS.reggae.standard;
         const instrumentOverrides: Partial<InstrumentHints> = {};
 
-        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ. Единая позиция во фразе для всего ансамбля,
-        // чтобы мелодия/бас/гармония/пиано играли ОДИН и тот же такт аксиомы (нет "каши").
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar
             : (this.currentBassTheme ? this.currentBassTheme.startBar : epoch);
@@ -247,7 +234,11 @@ export class ReggaeBrain {
             } else {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
-                if (epoch % 8 === 7) events.push(...this.renderReggaeFills(epoch, tension));
+                // #ЗАЧЕМ: Дозированный влажный райд (3% шанс)
+                if (this.random.next() < 0.03) {
+                    events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+                }
+                if (epoch % 4 === 3) events.push(...this.renderReggaeFills(epoch, tension));
             }
         }
 
@@ -281,7 +272,7 @@ export class ReggaeBrain {
             events.push(...p.events);
         }
 
-        // 4. MELODY (with GAP-FILLING)
+        // 4. MELODY
         let melodyLabel = 'none';
         if (hints.melody) {
             let m: FractalEvent[] = [];
@@ -289,7 +280,6 @@ export class ReggaeBrain {
                 m = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale, mosaicBar, navInfo.currentPart.instrumentRules?.melody?.density);
             }
             
-            // #ЗАЧЕМ: ПЛАН №1202. Если Наследие молчит - заполняем пустоту.
             if (m.length === 0) {
                 m = this.renderGapFiller(epoch, resChord, tension);
                 melodyLabel = 'Gap-Filler';
@@ -368,17 +358,21 @@ export class ReggaeBrain {
 
     private renderReggaeFills(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const toms = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-        [9, 10, 11].forEach((t, i) => {
-            events.push({ type: toms[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', pan: -0.6 + (i * 0.6) });
+        const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+        
+        // Характерная пробежка по томам в конце фразы (High -> Mid -> Low)
+        [9.5, 10.5, 11.5].forEach((t, i) => {
+            events.push({ 
+                type: tomSequence[i] as any, note: 48, time: t * TICK_TO_BEAT, 
+                duration: 0.2, weight: 0.85 + (tension * 0.15), technique: 'hit', 
+                dynamics: 'mf', phrasing: 'staccato', pan: -0.6 + (i * 0.6) 
+            });
         });
-        events.push({ type: 'drum_crash2', note: 49, time: 11.8 * TICK_TO_BEAT, duration: 2.0, weight: 0.7, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
         return events;
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        // #ЗАЧЕМ: мутация ВСЕЙ фразы → потом окно (как в блюзе). Глобально, без «каши».
         let phrase = this.currentBassTheme.phrase;
         if (this.currentMutationType === 'inversion') phrase = invertPhrase(phrase);
         else if (this.currentMutationType === 'retrograde') phrase = retrogradePhrase(phrase);
@@ -403,21 +397,8 @@ export class ReggaeBrain {
         ];
     }
 
-    private ensureAxiomState(): boolean {
-      if (!this.currentTheme || !isFinite(this.currentAxiomMaxTick)) {
-        console.warn('[ReggaeBrain] Axiom state not initialized');
-        return false;
-      }
-      return true;
-    }
-
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number, mosaicBar: number, density?: { min: number; max: number }): FractalEvent[] {
         if (!this.currentTheme) return [];
-        // #ЗАЧЕМ: окно стартует со СВОЕГО такта (offset по TICKS_PER_BAR) — сцепка с ансамблем цела;
-        // а размер окна сжимается под timeScale (читаем меньше тиков, растягиваем) — анти-«пулемёт».
-        // #ЗАЧЕМ: мутируем ВСЮ фразу (глобально, как в блюзе), ПОТОМ режем окно. По-тактовая
-        // мутация давала «кашу» (каждый такт разворачивался сам в себе); глобальная — музыкальна.
-        // Окно режет уже мутированную фразу → t всегда в [offset, offset+window), нет отриц. времени.
         let phrase = this.currentTheme.phrase;
         if (this.currentMutationType === 'inversion') phrase = invertPhrase(phrase);
         else if (this.currentMutationType === 'retrograde') phrase = retrogradePhrase(phrase);
@@ -431,11 +412,6 @@ export class ReggaeBrain {
         const goldenTicks = [0, 3, 6, 9];
         const isGold = (n: any) => goldenTicks.some(gt => Math.abs((n.t - offset) - gt) < 0.1);
 
-        // #ЗАЧЕМ: реальное ПРОРЕЖИВАНИЕ плотных тактов (анти-«пулемёт»). Тихое приглушение
-        // не убирало частоту нот. Лимит нот/такт берём ДЕКЛАРАТИВНО из БП
-        // (instrumentRules.melody.density, как у блюза): density — доля нот, интерполируется tension.
-        // Нет правила → keepFrac = 1 → не прореживаем (поведение как было). Оставляем золотые +
-        // равномерно проредённые филлеры, лишнее выбрасываем (но никогда не до тишины).
         const keepFrac = density ? (density.min + (density.max - density.min) * tension) : 1;
         const cap = Math.max(2, Math.round(barNotes.length * keepFrac));
         let keptNotes = barNotes;
@@ -449,7 +425,6 @@ export class ReggaeBrain {
             keptNotes = [...golden, ...thinned].sort((a, b) => a.t - b.t);
         }
 
-        // #ЗАЧЕМ: золотые ноты (порт из блюза) — динамика: сильные доли подчёркнуты, остальные приглушены.
         const useNarrativeFilter = keptNotes.length > 3;
 
         return keptNotes.map(n => {
@@ -476,7 +451,6 @@ export class ReggaeBrain {
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
-        // #ЗАЧЕМ: мутация ВСЕЙ фразы → потом окно (как в блюзе). Глобально, без «каши».
         let mutated = phrase;
         if (this.currentMutationType === 'inversion') mutated = invertPhrase(phrase);
         else if (this.currentMutationType === 'retrograde') mutated = retrogradePhrase(phrase);
@@ -531,7 +505,6 @@ export class ReggaeBrain {
         };
     }
 
-    // #ЗАЧЕМ: ПЛАН №1202. Мелодический филлер для регги.
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = chord.rootNote + 12;

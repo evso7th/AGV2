@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Blues Brain V80.0 — "Rolling Ribbon Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1187. Круговое использование ДНК с посевным смещением.
- * #ЧТО: Внедрение Seed-based offset для начала проигрывания донора с любой точки.
+ * @fileOverview Blues Brain V81.0 — "The Living Pulse Update".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие ударных: томовые пробежки и snare ghosting.
+ * #ЧТО: Удаление крэшей, минимизация райдов, внедрение секвенций томов.
  */
 
 import {
@@ -180,6 +180,7 @@ export class BluesBrain {
       this.config.selectedCompositionIds = selectedCompositionIds || [];
       if (activeAnchorId !== undefined) this.config.activeAnchorId = activeAnchorId;
       if (activeAnchorRoot !== undefined) this.config.activeAnchorRoot = activeAnchorRoot;
+      if (this.config.activeAnchorId === null) this.sessionAnchorId = null;
       if (useHeritage !== undefined) this.config.useHeritage = useHeritage;
       if (isImprovising !== undefined) this.config.isImprovising = isImprovising;
 
@@ -190,20 +191,15 @@ export class BluesBrain {
 
   private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
       if (totalBars <= 0) return 0;
-      
-      // #ЗАЧЕМ: Реализация ПЛАНА №1187. Посевное смещение для Rolling Ribbon.
       const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
-      
       if (this.config.isImprovising) {
           return calculateMusiNum(epoch + startOffset, 11, this.seed, totalBars);
       }
-      
       const barsElapsed = epoch - startEpoch;
       return (barsElapsed + startOffset) % totalBars;
   }
 
   private selectHarmonyInstrument(epoch: number, tension: number, hasHeritageStrings: boolean) {
-      // #ЗАЧЕМ: ПЛАН №1278. Скрипки исключены из блюзовой гармонии. Используем только гитарные аккорды.
       this.activeHarmonyInstrument = 'guitarChords';
   }
 
@@ -270,7 +266,6 @@ export class BluesBrain {
       } else {
           filteredPool = poolToUse.filter(ax => {
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-              // #ЗАЧЕМ: пустой/неуказанный mood = доступен для ЛЮБОГО настроения (правило корпуса).
               const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
               return axGenres.includes('blues') && (axMoods.length === 0 || axMoods.includes(this.mood));
           });
@@ -289,16 +284,10 @@ export class BluesBrain {
                   basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
               }
 
-              // #ЗАЧЕМ: ПЛАН №1187. Вычисление границ ленты донора.
               const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-              
-              // #ЧТО: Поиск целевого смещения с учетом Seeded Start.
               const tension = dna.tensionMap?.[epoch] ?? 0.5;
               const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-              
               const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-              
-              // #ЧТО: Фиксация пути при наличии вариаций для одного такта.
               const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
               const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
 
@@ -574,83 +563,62 @@ export class BluesBrain {
       return events;
   }
 
+  /**
+   * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие блюзовых ударных.
+   * #ЧТО: Сбивки на томах, призрачные ноты и удаление крэшей.
+   */
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
       const events: FractalEvent[] = [];
       
-      events.push({ 
-          type: 'drum_kick_reso', note: 36, time: 0, 
-          duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-      });
-      
+      // 1. KICK (Deterministic foundation)
+      events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       if (tension > 0.6 || this.random.next() < 0.4) {
-          events.push({ 
-              type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, 
-              duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-          });
+          events.push({ type: 'drum_kick_reso', note: 36, time: 6 * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       }
 
+      // 2. SNARE (Backbeat + Ghosting)
       [3, 9].forEach(t => {
-          events.push({ 
-              type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, 
-              duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
-          });
+          events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       });
 
+      // Complex ghosting pattern
       [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
-          if (this.random.next() < 0.45) {
-              events.push({ 
-                  type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, 
-                  duration: 0.1, weight: 0.15 + (this.random.next() * 0.2), 
-                  technique: 'ghost', dynamics: 'p', phrasing: 'staccato' 
-              });
+          const ghostChance = tension > 0.7 ? 0.65 : 0.45;
+          if (this.random.next() < ghostChance) {
+              events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.1 + (this.random.next() * 0.2), technique: 'ghost', dynamics: 'p', phrasing: 'staccato' });
           }
       });
 
-      if (this.random.next() < 0.15) {
-          events.push({
-              type: 'drum_ride_wetter', note: 51, 
-              time: (this.random.nextInt(12)) * TICK_TO_BEAT, 
-              duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.4
-          });
-      }
-
+      // 3. HI-HAT (Standard + Sparse)
       [0, 3, 6, 9].forEach(t => {
-          events.push({ 
-              type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-              time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, 
-              technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
-          });
+          events.push({ type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2 });
       });
 
+      // 4. RARE RIDE WETTER (Dosed as requested)
+      if (this.random.next() < 0.05) { // 5% chance per bar
+          events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'legato', pan: 0.4 });
+      }
+
+      // 5. TOM RUNS (The "Signature Fill")
       const isFourthBar = epoch % 4 === 3;
       const isEighthBar = epoch % 8 === 7;
       
       if (isFourthBar || isEighthBar || isSoloistResting) {
           const intensity = isEighthBar ? 1.2 : 0.95;
-          const tomTypes = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-          const pans = [-0.8, 0.0, 0.8]; 
+          const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
           
+          // Пробежка по томам в конце такта (9, 10, 11 тики)
           [9, 10, 11].forEach((t, i) => {
-              const rollRoll = this.random.next();
-              if (rollRoll < 0.9) { 
-                  events.push({ 
-                      type: tomTypes[i] as any, note: 40, time: t * TICK_TO_BEAT, 
-                      duration: 0.5, weight: (0.75 + i * 0.1) * intensity, 
-                      technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: pans[i] 
-                  });
-              }
+              events.push({ 
+                  type: tomSequence[i] as any, 
+                  note: 40, time: t * TICK_TO_BEAT, 
+                  duration: 0.5, weight: (0.8 + i * 0.1) * intensity, 
+                  technique: 'hit', dynamics: 'f', phrasing: 'staccato', pan: -0.8 + (i * 0.8) 
+              });
           });
       }
 
       return events;
-  }
-
-  private ensureAxiomState(): boolean {
-    if (!this.currentAxiom || !isFinite(this.currentAxiomMaxTick)) {
-      console.warn('[BluesBrain] Axiom state not initialized');
-      return false;
-    }
-    return true;
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
@@ -794,10 +762,6 @@ export class BluesBrain {
 
       [0, 3, 6, 9].forEach(t => {
           events.push({ 
-              type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
-              duration: 2.0, weight: 0.12, technique: 'hit', dynamics: 'p', phrasing: 'legato' 
-          });
-          events.push({ 
             type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, 
             duration: 0.1, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'staccato' 
         });
@@ -811,7 +775,6 @@ export class BluesBrain {
       if (epoch % 2 === 1) { 
           events.push({ type: 'drum_Sonor_Classix_Low_Tom', note: 41, time: 9 * TICK_TO_BEAT, duration: 0.3, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
           events.push({ type: 'drum_snare', note: 38, time: 10 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
-          events.push({ type: 'drum_crash2', note: 49, time: 11 * TICK_TO_BEAT, duration: 1.0, weight: 0.7, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
       } else {
           events.push({ type: 'drum_snare', note: 38, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 0.75, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
           events.push({ type: 'drum_Sonor_Classix_Mid_Tom', note: 40, time: 10.5 * TICK_TO_BEAT, duration: 0.2, weight: 0.8, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
