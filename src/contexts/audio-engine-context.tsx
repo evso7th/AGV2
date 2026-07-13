@@ -1,7 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V55.0 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
- * #ЧТО: Внедрение cancelScheduledValues перед каждой установкой громкости.
+ * @fileOverview Audio Engine Context V56.0 — "Violin Calibration Correction".
+ * #ЗАЧЕМ: ПЛАН №1320. Снижение дефолтной громкости скрипок в 4 раза.
  */
 'use client';
 
@@ -47,7 +46,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     acoustic: 0.15,
     electric: 0.15, 
     piano: 0.6,
-    orchecial: 0.29,
+    orchecial: 0.0725, // Снижено в 4 раза (было 0.29)
     cs80: 0.4,
     chords: 1.2,
     bass: 1.0
@@ -205,7 +204,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const now = audioContextRef.current.currentTime;
       const m = gains.master ?? 1.0;
       
-      // #ЗАЧЕМ: Детерминированная калибровка.
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);
           masterGainNodeRef.current.gain.setTargetAtTime(m, now, 0.05);
@@ -239,7 +237,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
           
-          // #ЗАЧЕМ: Старт без «шлепка» громкости.
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
@@ -280,7 +277,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     const gainNode = gainNodesRef.current[part];
     if (gainNode && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
-        // #ЗАЧЕМ: Закон Микшера.
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }

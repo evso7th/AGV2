@@ -1,14 +1,17 @@
-
 'use client';
 
 import React, { useRef, useEffect } from 'react';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 
+interface SpectrumAnalyzerProps {
+    info?: string;
+}
+
 /**
- * #ЗАЧЕМ: Высокопроизводительный спектроанализатор для AuraGroove.
- * #ЧТО: Canvas-визуализация частотного спектра.
+ * #ЗАЧЕМ: Высокопроизводительный спектроанализатор с информационной панелью.
+ * #ЧТО: ПЛАН №1320 — Добавлен вывод информации о текущем треке в оверлее.
  */
-export const SpectrumAnalyzer: React.FC = () => {
+export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
     const { analyser, isPlaying } = useAudioEngine();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number>();
@@ -33,23 +36,20 @@ export const SpectrumAnalyzer: React.FC = () => {
             // Очистка
             ctx.clearRect(0, 0, width, height);
 
-            const barCount = 64; // Отрисовываем 64 столбика для читаемости
+            const barCount = 64; 
             const barWidth = (width / barCount) * 0.8;
             const gap = (width / barCount) * 0.2;
             
             for (let i = 0; i < barCount; i++) {
-                // Маппинг данных: берем только нижнюю часть спектра (до 10кГц), где больше активности
                 const dataIdx = Math.floor(i * (bufferLength / barCount) * 0.6);
                 const barHeight = (dataArray[dataIdx] / 255) * height;
 
-                // Цветовой градиент AuraGroove
-                const hue = 270; // Основной цвет Primary (Purple)
+                const hue = 270; 
                 const saturation = 25 + (dataArray[dataIdx] / 255) * 50;
                 const lightness = 40 + (dataArray[dataIdx] / 255) * 20;
                 
                 ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
                 
-                // Рисуем столбик со скруглением вверху
                 const x = i * (barWidth + gap);
                 const y = height - barHeight;
                 
@@ -57,7 +57,6 @@ export const SpectrumAnalyzer: React.FC = () => {
                 ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
                 ctx.fill();
                 
-                // Эффект свечения для пиков
                 if (dataArray[dataIdx] > 200) {
                     ctx.shadowBlur = 15;
                     ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
@@ -75,7 +74,16 @@ export const SpectrumAnalyzer: React.FC = () => {
     }, [analyser]);
 
     return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 rounded-lg p-4 border border-primary/10">
+        <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 rounded-lg p-4 border border-primary/10 relative overflow-hidden">
+            {/* #ЗАЧЕМ: Информационная панель текущего трека */}
+            {info && isPlaying && (
+                <div className="absolute top-4 left-4 z-50 pointer-events-none">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/90 bg-black/60 px-2.5 py-1.5 rounded-md border border-primary/20 backdrop-blur-md shadow-xl">
+                        {info}
+                    </p>
+                </div>
+            )}
+
             <canvas 
                 ref={canvasRef} 
                 width={800} 

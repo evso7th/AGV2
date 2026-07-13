@@ -10,8 +10,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.3 — "Active Sources Fix".
- * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
+ * #ЗАЧЕМ: Сэмплер скрипки V4.4 — "Volume Correction".
+ * #ЧТО: Громкость снижена в 4 раза (0.29 -> 0.0725) для деликатного присутствия.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -25,7 +25,7 @@ export class ViolinSamplerPlayer {
         this.audioContext = audioContext;
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.29; 
+        this.preamp.gain.value = 0.0725; 
         this.preamp.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
@@ -105,9 +105,6 @@ export class ViolinSamplerPlayer {
 
             source.start(startTime);
 
-            // #ЗАЧЕМ: кэп 5 c содержимого сэмпла + плавный фейд (после 5 c записи — мусор).
-            // playbackRate смещает темп, поэтому 5 c контента = 5/rate реального времени.
-            // Чистые сэмплы короче 5 c играются целиком.
             const CAP = 5.0, FADE = 0.6;
             if (buffer.duration > CAP) {
                 const realCap = CAP / playbackRate;

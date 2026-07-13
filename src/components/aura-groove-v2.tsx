@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V5.2 — "Unified Master Control".
- * #ЗАЧЕМ: ПЛАН №1181. Добавление мастер-канала в Expert UI Mixer.
+ * @fileOverview UI AuraGroove V5.3 — "Spectrum Label Support".
+ * #ЗАЧЕМ: ПЛАН №1320 — Поддержка вывода идентификатора трека в Spectrum Monitor.
  */
 'use client';
 
@@ -112,7 +112,7 @@ const DISPLAY_NAMES: Record<string, string> = {
     'dyn_bass_fretless_jazz_slap': '⚡ Fretless → Jazz → Slap',
     'dyn_bass_ambient_cs80': '⚡ Ambient → CS80 Sub',
     'dyn_rhodes_piano': '⚡ Rhodes → Piano',
-    'dyn_piano_rhodes': '⚡ Piano → Rhodes'
+    'dyn_pianorhodes': '⚡ Piano → Rhodes'
 };
 
 const INSTRUMENT_GROUPS = [
@@ -421,7 +421,13 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                          <Button onClick={handleToggleTimer} disabled={timerSettings.isActive} variant={timerSettings.isActive ? 'destructive' : 'secondary'} className="flex-grow h-8 text-[10px] uppercase font-black">{timerSettings.isActive ? `Stop (${formatTime(timerSettings.timeLeft)})` : `Timer (${timerSettings.duration / 60}m)`}</Button>
                         <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                             <DialogTrigger asChild><Button variant="outline" className="w-10 h-8 p-0"><Activity className={cn("h-4 w-4", isPlaying && "text-primary animate-pulse")} /></Button></DialogTrigger>
-                            <DialogContent className="sm:max-w-[480px] bg-card border-primary/20"><DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader><div className="py-4 h-[250px]"><SpectrumAnalyzer /></div></DialogContent>
+                            <DialogContent className="sm:max-w-[480px] bg-card border-primary/20">
+                                <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader>
+                                <div className="py-4 h-[250px]">
+                                    {/* #ЗАЧЕМ: ПЛАН №1320. Передача информации о треке. */}
+                                    <SpectrumAnalyzer info={selectedCompositionIds.length > 0 ? `[DNA] ${genre}/${mood}` : `${genre}/${mood}`} />
+                                </div>
+                            </DialogContent>
                         </Dialog>
                     </div>
                     {!timerSettings.isActive && <Slider value={[timerSettings.duration / 60]} min={0} max={30} step={5} onValueChange={(v) => handleTimerDurationChange(v[0])} className="px-1" />}

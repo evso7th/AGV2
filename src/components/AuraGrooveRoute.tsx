@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.3 — "Interface Cleaning".
- * #ЗАЧЕМ: Скрытие кнопки Наследия. Наследие теперь включено всегда по умолчанию.
+ * @fileOverview UI AuraGroove V8.4 — "Monitoring Updates".
+ * #ЗАЧЕМ: ПЛАН №1320 — Передача информации о треке в Spectrum Monitor.
  */
 'use client';
 
@@ -642,7 +642,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
-                <DialogContent className="sm:max-w-2xl bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader><div className="h-64"><SpectrumAnalyzer /></div></DialogContent>
+                <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
+                    <DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader>
+                    <div className="h-64">
+                        {/* #ЗАЧЕМ: ПЛАН №1320. Передача информации о текущем треке в монитор. */}
+                        <SpectrumAnalyzer info={props.route.length > 0 ? `${props.activeRouteIndex + 1} ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
+                    </div>
+                </DialogContent>
             </Dialog>
 
             <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
