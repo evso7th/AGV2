@@ -21,6 +21,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/laser/Robot_Confused.ogg',
     ],
     voice: [
+        '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
         '/assets/music/sfx/voice/137943__ionicsmusic__robot-voice-no-data.ogg',
         '/assets/music/sfx/voice/187919__vasotelvi__deletion-completed.ogg.1296434.wav',
         '/assets/music/sfx/voice/196890__ionicsmusic__race-robot-finish-line.ogg',
@@ -66,7 +67,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/783026__soundcannon42__robot-voice-analyze-neurons-for-musical-creativity.ogg',
         '/assets/music/sfx/voice/785805__alien_i_trust__sample-pack-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown.ogg',
         '/assets/music/sfx/voice/789675__alien_i_trust__synth-shot-1-by-alien-i-trust.ogg',
-        '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
+        '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg',
         '/assets/music/sfx/voice/Hello_who_would_you_.ogg',
         '/assets/music/sfx/voice/I_m_afraid_of_nothin.ogg',
         '/assets/music/sfx/voice/Imagination_rules_th.ogg',
@@ -80,7 +81,8 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/mixkit-sci-fi-robot-speaking-289.ogg',
         '/assets/music/sfx/voice/voice_game-over.ogg',
         '/assets/music/sfx/voice/wazzap_bro_relax.ogg',
-        '/assets/music/sfx/voice/you_are_just_another.ogg'
+        '/assets/music/sfx/voice/you_are_just_another.ogg',
+        '/assets/music/sfx/voice/You_are_pulling_my_l.ogg'
     ],
     bongo: [
         '/assets/music/sfx/bongo/bongo_ bossa_perc_a.ogg',
@@ -181,9 +183,16 @@ export class SfxSynthManager {
             }
         }
         const rand = Math.random();
-        if (genre === 'psybient') {
-            if (rand < 0.35) return 'voice'; 
-            if (rand < 0.7) return 'laser';
+        
+        // #ЗАЧЕМ: Универсальная ротация голосов для Ambient и Trance.
+        if (genre === 'psybient') { // Neuro Space
+            if (rand < 0.45) return 'voice'; // Повышен шанс для техно-голосов
+            if (rand < 0.75) return 'laser';
+            return 'common';
+        }
+        if (genre === 'ambient') { // Slow Fusion
+            if (rand < 0.25) return 'voice'; // Голоса в амбиенте более редкие
+            if (mood === 'dark' || mood === 'anxious') return rand < 0.6 ? 'dark' : 'voice';
             return 'common';
         }
         if (genre === 'blues') {
@@ -191,6 +200,7 @@ export class SfxSynthManager {
             if (rand < 0.7) return 'dark';  
             return 'common';
         }
+        
         if (mood === 'dark' || mood === 'anxious') return rand < 0.6 ? 'dark' : 'voice';
         return 'common';
     }
