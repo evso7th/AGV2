@@ -4,16 +4,36 @@ service cloud.firestore {
 
     /**
      * AuraGroove V2 Security Rules: "IRON PERIMETER"
-     * #ЗАЧЕМ: Защита Наследия от модификации посторонними.
-     * #КТО: Только владелец (Master UID) имеет право на запись.
+     * #ЗАЧЕМ: Защита Наследия и системных документов.
+     * #КТО: Только владелец (Master UID) имеет право на изменение.
      */
 
-    match /{document=**} {
-      // Чтение открыто для всех, чтобы генератор мог брать Аксиомы из облака.
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'ER24LvlifBafiYPf5sLRkYW0aUD3';
+    }
+
+    match /heritage_axioms/{id} {
       allow read: if true;
-      
-      // Запись и удаление разрешены ТОЛЬКО для вашего UID.
-      allow write: if request.auth != null && request.auth.uid == 'ER24LvlifBafiYPf5sLRkYW0aUD3';
+      allow write: if isAdmin();
+    }
+    
+    match /masterpieces/{id} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    match /project_documents/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if isAdmin();
+    }
+
+    match /{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

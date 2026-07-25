@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V5.5 — "Secret Lock Protocol Active".
- * #ЗАЧЕМ: Реализация ПЛАНА №1350. Авторизация по коду 96dmhwmnfgn.
- * #ЧТО: Внедрен Gatekeeper с памятью в localStorage.
+ * @fileOverview DNA Auditor V5.6 — "Integrity Restoration".
+ * #ЗАЧЕМ: Исправление ReferenceError: handleFileSelect is not defined.
+ * #ЧТО: Восстановлены все обработчики событий в AuditorContent.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -235,9 +235,6 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
             </Button>
           </CardFooter>
         </Card>
-        <div className="mt-8 opacity-20 hover:opacity-50 transition-opacity cursor-default">
-           <span className="text-[8px] font-black uppercase tracking-[0.3em]">Iron Perimeter V5.5 Status: Active</span>
-        </div>
       </div>
     );
   }
@@ -353,6 +350,67 @@ function AuditorContent() {
     }).sort((a, b) => b.count - a.count);
   }, [globalAxioms]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const cleanFileName = file.name.replace(/\.[^/.]+$/, "").replace(/-axiom.*$/, "").replace(/\(\d+\)$/, "").trim();
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        let flattened: any[] = [];
+        const processAxiom = (ax: any, idx: number, compId: string) => {
+            const role = (ax.role || 'melody').toLowerCase();
+            const phrase = ax.phrase || [];
+            let maxTick = 0;
+            for(let i=0; i<phrase.length; i+=4) {
+                const end = (phrase[i] || 0) + (phrase[i+1] || 0);
+                if(end > maxTick) maxTick = end;
+            }
+            const calculatedBars = Math.max(1, Math.ceil(maxTick / 12));
+            const calculatedNoteCount = Math.floor(phrase.length / 4);
+            const repairedPhrase = repairLegacyPhrase(phrase);
+            const moods = Array.isArray(ax.mood) ? ax.mood : (ax.mood ? [ax.mood] : []);
+            const defaultMood = moods.length > 0 ? moods[0] : 'melancholic';
+            return {
+                ...ax, phrase: repairedPhrase, role: role, id: `${compId}_${role}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
+                compositionId: compId, genre: Array.isArray(ax.genre) ? ax.genre : (ax.genre ? [ax.genre] : []),
+                mood: moods, commonMood: Array.isArray(ax.commonMood) ? ax.commonMood : (ax.commonMood ? [ax.commonMood] : [MOOD_TO_COMMON[defaultMood as Mood] || 'neutral']),
+                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }, tags: ax.tags || [], narrative: ax.narrative || "Heritage component.",
+                nativeBpm: ax.nativeBpm || ax.bpm || null, nativeKey: ax.nativeKey || ax.key || null, timeSignature: ax.timeSignature || ax.ts || null,
+                barOffset: ax.barOffset ?? 0, bars: ax.bars || calculatedBars, noteCount: ax.noteCount || calculatedNoteCount,
+                ignored: ax.ignored ?? false
+            };
+        };
+
+        if (json.header && json.tracks && Array.isArray(json.tracks)) {
+            const targetId = json.header.name || cleanFileName || "MIDI_Export";
+            const bpm = Math.round(json.header.tempos?.[0]?.bpm || 120);
+            json.tracks.forEach((track: any, tIdx: number) => {
+                if (!track.notes || track.notes.length === 0) return;
+                const phrase: number[] = [];
+                track.notes.forEach((note: any) => {
+                    const tick = Math.round(note.time * 3); 
+                    const duration = Math.max(1, Math.round(note.duration * 3));
+                    const semitone = note.midi % 12;
+                    const degName = SEMITONE_TO_DEGREE[semitone] || 'R';
+                    phrase.push(tick, duration, DEGREE_KEYS.indexOf(degName), TECHNIQUE_KEYS.indexOf('pick'));
+                });
+                flattened.push(processAxiom({ phrase, role: 'melody', nativeBpm: bpm, nativeKey: 'C' }, tIdx, targetId));
+            });
+        } else if (Array.isArray(json)) {
+            json.forEach((ax, idx) => flattened.push(processAxiom(ax, idx, cleanFileName)));
+        }
+        setStagedAxioms(flattened);
+        setSelectedIds(new Set(flattened.map(a => a.id)));
+        setCurrentFileName(file.name);
+      } catch (err) {
+        toast({ variant: "destructive", title: "Parse Error" });
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handlePlayAxiom = async (axiom: any) => {
     if (playingAxiomId === axiom.id) { stopAllSounds(); setPlayingAxiomId(null); return; }
     if (!isInitialized) await initialize();
@@ -403,6 +461,32 @@ function AuditorContent() {
     } finally { setIsProcessing(false); setEditingGroupId(null); }
   };
 
+  const handleDeleteAxiom = (id: string) => {
+    setConfirmAction({
+        title: "Delete Axiom",
+        desc: "Permanently delete this specific axiom?",
+        action: () => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', id))
+    });
+    setConfirmOpen(true);
+  };
+
+  const handleDeleteTrack = (compId: string, licks: any[]) => {
+    setConfirmAction({
+        title: `Purge Track: ${compId}`,
+        desc: `Delete entire track and all its ${licks.length} axioms?`,
+        action: async () => {
+            setIsProcessing(true);
+            try {
+                const batch = writeBatch(db);
+                licks.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
+                await batch.commit();
+                toast({ title: "Track Purged" });
+            } finally { setIsProcessing(false); }
+        }
+    });
+    setConfirmOpen(true);
+  };
+
   const handleWipeSelected = async () => {
     setConfirmAction({
         title: `WIPE SELECTED (${selectedTrackGroups.size} tracks)`,
@@ -422,6 +506,13 @@ function AuditorContent() {
     setConfirmOpen(true);
   };
 
+  const handleToggleIgnore = async (axiom: any) => {
+      setIsProcessing(true);
+      try {
+          await updateDoc(doc(db, 'heritage_axioms', axiom.id), { ignored: !axiom.ignored });
+      } finally { setIsProcessing(false); }
+  };
+
   const handleBulkSetMood = async (moods: Mood[]) => {
     const selected = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).flatMap(([, l]) => l) as any[];
     if (selected.length === 0) return;
@@ -434,7 +525,7 @@ function AuditorContent() {
             selected.slice(i, i + CHUNK_SIZE).forEach((ax: any) => batch.update(doc(db, 'heritage_axioms', ax.id), { mood: moods, commonMood: newCommons }));
             await batch.commit();
         }
-        toast({ title: "Moods Updated", description: `${selected.length} axioms across ${selectedTrackGroups.size} tracks` });
+        toast({ title: "Moods Updated", description: `${selected.length} licks updated.` });
         setSelectedTrackGroups(new Set());
         setBulkMoodOpen(false);
         setBulkMoodValue([]);
@@ -496,12 +587,21 @@ function AuditorContent() {
       } finally { setIsProcessing(false); }
   };
 
+  const getSortedLicks = (licks: any[]) => {
+      return [...licks].sort((a, b) => {
+          if (a.barOffset !== b.barOffset) return a.barOffset - b.barOffset;
+          const roleOrder = ['melody', 'bass', 'drums', 'accomp'];
+          const getRoleWeight = (r: string) => { const base = String(r).split(' ')[0].toLowerCase(); const idx = roleOrder.indexOf(base); return idx === -1 ? 99 : idx; };
+          return getRoleWeight(a.role) - getRoleWeight(b.role);
+      });
+  };
+
   return (
     <div className="max-w-6xl mx-auto w-full space-y-8 flex-grow flex flex-col">
       <header className="flex items-center justify-between shrink-0">
         <div className="space-y-1">
           <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-          <Badge variant="outline" className="text-[10px] font-black uppercase text-primary border-primary/20 bg-primary/5 px-2 py-0.5 tracking-[0.2em]">Secure Session: 96DMWHMNFGN</Badge>
+          <Badge variant="outline" className="text-[10px] font-black uppercase text-primary border-primary/20 bg-primary/5 px-2 py-0.5 tracking-[0.2em]">Secure Session Active</Badge>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50"><Square className="h-4 w-4" /> Stop Audition</Button>
@@ -513,7 +613,7 @@ function AuditorContent() {
           <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
           <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalMasterpieces?.length || 0}</div></CardContent></Card>
           <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
-          <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Registry Integrity</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-green-500">Verified</span></div></CardContent></Card>
+          <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Registry Integrity</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-green-500">Verified</span></div></CardContent>
       </div>
 
       <Tabs defaultValue="explore" className="flex-grow flex flex-col overflow-hidden space-y-6">
@@ -583,7 +683,7 @@ function AuditorContent() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 pr-4">
-                             <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); licks.forEach(l => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', l.id))); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                             <Button variant="ghost" size="icon" onClick={e => { e.stopPropagation(); handleDeleteTrack(compId, licks); }} className="h-8 w-8 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         </div>
                         <AccordionContent className="p-0 border-t overflow-visible">
@@ -602,7 +702,7 @@ function AuditorContent() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/20">
-                                  {licks.map((ax: any) => (
+                                  {getSortedLicks(licks).map((ax: any) => (
                                     <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
                                       <td className="p-3 pl-12 font-mono text-[10px] opacity-70">{ax.id.split('_').pop()}</td>
                                       <td className="p-3">
@@ -630,7 +730,7 @@ function AuditorContent() {
                                       <td className="p-3 text-xs italic text-muted-foreground">{editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs" /> : <div className="line-clamp-1 max-w-[200px]">{ax.narrative}</div>}</td>
                                       <td className="p-3 text-right">
                                         <div className="flex justify-end gap-1">
-                                          {editingAxiomId === ax.id ? (<><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>) : (<><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'heritage_axioms', ax.id))}><Trash2 className="h-3.5 w-3.5" /></Button></>)}
+                                          {editingAxiomId === ax.id ? (<><Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={handleSaveAxiomEdits}><Check className="h-4 w-4" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditingAxiomId(null)}><X className="h-4 w-4" /></Button></>) : (<><Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover/row:opacity-100" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button><Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button><Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button><Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteAxiom(ax.id)}><Trash2 className="h-3.5 w-3.5" /></Button></>)}
                                         </div>
                                       </td>
                                     </tr>
