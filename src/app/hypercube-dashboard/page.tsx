@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.0 — "Secret Lock Protocol".
- * #ЗАЧЕМ: Реализация скрытой авторизации по UID трека (96dmhwmnfgn).
- * #ЧТО: Полная блокировка интерфейса до ввода пароля. Все кнопки управления ВСЕГДА видны после входа.
+ * @fileOverview DNA Auditor V6.5 — "Root Access Protocol".
+ * #ЗАЧЕМ: Реализация входа по паре Operator ID + Master Key.
+ * #ЧТО: Полный доступ к редактированию и управлению Наследием после авторизации.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -42,7 +42,8 @@ import {
   Unlock,
   Plus,
   RefreshCw,
-  FileText
+  FileText,
+  UserCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -98,9 +99,10 @@ import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
 import type { Genre } from '@/types/music';
 
-// ───── КОНСТАНТЫ ПРОТОКОЛА ─────
-const SECRET_TRACK_UID = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_AUDITOR_ACCESS_V6.0"; // Смена ключа для принудительного разлогина
+// ───── ROOT ACCESS CONSTANTS ─────
+const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
+const ROOT_MASTER_KEY = "96dmhwmnfgn";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.5";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -129,7 +131,7 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-// ───── ВСПОМОГАТЕЛЬНЫЕ КОМПОНЕНТЫ ─────
+// ───── COMPONENTS ─────
 
 function MultiSelector<T extends string>({ 
   options, 
@@ -171,8 +173,6 @@ function MultiSelector<T extends string>({
     </Popover>
   );
 }
-
-// ───── ОСНОВНОЙ КОНТЕНТ АУДИТОРА ─────
 
 function AuditorContent() {
   const db = useFirestore();
@@ -220,7 +220,6 @@ function AuditorContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Memos & Stats ---
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
     return globalAxioms.reduce((acc, ax) => {
@@ -291,8 +290,6 @@ function AuditorContent() {
       { subject: 'Stability', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.h * 100])) },
     ];
   }, [dynastyStats]);
-
-  // --- Handlers ---
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -481,13 +478,12 @@ function AuditorContent() {
     toast({ title: "DNA Exported" });
   };
 
-  // --- Final Render of Dashboard ---
   return (
     <div className="max-w-6xl mx-auto w-full space-y-8 flex-grow flex flex-col">
       <header className="flex items-center justify-between shrink-0">
         <div className="space-y-1">
           <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest">Masterforge Control Station</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest">Root Access Level: Authorized</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -499,8 +495,8 @@ function AuditorContent() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud DNA Pool</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent></Card>
           <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isMpiecesLoading ? '---' : globalMasterpieces?.length || 0}</div></CardContent></Card>
-          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-green-500">Live Connection</span></div></CardContent></Card>
-          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Operator ID</CardTitle></CardHeader><CardContent><div className="text-xs font-mono truncate opacity-60">{user?.uid || 'Root Access'}</div></CardContent></Card>
+          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">System Identity</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-green-500">Root Access</span></div></CardContent></Card>
+          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Operator ID</CardTitle></CardHeader><CardContent><div className="text-xs font-mono truncate opacity-60">{ROOT_OPERATOR_ID}</div></CardContent></Card>
       </div>
 
       <Tabs defaultValue="explore" className="flex-grow flex flex-col space-y-6">
@@ -515,14 +511,14 @@ function AuditorContent() {
           <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
             <CardHeader className="pb-4 shrink-0">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex flex-col gap-1"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Full Restoration Mode Active</CardDescription></div>
+                <div className="flex flex-col gap-1"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Full Control Mode Active</CardDescription></div>
                 <div className="flex wrap items-center gap-2">
                   <Input placeholder="Search tracks..." className="h-9 w-[200px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                   <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
                   <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
                   {selectedTrackGroups.size > 0 && (
                       <div className="flex gap-1 animate-in slide-in-from-right-2">
-                        <Button variant="secondary" size="sm" onClick={() => setBulkMoodOpen(true)} className="h-9 text-[10px] font-black uppercase"><Edit2 className="h-3.5 w-3.5 mr-1" /> Moods</Button>
+                        <Button variant="secondary" size="sm" onClick={() => setBulkMoodOpen(true)} className="h-9 text-[10px] font-black uppercase"><Edit2 className="h-3.5 w-3.5 mr-1" /> Bulk Mood</Button>
                         <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4 mr-1" /> Wipe ({selectedTrackGroups.size})</Button>
                       </div>
                   )}
@@ -531,7 +527,7 @@ function AuditorContent() {
             </CardHeader>
             <CardContent className="p-0 border-t flex-grow overflow-hidden relative">
               <ScrollArea className="h-full px-4 py-2">
-                {isDbLoading ? <div className="py-20 text-center animate-pulse text-xs font-black uppercase tracking-widest">Reading Cloud Vault...</div> : groupedAxioms.length === 0 ? <div className="py-20 text-center opacity-40 uppercase text-xs font-black">No matching DNA found</div> : (
+                {isDbLoading ? <div className="py-20 text-center animate-pulse text-xs font-black uppercase tracking-widest">Scanning Repository...</div> : groupedAxioms.length === 0 ? <div className="py-20 text-center opacity-40 uppercase text-xs font-black">No matching DNA records found</div> : (
                   <Accordion type="multiple" className="space-y-2 pb-20">
                     {groupedAxioms.map(([compId, licks]) => (
                       <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
@@ -606,7 +602,7 @@ function AuditorContent() {
 
         <TabsContent value="masterpieces" className="flex-grow m-0 overflow-hidden flex flex-col">
           <Card className="border-border/50 shadow-xl bg-card/50 flex-grow overflow-hidden flex flex-col">
-              <CardHeader className="shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Saved Masterpieces</CardTitle></CardHeader>
+              <CardHeader className="shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Collection</CardTitle></CardHeader>
               <CardContent className="flex-grow overflow-hidden p-6"><ScrollArea className="h-full">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
                   {globalMasterpieces?.map((m: any) => (
@@ -667,7 +663,10 @@ function AuditorContent() {
 
       <Dialog open={bulkMoodOpen} onOpenChange={setBulkMoodOpen}>
         <DialogContent className="sm:max-w-md bg-card border-primary/20">
-          <DialogHeader><DialogTitle className="font-black uppercase text-primary">Bulk Mood Settings</DialogTitle><DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Update mood for all {selectedTrackGroups.size} selected tracks.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="font-black uppercase text-primary">Bulk Mood Settings</DialogTitle>
+            <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Update mood for all {selectedTrackGroups.size} selected tracks.</DialogDescription>
+          </DialogHeader>
           <div className="py-6 space-y-4">
             <MultiSelector options={AVAILABLE_MOODS} values={bulkMoodValue} onValuesChange={setBulkMoodValue} placeholder="Select target moods" className="w-full h-11 font-bold" />
             <Button className="w-full h-11 font-black uppercase tracking-widest shadow-lg" onClick={() => handleBulkSetMood(bulkMoodValue)} disabled={isProcessing || bulkMoodValue.length === 0}><Check className="h-4 w-4 mr-2" /> Apply Transformation</Button>
@@ -678,19 +677,17 @@ function AuditorContent() {
   );
 }
 
-// ───── GATEKEEPER (SECRET LOCK) ─────
-
 function Gatekeeper({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
-  const [tokenInput, setTokenInput] = useState("");
+  const [idInput, setIdInput] = useState("");
+  const [keyInput, setKeyInput] = useState("");
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_ACCESS_KEY);
     if (saved === "true") {
         setIsAuthorized(true);
-        // Принудительно обеспечиваем UID при входе
         if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
     } else {
         setIsAuthorized(false);
@@ -698,15 +695,14 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
   }, [auth]);
 
   const handleLogin = () => {
-    if (tokenInput === SECRET_TRACK_UID) {
+    if (idInput === ROOT_OPERATOR_ID && keyInput === ROOT_MASTER_KEY) {
       localStorage.setItem(STORAGE_ACCESS_KEY, "true");
       setIsAuthorized(true);
       setError(false);
-      // Принудительно обеспечиваем UID при вводе верного пароля
       if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
     } else {
       setError(true);
-      setTokenInput("");
+      setKeyInput("");
     }
   };
 
@@ -720,23 +716,30 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
           <CardHeader className="bg-primary/5 border-b border-primary/10 text-center space-y-2 py-8">
             <div className="mx-auto bg-primary/10 h-16 w-16 rounded-full flex items-center justify-center text-primary mb-2 shadow-inner"><Lock className="h-8 w-8" /></div>
             <CardTitle className="text-2xl font-black uppercase tracking-tighter">DNA Auditor</CardTitle>
-            <CardDescription className="text-[10px] uppercase font-black opacity-60 tracking-[0.3em]">Masterforge Sync Protocol</CardDescription>
+            <CardDescription className="text-[10px] uppercase font-black opacity-60 tracking-[0.3em]">Masterforge Root Terminal</CardDescription>
           </CardHeader>
           <CardContent className="p-8 space-y-6">
-            <div className="space-y-2.5">
-              <Label className="text-[10px] font-black uppercase opacity-40 ml-1 tracking-widest">Master Key (Track UID)</Label>
-              <div className="relative group">
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase opacity-40 ml-1 tracking-widest">Operator ID</Label>
                 <Input 
-                  type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                  placeholder="••••••••••" className={cn("h-12 bg-background/50 text-base font-mono tracking-[0.4em] text-center border-primary/10 focus:border-primary/40 transition-all shadow-inner", error && "border-destructive animate-shake")} autoFocus
+                  value={idInput} onChange={(e) => setIdInput(e.target.value)}
+                  placeholder="ID..." className="h-10 bg-background/50 text-xs border-primary/10"
                 />
               </div>
-              {error && <p className="text-[9px] text-destructive font-black uppercase text-center mt-3 animate-bounce tracking-tighter">Identity Recognition Failed</p>}
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase opacity-40 ml-1 tracking-widest">Master Key (Track UID)</Label>
+                <Input 
+                  type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+                  placeholder="••••••••" className={cn("h-10 bg-background/50 text-sm border-primary/10 text-center tracking-[0.4em]", error && "border-destructive")}
+                />
+              </div>
+              {error && <p className="text-[9px] text-destructive font-black uppercase text-center mt-3 animate-bounce">Access Denied: Terminal Locked</p>}
             </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button onClick={handleLogin} className="w-full h-12 font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-transform">Authorize Connection <Unlock className="ml-2 h-4 w-4" /></Button>
+            <Button onClick={handleLogin} className="w-full h-12 font-black uppercase tracking-[0.2em] shadow-xl">Establish Link <UserCheck className="ml-2 h-4 w-4" /></Button>
           </CardFooter>
         </Card>
       </div>
@@ -755,4 +758,3 @@ export default function HypercubeDashboard() {
         </div>
     );
 }
-
