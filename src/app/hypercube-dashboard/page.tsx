@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.7 — "Stability & Integrity".
- * #ЗАЧЕМ: Исправление ReferenceError: AVAILABLE_KEYS.
- * #ЧТО: Восстановление пропущенных констант и стабилизация интерфейса Root Access.
+ * @fileOverview DNA Auditor V6.8 — "Full Editor Restoration".
+ * #ЗАЧЕМ: Восстановление колонки инструментов и параметра Note Count.
+ * #ЧТО: ПЛАН №1330 — Интеграция Preferred Instrument (пресеты + динамические группы).
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -44,7 +44,8 @@ import {
   RefreshCw,
   FileText,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  Layers
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -103,7 +104,7 @@ import type { Genre } from '@/types/music';
 // ───── ROOT ACCESS CONSTANTS ─────
 const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
 const ROOT_MASTER_KEY = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.7";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.8";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -116,6 +117,14 @@ const AVAILABLE_MOODS: Mood[] = [
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
+
+const PREFERRED_INST_OPTIONS = [
+    'none', 'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
+    'organ_soft_jazz', 'organ_prog', 'organ', 'synth', 'synth_ambient_pad_lush', 'synth_cave_pad',
+    'piano', 'ep_rhodes_warm', 'violin', 'flute', 'bass_jazz_warm', 'bass_blues', 'bass_808',
+    'dynamicOrgan', 'dynamicPad', 'dynteledark', 'dynblackteledark', 'dyntelecs80black', 'dynblackcs80shine', 'dynshinemuff',
+    'dynbasswarmblues', 'dynbassfretlessjazz', 'dynrhodespiano'
+];
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
   'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
@@ -304,6 +313,7 @@ function AuditorContent() {
         let flattened: any[] = [];
         const processAxiom = (ax: any, idx: number, compId: string) => {
             const repairedPhrase = repairLegacyPhrase(ax.phrase || []);
+            const calculatedNoteCount = Math.floor(repairedPhrase.length / 4);
             return {
                 ...ax, 
                 phrase: repairedPhrase, 
@@ -312,7 +322,9 @@ function AuditorContent() {
                 compositionId: compId, 
                 genre: Array.isArray(ax.genre) ? ax.genre : [ax.genre || 'blues'],
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
-                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 }
+                vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
+                noteCount: ax.noteCount || calculatedNoteCount,
+                preferredInstrument: ax.preferredInstrument || null
             };
         };
 
@@ -438,7 +450,10 @@ function AuditorContent() {
             narrative: editAxiomData.narrative, 
             vector: editAxiomData.vector,
             nativeBpm: parseInt(editAxiomData.nativeBpm) || null, 
-            nativeKey: editAxiomData.nativeKey 
+            nativeKey: editAxiomData.nativeKey,
+            noteCount: parseInt(editAxiomData.noteCount) || 0,
+            barOffset: parseInt(editAxiomData.barOffset) || 0,
+            preferredInstrument: editAxiomData.preferredInstrument || null
         });
         toast({ title: "Axiom Updated" }); setEditingAxiomId(null);
     } finally { setIsProcessing(false); }
@@ -486,7 +501,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.7</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.8</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -560,23 +575,44 @@ function AuditorContent() {
                           </div>
                         </div>
                         <AccordionContent className="p-0 border-t overflow-visible bg-background/20">
-                            <table className="w-full text-left text-sm border-collapse">
+                            <table className="w-full text-left text-sm border-collapse min-w-[1000px]">
+                                <thead className="bg-muted/50 border-b border-border/10">
+                                    <tr className="text-[10px] uppercase font-black opacity-60">
+                                        <th className="p-3 pl-12 w-24">Hash</th>
+                                        <th className="p-3 w-32">Role</th>
+                                        <th className="p-3 w-40">Pref. Inst</th>
+                                        <th className="p-3 w-32">Struct (O/B/N)</th>
+                                        <th className="p-3">Narrative</th>
+                                        <th className="p-3 text-right w-40">Actions</th>
+                                    </tr>
+                                </thead>
                                 <tbody className="divide-y divide-border/10">
                                   {getSortedLicks(licks).map((ax: any) => (
                                     <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                      <td className="p-3 pl-12 font-mono text-[10px] opacity-70 w-24">{ax.id.split('_').pop()}</td>
-                                      <td className="p-3 w-32">
+                                      <td className="p-3 pl-12 font-mono text-[10px] opacity-70">{ax.id.split('_').pop()}</td>
+                                      <td className="p-3">
                                         {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
                                         ) : <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge>}
                                       </td>
-                                      <td className="p-3 font-mono text-[10px] opacity-60 w-32">
-                                         {editingAxiomId === ax.id ? <Input type="number" value={editAxiomData.barOffset || 0} onChange={e => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value)})} className="h-7 w-12 text-[10px]" /> : `O:${ax.barOffset || 0} / B:${ax.bars || 1}`}
+                                      <td className="p-3">
+                                        {editingAxiomId === ax.id ? (
+                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === "none" ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{PREFERRED_INST_OPTIONS.map(inst => <SelectItem key={inst} value={inst} className="text-[10px] font-black uppercase">{inst}</SelectItem>)}</SelectContent></Select>
+                                        ) : <span className="text-[10px] font-black uppercase opacity-60">{ax.preferredInstrument || "none"}</span>}
+                                      </td>
+                                      <td className="p-3 font-mono text-[10px] opacity-60">
+                                         {editingAxiomId === ax.id ? (
+                                            <div className="flex gap-1">
+                                                <Input type="number" value={editAxiomData.barOffset || 0} onChange={e => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value)})} className="h-7 w-10 text-[9px] p-1" title="Offset" />
+                                                <Input type="number" value={editAxiomData.bars || 1} onChange={e => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value)})} className="h-7 w-10 text-[9px] p-1" title="Bars" />
+                                                <Input type="number" value={editAxiomData.noteCount || 0} onChange={e => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value)})} className="h-7 w-10 text-[9px] p-1" title="Note Count" />
+                                            </div>
+                                         ) : `O:${ax.barOffset || 0} / B:${ax.bars || 1} / N:${ax.noteCount || 0}`}
                                       </td>
                                       <td className="p-3 text-xs italic text-muted-foreground">
                                          {editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full" /> : <div className="line-clamp-1">{ax.narrative}</div>}
                                       </td>
-                                      <td className="p-3 text-right w-48">
+                                      <td className="p-3 text-right">
                                         <div className="flex justify-end gap-1">
                                           {editingAxiomId === ax.id ? (
                                               <>
@@ -671,8 +707,8 @@ function AuditorContent() {
                                   <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
                                       <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
                                       <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
-                                      <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase">{ax.role}</Badge></td>
-                                      <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars}</td>
+                                      <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black uppercase">{ax.role}</Badge></td>
+                                      <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars} / N:{ax.noteCount}</td>
                                       <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                   </tr>
                               ))}
