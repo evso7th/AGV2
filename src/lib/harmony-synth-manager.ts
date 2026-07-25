@@ -8,8 +8,8 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { VIOLIN_SAMPLES } from "@/lib/samples";
 
 /**
- * @fileOverview Менеджер слоя гармонии V6.0 — "Dual Acoustic/Electric Support".
- * #ЗАЧЕМ: ПЛАН №1325 — Поддержка аккордов Yamaha и Telecaster.
+ * @fileOverview Менеджер слоя гармонии V6.1 — "Hybrid Guitar Rotation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1326. Чередование Yamaha и Telecaster для живого звучания.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -90,7 +90,7 @@ export class HarmonySynthManager {
         } catch (e) {}
     }
 
-    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {
+    public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         if (!this.isInitialized) return;
         
         const targetInstrument = instrumentHint || this.activeInstrumentName;
@@ -109,17 +109,25 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        const isSampler = ['guitarChords', 'yamahaChords', 'violin'].includes(targetInstrument);
+        // #ЗАЧЕМ: ПЛАН №1326. Логика "выбора обоих".
+        // Если выбран общий тэг 'guitarChords', менеджер чередует инструменты:
+        // Четные такты -> Yamaha Acoustic, Нечетные такты -> Telecaster Clean.
+        let effectiveInstrument = targetInstrument;
+        if (targetInstrument === 'guitarChords') {
+            effectiveInstrument = (barCount % 2 === 0) ? 'yamahaChords' : 'guitarChords';
+        }
+
+        const isSampler = ['guitarChords', 'yamahaChords', 'violin'].includes(effectiveInstrument);
 
         if (isSampler) {
-            switch (targetInstrument) {
+            switch (effectiveInstrument) {
                 case 'guitarChords': this.guitarChords.schedule(notes, barStartTime); break;
                 case 'yamahaChords': this.yamahaChords.schedule(notes, barStartTime); break;
                 case 'violin': this.violin.schedule(notes, barStartTime); break;
             }
         } else {
-            if (this.activeSynthPreset !== targetInstrument) {
-                await this.loadSynth(targetInstrument);
+            if (this.activeSynthPreset !== effectiveInstrument) {
+                await this.loadSynth(effectiveInstrument);
             }
             if (this.synth) {
                 notes.forEach(note => {

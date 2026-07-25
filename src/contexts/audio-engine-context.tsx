@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V56.0 — "Violin Calibration Correction".
- * #ЗАЧЕМ: ПЛАН №1320. Снижение дефолтной громкости скрипок в 4 раза.
+ * @fileOverview Audio Engine Context V56.1 — "Hybrid Harmony Support".
+ * #ЗАЧЕМ: Передача barCount в менеджер гармонии для ротации Yamaha/Telecaster.
  */
 'use client';
 
@@ -46,7 +46,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     acoustic: 0.15,
     electric: 0.15, 
     piano: 0.6,
-    orchecial: 0.0725, // Снижено в 4 раза (было 0.29)
+    orchecial: 0.0725, 
     cs80: 0.4,
     chords: 1.2,
     bass: 1.0
@@ -295,7 +295,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
-    if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any);
+    
+    // #ЗАЧЕМ: ПЛАН №1326. Передача barCount для ротации гитар.
+    if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any, barCount);
+    
     if (pianoAccompanimentManagerRef.current) { 
         const pianoHint = instrumentHints?.pianoAccompaniment; 
         pianoAccompanimentManagerRef.current.setInstrumentType(pianoHint === 'piano' ? 'acoustic' : 'rhodes'); 
