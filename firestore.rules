@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AuraGroove V2 Security Rules: "IRON PERIMETER" (V5.5)
+     * AuraGroove V2 Security Rules: "IRON PERIMETER" (V6.0)
      * #ЗАЧЕМ: Защита Наследия и системных документов.
      * #КТО: Только владелец (Master UID) имеет право на изменение.
      */

@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V5.8 — "Secret Lock Protocol" (V5.5).
+ * @fileOverview DNA Auditor V6.0 — "Secret Lock Protocol".
  * #ЗАЧЕМ: Реализация скрытой авторизации по UID трека (96dmhwmnfgn).
- * #ЧТО: Полная изоляция интерфейса за экраном Gatekeeper. Исправление всех Reference/Syntax ошибок.
+ * #ЧТО: Полная блокировка интерфейса до ввода пароля. Все кнопки управления ВСЕГДА видны после входа.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -86,12 +86,13 @@ import {
   Tooltip as RechartsTooltip,
   Legend as RechartsLegend
 } from 'recharts';
-import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser, useAuth } from '@/firebase';
 import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
 import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, keyToMidiRoot, DEGREE_TO_SEMITONE, normalizeStr, TICK_TO_BEAT, mergeIdenticalNotes } from '@/lib/music-theory';
 import { readProjectRootManifests } from '@/app/actions/manifest-actions';
+import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fractal';
@@ -99,7 +100,7 @@ import type { Genre } from '@/types/music';
 
 // ───── КОНСТАНТЫ ПРОТОКОЛА ─────
 const SECRET_TRACK_UID = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_Auditor_Access_V55";
+const STORAGE_ACCESS_KEY = "AG_AUDITOR_ACCESS_V6.0"; // Смена ключа для принудительного разлогина
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -451,7 +452,7 @@ function AuditorContent() {
     } finally { setIsProcessing(false); }
   };
 
-  const handleCommitInjection = async () => {
+  const handleCommitSelection = async () => {
     setIsProcessing(true);
     try {
       const toInject = stagedAxioms.filter(a => selectedIds.has(a.id));
@@ -464,6 +465,20 @@ function AuditorContent() {
 
   const getSortedLicks = (licks: any[]) => {
       return [...licks].sort((a, b) => (a.barOffset || 0) - (b.barOffset || 0));
+  };
+
+  const handleExportTrack = (compId: string, licks: any[]) => {
+    const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
+    const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast({ title: "DNA Exported" });
   };
 
   // --- Final Render of Dashboard ---
@@ -527,7 +542,7 @@ function AuditorContent() {
                               <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
                             </AccordionTrigger>
                             <div className="flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); }}>
-                                <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100" /></div>
+                                <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3" /></div>
                                 <div className="text-[9px] uppercase font-bold opacity-50">{(licks[0].genre || []).join(', ')} | {(licks[0].mood || []).join(', ')}</div>
                             </div>
                           </div>
@@ -599,7 +614,7 @@ function AuditorContent() {
                       <Badge variant="outline" className="text-[9px] font-black uppercase text-primary border-primary/20">{m.genre}</Badge>
                       <div className="text-xs font-black uppercase truncate">{m.mood}</div>
                       <div className="text-[10px] font-mono opacity-50">Seed: {m.seed} | BPM: {m.bpm}</div>
-                      <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive opacity-0 group-hover:opacity-100" onClick={() => deleteDocumentNonBlocking(doc(db, 'masterpieces', m.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-6 w-6 text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'masterpieces', m.id))}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </Card>
                   ))}</div>
               </ScrollArea></CardContent>
@@ -666,21 +681,29 @@ function AuditorContent() {
 // ───── GATEKEEPER (SECRET LOCK) ─────
 
 function Gatekeeper({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null);
   const [tokenInput, setTokenInput] = useState("");
   const [error, setError] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_ACCESS_KEY);
-    if (saved === "true") setIsAuthorized(true);
-    else setIsAuthorized(false);
-  }, []);
+    if (saved === "true") {
+        setIsAuthorized(true);
+        // Принудительно обеспечиваем UID при входе
+        if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
+    } else {
+        setIsAuthorized(false);
+    }
+  }, [auth]);
 
   const handleLogin = () => {
     if (tokenInput === SECRET_TRACK_UID) {
       localStorage.setItem(STORAGE_ACCESS_KEY, "true");
       setIsAuthorized(true);
       setError(false);
+      // Принудительно обеспечиваем UID при вводе верного пароля
+      if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
     } else {
       setError(true);
       setTokenInput("");
@@ -732,3 +755,4 @@ export default function HypercubeDashboard() {
         </div>
     );
 }
+
