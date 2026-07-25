@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.4 — "Monitoring Updates".
- * #ЗАЧЕМ: ПЛАН №1320 — Передача информации о треке в Spectrum Monitor.
+ * @fileOverview UI AuraGroove V8.5 — "Donor Track Visualization".
+ * #ЗАЧЕМ: Вывод названия трека-донора (DNA) на плашку маршрута и в монитор.
  */
 'use client';
 
@@ -176,6 +176,7 @@ function PresetManager({
 function SortableRouteItem({
     item,
     isActive,
+    trackName,
     progress,
     onRemove,
     onSelect,
@@ -184,6 +185,7 @@ function SortableRouteItem({
 }: {
     item: RouteItem,
     isActive: boolean,
+    trackName?: string,
     progress?: number,
     onRemove: (id: string) => void,
     onSelect: (id: string) => void,
@@ -250,8 +252,15 @@ function SortableRouteItem({
                     <GripVertical className="h-4 w-4" />
                 </div>
                 <div className="truncate">
-                    <div className="text-[11px] font-black uppercase tracking-tight">
-                        {getGenreLabel(item.genre)} / {getMoodLabel(item.mood)}
+                    <div className="flex flex-col gap-0.5">
+                        <div className="text-[11px] font-black uppercase tracking-tight">
+                            {getGenreLabel(item.genre)} / {getMoodLabel(item.mood)}
+                        </div>
+                        {isActive && trackName && (
+                            <div className="text-[8px] font-mono opacity-60 normal-case tracking-normal truncate">
+                                DNA: {trackName.replace(/_/g, ' ')}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -460,6 +469,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                                 key={item.id}
                                                 item={item}
                                                 isActive={isActive}
+                                                trackName={isActive ? props.currentTrackName : undefined}
                                                 progress={progress}
                                                 onRemove={props.removeFromRoute}
                                                 onSelect={props.selectRouteItem}
@@ -645,8 +655,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader>
                     <div className="h-64">
-                        {/* #ЗАЧЕМ: ПЛАН №1320. Передача информации о текущем треке в монитор. */}
-                        <SpectrumAnalyzer info={props.route.length > 0 ? `${props.activeRouteIndex + 1} ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
+                        <SpectrumAnalyzer info={props.isPlaying ? `[DNA: ${props.currentTrackName.replace(/_/g, ' ')}] ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
                     </div>
                 </DialogContent>
             </Dialog>
