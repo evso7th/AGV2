@@ -3,13 +3,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AuraGroove V2 Security Rules
-     * ВРЕМЕННОЕ РЕШЕНИЕ: Полный публичный доступ для всех коллекций.
-     * #ЗАЧЕМ: Обеспечение бесперебойной работы DNA Auditor в режиме отладки.
+     * AuraGroove V2 Security Rules: "IRON PERIMETER"
+     * #ЗАЧЕМ: Защита Наследия от модификации посторонними.
+     * #КТО: Только владелец (Master UID) имеет право на запись.
      */
 
     match /{document=**} {
-      allow read, write: if true;
+      // Чтение открыто для всех, чтобы генератор мог брать Аксиомы из облака.
+      allow read: if true;
+      
+      // Запись и удаление разрешены ТОЛЬКО для вашего UID.
+      allow write: if request.auth != null && request.auth.uid == 'ER24LvlifBafiYPf5sLRkYW0aUD3';
     }
   }
 }
