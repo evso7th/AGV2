@@ -4,27 +4,11 @@ service cloud.firestore {
 
     /**
      * AuraGroove V2 Security Rules
-     * ПЛАН №1243: Протокол Абсолютной Свободы.
-     * Открыт полный доступ для всех коллекций для исключения ошибок авторизации.
+     * ВРЕМЕННОЕ РЕШЕНИЕ: Полный публичный доступ для всех коллекций.
+     * #ЗАЧЕМ: Обеспечение бесперебойной работы DNA Auditor в режиме отладки.
      */
 
-    // --- Heritage Axioms (The Hypercube) ---
-    match /heritage_axioms/{axiomId} {
-      allow read, write: if true;
-    }
-
-    // --- System Knowledge Base ---
-    match /project_documents/{docId} {
-      allow read, write: if true;
-    }
-
-    // --- Masterpieces ---
-    match /masterpieces/{masterpieceId} {
-      allow read, write: if true;
-    }
-
-    // --- User Profiles ---
-    match /users/{userId} {
+    match /{document=**} {
       allow read, write: if true;
     }
   }

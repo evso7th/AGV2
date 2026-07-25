@@ -28,7 +28,6 @@ import {
   Eye,
   EyeOff,
   Settings2,
-  Lock,
   Zap,
   Mic2,
   Activity,
@@ -109,8 +108,6 @@ import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fr
 import type { Genre } from '@/types/music';
 
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
-const ACCESS_TOKEN_STORAGE_KEY = 'AuraGroove_Auditor_Token';
-const SECRET_ACCESS_TOKEN = '96dmhwmnfgn';
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'psybient', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -293,89 +290,7 @@ function MultiSelector<T extends string>({
   );
 }
 
-// ──────────────────────────────────────────────────────────────
-// 🔐 GATEKEEPER COMPONENT
-// ──────────────────────────────────────────────────────────────
-
-function Gatekeeper({ children }: { children: React.ReactNode }) {
-  const [tokenValue, setTokenValue] = useState("");
-  const [hasAccess, setHasAccess] = useState(false);
-  const [isVerifying, setIsInitializing] = useState(true);
-  
-  // Checking existing access on mount
-  useEffect(() => {
-    const savedToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlToken = urlParams.get('access_token');
-    
-    if (urlToken === SECRET_ACCESS_TOKEN || savedToken === SECRET_ACCESS_TOKEN) {
-      if (urlToken) {
-        localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, urlToken);
-        // Clear token from URL for clean history
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-      setHasAccess(true);
-    }
-    setIsInitializing(false);
-  }, []);
-
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (tokenValue === SECRET_ACCESS_TOKEN) {
-      localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, tokenValue);
-      setHasAccess(true);
-    } else {
-      alert("Invalid Access Token");
-    }
-  };
-
-  if (isVerifying) return <div className="min-h-screen bg-background flex items-center justify-center animate-pulse uppercase tracking-widest text-xs font-black">Syncing Security...</div>;
-
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="w-full max-w-sm border-primary/20 bg-card shadow-2xl">
-          <CardHeader className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-              <Lock className="h-6 w-6 text-primary" />
-            </div>
-            <CardTitle className="text-xl font-black uppercase tracking-tight">DNA Auditor Restricted</CardTitle>
-            <CardDescription className="text-[10px] font-bold uppercase opacity-60">System key required for high-level curation</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleVerify} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] uppercase font-black opacity-50">Access Token</Label>
-                <Input 
-                  type="password" 
-                  placeholder="••••••••" 
-                  className="text-center font-mono tracking-widest bg-muted/30"
-                  value={tokenValue}
-                  onChange={(e) => setTokenValue(e.target.value)}
-                  autoFocus
-                />
-              </div>
-              <Button type="submit" className="w-full font-black uppercase tracking-widest gap-2">
-                <Zap className="h-4 w-4" /> Initialize Link
-              </Button>
-            </form>
-          </CardContent>
-          <div className="p-4 border-t border-primary/5 text-center">
-             <p className="text-[9px] text-muted-foreground uppercase font-bold opacity-40 italic">Heritage protection protocol v5.0 active</p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
-
-// ──────────────────────────────────────────────────────────────
-// 🛠️ AUDITOR CONTENT COMPONENT
-// ──────────────────────────────────────────────────────────────
-
-function AuditorContent() {
+export default function HypercubeDashboard() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -393,7 +308,6 @@ function AuditorContent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [processedFiles, setProcessedFiles] = useState<string[]>([]);
   const [currentFileName, setCurrentFileName] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<Genre[]>(['blues']);
   const [playingAxiomId, setPlayingAxiomId] = useState<string | null>(null);
@@ -428,13 +342,6 @@ function AuditorContent() {
   const [editingDocContent, setEditingDocContent] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(PROCESSED_FILES_KEY);
-    if (saved) {
-      try { setProcessedFiles(JSON.parse(saved)); } catch (e) { console.error(e); }
-    }
-  }, []);
 
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {}, bytes: 0 };
@@ -485,15 +392,6 @@ function AuditorContent() {
       })
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
-
-  useEffect(() => {
-    const q = explorerSearch.trim().toLowerCase();
-    if (!q) return;
-    const idMatches = groupedAxioms
-      .filter(([, licks]) => (licks as any[]).some(ax => (ax.id.split('_').pop() || '').toLowerCase().includes(q)))
-      .map(([id]) => id);
-    if (idMatches.length) setManualOpenTracks(prev => Array.from(new Set([...prev, ...idMatches])));
-  }, [explorerSearch, groupedAxioms]);
 
   const radarData = useMemo(() => {
     if (!globalAxioms) return [];
@@ -605,35 +503,6 @@ function AuditorContent() {
         setBulkMoodOpen(false);
         setBulkMoodValue([]);
     } finally { setIsProcessing(false); }
-  };
-
-  const handleUidMigration = async () => {
-    if (!globalAxioms || globalAxioms.length === 0) return;
-    
-    setConfirmAction({
-        title: `UID MIGRATION (${globalAxioms.length} axioms)`,
-        desc: "CRITICAL: This will migrate ALL existing axioms to the new UID standard. Old records will be deleted and recreated with unique cryptographic IDs. Continue?",
-        action: async () => {
-            setIsProcessing(true);
-            try {
-                const snapshot = [...globalAxioms];
-                const CHUNK_SIZE = 450;
-                for (let i = 0; i < snapshot.length; i += CHUNK_SIZE) {
-                    const chunk = snapshot.slice(i, i + CHUNK_SIZE);
-                    const batch = writeBatch(db);
-                    chunk.forEach(ax => batch.delete(doc(db, 'heritage_axioms', ax.id)));
-                    await batch.commit();
-                }
-                for (let i = 0; i < snapshot.length; i++) {
-                    await saveHeritageAxiom(db, snapshot[i], i);
-                }
-                toast({ title: "UID Migration Complete" });
-            } catch (e) {
-                toast({ variant: "destructive", title: "Migration Failed", description: String(e) });
-            } finally { setIsProcessing(false); }
-        }
-    });
-    setConfirmOpen(true);
   };
 
   const handleExportTrack = (compId: string, licks: any[]) => {
@@ -773,7 +642,7 @@ function AuditorContent() {
         <header className="flex items-center justify-between shrink-0">
           <div className="space-y-1">
             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Heritage Repair & Root Manifest Station</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-black tracking-[0.2em] opacity-70">Public Debug Mode - Temporary Full Access Active</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20"><FileJson className="h-4 w-4" /> Export Registry</Button>
@@ -786,7 +655,7 @@ function AuditorContent() {
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Total DNA</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{globalStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{masterpieceStats.total}</div></CardContent></Card>
             <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Manifests</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{projectDocs?.length || 0}</div></CardContent></Card>
-            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud Sync</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase">Active</span></div></CardContent></Card>
+            <Card className="bg-primary/5 border-primary/20"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Security Status</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-red-500">Unrestricted</span></div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="explore" className="flex-grow flex flex-col overflow-hidden space-y-6">
@@ -815,7 +684,6 @@ function AuditorContent() {
                         })()}
                         {selectedTrackGroups.size > 0 && <Button variant="outline" size="sm" onClick={() => setBulkMoodOpen(true)} className="h-9 text-[10px] font-black uppercase border-primary/40 text-primary gap-2"><Heart className="h-4 w-4" /> Mood ({selectedTrackGroups.size})</Button>}
                         {selectedTrackGroups.size > 0 && <Button variant="destructive" size="sm" onClick={handleWipeSelected} className="h-9 text-[10px] font-black uppercase"><Trash2 className="h-4 w-4" /></Button>}
-                        <Button variant="outline" size="sm" onClick={handleUidMigration} disabled={isProcessing} className="h-9 text-[10px] font-black uppercase border-primary/20 text-primary gap-2"><RefreshCw className={cn("h-4 w-4", isProcessing && "animate-spin")} /> Repair IDs</Button>
                     </div>
                   </div>
                 </div>
@@ -935,7 +803,7 @@ function AuditorContent() {
                     <PolarGrid stroke="hsl(var(--muted-foreground))" opacity={0.3} />
                     <PolarAngleAxis dataKey="label" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10, fontWeight: 900 }} />
                     <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                    {radarData.map(dyn => dyn.count > 0 && <Radar key={dyn.id} name={dyn.label} dataKey="vector.t" stroke={dyn.color} fill={dyn.color} fillOpacity={0.1} />)}
+                    {radarData.map(dyn => dyn.count > 0 && <Radar key={dyn.id} name={dyn.label} dataKey="count" stroke={dyn.color} fill={dyn.color} fillOpacity={0.1} />)}
                     <RechartsTooltip />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -1070,13 +938,5 @@ function AuditorContent() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-export default function HypercubeDashboard() {
-  return (
-    <Gatekeeper>
-      <AuditorContent />
-    </Gatekeeper>
   );
 }
