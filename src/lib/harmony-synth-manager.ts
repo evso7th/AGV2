@@ -1,15 +1,15 @@
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
-import { SamplerPlayer } from '@/lib/sampler-player';
-import { GuitarChordsSampler } from '@/lib/guitar-chords-sampler';
-import { VIOLIN_SAMPLES } from "@/lib/samples";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
+import { TelecasterChordsSampler } from './telecaster-chords-sampler';
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { VIOLIN_SAMPLES } from "@/lib/samples";
 
 /**
- * @fileOverview Менеджер слоя гармонии V4.4 — "Silent Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Менеджер слоя гармонии V5.0 — "Telecaster Alignment".
+ * #ЗАЧЕМ: ПЛАН №1325 — Переход на TelecasterChordsSampler (10s limit).
+ * #ЧТО: Замена GuitarChordsSampler на TelecasterChordsSampler.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -18,7 +18,7 @@ export class HarmonySynthManager {
     public isInitialized = false;
     private isFullyInitialized = false;
 
-    private guitarChords: GuitarChordsSampler;
+    private guitarChords: TelecasterChordsSampler;
     private violin: ViolinSamplerPlayer;
 
     private synth: any | null = null;
@@ -29,7 +29,8 @@ export class HarmonySynthManager {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        this.guitarChords = new GuitarChordsSampler(audioContext, this.destination);
+        // #ЗАЧЕМ: Используем специализированный сэмплер для Telecaster
+        this.guitarChords = new TelecasterChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
 
@@ -86,9 +87,7 @@ export class HarmonySynthManager {
                 output: this.destination
             });
             this.activeSynthPreset = presetName;
-        } catch (e) {
-            // console.error('[HarmonyManager] Synth load failed:', e);
-        }
+        } catch (e) {}
     }
 
     public async schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string) {

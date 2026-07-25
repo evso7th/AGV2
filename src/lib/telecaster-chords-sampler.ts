@@ -1,20 +1,20 @@
-
 import type { Note as NoteEvent } from "@/types/music";
 import { TELECASTER_CHORD_SAMPLES } from "./assets/telecaster-chord-samples";
 
 /**
- * #ЗАЧЕМ: Этот сэмплер отвечает за воспроизведение аккордов гитары Telecaster.
- * #ЧТО: Он загружает сэмплы из `telecaster-chord-samples.ts` и проигрывает
- *       их на основе точного имени аккорда, полученного от композитора.
- * #СВЯЗИ: Управляется `HarmonySynthManager`.
+ * @fileOverview Telecaster Chords Sampler V3.0 — "10-Second Cap Protocol".
+ * #ЗАЧЕМ: Ограничение длительности воспроизведения для предотвращения гула.
+ * #ЧТО: ПЛАН №1325 — Жесткий лимит 10 секунд с плавным затуханием (fade-out).
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
-    private samples: Map<string, AudioBuffer> = new Map();
+    private samples: Map<string, AudioBuffer[]> = new Map();
     public output: GainNode;
     public isInitialized: boolean = false;
+    private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -27,32 +27,42 @@ export class TelecasterChordsSampler {
         this.output.connect(destination);
     }
 
-    async init() {
-        if (this.isInitialized || this.isLoading) return;
+    async init(minimal = false) {
+        if (this.isFullyInitialized) return;
+        if (minimal && this.isInitialized) return;
         this.isLoading = true;
-        console.log(`[TelecasterSampler] Initializing...`);
 
+        const coreChords = ['C', 'Cm', 'G', 'D', 'Dm', 'A', 'Am', 'E', 'Em', 'F', 'Bm'];
         const samplePromises: Promise<void>[] = [];
+
         for (const chordName in TELECASTER_CHORD_SAMPLES) {
-            const url = TELECASTER_CHORD_SAMPLES[chordName as keyof typeof TELECASTER_CHORD_SAMPLES];
-            samplePromises.push(this.loadSample(chordName, url));
+            if (minimal && !coreChords.includes(chordName)) continue;
+            const urls = TELECASTER_CHORD_SAMPLES[chordName];
+            samplePromises.push(this.loadChordBuffers(chordName, urls));
         }
 
         await Promise.all(samplePromises);
         this.isInitialized = true;
+        if (!minimal) this.isFullyInitialized = true;
         this.isLoading = false;
-        console.log(`[TelecasterSampler] ${this.samples.size} samples loaded. Ready.`);
     }
 
-    private async loadSample(chordName: string, url: string) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.statusText}`);
-            const arrayBuffer = await response.arrayBuffer();
-            const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-            this.samples.set(chordName, audioBuffer);
-        } catch (e) {
-            console.error(`[TelecasterSampler] Failed to load sample: ${chordName} from ${url}`, e);
+    private async loadChordBuffers(chordName: string, urls: string[]) {
+        if (!this.samples.has(chordName)) {
+            this.samples.set(chordName, []);
+        }
+        const bufferList = this.samples.get(chordName)!;
+        
+        for (const url of urls) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) continue;
+                const arrayBuffer = await response.arrayBuffer();
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                bufferList.push(audioBuffer);
+            } catch (e) {
+                // console.warn(`[TelecasterSampler] Failed to load: ${url}`);
+            }
         }
     }
     
@@ -60,61 +70,81 @@ export class TelecasterChordsSampler {
         if (!this.isInitialized || notes.length === 0) return;
 
         notes.forEach(note => {
-            // #ЗАЧЕМ: Использует точное имя аккорда, переданное от композитора.
-            // #ЧТО: Читает `note.chordName` и напрямую ищет сэмпл в карте.
-            // #СВЯЗИ: Устраняет необходимость в "угадывании" аккорда по MIDI-ноте.
-            const chordName = this.findBestChordMatch(note.chordName || '');
-            
-            if (!chordName) {
-                console.warn(`[TelecasterSampler] Could not find a suitable match for chord: ${note.chordName}`);
-                return;
-            }
+            const matchedName = this.findBestChordMatch(note.chordName || '');
+            if (!matchedName) return;
 
-            const buffer = this.samples.get(chordName);
-            if (buffer) {
+            const buffers = this.samples.get(matchedName);
+            if (buffers && buffers.length > 0) {
+                // Случайный выбор вариации для реализма
+                const buffer = buffers[Math.floor(Math.random() * buffers.length)];
+                
                 const source = this.audioContext.createBufferSource();
                 source.buffer = buffer;
                 
                 const noteGain = this.audioContext.createGain();
-                noteGain.gain.value = note.velocity ?? 0.7;
+                const velocity = note.velocity ?? 0.7;
+                noteGain.gain.value = velocity;
                 
                 source.connect(noteGain);
                 noteGain.connect(this.preamp);
                 
-                source.start(startTime + note.time);
+                const t0 = startTime + note.time;
+                
+                // #ЗАЧЕМ: ПЛАН №1325. Ограничение 10 секунд.
+                const CAP = 10.0;
+                const FADE = 1.0;
+                
+                source.start(t0);
+                
+                if (buffer.duration > CAP) {
+                    const safeVel = Math.max(velocity, 0.0001);
+                    // Начинаем затухание за 1 секунду до конца лимита
+                    noteGain.gain.setValueAtTime(safeVel, t0 + CAP - FADE);
+                    noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + CAP);
+                    source.stop(t0 + CAP + 0.1);
+                }
 
+                this.activeSources.add(source);
                 source.onended = () => {
+                    this.activeSources.delete(source);
                     noteGain.disconnect();
                 };
-            } else {
-                console.warn(`[TelecasterSampler] Sample for resolved chord "${chordName}" not found.`);
             }
         });
     }
 
     private findBestChordMatch(requestedChord: string): string | null {
-        if (this.samples.has(requestedChord)) {
-            return requestedChord;
-        }
+        if (!requestedChord) return null;
+        const target = requestedChord.trim();
+        if (this.samples.has(target)) return target;
 
-        const root = requestedChord.replace(/m$/, '');
-        if (this.samples.has(root)) {
-            return root;
-        }
+        // Упрощение (Dm7 -> Dm)
+        let simplified = target.replace(/(m?)(maj|dim|aug|sus|add|dim)?\d+$/, '$1');
+        if (this.samples.has(simplified)) return simplified;
+
+        // Тональное упрощение (Dm -> D)
+        const root = target.match(/^[A-G][#b]?/)?.[0];
+        if (root && this.samples.has(root)) return root;
 
         return null;
     }
 
-
     public setVolume(volume: number) {
-        this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
+        if (isFinite(volume)) {
+            this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
+        }
     }
 
     public stopAll() {
-        // Since sources are short-lived, we don't need to track them to stop them.
+        this.activeSources.forEach(source => {
+            try { source.stop(); } catch(e) {}
+            source.disconnect();
+        });
+        this.activeSources.clear();
     }
 
     public dispose() {
+        this.stopAll();
         this.preamp.disconnect();
         this.output.disconnect();
     }
