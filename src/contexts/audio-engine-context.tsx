@@ -1,6 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V56.1 — "Hybrid Harmony Support".
- * #ЗАЧЕМ: Передача barCount в менеджер гармонии для ротации Yamaha/Telecaster.
+ * @fileOverview Audio Engine Context V56.2 — "Calibration Fix".
+ * #ЗАЧЕМ: Исправление TypeError: chordsSampler.setPreampGain is not a function.
+ * #ЧТО: ПЛАН №1301. Переход на единый интерфейс калибровки HarmonySynthManager.
  */
 'use client';
 
@@ -47,7 +48,6 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     electric: 0.15, 
     piano: 0.6,
     orchecial: 0.0725, 
-    cs80: 0.4,
     chords: 1.2,
     bass: 1.0
 };
@@ -162,7 +162,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, cs80: 1.0, chords: 1.0, bass: 1.0 };
+      const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0 };
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
@@ -216,10 +216,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
-      harmonyManagerRef.current?.setVolume(gains.orchestral || 1.0); 
       
-      const chordsSampler = (harmonyManagerRef.current as any)?.guitarChords as any;
-      if (chordsSampler) chordsSampler.setPreampGain(SAMPLER_DEFAULTS.chords * (gains.chords || 1.0));
+      // #ЗАЧЕМ: Унифицированный вызов калибровки слоя гармонии (ПЛАН №1301).
+      harmonyManagerRef.current?.setPreampGains(
+          SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
+          SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
+      );
   }, []);
 
   const stopAllSounds = useCallback(() => {
@@ -295,8 +297,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
-    
-    // #ЗАЧЕМ: ПЛАН №1326. Передача barCount для ротации гитар.
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any, barCount);
     
     if (pianoAccompanimentManagerRef.current) { 

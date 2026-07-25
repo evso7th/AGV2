@@ -8,8 +8,8 @@ import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { VIOLIN_SAMPLES } from "@/lib/samples";
 
 /**
- * @fileOverview Менеджер слоя гармонии V6.1 — "Hybrid Guitar Rotation".
- * #ЗАЧЕМ: Реализация ПЛАНА №1326. Чередование Yamaha и Telecaster для живого звучания.
+ * @fileOverview Менеджер слоя гармонии V6.2 — "Unified Preamp Calibration".
+ * #ЗАЧЕМ: Добавлен метод setPreampGains для правильной калибровки всех инструментов слоя.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -53,6 +53,13 @@ export class HarmonySynthManager {
         }
     }
     
+    /** #ЗАЧЕМ: Унифицированная калибровка слоя гармонии. */
+    public setPreampGains(orchestralGain: number, chordsGain: number) {
+        this.violin.setPreampGain(orchestralGain);
+        this.guitarChords.setPreampGain(chordsGain);
+        this.yamahaChords.setPreampGain(chordsGain);
+    }
+
     private scheduleCleanup(inst: any, delayMs: number) {
         if (this.cleanupAbortController) {
             this.cleanupAbortController.abort();
@@ -109,9 +116,6 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        // #ЗАЧЕМ: ПЛАН №1326. Логика "выбора обоих".
-        // Если выбран общий тэг 'guitarChords', менеджер чередует инструменты:
-        // Четные такты -> Yamaha Acoustic, Нечетные такты -> Telecaster Clean.
         let effectiveInstrument = targetInstrument;
         if (targetInstrument === 'guitarChords') {
             effectiveInstrument = (barCount % 2 === 0) ? 'yamahaChords' : 'guitarChords';

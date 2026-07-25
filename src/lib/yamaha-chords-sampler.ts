@@ -2,9 +2,8 @@ import type { Note as NoteEvent } from "@/types/music";
 import { YAMAHA_CHORD_SAMPLES } from "./assets/yamaha-chord-samples";
 
 /**
- * @fileOverview Yamaha Chords Sampler V1.0 — "10-Second Cap Protocol".
- * #ЗАЧЕМ: Сэмплер аккордов Yamaha из папки noice_cllector_yamaha.
- * #ЧТО: Жесткий лимит 10 секунд с плавным затуханием (fade-out).
+ * @fileOverview Yamaha Chords Sampler V1.1 — "Deterministic Gain Fix".
+ * #ЗАЧЕМ: Добавлен метод setPreampGain для исправления TypeError в AudioEngine.
  */
 export class YamahaChordsSampler {
     private audioContext: AudioContext;
@@ -25,6 +24,15 @@ export class YamahaChordsSampler {
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
+    }
+
+    /** #ЗАЧЕМ: Калибровка системного усиления. */
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            const now = this.audioContext.currentTime;
+            this.preamp.gain.cancelScheduledValues(now);
+            this.preamp.gain.setTargetAtTime(gain, now, 0.02);
+        }
     }
 
     async init(minimal = false) {
@@ -119,7 +127,9 @@ export class YamahaChordsSampler {
 
     public setVolume(volume: number) {
         if (isFinite(volume)) {
-            this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
+            const now = this.audioContext.currentTime;
+            this.output.gain.cancelScheduledValues(now);
+            this.output.gain.setTargetAtTime(volume, now, 0.02);
         }
     }
 

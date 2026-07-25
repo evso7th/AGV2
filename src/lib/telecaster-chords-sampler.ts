@@ -1,10 +1,10 @@
 import type { Note as NoteEvent } from "@/types/music";
 import { TELECASTER_CHORD_SAMPLES } from "./assets/telecaster-chord-samples";
+import { dbToGain } from './guitar-loudness';
 
 /**
- * @fileOverview Telecaster Chords Sampler V3.0 — "10-Second Cap Protocol".
- * #ЗАЧЕМ: Ограничение длительности воспроизведения для предотвращения гула.
- * #ЧТО: ПЛАН №1325 — Жесткий лимит 10 секунд с плавным затуханием (fade-out).
+ * @fileOverview Telecaster Chords Sampler V3.1 — "Deterministic Gain Fix".
+ * #ЗАЧЕМ: Добавлен метод setPreampGain для исправления TypeError в AudioEngine.
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -25,6 +25,15 @@ export class TelecasterChordsSampler {
         this.preamp.connect(this.output);
         
         this.output.connect(destination);
+    }
+
+    /** #ЗАЧЕМ: Калибровка системного усиления. */
+    public setPreampGain(gain: number) {
+        if (isFinite(gain)) {
+            const now = this.audioContext.currentTime;
+            this.preamp.gain.cancelScheduledValues(now);
+            this.preamp.gain.setTargetAtTime(gain, now, 0.02);
+        }
     }
 
     async init(minimal = false) {
@@ -75,7 +84,6 @@ export class TelecasterChordsSampler {
 
             const buffers = this.samples.get(matchedName);
             if (buffers && buffers.length > 0) {
-                // Случайный выбор вариации для реализма
                 const buffer = buffers[Math.floor(Math.random() * buffers.length)];
                 
                 const source = this.audioContext.createBufferSource();
@@ -90,7 +98,6 @@ export class TelecasterChordsSampler {
                 
                 const t0 = startTime + note.time;
                 
-                // #ЗАЧЕМ: ПЛАН №1325. Ограничение 10 секунд.
                 const CAP = 10.0;
                 const FADE = 1.0;
                 
@@ -98,7 +105,6 @@ export class TelecasterChordsSampler {
                 
                 if (buffer.duration > CAP) {
                     const safeVel = Math.max(velocity, 0.0001);
-                    // Начинаем затухание за 1 секунду до конца лимита
                     noteGain.gain.setValueAtTime(safeVel, t0 + CAP - FADE);
                     noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + CAP);
                     source.stop(t0 + CAP + 0.1);
@@ -118,11 +124,9 @@ export class TelecasterChordsSampler {
         const target = requestedChord.trim();
         if (this.samples.has(target)) return target;
 
-        // Упрощение (Dm7 -> Dm)
         let simplified = target.replace(/(m?)(maj|dim|aug|sus|add|dim)?\d+$/, '$1');
         if (this.samples.has(simplified)) return simplified;
 
-        // Тональное упрощение (Dm -> D)
         const root = target.match(/^[A-G][#b]?/)?.[0];
         if (root && this.samples.has(root)) return root;
 
@@ -131,7 +135,9 @@ export class TelecasterChordsSampler {
 
     public setVolume(volume: number) {
         if (isFinite(volume)) {
-            this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
+            const now = this.audioContext.currentTime;
+            this.output.gain.cancelScheduledValues(now);
+            this.output.gain.setTargetAtTime(volume, now, 0.02);
         }
     }
 
