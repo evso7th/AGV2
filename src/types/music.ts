@@ -70,7 +70,7 @@ export type V1MelodyInstrument = 'synth' | 'organ' | 'mellotron' | 'theremin' | 
 export type V2MelodyInstrument = keyof typeof V2_PRESETS;
 export type MelodyInstrument = V1MelodyInstrument | V2MelodyInstrument | 'blackAcoustic' | 'telecaster' | 'darkTelecaster';
 
-export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute'> | 'guitarChords';
+export type AccompanimentInstrument = Exclude<MelodyInstrument, 'piano' | 'violin' | 'flute'> | 'guitarChords' | 'yamahaChords';
 export type EffectInstrument = 
     'autopilot_effect_star' | 'autopilot_effect_meteor' | 'autopilot_effect_warp' | 
     'autopilot_effect_hole' | 'autopilot_effect_pulsar' | 'autopilot_effect_nebula' | 
@@ -138,7 +138,7 @@ export type InstrumentSettings = {
       volume: number;
   };
   harmony: {
-      name: 'piano' | 'guitarChords' | 'flute' | 'violin' | 'none';
+      name: 'piano' | 'guitarChords' | 'yamahaChords' | 'flute' | 'violin' | 'none';
       volume: number;
   };
    pianoAccompaniment: {
@@ -291,8 +291,7 @@ export type BlueprintPart = {
       melody?: InstrumentationRules<MelodyInstrument>;
       accompaniment?: InstrumentationRules<AccompanimentInstrument>;
       bass?: InstrumentationRules<BassInstrument>;
-      harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'flute' | 'violin'>;
-      // #ЗАЧЕМ: блюпринты легитимно задают и эти слои (движок читает в рантайме) — тип был у́же реальности.
+      harmony?: InstrumentationRules<'piano' | 'guitarChords' | 'yamahaChords' | 'flute' | 'violin'>;
       drums?: InstrumentationRules<any>;
       pianoAccompaniment?: InstrumentationRules<any>;
   };
@@ -338,14 +337,10 @@ export type MusicBlueprint = {
     ambientEvents: any[];
     continuity: any;
     rendering: any;
-    /** #ЗАЧЕМ: Локальное сведение Блюпринта. */
     soundMix?: SoundMix;
 };
 
 export type InstrumentHints = FractalInstrumentHints & {
-    /** 
-     * #ЗАЧЕМ: Реализация архитектуры "Dramatic Gravity".
-     */
     summonProgress?: Partial<Record<InstrumentPart, number>>;
 };
 
@@ -413,9 +408,6 @@ export type BluesGuitarRiff = {
     strum?: { probability: number; pattern: string; voicingName: string }[];
 };
 
-/**
- * #ЗАЧЕМ: Типы для маршрутов (Playing Route).
- */
 export type RouteItem = {
     id: string;
     genre: Genre | 'random';
@@ -425,9 +417,6 @@ export type RouteItem = {
     seed?: number;
 };
 
-/**
- * #ЗАЧЕМ: Сохраненный в БД маршрут.
- */
 export type SavedRoute = {
     id: string;
     userId: string;

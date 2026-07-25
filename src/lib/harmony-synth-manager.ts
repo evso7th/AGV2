@@ -2,14 +2,14 @@ import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { ViolinSamplerPlayer } from './violin-sampler-player';
 import { TelecasterChordsSampler } from './telecaster-chords-sampler';
+import { YamahaChordsSampler } from './yamaha-chords-sampler';
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { VIOLIN_SAMPLES } from "@/lib/samples";
 
 /**
- * @fileOverview Менеджер слоя гармонии V5.0 — "Telecaster Alignment".
- * #ЗАЧЕМ: ПЛАН №1325 — Переход на TelecasterChordsSampler (10s limit).
- * #ЧТО: Замена GuitarChordsSampler на TelecasterChordsSampler.
+ * @fileOverview Менеджер слоя гармонии V6.0 — "Dual Acoustic/Electric Support".
+ * #ЗАЧЕМ: ПЛАН №1325 — Поддержка аккордов Yamaha и Telecaster.
  */
 export class HarmonySynthManager {
     private audioContext: AudioContext;
@@ -19,6 +19,7 @@ export class HarmonySynthManager {
     private isFullyInitialized = false;
 
     private guitarChords: TelecasterChordsSampler;
+    private yamahaChords: YamahaChordsSampler;
     private violin: ViolinSamplerPlayer;
 
     private synth: any | null = null;
@@ -29,8 +30,8 @@ export class HarmonySynthManager {
         this.audioContext = audioContext;
         this.destination = destination;
 
-        // #ЗАЧЕМ: Используем специализированный сэмплер для Telecaster
         this.guitarChords = new TelecasterChordsSampler(audioContext, this.destination);
+        this.yamahaChords = new YamahaChordsSampler(audioContext, this.destination);
         this.violin = new ViolinSamplerPlayer(audioContext, this.destination);
     }
 
@@ -41,13 +42,12 @@ export class HarmonySynthManager {
         if (minimal) {
             await this.guitarChords.init(true);
             this.isInitialized = true;
-            this.guitarChords.setVolume(1.0);
         } else {
             await Promise.all([
                 this.guitarChords.init(false),
+                this.yamahaChords.init(false),
                 this.violin.loadInstrument('violin', VIOLIN_SAMPLES)
             ]);
-            this.violin.setVolume(1.0);
             this.isInitialized = true;
             this.isFullyInitialized = true;
         }
@@ -109,11 +109,12 @@ export class HarmonySynthManager {
             params: event.params,
         }));
 
-        const isSampler = ['guitarChords', 'violin'].includes(targetInstrument);
+        const isSampler = ['guitarChords', 'yamahaChords', 'violin'].includes(targetInstrument);
 
         if (isSampler) {
             switch (targetInstrument) {
                 case 'guitarChords': this.guitarChords.schedule(notes, barStartTime); break;
+                case 'yamahaChords': this.yamahaChords.schedule(notes, barStartTime); break;
                 case 'violin': this.violin.schedule(notes, barStartTime); break;
             }
         } else {
@@ -132,7 +133,7 @@ export class HarmonySynthManager {
         if (!this.isInitialized) return;
         this.activeInstrumentName = instrumentName;
         
-        const isSampler = ['guitarChords', 'violin'].includes(instrumentName);
+        const isSampler = ['guitarChords', 'yamahaChords', 'violin'].includes(instrumentName);
         if (!isSampler && instrumentName !== 'none' && instrumentName !== 'flute' && instrumentName !== 'piano') {
             await this.loadSynth(instrumentName);
         }
@@ -140,12 +141,14 @@ export class HarmonySynthManager {
 
     public setVolume(volume: number) {
         this.guitarChords.setVolume(volume);
+        this.yamahaChords.setVolume(volume);
         this.violin.setVolume(volume);
         if (this.synth) this.synth.setVolume(volume);
     }
 
     public allNotesOff() {
         this.guitarChords.stopAll();
+        this.yamahaChords.stopAll();
         this.violin.stopAll();
         if (this.synth) this.synth.allNotesOff();
     }
@@ -158,6 +161,7 @@ export class HarmonySynthManager {
             this.cleanupAbortController = null;
         }
         this.guitarChords.dispose();
+        this.yamahaChords.dispose();
         this.violin.dispose();
         if (this.synth) this.synth.disconnect();
     }

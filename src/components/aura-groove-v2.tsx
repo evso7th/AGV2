@@ -1,6 +1,5 @@
 /**
- * @fileOverview UI AuraGroove V5.3 — "Spectrum Label Support".
- * #ЗАЧЕМ: ПЛАН №1320 — Поддержка вывода идентификатора трека в Spectrum Monitor.
+ * @fileOverview UI AuraGroove V5.4 — "Yamaha Chords Integration".
  */
 'use client';
 
@@ -33,7 +32,6 @@ import type { Mood, Genre, InstrumentPart } from '@/types/music';
 import { V2_PRESETS } from "@/lib/presets-v2";
 import { BASS_PRESET_INFO } from "@/lib/bass-presets";
 import { SpectrumAnalyzer } from "@/components/SpectrumAnalyzer";
-import { THEME_COLORS, type ThemeMode } from "@/lib/theme-colors";
 
 // ───── CONSTANTS ─────
 
@@ -97,6 +95,8 @@ const DISPLAY_NAMES: Record<string, string> = {
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'psybient': 'Psy-Ambient',
+    'guitarChords': 'Telecaster Chords',
+    'yamahaChords': 'Yamaha Acoustic Chords',
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
     'dyn_black_tele_dark': '⚡ Black → Tele → Dark',
     'dyn_tele_cs80_black': '⚡ Tele → CS80 → Black',
@@ -121,8 +121,9 @@ const INSTRUMENT_GROUPS = [
   { label: "Basses", options: ['bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 'bass_rock_pick', 'bass_slap', 'bass_cs80'] },
   { label: "⚡ Dynamic Basses", options: ['dyn_bass_warm_blues', 'dyn_bass_warm_blues_slap', 'dyn_bass_fretless_jazz', 'dyn_bass_fretless_jazz_slap', 'dyn_bass_ambient_cs80'] },
   { label: "Electric Guitars", options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar'] },
+  { label: "Guitar Chords", options: ['guitarChords', 'yamahaChords'] },
   { label: "⚡ Dynamic Guitars", options: ['dyn_tele_dark', 'dyn_black_tele_dark', 'dyn_tele_cs80_black', 'dyn_black_cs80_tele', 'dyn_tele_cs80_shine', 'dyn_tele_cs80_muff', 'dyn_black_cs80_shine', 'dyn_black_cs80_muff', 'dyn_shine_muff'] },
-  { label: "Others", options: ['blackAcoustic', 'guitarChords', 'ep_rhodes_warm', 'cs80', 'theremin', 'piano', 'violin', 'flute', 'none'] }
+  { label: "Others", options: ['blackAcoustic', 'ep_rhodes_warm', 'cs80', 'theremin', 'piano', 'violin', 'flute', 'none'] }
 ];
 
 // ───── HELPER UI ─────
@@ -234,11 +235,10 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
   const bassInstrumentList = Object.keys(BASS_PRESET_INFO);
   const melodyInstrumentList = Object.keys(V2_PRESETS).filter(k => V2_PRESETS[k as keyof typeof V2_PRESETS].type !== 'bass' && k !== 'ep_rhodes');
   const textureInstrumentList = melodyInstrumentList;
-  const harmonyInstrumentList = ['guitarChords', 'violin', 'none'];
+  const harmonyInstrumentList = ['guitarChords', 'yamahaChords', 'violin', 'none'];
 
   if (!isClient) return null;
 
-  const theme = isDarkTheme ? 'dark' : 'light';
   const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-neutral-50';
   const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
   const borderClass = isDarkTheme ? 'border-neutral-800' : 'border-gray-200';
@@ -357,7 +357,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
            </Button>
            <Button type="button" onClick={handleToggleBroadcast} variant={isBroadcastActive ? "destructive" : "outline"} className="h-10 w-10 p-0"><TowerControl className={cn("h-5 w-5", isBroadcastActive && "animate-pulse text-primary")} /></Button>
            <Button type="button" onClick={handleToggleRecording} variant={isRecording ? "destructive" : "outline"} className="h-10 w-10 p-0"><Radio className={cn("h-5 w-5", isRecording && "animate-pulse")} /></Button>
-           <Button type="button" onClick={handleSaveMasterpiece} disabled={!isPlaying} variant="outline" className="h-10 w-10 p-0"><ThumbsUp className="h-5 w-5 text-primary" /></Button>
+           <Button type="button" onClick={handleSaveMasterpiece} disabled={!props.isPlaying} variant="outline" className="h-10 w-10 p-0"><ThumbsUp className="h-5 w-5 text-primary" /></Button>
            <Button type="button" onClick={handleRegenerate} variant="outline" className="h-10 w-10 p-0"><RefreshCw className={cn("h-5 w-5", isRegenerating && "animate-spin")} /></Button>
         </div>
       </header>
@@ -424,7 +424,6 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                             <DialogContent className="sm:max-w-[480px] bg-card border-primary/20">
                                 <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader>
                                 <div className="py-4 h-[250px]">
-                                    {/* #ЗАЧЕМ: ПЛАН №1320. Передача информации о треке. */}
                                     <SpectrumAnalyzer info={selectedCompositionIds.length > 0 ? `[DNA] ${genre}/${mood}` : `${genre}/${mood}`} />
                                 </div>
                             </DialogContent>
@@ -440,7 +439,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                   <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><SlidersHorizontal className="h-4 w-4"/> Instruments</CardTitle></CardHeader>
                   <CardContent className="space-y-1.5 p-3 pt-0">
                       {(Object.keys(instrumentSettings) as Array<keyof typeof instrumentSettings>).map((part) => {
-                          const settings = instrumentSettings[part];
+                          const settings = instrumentSettings[part as keyof typeof instrumentSettings];
                           const ilist = part === 'bass' ? bassInstrumentList : (part === 'melody' ? melodyInstrumentList : (part === 'accompaniment' ? textureInstrumentList : (part === 'harmony' ? harmonyInstrumentList : ['piano'])));
                           return (
                             <div key={part} className="p-2 border rounded-md space-y-2 bg-background/30 border-primary/10">

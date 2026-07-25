@@ -1,0 +1,46 @@
+/**
+ * @fileOverview Yamaha Chord Sample Registry V1.0
+ * #ЗАЧЕМ: Реестр аккордов Yamaha из папки noice_cllector_yamaha.
+ */
+
+export const YAMAHA_CHORD_SAMPLES: Record<string, string[]> = {
+    'A': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14562__noisecollector__yamaha-a.ogg'],
+    'A6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14564__noisecollector__yamaha-a6.ogg'],
+    'A7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14565__noisecollector__yamaha-a7.ogg'],
+    'Adim': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14566__noisecollector__yamaha-adim.ogg'],
+    'Am': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14567__noisecollector__yamaha-am.ogg'],
+    'Am6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14568__noisecollector__yamaha-am6.ogg'],
+    'Am7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/14569__noisecollector__yamaha-am7.ogg'],
+    'Ab': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15715__noisecollector__yamaha-ab.ogg'],
+    'Ab6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15839__noisecollector__ab-6.ogg'],
+    'Ab7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15840__noisecollector__ab-7.ogg'],
+    'Ab9': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15841__noisecollector__ab-9.ogg'],
+    'Abaug': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15843__noisecollector__abaug.ogg'],
+    'Abdim': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15844__noisecollector__abdim.ogg'],
+    'Abm6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15845__noisecollector__abm-6.ogg'],
+    'Abm7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15846__noisecollector__abm-7.ogg'],
+    'Abm': ['/assets/guitars_hords_samples/noice_cllector_yamaha/15847__noisecollector__abm.ogg'],
+    'B': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24279__noisecollector__yamaha-b.ogg'],
+    'B6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24280__noisecollector__yamaha-b6.ogg'],
+    'B7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24281__noisecollector__yamaha-b7.ogg'],
+    'B7sus4': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24282__noisecollector__yamaha-b72.ogg'],
+    'B9': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24283__noisecollector__yamaha-b9.ogg'],
+    'Bb': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24284__noisecollector__yamaha-bb.ogg'],
+    'Bb6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24285__noisecollector__yamaha-bb6.ogg'],
+    'Bb7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24286__noisecollector__yamaha-bb7.ogg'],
+    'Bbm': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24287__noisecollector__yamaha-bbm.ogg'],
+    'Bm': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24288__noisecollector__yamaha-bm.ogg'],
+    'Bm6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24289__noisecollector__yamaha-bm6.ogg'],
+    'Bm7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24290__noisecollector__yamaha-bm7.ogg'],
+    'Baug': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24291__noisecollector__yamaha-baug.ogg'],
+    'Bdim': ['/assets/guitars_hords_samples/noice_cllector_yamaha/24292__noisecollector__yamaha-bdim.ogg'],
+    'Cdim': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41657__noisecollector__yamah_cdim.ogg'],
+    'Cm': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41658__noisecollector__yamah_cm.ogg'],
+    'Cm6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41659__noisecollector__yamah_cm6.ogg'],
+    'Cm7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41660__noisecollector__yamah_cm7.ogg'],
+    'C': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41662__noisecollector__yamaha_c.ogg'],
+    'C6': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41663__noisecollector__yamaha_c6.ogg'],
+    'C7': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41664__noisecollector__yamaha_c7.ogg'],
+    'C9': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41665__noisecollector__yamaha_c9.ogg'],
+    'Caug': ['/assets/guitars_hords_samples/noice_cllector_yamaha/41666__noisecollector__yamaha_caug_ugly.ogg']
+};
