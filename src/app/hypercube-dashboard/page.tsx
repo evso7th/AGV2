@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.6 — "Root Access: Full Control".
- * #ЗАЧЕМ: Полная разблокировка интерфейса редактирования для Оператора.
- * #ЧТО: Убраны скрытия кнопок, добавлены недостающие элементы управления.
+ * @fileOverview DNA Auditor V6.7 — "Stability & Integrity".
+ * #ЗАЧЕМ: Исправление ReferenceError: AVAILABLE_KEYS.
+ * #ЧТО: Восстановление пропущенных констант и стабилизация интерфейса Root Access.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -103,7 +103,7 @@ import type { Genre } from '@/types/music';
 // ───── ROOT ACCESS CONSTANTS ─────
 const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
 const ROOT_MASTER_KEY = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.6";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.7";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -112,6 +112,8 @@ const AVAILABLE_GENRES: Genre[] = [
 const AVAILABLE_MOODS: Mood[] = [
   'epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'
 ];
+
+const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
@@ -180,7 +182,6 @@ function AuditorContent() {
   const router = useRouter();
   const { toast } = useToast();
   const { isInitialized, initialize, playRawEvents, stopAllSounds } = useAudioEngine();
-  const { user } = useUser();
   
   const axiomsQuery = useMemoFirebase(() => query(collection(db, 'heritage_axioms')), [db]);
   const { data: globalAxioms, isLoading: isDbLoading } = useCollection(axiomsQuery);
@@ -485,7 +486,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.6</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.7</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
