@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.9 — "The Deep Forge Edition".
- * #ЗАЧЕМ: Реализация умного поиска по UID, подсветка аксиом и профессиональный выбор инструментов.
- * #ЧТО: ПЛАН №21100 — Поиск по Axiom ID + Инструментальные группы V2.
+ * @fileOverview DNA Auditor V6.9.1 — "The Deep Forge Polish".
+ * #ЗАЧЕМ: Исправление ReferenceError (CloudLightning) и полная стабилизация Root Access.
+ * #ЧТО: ПЛАН №21101 — Фикс импортов и синхронизация с эталонным интерфейсом.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -47,7 +47,11 @@ import {
   ShieldCheck,
   Layers,
   Wrench,
-  AlertCircle
+  AlertCircle,
+  CloudLightning,
+  UploadCloud,
+  ClipboardCheck,
+  Zap
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -120,7 +124,7 @@ import type { Genre } from '@/types/music';
 // ───── ROOT ACCESS CONSTANTS ─────
 const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
 const ROOT_MASTER_KEY = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.9";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.9.1";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -358,7 +362,6 @@ function AuditorContent() {
     });
   }, [globalAxioms]);
 
-  // #ЗАЧЕМ: Умный поиск по названию трека ИЛИ по ID любой аксиомы внутри.
   const groupedAxioms = useMemo(() => {
     if (!globalAxioms) return [];
     const groups = globalAxioms.reduce((acc, ax) => {
@@ -637,7 +640,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.9</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.9.1</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -928,7 +931,7 @@ function AuditorContent() {
                                   <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
                                       <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
                                       <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
-                                      <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black uppercase">{ax.role}</Badge></td>
+                                      <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase uppercase">{ax.role}</Badge></td>
                                       <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars} / N:{ax.noteCount}</td>
                                       <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                   </tr>
