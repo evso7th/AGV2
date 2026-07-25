@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AuraGroove V2 Security Rules: "IRON PERIMETER"
+     * AuraGroove V2 Security Rules: "IRON PERIMETER" (V5.5)
      * #ЗАЧЕМ: Защита Наследия и системных документов.
      * #КТО: Только владелец (Master UID) имеет право на изменение.
      */
@@ -23,7 +23,8 @@ service cloud.firestore {
     }
 
     match /project_documents/{id} {
-      allow read, write: if isAdmin();
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     match /users/{userId} {
