@@ -4,10 +4,9 @@
  * #ЧТО: Экспортирует константу TELECASTER_CHORD_SAMPLES.
  * #СВЯЗИ: Используется `telecaster-chords-sampler.ts` для загрузки и
  *          воспроизведения правильных аккордов.
- * #ОБНОВЛЕНО (ПЛАН №672): Все сэмплы из каталога clear_telecaster закомментированы.
+ * #ОБНОВЛЕНО: Сэмплы из папки clear_telecaster восстановлены по запросу.
  */
 export const TELECASTER_CHORD_SAMPLES: Record<string, string> = {
-    /*
     'Dm': '/assets/guitars_hords_samples/clear_telecaster/591189__telecaster-clean-dm-hi-r.ogg',
     'G': '/assets/guitars_hords_samples/clear_telecaster/591194__telecaster-clean-g-low-l.ogg',
     'Em': '/assets/guitars_hords_samples/clear_telecaster/591210__telecaster-clean-em-low-r.ogg',
@@ -23,5 +22,4 @@ export const TELECASTER_CHORD_SAMPLES: Record<string, string> = {
     'Bm': '/assets/guitars_hords_samples/clear_telecaster/591206__telecaster-clean-bm-hi-r.ogg',
     'A': '/assets/guitars_hords_samples/clear_telecaster/591167__telecaster-clean-a-hi-r.ogg',
     'B': '/assets/guitars_hords_samples/clear_telecaster/591173__telecaster-clean-b-hi-r.ogg'
-    */
 };

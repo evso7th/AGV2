@@ -63,122 +63,14 @@ export const PIANO_SAMPLES: Record<string, string> = {
     'B0': '/assets/piano_samples/448565__piano_sust_pedal__b0.ogg',
 };
 
-/**
- * #ЗАЧЕМ: ПЛАН ПО ОЧИСТКЕ — Реестр скрипок обнулен для замены быблиотеки.
- */
 export const VIOLIN_SAMPLES: Record<string, VelocitySample[]> = {};
-
-/**
- * #ЗАЧЕМ: ПЛАН ПО ОЧИСТКЕ — Реестр флейты обнулен для замены библиотеки.
- */
 export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {};
 
 /**
- * #ЗАЧЕМ: Полная оцифрованная библиотека гитарных аккордов (ПЛАН №621).
- * #ЧТО: 242 файла, структурированные по семействам с поддержкой Round Robin.
- * #ОБНОВЛЕНО (ПЛАН №814): Восстановлены пути для E, Em, D, Dm, F, Fm, G, Gm.
+ * #ЗАЧЕМ: Реестр гитарных аккордов.
+ * #ЧТО: Ссылки на корень папки удалены по запросу. Ожидается замена библиотеки.
  */
-export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string[]> = {
-  'C': [
-      '/assets/guitars_hords_samples/1662c.ogg',
-      '/assets/guitars_hords_samples/guitar-chord-in-c-major-c.mp3'
-  ],
-  'Cm': [
-      '/assets/guitars_hords_samples/1658cm.ogg',
-  ],
-  'C7': ['/assets/guitars_hords_samples/1664c7.ogg'],
-  'C9': ['/assets/guitars_hords_samples/1665c9.ogg'],
-  'C6': ['/assets/guitars_hords_samples/1663c6.ogg'],
-  'Cm6': ['/assets/guitars_hords_samples/1659cm6.ogg'],
-  'Cm7': ['/assets/guitars_hords_samples/1660cm7.ogg'],
-  'Caug': ['/assets/guitars_hords_samples/1666ca.ogg'],
-  'Cdim': ['/assets/guitars_hords_samples/1657cdim.ogg'],
-  
-  'B': [
-      '/assets/guitars_hords_samples/4279-b.ogg',
-      '/assets/guitars_hords_samples/guitar-chord-si-may-bmai.mp3'
-  ],
-  'Bm': [
-      '/assets/guitars_hords_samples/4288-bm.ogg',
-      '/assets/guitars_hords_samples/guitar-chord-in-b-minor-bm.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-in-b-minor-b.mp3'
-  ],
-  'B7': ['/assets/guitars_hords_samples/4281-b7.ogg', '/assets/guitars_hords_samples/4282-b72.ogg'],
-  'B9': ['/assets/guitars_hords_samples/4283-b9.ogg'],
-  'B6': ['/assets/guitars_hords_samples/4280-b6.ogg'],
-  'Bm6': ['/assets/guitars_hords_samples/4289-bm6.ogg'],
-  'Bm7': ['/assets/guitars_hords_samples/4290-bm7.ogg'],
-  'Baug': ['/assets/guitars_hords_samples/4291-baug.ogg'],
-  'Bdim': ['/assets/guitars_hords_samples/4292-bdim.ogg'],
-  
-  'Bb': [
-      '/assets/guitars_hords_samples/4284-bb.ogg',
-  ],
-  'Bbm': [
-      '/assets/guitars_hords_samples/4287-bbm.ogg',
-  ],
-  'Bb7': ['/assets/guitars_hords_samples/4286-bb7.ogg'],
-  'Bb6': ['/assets/guitars_hords_samples/4285-bb6.ogg'],
-  
-  'A': [
-      '/assets/guitars_hords_samples/4562-a.ogg',
-      '/assets/guitars_hords_samples/guitar-chord-in-a-major.mp3'
-  ],
-  'Am': [
-      '/assets/guitars_hords_samples/4567-am.ogg',
-      '/assets/guitars_hords_samples/guitar-chord-in-a-minor-am.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-in-a-minor-am-sharp.mp3'
-  ],
-  'A7': ['/assets/guitars_hords_samples/4565-a7.ogg'],
-  'A6': ['/assets/guitars_hords_samples/4564-a6.ogg'],
-  'Am6': ['/assets/guitars_hords_samples/4568-am6.ogg'],
-  'Am7': ['/assets/guitars_hords_samples/4569-am7.ogg'],
-  'Adim': ['/assets/guitars_hords_samples/4566-adim.ogg'],
-  
-  'Ab': [
-      '/assets/guitars_hords_samples/5715-ab.ogg',
-  ],
-  'Abm': [
-      '/assets/guitars_hords_samples/5847abm.ogg',
-  ],
-  'Ab7': ['/assets/guitars_hords_samples/5840ab-7.ogg'],
-  'Ab9': ['/assets/guitars_hords_samples/5841ab-9.ogg'],
-  'Ab6': ['/assets/guitars_hords_samples/5839ab-6.ogg'],
-  'Abm6': ['/assets/guitars_hords_samples/5845abm-6.ogg'],
-  'Abm7': ['/assets/guitars_hords_samples/5846abm-7.ogg'],
-  'Abaug': ['/assets/guitars_hords_samples/5843abaug.ogg'],
-  'Abdim': ['/assets/guitars_hords_samples/5844abdim.ogg'],
-
-  'D': [
-      '/assets/guitars_hords_samples/guitar-chord-in-d-major-d.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-in-d-major.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-in-d-major-rising-merry.mp3'
-  ],
-  'Dm': [
-      '/assets/guitars_hords_samples/guitar-chord-d-minor-dm-rising.mp3'
-  ],
-  'E': [
-      '/assets/guitars_hords_samples/guitar-chord-si-may-bmai.mp3'
-  ],
-  'Em': [
-      '/assets/guitars_hords_samples/guitar-chord-mi-may-emai-rising.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-e-minor-em-ascending.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-e-minor-em-ascending-sad.mp3',
-      '/assets/guitars_hords_samples/guitar-chord-in-e-minor-rising.mp3'
-  ],
-  'F': [
-      '/assets/guitars_hords_samples/guitar-chord-in-c-major-c.mp3' // Fallback
-  ],
-  'Fm': [
-      '/assets/guitars_hords_samples/guitar-chord-f-minor-fm-ascending.mp3'
-  ],
-  'G': [
-      '/assets/guitars_hords_samples/guitar-chord-g-major-g.mp3'
-  ],
-  'Gm': [
-      '/assets/guitars_hords_samples/guitar-chord-f-minor-fm-ascending.mp3' // Fallback
-  ],
-};
+export const ACOUSTIC_GUITAR_CHORD_SAMPLES: Record<string, string[]> = {};
 
 export type GuitarTechniqueSamples = {
   pluck?: string;
