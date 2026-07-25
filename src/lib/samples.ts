@@ -68,40 +68,10 @@ export const PIANO_SAMPLES: Record<string, string> = {
  */
 export const VIOLIN_SAMPLES: Record<string, VelocitySample[]> = {};
 
-
-export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {
-    'C4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-c-note_C.wav' },
-        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-c-note_C.wav' }
-    ],
-    'D4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-d-note_D.wav' },
-        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-d-note_D.wav' }
-    ],
-    'E4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-e-note_E.wav' },
-        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-e-note.wav' }
-    ],
-    'F4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-f-note_F.wav' },
-        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-f-note_F.wav' }
-    ],
-    'G4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-g-note_G.wav' },
-        { velocity: 1.0, file: '/assets/flute_samples/flute-sustain-vibrato-g-note_G.wav' }
-    ],
-    'A4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-a-note_A.wav' },
-        { velocity: 1.0, file: '/assets/violin_samples/violin-arco-vibrato-single-a-4.mp3' }
-    ],
-    'B4': [
-        { velocity: 0.5, file: '/assets/flute_samples/flute-sustain-b-note_B.wav' },
-        { velocity: 1.0, file: '/assets/violin_samples/violin-arco-vibrato-single-b-4.mp3' }
-    ],
-    'C5': [
-        { velocity: 1.0, file: '/assets/flute_samples/flute-c-major-single-note_C_major.wav' }
-    ]
-};
+/**
+ * #ЗАЧЕМ: ПЛАН ПО ОЧИСТКЕ — Реестр флейты обнулен для замены библиотеки.
+ */
+export const FLUTE_SAMPLES: Record<string, VelocitySample[]> = {};
 
 /**
  * #ЗАЧЕМ: Полная оцифрованная библиотека гитарных аккордов (ПЛАН №621).
