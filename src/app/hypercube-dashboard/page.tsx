@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.5 — "Root Access Protocol".
- * #ЗАЧЕМ: Реализация входа по паре Operator ID + Master Key.
- * #ЧТО: Полный доступ к редактированию и управлению Наследием после авторизации.
+ * @fileOverview DNA Auditor V6.6 — "Root Access: Full Control".
+ * #ЗАЧЕМ: Полная разблокировка интерфейса редактирования для Оператора.
+ * #ЧТО: Убраны скрытия кнопок, добавлены недостающие элементы управления.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -43,7 +43,8 @@ import {
   Plus,
   RefreshCw,
   FileText,
-  UserCheck
+  UserCheck,
+  ShieldCheck
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -102,7 +103,7 @@ import type { Genre } from '@/types/music';
 // ───── ROOT ACCESS CONSTANTS ─────
 const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
 const ROOT_MASTER_KEY = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.5";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.6";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -112,7 +113,7 @@ const AVAILABLE_MOODS: Mood[] = [
   'epic', 'joyful', 'enthusiastic', 'melancholic', 'dark', 'anxious', 'dreamy', 'contemplative', 'calm', 'gloomy'
 ];
 
-const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
+const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
   'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
@@ -129,9 +130,7 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
   melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
 };
 
-const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
-
-// ───── COMPONENTS ─────
+// ───── HELPER COMPONENTS ─────
 
 function MultiSelector<T extends string>({ 
   options, 
@@ -174,6 +173,8 @@ function MultiSelector<T extends string>({
   );
 }
 
+// ───── MAIN AUDITOR CONTENT ─────
+
 function AuditorContent() {
   const db = useFirestore();
   const router = useRouter();
@@ -197,9 +198,7 @@ function AuditorContent() {
   
   const [selectedFilterGenres, setSelectedFilterGenres] = useState<Genre[]>([]);
   const [selectedFilterMoods, setSelectedFilterMoods] = useState<Mood[]>([]);
-  const [axiomFilterRole, setAxiomFilterRole] = useState("");
-  const [axiomFilterOffset, setAxiomFilterOffset] = useState("");
-
+  
   const [selectedTrackGroups, setSelectedTrackGroups] = useState<Set<string>>(new Set());
   const [bulkMoodValue, setBulkMoodValue] = useState<Mood[]>([]);
   const [bulkMoodOpen, setBulkMoodOpen] = useState(false);
@@ -220,6 +219,7 @@ function AuditorContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Stats computation
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
     return globalAxioms.reduce((acc, ax) => {
@@ -291,6 +291,7 @@ function AuditorContent() {
     ];
   }, [dynastyStats]);
 
+  // Handler Logic
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -369,15 +370,8 @@ function AuditorContent() {
     try {
         const batch = writeBatch(db);
         const newCommonMoods = Array.from(new Set(moods.map(m => MOOD_TO_COMMON[m])));
-        const tracksToUpdate = groupedAxioms.filter(([id]) => selectedTrackGroups.has(id));
-        
-        tracksToUpdate.forEach(([, licks]) => {
-            licks.forEach(ax => {
-                batch.update(doc(db, 'heritage_axioms', ax.id), { 
-                    mood: moods, 
-                    commonMood: newCommonMoods 
-                });
-            });
+        groupedAxioms.filter(([id]) => selectedTrackGroups.has(id)).forEach(([, licks]) => {
+            licks.forEach(ax => batch.update(doc(db, 'heritage_axioms', ax.id), { mood: moods, commonMood: newCommonMoods }));
         });
         await batch.commit();
         setBulkMoodOpen(false);
@@ -468,22 +462,30 @@ function AuditorContent() {
     const cleanLicks = licks.map(({ id, timestamp, ...rest }) => ({ ...rest }));
     const blob = new Blob([JSON.stringify(cleanLicks, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const a = document.createElement('a'); a.href = url; a.download = `${compId.replace(/\s+/g, '_')}-axiom.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
     toast({ title: "DNA Exported" });
+  };
+
+  const handleToggleIgnore = async (axiom: any) => {
+    setIsProcessing(true);
+    try {
+        await updateDoc(doc(db, 'heritage_axioms', axiom.id), { ignored: !axiom.ignored });
+        toast({ title: axiom.ignored ? "Axiom Restored" : "Axiom Ignored" });
+    } finally { setIsProcessing(false); }
   };
 
   return (
     <div className="max-w-6xl mx-auto w-full space-y-8 flex-grow flex flex-col">
       <header className="flex items-center justify-between shrink-0">
         <div className="space-y-1">
-          <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest">Root Access Level: Authorized</p>
+          <div className="flex items-center gap-3">
+             <h1 className="text-4xl font-bold tracking-tight text-primary flex items-center gap-3"><Database className="h-10 w-10" /> DNA Auditor</h1>
+             <Badge className="bg-green-500/10 text-green-500 border-green-500/20 uppercase font-black px-2 py-1 flex items-center gap-1.5 shadow-sm">
+                <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
+             </Badge>
+          </div>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.6</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -495,8 +497,8 @@ function AuditorContent() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Cloud DNA Pool</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isDbLoading ? '---' : globalStats.total}</div></CardContent></Card>
           <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Masterpieces</CardTitle></CardHeader><CardContent><div className="text-3xl font-black text-primary font-mono">{isMpiecesLoading ? '---' : globalMasterpieces?.length || 0}</div></CardContent></Card>
-          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">System Identity</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" /><span className="text-[10px] font-black uppercase text-green-500">Root Access</span></div></CardContent></Card>
           <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">Operator ID</CardTitle></CardHeader><CardContent><div className="text-xs font-mono truncate opacity-60">{ROOT_OPERATOR_ID}</div></CardContent></Card>
+          <Card className="bg-primary/5 border-primary/20 shadow-lg"><CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase opacity-70">System Health</CardTitle></CardHeader><CardContent><div className="flex items-center gap-2 text-[10px] font-black uppercase text-green-500">Nominal <Activity className="h-3 w-3" /></div></CardContent></Card>
       </div>
 
       <Tabs defaultValue="explore" className="flex-grow flex flex-col space-y-6">
@@ -528,7 +530,7 @@ function AuditorContent() {
             <CardContent className="p-0 border-t flex-grow overflow-hidden relative">
               <ScrollArea className="h-full px-4 py-2">
                 {isDbLoading ? <div className="py-20 text-center animate-pulse text-xs font-black uppercase tracking-widest">Scanning Repository...</div> : groupedAxioms.length === 0 ? <div className="py-20 text-center opacity-40 uppercase text-xs font-black">No matching DNA records found</div> : (
-                  <Accordion type="multiple" className="space-y-2 pb-20">
+                  <Accordion type="multiple" className="space-y-2 pb-24">
                     {groupedAxioms.map(([compId, licks]) => (
                       <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                         <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
@@ -537,10 +539,19 @@ function AuditorContent() {
                             <AccordionTrigger className="hover:no-underline p-0 border-none bg-transparent">
                               <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 px-2 py-0.5 text-[10px] font-black">{licks.length}</Badge>
                             </AccordionTrigger>
-                            <div className="flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); }}>
-                                <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3" /></div>
-                                <div className="text-[9px] uppercase font-bold opacity-50">{(licks[0].genre || []).join(', ')} | {(licks[0].mood || []).join(', ')}</div>
-                            </div>
+                            {editingGroupId === compId ? (
+                                <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
+                                    <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} className="h-8 text-sm" autoFocus /></div>
+                                    <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Select genres..." className="w-full" /></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Select moods..." className="w-full" /></div></div>
+                                    <div className="grid grid-cols-3 gap-4"><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">BPM</Label><Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" /></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Key</Label><Select value={editKeyValue} onValueChange={setEditKeyValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Signature</Label><Select value={editTsValue} onValueChange={setEditTsValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="4/4" className="text-xs">4/4</SelectItem><SelectItem value="12/8" className="text-xs">12/8</SelectItem></SelectContent></Select></div></div>
+                                    <div className="flex items-center gap-2 pt-2"><Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-3.5 w-3.5" /> Save Changes</Button><Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}><X className="h-3.5 w-3.5" /> Cancel</Button></div>
+                                </div>
+                            ) : (
+                                <div className="flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || "E"); setEditTsValue(licks[0].timeSignature || "4/4"); }}>
+                                    <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3" /></div>
+                                    <div className="text-[9px] uppercase font-bold opacity-50">{(licks[0].genre || []).join(', ')} | {(licks[0].mood || []).join(', ')}</div>
+                                </div>
+                            )}
                           </div>
                           <div className="flex gap-1 pr-2">
                              <Button variant="ghost" size="icon" onClick={() => handleExportTrack(compId, licks)} className="h-8 w-8"><Download className="h-4 w-4" /></Button>
@@ -551,15 +562,34 @@ function AuditorContent() {
                             <table className="w-full text-left text-sm border-collapse">
                                 <tbody className="divide-y divide-border/10">
                                   {getSortedLicks(licks).map((ax: any) => (
-                                    <tr key={ax.id} className="hover:bg-primary/5 transition-colors group/row">
+                                    <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
                                       <td className="p-3 pl-12 font-mono text-[10px] opacity-70 w-24">{ax.id.split('_').pop()}</td>
-                                      <td className="p-3 w-32"><Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge></td>
-                                      <td className="p-3 font-mono text-[10px] opacity-60 w-32">O:{ax.barOffset || 0} / B:{ax.bars || 1}</td>
-                                      <td className="p-3 text-xs italic text-muted-foreground"><div className="line-clamp-1">{ax.narrative}</div></td>
-                                      <td className="p-3 text-right w-40">
+                                      <td className="p-3 w-32">
+                                        {editingAxiomId === ax.id ? (
+                                            <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
+                                        ) : <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5">{ax.role}</Badge>}
+                                      </td>
+                                      <td className="p-3 font-mono text-[10px] opacity-60 w-32">
+                                         {editingAxiomId === ax.id ? <Input type="number" value={editAxiomData.barOffset || 0} onChange={e => setEditAxiomData({...editAxiomData, barOffset: parseInt(e.target.value)})} className="h-7 w-12 text-[10px]" /> : `O:${ax.barOffset || 0} / B:${ax.bars || 1}`}
+                                      </td>
+                                      <td className="p-3 text-xs italic text-muted-foreground">
+                                         {editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full" /> : <div className="line-clamp-1">{ax.narrative}</div>}
+                                      </td>
+                                      <td className="p-3 text-right w-48">
                                         <div className="flex justify-end gap-1">
-                                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button>
-                                          <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteAxiom(ax.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                          {editingAxiomId === ax.id ? (
+                                              <>
+                                                <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={() => setEditingAxiomId(null)} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                              </>
+                                          ) : (
+                                              <>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button>
+                                                <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteAxiom(ax.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                              </>
+                                          )}
                                         </div>
                                       </td>
                                     </tr>
@@ -683,6 +713,7 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
   const [idInput, setIdInput] = useState("");
   const [keyInput, setKeyInput] = useState("");
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_ACCESS_KEY);
@@ -694,12 +725,17 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
     }
   }, [auth]);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (idInput === ROOT_OPERATOR_ID && keyInput === ROOT_MASTER_KEY) {
-      localStorage.setItem(STORAGE_ACCESS_KEY, "true");
-      setIsAuthorized(true);
-      setError(false);
-      if (auth && !auth.currentUser) initiateAnonymousSignIn(auth);
+      setLoading(true);
+      try {
+          if (auth && !auth.currentUser) {
+              await initiateAnonymousSignIn(auth);
+          }
+          localStorage.setItem(STORAGE_ACCESS_KEY, "true");
+          setIsAuthorized(true);
+          setError(false);
+      } finally { setLoading(false); }
     } else {
       setError(true);
       setKeyInput("");
@@ -739,7 +775,9 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
             </div>
           </CardContent>
           <CardFooter className="p-8 pt-0">
-            <Button onClick={handleLogin} className="w-full h-12 font-black uppercase tracking-[0.2em] shadow-xl">Establish Link <UserCheck className="ml-2 h-4 w-4" /></Button>
+            <Button onClick={handleLogin} disabled={loading} className="w-full h-12 font-black uppercase tracking-[0.2em] shadow-xl">
+               {loading ? "Establishing Link..." : "Establish Link"} <UserCheck className="ml-2 h-4 w-4" />
+            </Button>
           </CardFooter>
         </Card>
       </div>
