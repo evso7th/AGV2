@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V6.8 — "Full Editor Restoration".
- * #ЗАЧЕМ: Восстановление колонки инструментов и параметра Note Count.
- * #ЧТО: ПЛАН №1330 — Интеграция Preferred Instrument (пресеты + динамические группы).
+ * @fileOverview DNA Auditor V6.9 — "The Deep Forge Edition".
+ * #ЗАЧЕМ: Реализация умного поиска по UID, подсветка аксиом и профессиональный выбор инструментов.
+ * #ЧТО: ПЛАН №21100 — Поиск по Axiom ID + Инструментальные группы V2.
  */
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -45,21 +45,24 @@ import {
   FileText,
   UserCheck,
   ShieldCheck,
-  Layers
+  Layers,
+  Wrench,
+  AlertCircle
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,10 +93,23 @@ import {
   Legend as RechartsLegend
 } from 'recharts';
 import { useFirestore, useCollection, useMemoFirebase, deleteDocumentNonBlocking, useUser, useAuth } from '@/firebase';
-import { collection, doc, writeBatch, query, updateDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, query, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { saveHeritageAxiom, saveProjectDocument } from '@/lib/firebase-service';
-import { decompressCompactPhrase, repairLegacyPhrase, SEMITONE_TO_DEGREE, DEGREE_KEYS, TECHNIQUE_KEYS, keyToMidiRoot, DEGREE_TO_SEMITONE, normalizeStr, TICK_TO_BEAT, mergeIdenticalNotes } from '@/lib/music-theory';
+import { 
+    decompressCompactPhrase, 
+    repairLegacyPhrase, 
+    DEGREE_KEYS, 
+    TECHNIQUE_KEYS, 
+    DEGREE_TO_SEMITONE, 
+    keyToMidiRoot, 
+    resolveSemanticTimbre,
+    TICKS_PER_BAR,
+    TICK_TO_BEAT,
+    mergeIdenticalNotes,
+    SEMITONE_TO_DEGREE,
+    normalizeStr
+} from '@/lib/music-theory';
 import { readProjectRootManifests } from '@/app/actions/manifest-actions';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
@@ -104,7 +120,7 @@ import type { Genre } from '@/types/music';
 // ───── ROOT ACCESS CONSTANTS ─────
 const ROOT_OPERATOR_ID = "ER24LvlifBafiYPf5sLRkYW0aUD3";
 const ROOT_MASTER_KEY = "96dmhwmnfgn";
-const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.8";
+const STORAGE_ACCESS_KEY = "AG_ROOT_ACCESS_V6.9";
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'blues', 'psybient', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -116,15 +132,100 @@ const AVAILABLE_MOODS: Mood[] = [
 
 const AVAILABLE_KEYS = ['C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B'];
 
+const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian'];
+
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
-const PREFERRED_INST_OPTIONS = [
-    'none', 'telecaster', 'blackAcoustic', 'darkTelecaster', 'cs80', 'guitar_shineOn', 'guitar_muffLead',
-    'organ_soft_jazz', 'organ_prog', 'organ', 'synth', 'synth_ambient_pad_lush', 'synth_cave_pad',
-    'piano', 'ep_rhodes_warm', 'violin', 'flute', 'bass_jazz_warm', 'bass_blues', 'bass_808',
-    'dynamicOrgan', 'dynamicPad', 'dynteledark', 'dynblackteledark', 'dyntelecs80black', 'dynblackcs80shine', 'dynshinemuff',
-    'dynbasswarmblues', 'dynbassfretlessjazz', 'dynrhodespiano'
+const INSTRUMENT_GROUPS = [
+  {
+    label: 'Acoustic Guitars',
+    color: 'bg-orange-500/10 text-orange-400',
+    options: ['blackAcoustic', 'guitarChords']
+  },
+  {
+    label: 'Electric Guitars',
+    color: 'bg-blue-500/10 text-blue-400',
+    options: ['telecaster', 'darkTelecaster', 'guitar_shineOn', 'guitar_muffLead', 'reggae_guitar', 'cs80']
+  },
+  {
+    label: 'Dynamic Leads & Hybrids',
+    color: 'bg-cyan-500/10 text-cyan-400',
+    options: ['dynamic_lead', 'dynamic_hybrid_1', 'dynamic_hybrid_2', 'dynamic_black_shine']
+  },
+  {
+    label: 'Bass Section',
+    color: 'bg-red-500/10 text-red-400',
+    options: ['bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 'bass_rock_pick', 'bass_slap', 'bass_cs80']
+  },
+  {
+    label: 'Organs',
+    color: 'bg-yellow-500/10 text-yellow-500',
+    options: ['dynamicOrgan', 'organ', 'organ_soft_jazz', 'organ_jimmy_smith', 'organ_prog', 'reggae_organ']
+  },
+  {
+    label: 'Atmospheric Pads',
+    color: 'bg-purple-500/10 text-purple-400',
+    options: ['dynamicPad', 'synth', 'synth_ambient_pad_lush', 'synth_cave_pad', 'mellotron']
+  },
+  {
+    label: 'Piano & Keys',
+    color: 'bg-emerald-500/10 text-emerald-400',
+    options: ['piano', 'ep_rhodes_warm', 'dynamic_piano_dual']
+  },
+  {
+    label: 'Others',
+    color: 'bg-gray-500/10 text-gray-400',
+    options: ['theremin', 'violin', 'flute', 'none']
+  }
 ];
+
+const DISPLAY_NAMES: Record<string, string> = {
+    'guitar': 'Dynamic Guitar',
+    'telecaster': 'Telecaster Clean',
+    'blackAcoustic': 'Black Acoustic',
+    'darkTelecaster': 'Dark Telecaster',
+    'cs80': 'CS-80 / Vangelis',
+    'guitar_shineOn': 'Shine On Lead',
+    'guitar_muffLead': 'Muff Lead',
+    'reggae_guitar': 'Roots Skank Guitar',
+    'organ': 'Cathedral Organ',
+    'organ_soft_jazz': 'Soft Jazz Organ',
+    'organ_jimmy_smith': 'Jimmy Smith B3',
+    'organ_prog': 'Prog Rock B3',
+    'reggae_organ': 'Roots Bubbler B3',
+    'dynamicOrgan': '⚡ DYNAMIC ORGAN',
+    'synth': 'Emerald Pad',
+    'synth_ambient_pad_lush': 'Lush Pad',
+    'synth_cave_pad': 'Cave Pad (Dark)',
+    'dynamicPad': '⚡ DYNAMIC PAD',
+    'theremin': 'Vocal Theremin',
+    'mellotron': 'Majestic Strings',
+    'violin': 'Solo Violin',
+    'flute': 'Silver Flute',
+    'piano': 'Acoustic Piano',
+    'guitarChords': 'Acoustic Chords',
+    'bass_jazz_warm': 'Warm Jazz Bass',
+    'bass_jazz_fretless': 'Fretless Jaco',
+    'bass_blues': 'Blues Bass',
+    'bass_ambient': 'Ambient Sub',
+    'bass_ambient_dark': 'Abyssal Bass',
+    'bass_trance_acid': 'Acid Bass',
+    'bass_reggae': 'Reggae Bass',
+    'bass_dub': 'Dub Bass',
+    'bass_house': 'House Bass',
+    'bass_808': '808 Sub Bass',
+    'bass_deep_house': 'Deep House Bass',
+    'bass_rock_pick': 'Rock Picked Bass',
+    'bass_slap': 'Slap Funk Bass',
+    'bass_cs80': 'CS80 Hybrid Bass',
+    'none': 'No Override',
+    'psybient': 'Psy-Ambient',
+    'dynamic_lead': '⚡ SHINE ON / MUFF LEAD',
+    'dynamic_hybrid_1': '⚡ BLACK / CS80 / TELE',
+    'dynamic_hybrid_2': '⚡ TELE / CS80 / SHINE',
+    'dynamic_black_shine': '⚡ BLACK / CS80 / SHINE',
+    'dynamic_piano_dual': '⚡ RHODES / PIANO'
+};
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
   'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
@@ -198,6 +299,9 @@ function AuditorContent() {
   const masterpiecesQuery = useMemoFirebase(() => query(collection(db, 'masterpieces')), [db]);
   const { data: globalMasterpieces, isLoading: isMpiecesLoading } = useCollection(masterpiecesQuery);
 
+  const docsQuery = useMemoFirebase(() => query(collection(db, 'project_documents')), [db]);
+  const { data: projectDocs, isLoading: isDocsLoading } = useCollection(docsQuery);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [stagedAxioms, setStagedAxioms] = useState<any[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -222,10 +326,14 @@ function AuditorContent() {
   const [editMoodValue, setEditMoodValue] = useState<Mood[]>([]);
   const [editBpmValue, setEditBpmValue] = useState<string>("72");
   const [editKeyValue, setEditKeyValue] = useState<string>("E");
+  const [editScaleValue, setEditScaleValue] = useState<string>("dorian");
   const [editTsValue, setEditTsValue] = useState<string>("4/4");
 
   const [editingAxiomId, setEditingAxiomId] = useState<string | null>(null);
   const [editAxiomData, setEditAxiomData] = useState<any>(null);
+
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
+  const [editingDocContent, setEditingDocContent] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -250,6 +358,7 @@ function AuditorContent() {
     });
   }, [globalAxioms]);
 
+  // #ЗАЧЕМ: Умный поиск по названию трека ИЛИ по ID любой аксиомы внутри.
   const groupedAxioms = useMemo(() => {
     if (!globalAxioms) return [];
     const groups = globalAxioms.reduce((acc, ax) => {
@@ -261,7 +370,11 @@ function AuditorContent() {
     
     return Object.entries(groups)
       .filter(([id, licks]) => {
-        const matchesSearch = id.toLowerCase().includes(explorerSearch.toLowerCase());
+        const searchLower = explorerSearch.toLowerCase();
+        const matchesTrackName = id.toLowerCase().includes(searchLower);
+        const matchesAnyAxiomId = licks.some(ax => ax.id.toLowerCase().includes(searchLower));
+        const matchesSearch = matchesTrackName || matchesAnyAxiomId;
+        
         const firstLick = licks[0];
         const lickGenres = Array.isArray(firstLick.genre) ? firstLick.genre : [firstLick.genre];
         const lickMoods = Array.isArray(firstLick.mood) ? firstLick.mood : [firstLick.mood];
@@ -293,13 +406,18 @@ function AuditorContent() {
   }, [globalAxioms]);
 
   const radarData = useMemo(() => {
-    return [
-      { subject: 'Tension', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.t * 100])) },
-      { subject: 'Brightness', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.b * 100])) },
-      { subject: 'Entropy', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.e * 100])) },
-      { subject: 'Stability', ...Object.fromEntries(dynastyStats.map(d => [d.id, d.vector.h * 100])) },
-    ];
-  }, [dynastyStats]);
+    if (!globalAxioms) return [];
+    return Object.keys(DYNASTY_CONFIG).map(dynasty => {
+        const relatedAxioms = globalAxioms.filter(ax => ax.tags?.includes(dynasty));
+        const count = relatedAxioms.length;
+        const vector = relatedAxioms.reduce((acc, ax) => {
+            acc.t += ax.vector?.t || 0; acc.b += ax.vector?.b || 0; acc.e += ax.vector?.e || 0; acc.h += ax.vector?.h || 0;
+            return acc;
+        }, { t: 0, b: 0, e: 0, h: 0 });
+        if (count > 0) { vector.t /= count; vector.b /= count; vector.e /= count; vector.h /= count; }
+        return { id: dynasty, label: DYNASTY_CONFIG[dynasty].label, color: DYNASTY_CONFIG[dynasty].color, count, vector };
+    }).sort((a, b) => b.count - a.count);
+  }, [globalAxioms]);
 
   // Handler Logic
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -312,11 +430,18 @@ function AuditorContent() {
         const json = JSON.parse(event.target?.result as string);
         let flattened: any[] = [];
         const processAxiom = (ax: any, idx: number, compId: string) => {
-            const repairedPhrase = repairLegacyPhrase(ax.phrase || []);
-            const calculatedNoteCount = Math.floor(repairedPhrase.length / 4);
+            const phrase = ax.phrase || [];
+            const repaired = repairLegacyPhrase(phrase);
+            let maxTick = 0;
+            for(let i=0; i<repaired.length; i+=4) {
+                const end = (repaired[i] || 0) + (repaired[i+1] || 0);
+                if(end > maxTick) maxTick = end;
+            }
+            const calculatedBars = Math.max(1, Math.ceil(maxTick / TICKS_PER_BAR));
+            const calculatedNoteCount = Math.floor(repaired.length / 4);
             return {
                 ...ax, 
-                phrase: repairedPhrase, 
+                phrase: repaired, 
                 role: ax.role || 'melody', 
                 id: `${compId}_${idx}_${Math.random().toString(36).substr(2, 5)}`,
                 compositionId: compId, 
@@ -324,6 +449,7 @@ function AuditorContent() {
                 mood: Array.isArray(ax.mood) ? ax.mood : [ax.mood || 'melancholic'],
                 vector: ax.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
                 noteCount: ax.noteCount || calculatedNoteCount,
+                bars: ax.bars || calculatedBars,
                 preferredInstrument: ax.preferredInstrument || null
             };
         };
@@ -361,7 +487,7 @@ function AuditorContent() {
     setPlayingAxiomId(axiom.id);
   };
 
-  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newTs: string, licks: any[]) => {
+  const handleUpdateTrackMetadata = async (oldId: string, newId: string, newG: Genre[], newM: Mood[], newBpm: number, newKey: string, newScale: string, newTs: string, licks: any[]) => {
     setIsProcessing(true);
     try {
         const batch = writeBatch(db);
@@ -369,7 +495,7 @@ function AuditorContent() {
         licks.forEach(ax => { 
             batch.update(doc(db, 'heritage_axioms', ax.id), { 
                 compositionId: newId, genre: newG, mood: newM, commonMood: newCommonMoods,
-                nativeBpm: newBpm, nativeKey: newKey, timeSignature: newTs 
+                nativeBpm: newBpm, nativeKey: newKey, nativeScale: newScale, timeSignature: newTs 
             }); 
         });
         await batch.commit();
@@ -491,6 +617,16 @@ function AuditorContent() {
     } finally { setIsProcessing(false); }
   };
 
+  const handleUpdateDocContent = async () => {
+      if (!viewingDocId || !editingDocContent) return;
+      setIsProcessing(true);
+      try {
+          const docRef = doc(db, 'project_documents', viewingDocId);
+          await updateDoc(docRef, { content: editingDocContent, timestamp: serverTimestamp() });
+          toast({ title: "Manifest Updated" }); setViewingDocId(null);
+      } finally { setIsProcessing(false); }
+  };
+
   return (
     <div className="max-w-6xl mx-auto w-full space-y-8 flex-grow flex flex-col">
       <header className="flex items-center justify-between shrink-0">
@@ -501,7 +637,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.8</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 6.9</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -518,10 +654,11 @@ function AuditorContent() {
       </div>
 
       <Tabs defaultValue="explore" className="flex-grow flex flex-col space-y-6">
-        <TabsList className="grid grid-cols-4 h-12 bg-muted/30 p-1 border border-border/50 shrink-0">
+        <TabsList className="grid grid-cols-5 h-12 bg-muted/30 p-1 border border-border/50 shrink-0">
           <TabsTrigger value="explore" className="text-xs font-bold uppercase tracking-wider">Explore DNA</TabsTrigger>
           <TabsTrigger value="genetic" className="text-xs font-bold uppercase tracking-wider">Genetic Map</TabsTrigger>
           <TabsTrigger value="masterpieces" className="text-xs font-bold uppercase tracking-wider">Masterpieces</TabsTrigger>
+          <TabsTrigger value="documents" className="text-xs font-bold uppercase tracking-wider">Manifest</TabsTrigger>
           <TabsTrigger value="inject" className="text-xs font-bold uppercase tracking-wider">Inject DNA</TabsTrigger>
         </TabsList>
 
@@ -529,9 +666,9 @@ function AuditorContent() {
           <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
             <CardHeader className="pb-4 shrink-0">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex flex-col gap-1"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Full Control Mode Active</CardDescription></div>
+                <div className="flex flex-col gap-1"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Axiom Search: Track Name or UID Match</CardDescription></div>
                 <div className="flex wrap items-center gap-2">
-                  <Input placeholder="Search tracks..." className="h-9 w-[200px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
+                  <Input placeholder="Search tracks or UIDs..." className="h-9 w-[240px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                   <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
                   <MultiSelector options={AVAILABLE_MOODS} values={selectedFilterMoods} onValuesChange={setSelectedFilterMoods} placeholder="Mood" className="w-[120px]" />
                   {selectedTrackGroups.size > 0 && (
@@ -546,7 +683,7 @@ function AuditorContent() {
             <CardContent className="p-0 border-t flex-grow overflow-hidden relative">
               <ScrollArea className="h-full px-4 py-2">
                 {isDbLoading ? <div className="py-20 text-center animate-pulse text-xs font-black uppercase tracking-widest">Scanning Repository...</div> : groupedAxioms.length === 0 ? <div className="py-20 text-center opacity-40 uppercase text-xs font-black">No matching DNA records found</div> : (
-                  <Accordion type="multiple" className="space-y-2 pb-24">
+                  <Accordion type="multiple" value={explorerSearch.length >= 4 ? groupedAxioms.map(([id]) => id) : undefined} className="space-y-2 pb-24">
                     {groupedAxioms.map(([compId, licks]) => (
                       <AccordionItem key={compId} value={compId} className="border border-border/50 rounded-lg overflow-hidden bg-background/30">
                         <div className="flex items-center justify-between py-3 px-4 bg-card/95 hover:bg-primary/5 transition-colors group">
@@ -559,13 +696,13 @@ function AuditorContent() {
                                 <div className="flex flex-col gap-3 w-full max-w-2xl bg-background/80 p-4 rounded-lg border border-primary/20" onClick={(e) => e.stopPropagation()}>
                                     <div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Track Name</Label><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} className="h-8 text-sm" autoFocus /></div>
                                     <div className="grid grid-cols-2 gap-4"><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Genre</Label><MultiSelector options={AVAILABLE_GENRES} values={editGenreValue} onValuesChange={setEditGenreValue} placeholder="Select genres..." className="w-full" /></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Mood</Label><MultiSelector options={AVAILABLE_MOODS} values={editMoodValue} onValuesChange={setEditMoodValue} placeholder="Select moods..." className="w-full" /></div></div>
-                                    <div className="grid grid-cols-3 gap-4"><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">BPM</Label><Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" /></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Key</Label><Select value={editKeyValue} onValueChange={setEditKeyValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Signature</Label><Select value={editTsValue} onValueChange={setEditTsValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="4/4" className="text-xs">4/4</SelectItem><SelectItem value="12/8" className="text-xs">12/8</SelectItem></SelectContent></Select></div></div>
-                                    <div className="flex items-center gap-2 pt-2"><Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editTsValue, licks)}><Check className="h-3.5 w-3.5" /> Save Changes</Button><Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}><X className="h-3.5 w-3.5" /> Cancel</Button></div>
+                                    <div className="grid grid-cols-3 gap-4"><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">BPM</Label><Input value={editBpmValue} onChange={(e) => setEditBpmValue(e.target.value)} className="h-8 text-xs bg-background" /></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Key</Label><Select value={editKeyValue} onValueChange={setEditKeyValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_KEYS.map(k => <SelectItem key={k} value={k} className="text-xs">{k}</SelectItem>)}</SelectContent></Select></div><div className="space-y-1.5"><Label className="text-[10px] uppercase font-black opacity-70">Scale</Label><Select value={editScaleValue} onValueChange={setEditScaleValue}><SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_SCALES.map(s => <SelectItem key={s} value={s} className="text-xs uppercase">{s}</SelectItem>)}</SelectContent></Select></div></div>
+                                    <div className="flex items-center gap-2 pt-2"><Button size="sm" className="gap-2 font-black uppercase text-[10px]" onClick={() => handleUpdateTrackMetadata(compId, editNameValue, editGenreValue, editMoodValue, parseInt(editBpmValue) || 72, editKeyValue, editScaleValue, editTsValue, licks)}><Check className="h-3.5 w-3.5" /> Save Changes</Button><Button size="sm" variant="ghost" className="gap-2 font-black uppercase text-[10px]" onClick={() => setEditingGroupId(null)}><X className="h-3.5 w-3.5" /> Cancel</Button></div>
                                 </div>
                             ) : (
-                                <div className="flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || "E"); setEditTsValue(licks[0].timeSignature || "4/4"); }}>
+                                <div className="flex-grow cursor-pointer" onClick={() => { setEditingGroupId(compId); setEditNameValue(compId); setEditGenreValue(licks[0].genre || []); setEditMoodValue(licks[0].mood || []); setEditBpmValue(String(licks[0].nativeBpm || 72)); setEditKeyValue(licks[0].nativeKey || "E"); setEditScaleValue(licks[0].nativeScale || "dorian"); setEditTsValue(licks[0].timeSignature || "4/4"); }}>
                                     <div className="text-sm font-black flex items-center gap-2">{compId.replace(/_/g, ' ')} <Edit2 className="h-3 w-3" /></div>
-                                    <div className="text-[9px] uppercase font-bold opacity-50">{(licks[0].genre || []).join(', ')} | {(licks[0].mood || []).join(', ')}</div>
+                                    <div className="text-[9px] uppercase font-bold opacity-50">{(licks[0].genre || []).join(', ')} | {(licks[0].mood || []).join(', ')} | {licks[0].nativeKey} {licks[0].nativeScale}</div>
                                 </div>
                             )}
                           </div>
@@ -578,18 +715,26 @@ function AuditorContent() {
                             <table className="w-full text-left text-sm border-collapse min-w-[1000px]">
                                 <thead className="bg-muted/50 border-b border-border/10">
                                     <tr className="text-[10px] uppercase font-black opacity-60">
-                                        <th className="p-3 pl-12 w-24">Hash</th>
+                                        <th className="p-3 pl-12 w-32">UID (Hash)</th>
                                         <th className="p-3 w-32">Role</th>
-                                        <th className="p-3 w-40">Pref. Inst</th>
+                                        <th className="p-3 w-56">Preferred Instrument</th>
                                         <th className="p-3 w-32">Struct (O/B/N)</th>
                                         <th className="p-3">Narrative</th>
                                         <th className="p-3 text-right w-40">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-border/10">
-                                  {getSortedLicks(licks).map((ax: any) => (
-                                    <tr key={ax.id} className={cn("hover:bg-primary/5 transition-colors group/row", ax.ignored && "opacity-40")}>
-                                      <td className="p-3 pl-12 font-mono text-[10px] opacity-70">{ax.id.split('_').pop()}</td>
+                                  {getSortedLicks(licks).map((ax: any) => {
+                                    const isSearchMatch = explorerSearch.length >= 4 && ax.id.toLowerCase().includes(explorerSearch.toLowerCase());
+                                    return (
+                                    <tr key={ax.id} className={cn(
+                                        "hover:bg-primary/5 transition-colors group/row", 
+                                        ax.ignored && "opacity-40",
+                                        isSearchMatch && "bg-primary/20 ring-1 ring-primary/50"
+                                    )}>
+                                      <td className={cn("p-3 pl-12 font-mono text-[10px] font-bold", isSearchMatch ? "text-primary" : "opacity-70")}>
+                                          {ax.id.split('_').pop()}
+                                      </td>
                                       <td className="p-3">
                                         {editingAxiomId === ax.id ? (
                                             <Select value={editAxiomData.role} onValueChange={(v) => setEditAxiomData({...editAxiomData, role: v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{ROLE_OPTIONS.map(r => <SelectItem key={r} value={r} className="text-[10px] uppercase font-black">{r}</SelectItem>)}</SelectContent></Select>
@@ -597,8 +742,30 @@ function AuditorContent() {
                                       </td>
                                       <td className="p-3">
                                         {editingAxiomId === ax.id ? (
-                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === "none" ? null : v})}><SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background"><SelectValue /></SelectTrigger><SelectContent>{PREFERRED_INST_OPTIONS.map(inst => <SelectItem key={inst} value={inst} className="text-[10px] font-black uppercase">{inst}</SelectItem>)}</SelectContent></Select>
-                                        ) : <span className="text-[10px] font-black uppercase opacity-60">{ax.preferredInstrument || "none"}</span>}
+                                            <Select value={editAxiomData.preferredInstrument || "none"} onValueChange={(v) => setEditAxiomData({...editAxiomData, preferredInstrument: v === "none" ? null : v})}>
+                                              <SelectTrigger className="h-7 text-[10px] uppercase font-black px-2 bg-background w-full"><SelectValue /></SelectTrigger>
+                                              <SelectContent className="max-h-[300px]">
+                                                {INSTRUMENT_GROUPS.map((group) => (
+                                                    <SelectGroup key={group.label}>
+                                                        <SelectLabel className={cn("text-[9px] uppercase font-black px-2 py-1 mb-1 rounded-sm", group.color)}>
+                                                            {group.label}
+                                                        </SelectLabel>
+                                                        {group.options.map(opt => (
+                                                            <SelectItem key={opt} value={opt} className="text-[10px] font-black pl-4 uppercase">
+                                                                {DISPLAY_NAMES[opt] || opt}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                ))}
+                                              </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            ax.preferredInstrument ? (
+                                                <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-500 border-cyan-500/20 text-[9px] font-black uppercase px-2">
+                                                    {DISPLAY_NAMES[ax.preferredInstrument] || ax.preferredInstrument.toUpperCase()}
+                                                </Badge>
+                                            ) : <span className="text-[9px] font-black uppercase opacity-30">Blueprint Default</span>
+                                        )}
                                       </td>
                                       <td className="p-3 font-mono text-[10px] opacity-60">
                                          {editingAxiomId === ax.id ? (
@@ -607,7 +774,12 @@ function AuditorContent() {
                                                 <Input type="number" value={editAxiomData.bars || 1} onChange={e => setEditAxiomData({...editAxiomData, bars: parseInt(e.target.value)})} className="h-7 w-10 text-[9px] p-1" title="Bars" />
                                                 <Input type="number" value={editAxiomData.noteCount || 0} onChange={e => setEditAxiomData({...editAxiomData, noteCount: parseInt(e.target.value)})} className="h-7 w-10 text-[9px] p-1" title="Note Count" />
                                             </div>
-                                         ) : `O:${ax.barOffset || 0} / B:${ax.bars || 1} / N:${ax.noteCount || 0}`}
+                                         ) : (
+                                            <div className="flex flex-col gap-0.5">
+                                                <span>O:{ax.barOffset || 0} / B:{ax.bars || 1}</span>
+                                                <span className="font-bold text-primary/70">N:{ax.noteCount || 0}</span>
+                                            </div>
+                                         )}
                                       </td>
                                       <td className="p-3 text-xs italic text-muted-foreground">
                                          {editingAxiomId === ax.id ? <Input value={editAxiomData.narrative} onChange={e => setEditAxiomData({...editAxiomData, narrative: e.target.value})} className="h-7 text-xs w-full" /> : <div className="line-clamp-1">{ax.narrative}</div>}
@@ -617,7 +789,7 @@ function AuditorContent() {
                                           {editingAxiomId === ax.id ? (
                                               <>
                                                 <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                                <Button size="icon" variant="ghost" onClick={() => setEditingAxiomId(null)} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
                                               </>
                                           ) : (
                                               <>
@@ -630,7 +802,7 @@ function AuditorContent() {
                                         </div>
                                       </td>
                                     </tr>
-                                  ))}
+                                  )})}
                                 </tbody>
                             </table>
                         </AccordionContent>
@@ -681,6 +853,55 @@ function AuditorContent() {
                     </Card>
                   ))}</div>
               </ScrollArea></CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="documents" className="flex-grow flex flex-col overflow-hidden space-y-4 m-0">
+          <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
+            <CardHeader className="pb-4 shrink-0">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex flex-col gap-1">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><FileText className="h-5 w-5" /> Project Root Manifests</CardTitle>
+                  <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Synchronize key documents from your project root directly with the Cloud context.</CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button onClick={handlePushRootToCloud} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-10 px-6 shadow-lg uppercase tracking-wider gap-2">
+                    <CloudLightning className={cn("h-4 w-4", isProcessing && "animate-pulse")} /> 
+                    {isProcessing ? "Syncing..." : "Push Root to Cloud"}
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0 border-t flex-grow overflow-hidden">
+              <ScrollArea className="h-full">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="bg-muted/50 text-[10px] uppercase font-black opacity-60 sticky top-0 z-10 border-b">
+                    <tr>
+                      <th className="p-4 pl-8">Manifest File</th>
+                      <th className="p-4">Category</th>
+                      <th className="p-4 text-center">Version</th>
+                      <th className="p-4 text-right pr-8">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {[...(projectDocs || [])].sort((a,b) => a.filename.localeCompare(b.filename)).map((d: any) => (
+                      <tr key={d.id} className="hover:bg-primary/5 transition-colors group">
+                        <td className="p-4 pl-8"><div className="flex items-center gap-3"><FileText className="h-4 w-4 text-primary opacity-70" /><span className="font-bold">{d.filename}</span></div></td>
+                        <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black">{d.category || 'general'}</Badge></td>
+                        <td className="p-4 text-center font-mono text-[10px] opacity-60">v{d.version || '1.0'}</td>
+                        <td className="p-4 text-right pr-8">
+                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => { setViewingDocId(d.id); setEditingDocContent(d.content); }}><Edit2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-accent" onClick={() => { const blob = new Blob([d.content], { type: 'text/markdown' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = d.filename; a.click(); }}><Download className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteDocumentNonBlocking(doc(db, 'project_documents', d.id))}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </ScrollArea>
+            </CardContent>
           </Card>
         </TabsContent>
 
@@ -739,6 +960,14 @@ function AuditorContent() {
             <Button className="w-full h-11 font-black uppercase tracking-widest shadow-lg" onClick={() => handleBulkSetMood(bulkMoodValue)} disabled={isProcessing || bulkMoodValue.length === 0}><Check className="h-4 w-4 mr-2" /> Apply Transformation</Button>
           </div>
         </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
+          <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card shadow-2xl">
+              <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl"><FileText className="h-6 w-6" /> Manifest Editor</DialogTitle></DialogHeader>
+              <div className="flex-grow overflow-hidden mt-4 bg-background/30 rounded-lg p-1"><Textarea value={editingDocContent} onChange={(e) => setEditingDocContent(e.target.value)} className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none p-4" /></div>
+              <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full"><div className="text-[10px] uppercase font-black opacity-40">Sync: Firestore Overwrite</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button><Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black h-10 px-8 shadow-xl bg-primary hover:bg-primary/90"><Check className="h-4 w-4" /> Push Changes to Cloud</Button></div></DialogFooter>
+          </DialogContent>
       </Dialog>
     </div>
   );
