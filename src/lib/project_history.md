@@ -3,6 +3,15 @@
 
 ---
 
+### ЗАЧЕМ: ИСПРАВЛЕНИЕ ОШИБКИ ИМПОРТА (DIALOG_DESCRIPTION)
+**СОБЫТИЕ**: Исправление `ReferenceError: DialogDescription is not defined` в `DNA Auditor`.
+**ИТОГ**:
+1. **Import Fix**: `DialogDescription` добавлен в список импортов из `@/components/ui/dialog`.
+2. **Stability**: Восстановлена работоспособность массового редактирования настроек (Bulk Mood Settings).
+3. **Consistency**: Проверено наличие компонента во всех модальных окнах дашборда.
+
+---
+
 ### ЗАЧЕМ: ОТКАТ КОДОВОЙ БАЗЫ (ROLLBACK)
 **СОБЫТИЕ**: Принудительный откат проекта к версии `1ae00a7`.
 **ИТОГ**:

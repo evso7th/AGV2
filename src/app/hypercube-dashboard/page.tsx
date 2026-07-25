@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
@@ -73,6 +72,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Radar,
@@ -109,6 +109,8 @@ import type { FractalEvent, InstrumentHints, Mood, CommonMood } from '@/types/fr
 import type { Genre } from '@/types/music';
 
 const PROCESSED_FILES_KEY = 'AuraGroove_ImportedFiles';
+const ACCESS_TOKEN_STORAGE_KEY = 'AuraGroove_Auditor_Token';
+const SECRET_ACCESS_TOKEN = '96dmhwmnfgn';
 
 const AVAILABLE_GENRES: Genre[] = [
   'ambient', 'psybient', 'blues', 'progressive', 'rock', 'house', 'rnb', 'ballad', 'reggae', 'celtic'
@@ -291,7 +293,89 @@ function MultiSelector<T extends string>({
   );
 }
 
-export default function HypercubeDashboard() {
+// ──────────────────────────────────────────────────────────────
+// 🔐 GATEKEEPER COMPONENT
+// ──────────────────────────────────────────────────────────────
+
+function Gatekeeper({ children }: { children: React.ReactNode }) {
+  const [tokenValue, setTokenValue] = useState("");
+  const [hasAccess, setHasAccess] = useState(false);
+  const [isVerifying, setIsInitializing] = useState(true);
+  
+  // Checking existing access on mount
+  useEffect(() => {
+    const savedToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('access_token');
+    
+    if (urlToken === SECRET_ACCESS_TOKEN || savedToken === SECRET_ACCESS_TOKEN) {
+      if (urlToken) {
+        localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, urlToken);
+        // Clear token from URL for clean history
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      setHasAccess(true);
+    }
+    setIsInitializing(false);
+  }, []);
+
+  const handleVerify = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (tokenValue === SECRET_ACCESS_TOKEN) {
+      localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, tokenValue);
+      setHasAccess(true);
+    } else {
+      alert("Invalid Access Token");
+    }
+  };
+
+  if (isVerifying) return <div className="min-h-screen bg-background flex items-center justify-center animate-pulse uppercase tracking-widest text-xs font-black">Syncing Security...</div>;
+
+  if (!hasAccess) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm border-primary/20 bg-card shadow-2xl">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
+              <Lock className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-xl font-black uppercase tracking-tight">DNA Auditor Restricted</CardTitle>
+            <CardDescription className="text-[10px] font-bold uppercase opacity-60">System key required for high-level curation</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleVerify} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase font-black opacity-50">Access Token</Label>
+                <Input 
+                  type="password" 
+                  placeholder="••••••••" 
+                  className="text-center font-mono tracking-widest bg-muted/30"
+                  value={tokenValue}
+                  onChange={(e) => setTokenValue(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <Button type="submit" className="w-full font-black uppercase tracking-widest gap-2">
+                <Zap className="h-4 w-4" /> Initialize Link
+              </Button>
+            </form>
+          </CardContent>
+          <div className="p-4 border-t border-primary/5 text-center">
+             <p className="text-[9px] text-muted-foreground uppercase font-bold opacity-40 italic">Heritage protection protocol v5.0 active</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+// ──────────────────────────────────────────────────────────────
+// 🛠️ AUDITOR CONTENT COMPONENT
+// ──────────────────────────────────────────────────────────────
+
+function AuditorContent() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -694,7 +778,7 @@ export default function HypercubeDashboard() {
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={handleExportFullRegistry} disabled={isDbLoading || !globalAxioms?.length} className="gap-2 text-primary border-primary/20"><FileJson className="h-4 w-4" /> Export Registry</Button>
             <Button variant="outline" size="sm" onClick={() => { stopAllSounds(); setPlayingAxiomId(null); }} className="gap-2 text-destructive border-destructive/50"><Square className="h-4 w-4" /> Stop Audition</Button>
-            <Button variant="ghost" onClick={() => router.push('/aura-groove')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
+            <Button variant="ghost" onClick={() => router.push('/home')} className="gap-2"><ArrowLeft className="h-4 w-4" /> Return to Player</Button>
           </div>
         </header>
 
@@ -952,7 +1036,12 @@ export default function HypercubeDashboard() {
 
       <Dialog open={!!viewingDocId} onOpenChange={(open) => !open && setViewingDocId(null)}>
           <DialogContent className="max-w-4xl h-[80vh] flex flex-col border-primary/20 bg-card shadow-2xl">
-              <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl"><FileText className="h-6 w-6" /> Manifest Editor</DialogTitle></DialogHeader>
+              <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase tracking-tight text-xl">
+                      <FileText className="h-6 w-6" /> Manifest Editor
+                  </DialogTitle>
+                  <DialogDescription className="text-[10px] uppercase font-bold opacity-50">Direct Firestore Cloud Overwrite</DialogDescription>
+              </DialogHeader>
               <div className="flex-grow overflow-hidden mt-4 bg-background/30 rounded-lg p-1"><Textarea value={editingDocContent} onChange={(e) => setEditingDocContent(e.target.value)} className="h-full font-mono text-[13px] leading-relaxed bg-transparent resize-none p-4" /></div>
               <DialogFooter className="pt-4 border-t border-primary/10 flex flex-row justify-between items-center w-full"><div className="text-[10px] uppercase font-black opacity-40">Sync: Firestore Overwrite</div><div className="flex gap-2"><Button variant="ghost" onClick={() => setViewingDocId(null)} className="uppercase text-[10px] font-black h-10 px-6">Cancel</Button><Button onClick={handleUpdateDocContent} disabled={isProcessing} className="gap-2 uppercase text-[10px] font-black h-10 px-8 shadow-xl bg-primary hover:bg-primary/90"><ClipboardCheck className="h-4 w-4" /> Push Changes to Cloud</Button></div></DialogFooter>
           </DialogContent>
@@ -960,7 +1049,10 @@ export default function HypercubeDashboard() {
 
       <Dialog open={bulkMoodOpen} onOpenChange={setBulkMoodOpen}>
         <DialogContent className="sm:max-w-md bg-card border-primary/20">
-          <DialogHeader><DialogTitle className="font-black uppercase text-primary">Bulk Mood Settings</DialogTitle><DialogDescription>Update mood for all selected tracks.</DialogDescription></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="font-black uppercase text-primary">Bulk Mood Settings</DialogTitle>
+            <DialogDescription>Update mood for all selected tracks.</DialogDescription>
+          </DialogHeader>
           <div className="py-6 space-y-4">
             <MultiSelector options={AVAILABLE_MOODS} values={bulkMoodValue} onValuesChange={setBulkMoodValue} placeholder="Select moods" className="w-full" />
             <Button className="w-full font-black uppercase" onClick={() => handleBulkSetMood(bulkMoodValue)} disabled={isProcessing}><Check className="h-4 w-4 mr-2" /> Apply to Selected</Button>
@@ -970,10 +1062,21 @@ export default function HypercubeDashboard() {
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="border-primary/20 bg-card">
-          <AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "Critical action."}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Are you sure?"}</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "Critical action."}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Cancel</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Confirm</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function HypercubeDashboard() {
+  return (
+    <Gatekeeper>
+      <AuditorContent />
+    </Gatekeeper>
   );
 }
