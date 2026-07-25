@@ -17,12 +17,6 @@ const DRUM_SAMPLES: Record<string, string> = {
     'a-ride2': '/assets/drums/a-ride2.ogg',
     'a-ride3': '/assets/drums/a-ride3.ogg',
     'a-ride4': '/assets/drums/a-ride4.ogg',
-    'bongo_pc-01': '/assets/drums/bongo/pc-01.ogg',
-    'bongo_pc-02': '/assets/drums/bongo/pc-02.ogg',
-    'bongo_pc-03': '/assets/drums/bongo/pc-03.ogg',
-    'bongo_pvc-tube-01': '/assets/drums/bongo/pvc-tube-01.ogg',
-    'bongo_pvc-tube-02': '/assets/drums/bongo/pvc-tube-02.ogg',
-    'bongo_pvc-tube-03': '/assets/drums/bongo/pvc-tube-03.ogg',
     'brush1': '/assets/drums/brush1.ogg',
     'brush2': '/assets/drums/brush2.ogg',
     'brush3': '/assets/drums/brush3.ogg',
@@ -78,7 +72,7 @@ const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
     'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2',
-    'perc-001', 'perc-005', 'bongo_pvc-tube-01'
+    'perc-001', 'perc-005'
 ];
 
 type Sampler = {

@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V54.0 — "Spiral Fill Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие ударных, сбивок и томовых пробежек.
- * #ЧТО: Сложный хай-хэт грув, панорамированные томы, удаление крэшей.
+ * @fileOverview Psybient Brain V55.0 — "Silent Kitchen Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1285. Удаление bongo и pvc-tube из ротации.
  */
 
 import type {
@@ -197,7 +196,6 @@ export class TranceBrain {
         hints: InstrumentHints
     ): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
 
         if (epoch > 0 && epoch % 8 === 0) {
             const shifts = [0, 3, 5, 7, -2];
@@ -237,7 +235,6 @@ export class TranceBrain {
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
-            // #ЗАЧЕМ: Дозированный влажный райд (2% шанс)
             if (this.rng.chance(2)) {
                 events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
             }
@@ -408,8 +405,7 @@ export class TranceBrain {
             events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         
-        // Complex hi-hat pattern
-        for (let t = 0; t < TICKS_PER_BAR; t += 0.75) { // 16th triplets grid
+        for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
             const isStrong = t % 3 === 0;
             const isOff = t % 1.5 !== 0;
             const chance = isStrong ? 100 : (isOff ? tension * 40 : 60);
@@ -429,7 +425,6 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         
-        // Spiral tom movement (High -> Mid -> Low)
         [9, 10, 11].forEach((t, i) => {
             events.push({
                 type: tomSequence[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.6,
@@ -442,11 +437,12 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const pool = ['bongo_pvc-tube-01', 'bongo_pc-01', 'perc-003', 'perc-007'];
+        const pool = ['perc-003', 'perc-007']; // BONGO AND TUBES REMOVED (PLAN №1285)
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
             if (this.rng.chance(20 + tension * 10)) {
+                const sampleIdx = calculateMusiNum(epoch + t, 13, this.seed, pool.length);
                 events.push({
-                    type: pool[this.rng.nextInt(pool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
+                    type: pool[sampleIdx] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
                     weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
                 });
             }
@@ -474,7 +470,7 @@ export class TranceBrain {
         return decompressCompactPhrase(lick.phrase as any).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: n.t * TICK_TO_BEAT, duration: (n.d * TICK_TO_BEAT) * 1.25, weight: 0.9, 
-            technique: n.d > 3 ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
+            technique: n.d > 3 ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legate'
         }));
     }
 

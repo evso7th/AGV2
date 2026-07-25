@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Reggae Brain V23.0 — "Riddim Fill Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие ударных и сбивок.
- * #ЧТО: Триольные пробежки по томам, очистка от крэшей, дозированный Ride Wetter.
+ * @fileOverview Reggae Brain V24.0 — "Silent Kitchen Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1285. Удаление bongo и pvc-tube из ротации.
  */
 
 import type {
@@ -234,7 +233,6 @@ export class ReggaeBrain {
             } else {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
                 events.push(...this.renderPsybientKitchen(epoch, tension, kit));
-                // #ЗАЧЕМ: Дозированный влажный райд (3% шанс)
                 if (this.random.next() < 0.03) {
                     events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
                 }
@@ -360,7 +358,6 @@ export class ReggaeBrain {
         const events: FractalEvent[] = [];
         const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         
-        // Характерная пробежка по томам в конце фразы (High -> Mid -> Low)
         [9.5, 10.5, 11.5].forEach((t, i) => {
             events.push({ 
                 type: tomSequence[i] as any, note: 48, time: t * TICK_TO_BEAT, 
@@ -483,8 +480,9 @@ export class ReggaeBrain {
         const pool = kit.perc || [];
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
             if (this.random.next() < (0.25 + tension * 0.1)) {
+                const sampleIdx = calculateMusiNum(epoch + t, 13, this.seed, pool.length);
                 events.push({
-                    type: pool[this.random.nextInt(pool.length)] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
+                    type: pool[sampleIdx] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
                     weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
                 });
             }
