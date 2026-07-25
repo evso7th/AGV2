@@ -1,3 +1,4 @@
+
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -16,48 +17,6 @@ const DRUM_SAMPLES: Record<string, string> = {
     'a-ride2': '/assets/drums/a-ride2.ogg',
     'a-ride3': '/assets/drums/a-ride3.ogg',
     'a-ride4': '/assets/drums/a-ride4.ogg',
-    'Bell_-_Ambient': '/assets/drums/bells/Bell_-_Ambient.ogg',
-    'Bell_-_Analog': '/assets/drums/bells/Bell_-_Analog.ogg',
-    'Bell_-_Astro': '/assets/drums/bells/Bell_-_Astro.ogg',
-    'Bell_-_Background': '/assets/drums/bells/Bell_-_Background.ogg',
-    'Bell_-_Bright': '/assets/drums/bells/Bell_-_Bright.ogg',
-    'Bell_-_Broken': '/assets/drums/bells/Bell_-_Broken.ogg',
-    'Bell_-_Cheap': '/assets/drums/bells/Bell_-_Cheap.ogg',
-    'Bell_-_Cheesy': '/assets/drums/bells/Bell_-_Cheesy.ogg',
-    'Bell_-_Chorus': '/assets/drums/bells/Bell_-_Chorus.ogg',
-    'Bell_-_Click': '/assets/drums/bells/Bell_-_Click.ogg',
-    'Bell_-_Crystals': '/assets/drums/bells/Bell_-_Crystals.ogg',
-    'Bell_-_Deep': '/assets/drums/bells/Bell_-_Deep.ogg',
-    'Bell_-_Detuned': '/assets/drums/bells/Bell_-_Detuned.ogg',
-    'Bell_-_Easy': '/assets/drums/bells/Bell_-_Easy.ogg',
-    'Bell_-_Echo': '/assets/drums/bells/Bell_-_Echo.ogg',
-    'Bell_-_Evil': '/assets/drums/bells/Bell_-_Evil.ogg',
-    'Bell_-_Faded': '/assets/drums/bells/Bell_-_Faded.ogg',
-    'Bell_-_Far_Away': '/assets/drums/bells/Bell_-_Far_Away.ogg',
-    'Bell_-_Fast': '/assets/drums/bells/Bell_-_Fast.ogg',
-    'Bell_-_Futuristic': '/assets/drums/bells/Bell_-_Futuristic.ogg',
-    'Bell_-_Glide': '/assets/drums/bells/Bell_-_Glide.ogg',
-    'Bell_-_Gong': '/assets/drums/bells/Bell_-_Gong.ogg',
-    'Bell_-_Higher': '/assets/drums/bells/Bell_-_Higher.ogg',
-    'Bell_-_High': '/assets/drums/bells/Bell_-_High.ogg',
-    'Bell_-_Horror': '/assets/drums/bells/Bell_-_Horror.ogg',
-    'Bell_-_Long': '/assets/drums/bells/Bell_-_Long.ogg',
-    'Bell_-_Moonlight': '/assets/drums/bells/Bell_-_Moonlight.ogg',
-    'Bell_-_Nasty': '/assets/drums/bells/Bell_-_Nasty.ogg',
-    'Bell_-_Normal': '/assets/drums/bells/Bell_-_Normal.ogg',
-    'Bell_-_Plug': '/assets/drums/bells/Bell_-_Plug.ogg',
-    'Bell_-_Quick': '/assets/drums/bells/Bell_-_Quick.ogg',
-    'Bell_-_Reverb': '/assets/drums/bells/Bell_-_Reverb.ogg',
-    'Bell_-_Ring': '/assets/drums/bells/Bell_-_Ring.ogg',
-    'Bell_-_Slide': '/assets/drums/bells/Bell_-_Slide.ogg',
-    'Bell_-_Smooth': '/assets/drums/bells/Bell_-_Smooth.ogg',
-    'Bell_-_Soft': '/assets/drums/bells/Bell_-_Soft.ogg',
-    'Bell_-_Tap': '/assets/drums/bells/Bell_-_Tap.ogg',
-    'Bell_-_Too_Easy': '/assets/drums/bells/Bell_-_Too_Easy.ogg',
-    'Bell_-_Unstable': '/assets/drums/bells/Bell_-_Unstable.ogg',
-    'Bell_-_Vintage': '/assets/drums/bells/Bell_-_Vintage.ogg',
-    'Bell_-_Weird': '/assets/drums/bells/Bell_-_Weird.ogg',
-    'Bell_-_Wind': '/assets/drums/bells/Bell_-_Wind.ogg',
     'bongo_pc-01': '/assets/drums/bongo/pc-01.ogg',
     'bongo_pc-02': '/assets/drums/bongo/pc-02.ogg',
     'bongo_pc-03': '/assets/drums/bongo/pc-03.ogg',
@@ -119,7 +78,7 @@ const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
     'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2',
-    'perc-001', 'perc-005', 'bongo_pvc-tube-01', 'Bell_-_Ambient'
+    'perc-001', 'perc-005', 'bongo_pvc-tube-01'
 ];
 
 type Sampler = {

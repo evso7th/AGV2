@@ -20,10 +20,10 @@ const ALL_TOMS: InstrumentType[] = [
     'drum_Sonor_Classix_Low_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_High_Tom'
 ];
 
-const ALL_BELLS: InstrumentType[] = [
-    'drum_Bell_-_Ambient', 'drum_Bell_-_Analog', 'drum_Bell_-_Astro', 'drum_Bell_-_Background', 'drum_Bell_-_Bright',
-    'drum_Bell_-_Deep', 'drum_Bell_-_Soft', 'drum_Bell_-_Wind'
-];
+/**
+ * #ЗАЧЕМ: Реестр колокольчиков временно очищен до замены сэмплов.
+ */
+const ALL_BELLS: InstrumentType[] = [];
 
 /**
  * #ЗАЧЕМ: Полный набор "Текстурной Перкуссии" (ПЛАН №736).
@@ -52,7 +52,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
-            perc: ['perc-003', 'bongo_pvc-tube-01', 'drum_Bell_-_Soft', 'bongo_pc-02']
+            perc: ['perc-003', 'bongo_pvc-tube-01', 'bongo_pc-02']
         },
         calm: {
             kick: ['drum_kick_soft'],
@@ -66,7 +66,7 @@ export const DRUM_KITS: DrumKitLibrary = {
             snare: ['drum_snare_off'],
             hihat: [],
             ride: ['drum_a-ride1'],
-            perc: ['perc-012', 'bongo_pvc-tube-03', 'drum_Bell_-_Gong', 'perc-008']
+            perc: ['perc-012', 'bongo_pvc-tube-03', 'perc-008']
         }
     },
 
