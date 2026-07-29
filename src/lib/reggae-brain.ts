@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Reggae Brain V24.0 — "Silent Kitchen Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1285. Удаление bongo и pvc-tube из ротации.
+ * @fileOverview Reggae Brain V24.1 — "Tube Kitchen V10.0".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1285. Интеграция трубок в Riddim грув.
  */
 
 import type {
@@ -477,16 +476,19 @@ export class ReggaeBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const pool = kit.perc || [];
-        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) {
-            if (this.random.next() < (0.25 + tension * 0.1)) {
-                const sampleIdx = calculateMusiNum(epoch + t, 13, this.seed, pool.length);
+        // #ЗАЧЕМ: ПЛАН №1285. Интеграция "Трубной перкуссии" для Reggae.
+        // В регги трубки звучат более четко и ритмично (на 1.5, 4.5, 7.5, 10.5 тиках)
+        const kitchenTicks = [1.5, 4.5, 7.5, 10.5];
+        kitchenTicks.forEach(t => {
+            if (this.random.next() < (0.3 + tension * 0.2)) {
                 events.push({
-                    type: pool[sampleIdx] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5,
-                    weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.random.next() * 1.6) - 0.8
+                    type: 'sfx', note: 48, time: t * TICK_TO_BEAT, duration: 0.4,
+                    weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
+                    pan: (this.random.next() * 1.2) - 0.6,
+                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'tube', weight: 1.0 }] } }
                 });
             }
-        }
+        });
         return events;
     }
 

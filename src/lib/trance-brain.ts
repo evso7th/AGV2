@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Psybient Brain V55.0 — "Silent Kitchen Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1285. Удаление bongo и pvc-tube из ротации.
+ * @fileOverview Psybient Brain V55.2 — "Silent Kitchen V10.0".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1285. Интеграция всей папки tube в Psybient Kitchen.
  */
 
 import type {
@@ -32,12 +31,6 @@ import {
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 import { BLUES_SOLO_LICKS } from './assets/blues_guitar_solo';
-
-const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
-  epic: 'light', joyful: 'light', enthusiastic: 'light',
-  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
-  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
-};
 
 class SeededRNG {
   private state: number;
@@ -233,6 +226,7 @@ export class TranceBrain {
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
             }
+            // Психоделическая кухня (Трубки)
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
             if (this.rng.chance(2)) {
@@ -307,7 +301,7 @@ export class TranceBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
                 drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro'
             },
-            narrative: `Psybient Spiral: [Drums Optimized]`
+            narrative: `Psybient Spiral: [Kitchen V10.0 Active]`
         };
     }
 
@@ -437,13 +431,14 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const pool = ['perc-003', 'perc-007']; // BONGO AND TUBES REMOVED (PLAN №1285)
+        // #ЗАЧЕМ: ПЛАН №1285. Интеграция "Трубной перкуссии" для Psybient.
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            if (this.rng.chance(20 + tension * 10)) {
-                const sampleIdx = calculateMusiNum(epoch + t, 13, this.seed, pool.length);
+            if (this.rng.chance(30 + tension * 20)) {
                 events.push({
-                    type: pool[sampleIdx] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.5, 
-                    weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: (this.rng.next() * 1.8) - 0.9
+                    type: 'sfx', note: 60, time: t * TICK_TO_BEAT, duration: 0.4, 
+                    weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
+                    pan: (this.rng.next() * 1.8) - 0.9,
+                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'tube', weight: 1.0 }] } }
                 });
             }
         }
@@ -519,16 +514,19 @@ export class TranceBrain {
         if (epoch < 12) return [];
         const events: FractalEvent[] = [];
         if (this.rng.chance(12)) {
-            const categories = ['ELECTRONIC', 'DARK'];
-            const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
-            events.push({ type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'legato', params: { category } });
+            // #ЗАЧЕМ: Использование расширенного SparklePlayer V10.0
+            events.push({ 
+                type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
+                duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', 
+                phrasing: 'legato', params: { category: this.rng.chance(60) ? 'MELODIC' : 'ORGANIC' } 
+            });
         }
         const breathChance = tension < 0.3 ? 15 : 8;
         if (this.rng.chance(breathChance)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
                 weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
-                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } } 
+                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 0.4 }, { name: 'glitch', weight: 0.6 }] } } 
             });
         }
         return events;
@@ -562,5 +560,5 @@ export class TranceBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }
