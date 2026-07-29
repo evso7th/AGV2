@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Universal Music Theory Utilities V5.2 — "Dynamic Piano Extension".
  */
@@ -125,25 +124,23 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
     }
 
-    // ─── Dynamic Groups (Bass) ───
-    if (clean === 'dynbasswarmblues') {
-        return tension < 0.6 ? 'bass_jazz_warm' : 'bass_blues';
+    // ─── Dynamic Groups (Bass) — V9.0 Final Standards ───
+    if (clean === 'dynbassjazzstandard') {
+        return tension < 0.6 ? 'bass_jazz_warm' : 'bass_jazz_fretless';
     }
-    if (clean === 'dynbasswarmbluesslap') {
+    if (clean === 'dynbassbluespower') {
         if (tension < 0.4) return 'bass_jazz_warm';
         if (tension < 0.75) return 'bass_blues';
         return 'bass_slap';
     }
-    if (clean === 'dynbassfretlessjazz') {
-        return tension < 0.6 ? 'bass_jazz_fretless' : 'bass_jazz_warm';
+    if (clean === 'dynbasssubmorph') {
+        return tension < 0.6 ? 'bass_ambient' : 'bass_808';
     }
-    if (clean === 'dynbassfretlessjazzslap') {
-        if (tension < 0.4) return 'bass_jazz_fretless';
-        if (tension < 0.75) return 'bass_jazz_warm';
-        return 'bass_slap';
+    if (clean === 'dynbassreggaedeep') {
+        return tension < 0.5 ? 'bass_jazz_warm' : 'bass_dub';
     }
-    if (clean === 'dynbassambientcs80') {
-        return tension < 0.6 ? 'bass_ambient' : 'bass_cs80';
+    if (clean === 'dynbassacidspiral') {
+        return tension < 0.6 ? 'bass_808' : 'bass_trance_acid';
     }
 
     // ─── Dynamic Groups (Piano) ───

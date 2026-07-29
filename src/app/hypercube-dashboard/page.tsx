@@ -157,6 +157,11 @@ const INSTRUMENT_GROUPS = [
     options: ['dynamic_lead', 'dynamic_hybrid_1', 'dynamic_hybrid_2', 'dynamic_black_shine']
   },
   {
+    label: '⚡ Dynamic Basses',
+    color: 'bg-indigo-500/10 text-indigo-400',
+    options: ['dyn_bass_jazz_standard', 'dyn_bass_blues_power', 'dyn_bass_sub_morph', 'dyn_bass_reggae_deep', 'dyn_bass_acid_spiral']
+  },
+  {
     label: 'Bass Section',
     color: 'bg-red-500/10 text-red-400',
     options: ['bass_jazz_warm', 'bass_jazz_fretless', 'bass_blues', 'bass_ambient', 'bass_ambient_dark', 'bass_trance_acid', 'bass_reggae', 'bass_dub', 'bass_house', 'bass_808', 'bass_deep_house', 'bass_rock_pick', 'bass_slap', 'bass_cs80']
@@ -228,7 +233,12 @@ const DISPLAY_NAMES: Record<string, string> = {
     'dynamic_hybrid_1': '⚡ BLACK / CS80 / TELE',
     'dynamic_hybrid_2': '⚡ TELE / CS80 / SHINE',
     'dynamic_black_shine': '⚡ BLACK / CS80 / SHINE',
-    'dynamic_piano_dual': '⚡ RHODES / PIANO'
+    'dynamic_piano_dual': '⚡ RHODES / PIANO',
+    'dyn_bass_jazz_standard': '⚡ Jazz: Warm → Fretless',
+    'dyn_bass_blues_power': '⚡ Blues: Warm → Blues → Slap',
+    'dyn_bass_sub_morph': '⚡ Electro: Ambient → 808',
+    'dyn_bass_reggae_deep': '⚡ Reggae: Warm → Dub',
+    'dyn_bass_acid_spiral': '⚡ Trance: 808 → Acid'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -931,7 +941,7 @@ function AuditorContent() {
                                   <tr key={ax.id} className="hover:bg-primary/5 transition-colors group">
                                       <td className="p-4 text-center"><Checkbox checked={selectedIds.has(ax.id)} onCheckedChange={() => { const n = new Set(selectedIds); n.has(ax.id) ? n.delete(ax.id) : n.add(ax.id); setSelectedIds(n); }} /></td>
                                       <td className="p-4 font-bold text-primary text-[11px] uppercase tracking-tight">{ax.compositionId}</td>
-                                      <td className="p-4"><Badge variant="outline" className="text-[9px] font-black uppercase uppercase">{ax.role}</Badge></td>
+                                      <td className="p-4"><Badge variant="outline" className="text-[9px] uppercase font-black uppercase">{ax.role}</Badge></td>
                                       <td className="p-4 text-[10px] font-mono opacity-60">O:{ax.barOffset} / B:{ax.bars} / N:{ax.noteCount}</td>
                                       <td className="p-4 text-right"><Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive" /> : <Play className="h-4 w-4 fill-current" />}</Button></td>
                                   </tr>
