@@ -1,13 +1,17 @@
 
 /**
- * @fileOverview Drum Arsenal Protocol V2.3.
+ * @fileOverview Drum Arsenal Protocol V2.4.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №1285): Временное отключение bongo и pvc-tube сэмплов.
+ * #ОБНОВЛЕНО (ПЛАН №1290): Интеграция 5 новых киков в Ambient и Trance.
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
 
-const ALL_KICKS: InstrumentType[] = ['drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft'];
+const ALL_KICKS: InstrumentType[] = [
+    'drum_kick', 'drum_cajon_kick', 'drum_drum_kick_reso', 'drum_kick_drum6', 'drum_kick_soft',
+    'drum_edm_kick', 'drum_prog_house_kick', 'drum_deep_tech_kick', 'drum_standard_tech_kick', 'drum_quality_kick'
+];
+
 const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snarepress', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
 const ALL_HIHATS: InstrumentType[] = [
     'drum_25693__walter_odington__hackney-hat-1',
@@ -27,7 +31,6 @@ const ALL_BELLS: InstrumentType[] = [];
 
 /**
  * #ЗАЧЕМ: Полный набор "Текстурной Перкуссии" (ПЛАН №736).
- * #ЧТО: Все 15 perc сэмплов. БОНГО И ТРУБКИ УДАЛЕНЫ (ПЛАН №1285).
  */
 const ALL_PERC: InstrumentType[] = [
     ...ALL_BELLS,
@@ -39,28 +42,28 @@ const ALL_PERC: InstrumentType[] = [
 export const DRUM_KITS: DrumKitLibrary = {
     ambient: {
         melancholic: {
-            kick: ['drum_kick_soft', 'drum_kick_reso'],
+            kick: ['drum_kick_soft', 'drum_kick_reso', 'drum_deep_tech_kick', 'drum_quality_kick'],
             snare: ['drum_snare_ghost_note'],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ALL_PERC
         },
         intro: {
-            kick: ['drum_kick_soft'],
+            kick: ['drum_kick_soft', 'drum_quality_kick'],
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ['perc-003', 'perc-005']
         },
         calm: {
-            kick: ['drum_kick_soft'],
+            kick: ['drum_kick_soft', 'drum_deep_tech_kick'],
             snare: ['drum_brush1'],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ALL_PERC
         },
         dark: {
-            kick: ['drum_kick_reso'],
+            kick: ['drum_kick_reso', 'drum_deep_tech_kick'],
             snare: ['drum_snare_off'],
             hihat: [],
             ride: ['drum_a-ride1'],
@@ -76,8 +79,15 @@ export const DRUM_KITS: DrumKitLibrary = {
     },
 
     trance: {
-        melancholic: { kick: ['drum_kick_drum6'], snare: ['drum_snare'], hihat: ['drum_open_hh_top2'], ride: [], crash: ['drum_crash2'], perc: ALL_PERC },
-        intro: { kick: ['drum_kick_soft'], snare: [], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ['perc-003'] },
+        melancholic: { 
+            kick: ['drum_kick_drum6', 'drum_edm_kick', 'drum_prog_house_kick', 'drum_standard_tech_kick'], 
+            snare: ['drum_snare'], 
+            hihat: ['drum_open_hh_top2'], 
+            ride: [], 
+            crash: ['drum_crash2'], 
+            perc: ALL_PERC 
+        },
+        intro: { kick: ['drum_kick_soft', 'drum_standard_tech_kick'], snare: [], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ['perc-003'] },
         anxious: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: [], crash: ['drum_crash2'], perc: ALL_PERC }
     },
 

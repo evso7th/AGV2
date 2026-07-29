@@ -66,6 +66,13 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_High_Tom': '/assets/drums/Sonor_Classix_High_Tom.ogg',
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
+    
+    // --- NEW KICKS (PLAN №1290) ---
+    'drum_edm_kick': '/assets/drums/381825__waveplaysfx__kick-edm-kick.wav',
+    'drum_prog_house_kick': '/assets/drums/385874__waveplaysfx__kick-prog-house-kick.wav',
+    'drum_deep_tech_kick': '/assets/drums/386966__waveplaysfx__kick-deep-tech-kick.wav',
+    'drum_standard_tech_kick': '/assets/drums/515519__waveplaysfx__kick-standard-tech-kick.wav',
+    'drum_quality_kick': '/assets/drums/671087__logicogonist__kick-quality-1.wav'
 };
 
 const BLUES_KIT_CORE = [
