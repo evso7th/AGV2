@@ -1,7 +1,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Исправление раздела №3 — удаление ошибочного жанра Zoology.
+ * #ОБНОВЛЕНО: Добавлена секция CREDITS_HTML для вкладки авторов и лицензий.
  */
 
 export const GUIDE_RU = `
@@ -234,5 +234,61 @@ export const DISCLAIMER_EN = `
   </section>
 
   <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 3.7.0</p>
+</div>
+`;
+
+export const CREDITS_HTML = `
+<div class="prose-info text-[12px] leading-relaxed space-y-4">
+  <h2 class="text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">🎵 Audio Credits & Licensing</h2>
+  
+  <p>AuraGroove is a strictly non-commercial, freeware generative music project. All audio samples used in this project are sourced from trusted community libraries and are used in full compliance with their respective Creative Commons licenses.</p>
+
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">⚠️ CC-BY 4.0 (Attribution Required)</h3>
+    <p class="italic opacity-80">These assets require credit to the original creators:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>Fender Telecaster Guitar (Clean Strums & Chug)</strong> by JohnZealeyMusic — <a href="https://freesound.org/people/JohnZealeyMusic/packs/33168/" target="_blank" class="text-primary hover:underline">freesound.org/packs/33168</a></li>
+      <li><strong>SFX Collection</strong> by akelley6 — <a href="https://freesound.org/people/akelley6" target="_blank" class="text-primary hover:underline">freesound.org/people/akelley6</a></li>
+      <li><strong>Bat Screech</strong> by richcraftstudios — <a href="https://freesound.org/s/770720" target="_blank" class="text-primary hover:underline">freesound.org/s/770720</a></li>
+      <li><strong>Robotic Transformer</strong> by VectorSpace — <a href="https://freesound.org/s/497616" target="_blank" class="text-primary hover:underline">freesound.org/s/497616</a></li>
+      <li><strong>Game Over SFX</strong> by landlucky — <a href="https://freesound.org/s/277403" target="_blank" class="text-primary hover:underline">freesound.org/s/277403</a></li>
+      <li><strong>Upload Finished</strong> by Iceofdoom — <a href="https://freesound.org/s/717306" target="_blank" class="text-primary hover:underline">freesound.org/s/717306</a></li>
+      <li><strong>Robot Voice</strong> by LittleRobotSoundFactory — <a href="https://freesound.org/s/316288" target="_blank" class="text-primary hover:underline">freesound.org/s/316288</a></li>
+      <li><strong>Cyberman Voices</strong> by chungus43A — <a href="https://freesound.org/people/chungus43A" target="_blank" class="text-primary hover:underline">freesound.org/people/chungus43A</a></li>
+      <li><strong>Robotic Transmission</strong> by deleted_user_4798915 — <a href="https://freesound.org/s/287974" target="_blank" class="text-primary hover:underline">freesound.org/s/287974</a></li>
+      <li><strong>Processed Vocoder Voice</strong> by vate — <a href="https://freesound.org/s/953" target="_blank" class="text-primary hover:underline">freesound.org/s/953</a></li>
+      <li><strong>Forever</strong> by carmsie — <a href="https://freesound.org/s/342945" target="_blank" class="text-primary hover:underline">freesound.org/s/342945</a></li>
+      <li><strong>Robot Shutdown</strong> by qudup — <a href="https://freesound.org/s/219567" target="_blank" class="text-primary hover:underline">freesound.org/s/219567</a></li>
+      <li><strong>Robot Voice</strong> by metrostock99 — <a href="https://freesound.org/s/514696" target="_blank" class="text-primary hover:underline">freesound.org/s/514696</a></li>
+    </ul>
+  </section>
+
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">🎸 CC-BY-NC 3.0 (Non-Commercial Attribution)</h3>
+    <p class="italic opacity-80">Used strictly under the non-commercial terms of the AuraGroove freeware project:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li><strong>CS80 Guitar</strong> by mogigrumbles — <a href="https://freesound.org/packs/29636" target="_blank" class="text-primary hover:underline">freesound.org/packs/29636</a></li>
+    </ul>
+  </section>
+
+  <section class="space-y-1">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">✅ CC0 1.0 Universal (Public Domain)</h3>
+    <p class="italic opacity-80">No attribution required, but credited here out of respect for the creators:</p>
+    <ul class="list-disc pl-4 space-y-1 opacity-80">
+      <li><strong>Free Swirly Drums</strong> by Karoryfer — <a href="https://shop.karoryfer.com/pages/free-swirly-drums" target="_blank" class="hover:underline">shop.karoryfer.com/pages/free-swirly-drums</a></li>
+      <li><strong>Piano Samples</strong> by TEDAgame (Freesound)</li>
+      <li><strong>Drum Hats</strong> by Walter_Odington (Freesound)</li>
+      <li><strong>Dark Ambient Droplets</strong> by DneproMan (Freesound)</li>
+      <li><strong>Speedy Clean Guitar</strong> by SpeedY (Freesound)</li>
+      <li><strong>Laser SFX</strong> by johncanyon (Freesound)</li>
+      <li><strong>Voice SFX</strong> by mooncubedesign, carmsie, newagesoup, Alien_I_Trust, VASOTELVI, Anzbot, harrisonlace, SonicWarriorSounds, NicknameLarry, soundcannon42, 8bitmyketison, Euphrosyyn, TheEndOfACycle, Reitanna, Novi, esseffe1 (Freesound)</li>
+      <li><strong>Bells, Bongo, Promenade, Flute & Guitars</strong> curated from OpenGameArt.org (CC0)</li>
+    </ul>
+  </section>
+
+  <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 text-[10px] italic">
+    <strong>DMCA / Rights Holder Notice:</strong><br/>
+    If you are a copyright holder and believe that any asset has been used incorrectly or without proper attribution, please contact us immediately. We are committed to resolving any licensing concerns promptly, including the immediate removal of the contested asset if necessary.
+  </div>
 </div>
 `;

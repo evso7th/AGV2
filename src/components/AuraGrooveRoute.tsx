@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V8.5 — "Donor Track Visualization".
- * #ЗАЧЕМ: Вывод названия трека-донора (DNA) на плашку маршрута и в монитор.
+ * @fileOverview UI AuraGroove V8.5.1 — "Audio Credits Integration".
+ * #ЗАЧЕМ: Добавление вкладки Credits в Информационный Центр.
  */
 'use client';
 
@@ -27,7 +27,7 @@ import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/mus
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN } from '@/lib/info-docs';
+import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
 import type { Language } from '@/lib/translations';
 
 // DND Kit Imports
@@ -667,11 +667,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
                     </DialogHeader>
-                    <Tabs defaultValue={props.language === 'ru' ? 'guide' : 'guide'} className="w-full">
+                    <Tabs defaultValue="guide" className="w-full">
                         <div className="px-6 flex items-center justify-between border-b border-primary/10">
                             <TabsList className="bg-transparent border-none p-0 h-10 gap-6">
                                 <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_user_guide')}</TabsTrigger>
                                 <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_disclaimer')}</TabsTrigger>
+                                <TabsTrigger value="credits" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_credits')}</TabsTrigger>
                             </TabsList>
                             <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
@@ -682,6 +683,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </TabsContent>
                             <TabsContent value="disclaimer" className="m-0 focus-visible:ring-0">
                                 <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? DISCLAIMER_RU : DISCLAIMER_EN }} />
+                            </TabsContent>
+                            <TabsContent value="credits" className="m-0 focus-visible:ring-0">
+                                <div dangerouslySetInnerHTML={{ __html: CREDITS_HTML }} />
                             </TabsContent>
                         </ScrollArea>
                     </Tabs>

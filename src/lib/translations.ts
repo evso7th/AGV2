@@ -54,6 +54,7 @@ export const TRANSLATIONS = {
     dialog_info_title: { ru: "Информационный центр", en: "Information Center" },
     tab_user_guide: { ru: "Руководство", en: "User Guide" },
     tab_disclaimer: { ru: "Дисклеймер", en: "Disclaimer" },
+    tab_credits: { ru: "Авторы", en: "Credits" },
     btn_close: { ru: "Закрыть", en: "Close" },
     
     // Toasts
