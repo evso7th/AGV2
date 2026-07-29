@@ -159,7 +159,16 @@ const INSTRUMENT_GROUPS = [
   {
     label: '⚡ Dynamic Basses',
     color: 'bg-indigo-500/10 text-indigo-400',
-    options: ['dyn_bass_jazz_standard', 'dyn_bass_blues_power', 'dyn_bass_sub_morph', 'dyn_bass_reggae_deep', 'dyn_bass_acid_spiral']
+    options: [
+      'dyn_bass_jazz_standard', 
+      'dyn_bass_blues_power', 
+      'dyn_bass_sub_morph', 
+      'dyn_bass_reggae_deep', 
+      'dyn_bass_acid_spiral',
+      'dyn_bass_blues_warm',
+      'dyn_bass_blues_warm_slap',
+      'dyn_bass_808_ambient'
+    ]
   },
   {
     label: 'Bass Section',
@@ -238,7 +247,10 @@ const DISPLAY_NAMES: Record<string, string> = {
     'dyn_bass_blues_power': '⚡ Blues: Warm → Blues → Slap',
     'dyn_bass_sub_morph': '⚡ Electro: Ambient → 808',
     'dyn_bass_reggae_deep': '⚡ Reggae: Warm → Dub',
-    'dyn_bass_acid_spiral': '⚡ Trance: 808 → Acid'
+    'dyn_bass_acid_spiral': '⚡ Trance: 808 → Acid',
+    'dyn_bass_blues_warm': '⚡ Blues → Warm',
+    'dyn_bass_blues_warm_slap': '⚡ Blues → Warm → Slap',
+    'dyn_bass_808_ambient': '⚡ 808 → Ambient'
 };
 
 const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
@@ -922,7 +934,7 @@ function AuditorContent() {
           <div className="flex wrap items-center gap-4 bg-muted/20 p-6 rounded-xl border border-border/50 shrink-0">
             <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
             <Button onClick={() => fileInputRef.current?.click()} disabled={isProcessing} className="bg-primary hover:bg-primary/90 font-black h-12 px-8 shadow-lg uppercase tracking-wider"><Upload className="mr-3 h-5 w-5" /> Load Local DNA</Button>
-            <div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div>
+            <div className="flex items-center gap-3 pl-6 border-l border-border/50"><Label htmlFor="genre-inject" className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Target Genres:</Label><MultiSelector options={AVAILABLE_GENRES} values={selectedGenre} onValuesChange={setSelectedGenre} placeholder="Select genres..." className="w-[240px] h-10 font-bold" /></div>
           </div>
           {stagedAxioms.length > 0 && (
             <Card className="border-primary/30 shadow-2xl overflow-hidden flex-grow flex flex-col m-0">

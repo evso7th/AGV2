@@ -1,5 +1,5 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.2 — "Dynamic Piano Extension".
+ * @fileOverview Universal Music Theory Utilities V5.3 — "Dynamic Gravity Extension".
  */
 
 import type { 
@@ -46,7 +46,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №88): Добавлены динамические группы для Piano/Rhodes.
+ * #ОБНОВЛЕНО (ПЛАН №88): Добавлены динамические группы для Piano/Rhodes и Баса.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -124,7 +124,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
     }
 
-    // ─── Dynamic Groups (Bass) — V9.0 Final Standards ───
+    // ─── Dynamic Groups (Bass) — V9.1 Final Standards ───
     if (clean === 'dynbassjazzstandard') {
         return tension < 0.6 ? 'bass_jazz_warm' : 'bass_jazz_fretless';
     }
@@ -141,6 +141,17 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     }
     if (clean === 'dynbassacidspiral') {
         return tension < 0.6 ? 'bass_808' : 'bass_trance_acid';
+    }
+    if (clean === 'dynbassblueswarm') {
+        return tension < 0.6 ? 'bass_blues' : 'bass_jazz_warm';
+    }
+    if (clean === 'dynbassblueswarmslap') {
+        if (tension < 0.4) return 'bass_blues';
+        if (tension < 0.75) return 'bass_jazz_warm';
+        return 'bass_slap';
+    }
+    if (clean === 'dynbass808ambient') {
+        return tension < 0.6 ? 'bass_808' : 'bass_ambient';
     }
 
     // ─── Dynamic Groups (Piano) ───
