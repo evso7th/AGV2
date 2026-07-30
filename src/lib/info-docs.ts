@@ -1,7 +1,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Добавлена секция CREDITS_HTML для вкладки авторов и лицензий.
+ * #ОБНОВЛЕНО: Добавлена информация о новых авторах с Pixabay.
  */
 
 export const GUIDE_RU = `
@@ -55,7 +55,7 @@ export const GUIDE_RU = `
       </li>
       <li class="flex gap-3 items-start">
         <span class="text-xl shrink-0">🌌</span>
-        <div><span class="font-black text-primary uppercase">Neuro Space:</span> Транс-амбиентные структуры с выраженной ритмикой.</div>
+        <div><span class="font-black text-primary uppercase">Neuro Space:</span> "@"@"@"@0-@<185=B=K5 AB@C:BC@K A 2K@065==>9 @8B<8:>9.</div>
       </li>
       <li class="flex gap-3 items-start">
         <span class="text-xl shrink-0">🇯🇲</span>
@@ -133,7 +133,7 @@ export const GUIDE_EN = `
       </li>
       <li class="flex gap-3 items-start">
         <span class="text-xl shrink-0">🌌</span>
-        <div><span class="font-black text-primary uppercase">Neuro Space:</span> Trance-ambient structures with pronounced rhythmic elements.</div>
+        <div><span class="font-black text-primary uppercase">Neuro Space:</span> "@"@"@"@0-@<185=B=K5 AB@C:BC@K A 2K@065==>9 @8B<8:>9.</div>
       </li>
       <li class="flex gap-3 items-start">
         <span class="text-xl shrink-0">🇯🇲</span>
@@ -272,16 +272,17 @@ export const CREDITS_HTML = `
   </section>
 
   <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">✅ CC0 1.0 Universal (Public Domain)</h3>
-    <p class="italic opacity-80">No attribution required, but credited here out of respect for the creators:</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">✅ Pixabay & CC0 (No Attribution Required)</h3>
+    <p class="italic opacity-80">These creators provided assets under CC0 or Pixabay License:</p>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
+      <li><strong>Voice Assets</strong> by alien_i_trust, arunangshubanerjee, diff_style, edr, fidelfortune, kuzu420, phatphrogstudio, universfield (Pixabay)</li>
       <li><strong>Free Swirly Drums</strong> by Karoryfer — <a href="https://shop.karoryfer.com/pages/free-swirly-drums" target="_blank" class="hover:underline">shop.karoryfer.com/pages/free-swirly-drums</a></li>
       <li><strong>Piano Samples</strong> by TEDAgame (Freesound)</li>
       <li><strong>Drum Hats</strong> by Walter_Odington (Freesound)</li>
       <li><strong>Dark Ambient Droplets</strong> by DneproMan (Freesound)</li>
       <li><strong>Speedy Clean Guitar</strong> by SpeedY (Freesound)</li>
       <li><strong>Laser SFX</strong> by johncanyon (Freesound)</li>
-      <li><strong>Voice SFX</strong> by mooncubedesign, carmsie, newagesoup, Alien_I_Trust, VASOTELVI, Anzbot, harrisonlace, SonicWarriorSounds, NicknameLarry, soundcannon42, 8bitmyketison, Euphrosyyn, TheEndOfACycle, Reitanna, Novi, esseffe1 (Freesound)</li>
+      <li><strong>Voice SFX</strong> by mooncubedesign, carmsie, newagesoup, VASOTELVI, Anzbot, harrisonlace, SonicWarriorSounds, NicknameLarry, soundcannon42, 8bitmyketison, Euphrosyyn, TheEndOfACycle, Reitanna, Novi, esseffe1 (Freesound)</li>
       <li><strong>Bells, Bongo, Promenade, Flute & Guitars</strong> curated from OpenGameArt.org (CC0)</li>
     </ul>
   </section>
