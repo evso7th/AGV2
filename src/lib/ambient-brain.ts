@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V121.0 — "Aura of Magnitude Active".
- * #ЗАЧЕМ: ПЛАН №1281 — Добавление масштаба через унисон и пространственное расширение.
+ * @fileOverview Ambient Brain V122.0 — "Atmospheric Saturation Active".
+ * #ЗАЧЕМ: ПЛАН №1320 — Повышение активности звуковой кухни (Sparkles 15%, SFX 12%).
  */
 
 import type {
@@ -340,7 +340,6 @@ export class AmbientBrain {
         const usedLayers = new Set<string>();
         
         // #ЗАЧЕМ: ПЛАН №1281. Монолитный Унисон (Strict Unison).
-        // Если напряжение высокое (>0.75), слой аккомпанемента дублирует бас.
         const useStrictUnison = tension > 0.75 && bassEvents.length > 0;
 
         this.currentAccompAxioms.forEach(ax => {
@@ -350,7 +349,6 @@ export class AmbientBrain {
                 let rendered: FractalEvent[] = [];
                 
                 if (useStrictUnison && target === 'accompaniment') {
-                    // Клонируем бас в аккомпанемент (октавой выше)
                     rendered = bassEvents.map(be => ({
                         ...be,
                         type: 'accompaniment',
@@ -399,7 +397,6 @@ export class AmbientBrain {
         if (hints.harmony && !usedLayers.has('harmony')) {
             const hResult = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (hResult.events.length > 0) {
-                // #ЗАЧЕМ: ПЛАН №1281. Гармония на краях панорамы для масштаба.
                 hResult.events.forEach(e => { e.pan = 0.45; });
                 events.push(...hResult.events.flatMap(e => this.rippleLongNote(e, resChord, 2.5, tension)));
                 layerAxioms.harmony = hResult.instrument === 'violin' ? 'Violin Whisper' : 'Guitar Chord';
@@ -543,7 +540,7 @@ export class AmbientBrain {
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): { events: FractalEvent[], instrument: string | null } {
         const events: FractalEvent[] = [];
         let instrument: string | null = null;
-        if (calculateMusiNum(epoch, 11, this.seed, 100) < 12) {
+        if (calculateMusiNum(epoch, 11, this.seed, 10) < 12) {
             const rootNote = chord.rootNote;
             const rootName = NOTE_NAMES[rootNote % 12] || 'C';
             const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
@@ -593,28 +590,51 @@ export class AmbientBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация ПЛАНА №1320 — Atmospheric Saturation.
+     * #ЧТО: Повышена активность и разнообразие эффектов.
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         if (epoch < 4) return [];
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 12) {
-            const categories = ['ELECTRONIC', 'DARK'];
-            const category = categories[calculateMusiNum(epoch, 17, this.seed, categories.length)];
+        
+        // 1. INCREASED SPARKLES (15% Probability, Categories: MELODIC/ORGANIC)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 15) {
+            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
-                type: 'sparkle', note: 60, time: this.random.next() * 3.5, duration: 4.0, weight: 0.7,
-                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { category, genre: this.genre }
+                type: 'sparkle', note: 60, time: this.random.next() * 3.5, 
+                duration: 4.0 + this.random.next() * 4.0, 
+                weight: 0.9, 
+                technique: 'hit', dynamics: 'p', phrasing: 'legato', 
+                params: { category, genre: this.genre }
             });
         }
-        const breathChance = tension < 0.3 ? 15 : 8;
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < breathChance) {
+
+        // 2. INCREASED SFX (12% Probability with Category Rotation)
+        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 12) {
             events.push({
-                type: 'sfx', note: 60, time: 1.0 + this.random.next() * 2.5, duration: 4.0, weight: 0.6,
-                technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 1.0 }] } }
+                type: 'sfx', note: 60, time: 1.0 + this.random.next() * 2.5, 
+                duration: 5.0, 
+                weight: 0.75, 
+                technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                params: { 
+                    mood: this.mood, 
+                    genre: this.genre,
+                    rules: {
+                        categories: [
+                            { name: 'common', weight: 0.5 },
+                            { name: 'loop', weight: 0.3 },
+                            { name: 'voice', weight: 0.15 },
+                            { name: 'glitch', weight: 0.05 }
+                        ]
+                    }
+                }
             });
         }
         return events;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return n; }
 }
