@@ -1,6 +1,6 @@
 /**
- * @fileOverview Psybient Brain V55.2 — "Silent Kitchen V10.0".
- * #ЗАЧЕМ: Реализация ПЛАНА №1285. Интеграция всей папки tube в Psybient Kitchen.
+ * @fileOverview Psybient Brain V56.0 — "Voice Saturation Active".
+ * #ЗАЧЕМ: ПЛАН №1330 — Повышение частоты и разборчивости голосов.
  */
 
 import type {
@@ -226,7 +226,6 @@ export class TranceBrain {
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
             }
-            // Психоделическая кухня (Трубки)
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
             if (this.rng.chance(2)) {
@@ -431,7 +430,6 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: ПЛАН №1285. Интеграция "Трубной перкуссии" для Psybient.
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
             if (this.rng.chance(30 + tension * 20)) {
                 events.push({
@@ -510,23 +508,36 @@ export class TranceBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: Реализация ПЛАНА №1330 — Voice Saturation.
+     * #ЧТО: Повышена частота появления голосов в Psybient.
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         if (epoch < 12) return [];
         const events: FractalEvent[] = [];
         if (this.rng.chance(12)) {
-            // #ЗАЧЕМ: Использование расширенного SparklePlayer V10.0
             events.push({ 
                 type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
                 duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', 
                 phrasing: 'legato', params: { category: this.rng.chance(60) ? 'MELODIC' : 'ORGANIC' } 
             });
         }
-        const breathChance = tension < 0.3 ? 15 : 8;
+        // #ЗАЧЕМ: ПЛАН №1330. Вероятность SFX повышена до 15-25%, вес голоса в категории — до 70%.
+        const breathChance = tension < 0.4 ? 25 : 15;
         if (this.rng.chance(breathChance)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
-                weight: 1.1, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
-                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'voice', weight: 0.4 }, { name: 'glitch', weight: 0.6 }] } } 
+                weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
+                params: { 
+                    mood: this.mood, 
+                    genre: this.genre, 
+                    rules: { 
+                        categories: [
+                            { name: 'voice', weight: 0.70 }, // Значительно повышено
+                            { name: 'glitch', weight: 0.30 }
+                        ] 
+                    } 
+                } 
             });
         }
         return events;

@@ -1,8 +1,8 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * #ЗАЧЕМ: Менеджер SFX V10.3 — "Absolute Flow Activated".
- * #ЧТО: ПОЛНОЕ подключение всех ассетов из реестра (Common, Loop, Glitch, Tube, Voice).
+ * @fileOverview Менеджер SFX V10.4 — "Voice Presence Reform".
+ * #ЗАЧЕМ: ПЛАН №1330 — Повышение громкости и разборчивости голосов.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
@@ -73,27 +73,22 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/voices/pixabay/phatphrogstudio-lich-demonic-voice-come-closer-502312.mp3',
         '/assets/music/voices/pixabay/phatphrogstudio-oni-demon-voice-demonic-laughter-477923.mp3',
         '/assets/music/voices/pixabay/universfield-game-over-deep-male-voice-clip-352695.mp3',
-        '/assets/music/sfx/voice/219567__qubodup__robot-shutdown-sequence-initiated.ogg',
-        '/assets/music/sfx/voice/234940__esseffe1__bot1.ogg',
+        '/assets/music/sfx/voice/187919__vasotelvi__deletion-completed.ogg.1296434.wav',
+        '/assets/music/sfx/voice/196890__ionicsmusic__race-robot-finish-line__1_.ogg',
         '/assets/music/sfx/voice/273060__carmsie__helter-skelter.ogg',
         '/assets/music/sfx/voice/277403__landlucky__game-over-sfx-and-voice.ogg',
         '/assets/music/sfx/voice/287974__deleted_user_4798915__sfx-robotic-transmission.ogg',
         '/assets/music/sfx/voice/316288__littlerobotsoundfactory__robot2_05.ogg',
         '/assets/music/sfx/voice/332848__carmsie__never-let-you-go.ogg',
-        '/assets/music/sfx/voice/339624__carmsie__know-more.ogg',
         '/assets/music/sfx/voice/339625__carmsie__just-a-dream.ogg',
         '/assets/music/sfx/voice/339627__carmsie__disarm-yourself.ogg',
         '/assets/music/sfx/voice/339628__carmsie__you-cannot-harm-me.ogg',
-        '/assets/music/sfx/voice/339629__carmsie__tin-man-respect.ogg',
         '/assets/music/sfx/voice/339630__carmsie__theft.ogg',
         '/assets/music/sfx/voice/339631__carmsie__robot-statements.ogg',
-        '/assets/music/sfx/voice/339633__carmsie__meat-with-feelings.ogg',
-        '/assets/music/sfx/voice/342258__mooncubedesign__robot-voice-drop-the-bass.ogg',
         '/assets/music/sfx/voice/342944__carmsie__evil-is-a-master-of-disguise.ogg',
         '/assets/music/sfx/voice/342945__carmsie__forever.ogg',
         '/assets/music/sfx/voice/343094__carmsie__think-about-it.ogg',
         '/assets/music/sfx/voice/343921__reitanna__robot-sneeze.ogg',
-        '/assets/music/sfx/voice/349317__newagesoup__all-your-base-are-belong-to-us_robot_voice_zarvox.ogg',
         '/assets/music/sfx/voice/376196__euphrosyyn__futuristic-robotic-voice-sentences.ogg',
         '/assets/music/sfx/voice/425218__novi__robot-taking-damage.ogg',
         '/assets/music/sfx/voice/486699__nicknamelarry__scaryvoice-saying-hello-world.ogg',
@@ -104,6 +99,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/674306__theendofacycle__robot-talk-sfx.ogg',
         '/assets/music/sfx/voice/699850__8bitmyketison__cyber-robot-voice__1_.ogg',
         '/assets/music/sfx/voice/717306__iceofdoom__the-upload-finally-finished.ogg',
+        '/assets/music/sfx/voice/759879__chungus43a__the-moonbase-doctor-who-cyberman-voice.ogg',
         '/assets/music/sfx/voice/771944__harrisonlace__robotic-deja-vu-vox.ogg',
         '/assets/music/sfx/voice/776420__chungus43a__doctor-who-cybus-cyberman-voice-recreated.ogg',
         '/assets/music/sfx/voice/783026__soundcannon42__robot-voice-analyze-neurons-for-musical-creativity.ogg',
@@ -300,7 +296,8 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.35;
+        // #ЗАЧЕМ: ПЛАН №1330. Базовая громкость повышена для слышимости голосов.
+        this.preamp.gain.value = 0.65;
         this.preamp.connect(destination);
     }
 
@@ -381,19 +378,20 @@ export class SfxSynthManager {
         if (genre === 'reggae') return 'tube';
 
         if (genre === 'psybient') {
-            if (rand < 0.4) return 'glitch';
-            if (rand < 0.7) return 'laser';
-            if (rand < 0.85) return 'voice';
+            if (rand < 0.3) return 'glitch';
+            if (rand < 0.5) return 'laser';
+            if (rand < 0.9) return 'voice'; // Повышен шанс на голос в Psybient
             return 'tube';
         }
 
         if (genre === 'ambient') {
             if (mood === 'dark' || mood === 'anxious') {
-                if (rand < 0.6) return 'dark';
-                return 'voice';
+                if (rand < 0.4) return 'dark';
+                return 'voice'; // Повышен шанс на голос в Ambient (Dark)
             }
-            if (rand < 0.7) return 'common';
-            return 'loop';
+            if (rand < 0.5) return 'common';
+            if (rand < 0.8) return 'loop';
+            return 'voice'; // Теперь голоса могут быть и в светлом Ambient
         }
         
         return 'common';

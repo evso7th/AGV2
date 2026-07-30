@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Ambient Brain V122.0 — "Atmospheric Saturation Active".
- * #ЗАЧЕМ: ПЛАН №1320 — Повышение активности звуковой кухни (Sparkles 15%, SFX 12%).
+ * @fileOverview Ambient Brain V123.0 — "Voice Saturation Active".
+ * #ЗАЧЕМ: ПЛАН №1330 — Повышение частоты и разборчивости голосов.
  */
 
 import type {
@@ -108,8 +107,6 @@ export class AmbientBrain {
 
     /**
      * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
-     * #ЧТО: Дробление длинных нот, микро-лики (50%) и спектральное «дыхание».
-     * #ОБНОВЛЕНО (ПЛАН №1281): Повышена частота дробления при высоком Tension.
      */
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5, currentTension: number = 0.5): FractalEvent[] {
         if (e.chordName) return [e]; 
@@ -118,7 +115,6 @@ export class AmbientBrain {
         const rippled: FractalEvent[] = [];
         const useLick = this.random.next() < 0.50; 
         
-        // Масштабируем базу дробления: чем выше напряжение, тем чаще дробление
         const adjustedBase = currentTension > 0.7 ? chunkDurBase * 0.6 : chunkDurBase;
         const numChunks = Math.max(2, Math.ceil(e.duration / adjustedBase));
         const chunkDur = e.duration / numChunks;
@@ -297,7 +293,6 @@ export class AmbientBrain {
             melody: 'none', bass: 'none', drums: 'none', accompaniment: 'none', harmony: 'none', piano: 'none'
         };
 
-        // #ЗАЧЕМ: СЦЕПКА СИБЛИНГОВ.
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
@@ -330,7 +325,6 @@ export class AmbientBrain {
             }
             
             m = this.applyAntiPedal('melody', m, resChord);
-            // #ЗАЧЕМ: ПЛАН №1281. Расширение панорамы для мелодии.
             m.forEach(e => { e.pan = (this.random.next() * 0.6 - 0.3); });
             events.push(...m.flatMap(e => this.rippleLongNote(e, resChord, 1.0, tension)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'ambient');
@@ -338,8 +332,6 @@ export class AmbientBrain {
 
         // 3. Accompaniment & Piano
         const usedLayers = new Set<string>();
-        
-        // #ЗАЧЕМ: ПЛАН №1281. Монолитный Унисон (Strict Unison).
         const useStrictUnison = tension > 0.75 && bassEvents.length > 0;
 
         this.currentAccompAxioms.forEach(ax => {
@@ -591,15 +583,14 @@ export class AmbientBrain {
     }
 
     /**
-     * #ЗАЧЕМ: Реализация ПЛАНА №1320 — Atmospheric Saturation.
-     * #ЧТО: Повышена активность и разнообразие эффектов.
+     * #ЗАЧЕМ: Реализация ПЛАНА №1330 — Voice Saturation.
+     * #ЧТО: Повышена частота появления голосов в Ambient.
      */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         if (epoch < 4) return [];
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        // 1. INCREASED SPARKLES (15% Probability, Categories: MELODIC/ORGANIC)
         if (calculateMusiNum(seedVal, 13, 0, 100) < 15) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
@@ -611,21 +602,21 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INCREASED SFX (12% Probability with Category Rotation)
-        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 12) {
+        // #ЗАЧЕМ: ПЛАН №1330. Вероятность SFX повышена до 18%, вес голоса в категории — до 40%.
+        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 18) {
             events.push({
                 type: 'sfx', note: 60, time: 1.0 + this.random.next() * 2.5, 
                 duration: 5.0, 
-                weight: 0.75, 
+                weight: 0.85, 
                 technique: 'hit', dynamics: 'p', phrasing: 'legato',
                 params: { 
                     mood: this.mood, 
                     genre: this.genre,
                     rules: {
                         categories: [
-                            { name: 'common', weight: 0.5 },
-                            { name: 'loop', weight: 0.3 },
-                            { name: 'voice', weight: 0.15 },
+                            { name: 'voice', weight: 0.40 }, // Значительно повышено
+                            { name: 'common', weight: 0.30 },
+                            { name: 'loop', weight: 0.25 },
                             { name: 'glitch', weight: 0.05 }
                         ]
                     }
