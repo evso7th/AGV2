@@ -1,6 +1,7 @@
 /**
- * @fileOverview Master Mix Registry V2.2 — "Violin Attenuation".
- * #ЗАЧЕМ: ПЛАН №1320 — Громкость гармонии (скрипок) снижена еще в 2 раза (итого в 4 от базы) для прозрачности.
+ * @fileOverview Master Mix Registry V2.3 — "Texture Prominence Update".
+ * #ЗАЧЕМ: Увеличение громкости Sparkles и SFX до 0.65 по умолчанию.
+ * #ЧТО: Новые сэмплы требуют более высокого уровня в миксе для создания атмосферы.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,11 +10,11 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.21,        
     accompaniment: 0.10, 
-    harmony: 0.0625,    // Снижено в 4 раза от исходного 0.25
+    harmony: 0.0625,    
     pianoAccompaniment: 0.43,
     drums: 0.75,         
-    sparkles: 0.12,      
-    sfx: 0.12            
+    sparkles: 0.65,      // Повышено с 0.12
+    sfx: 0.65            // Повышено с 0.12
 };
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
@@ -23,11 +24,11 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         bass: 0.68,
         melody: 0.50,
         accompaniment: 0.06,
-        harmony: 0.0875, // Снижено пропорционально (было 0.35)
+        harmony: 0.0875,
         pianoAccompaniment: 0.32,
         drums: 0.50,
-        sparkles: 0.15,
-        sfx: 0.15
+        sparkles: 0.65, // Повышено для консистентности
+        sfx: 0.65       // Повышено для консистентности
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,

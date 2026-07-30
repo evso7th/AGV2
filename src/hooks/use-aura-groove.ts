@@ -1,7 +1,6 @@
 /**
- * @fileOverview Music Control Hook V30.0 — "Final Media Session Alignment".
- * #ЗАЧЕМ: Реализация ПЛАНА №1283. Полный набор адаптивных обложек.
- * #ЧТО: Пути исправлены на /assets/cover/cover[size].jpg.
+ * @fileOverview Music Control Hook V30.1 — "Default Texture Levels Update".
+ * #ЗАЧЕМ: Установка дефолтных уровней Sparkles и SFX на 0.65.
  */
 'use client';
 
@@ -157,8 +156,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     pianoAccompaniment: { name: "piano", volume: 0.5 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      sparkles: { enabled: true, volume: 0.5 },
-      sfx: { enabled: true, volume: 0.5 },
+      sparkles: { enabled: true, volume: 0.65 }, // Повышено с 0.5
+      sfx: { enabled: true, volume: 0.65 },      // Повышено с 0.5
   });
   
   const [bpm, setBpm] = useState(75);
@@ -186,7 +185,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
   const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
 
-  // --- Localization Logic ---
   const [language, setLanguage] = useState<Language>('en');
 
   useEffect(() => {
@@ -535,10 +533,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
 
-  /**
-   * #ЗАЧЕМ: Стабилизация Media Session API (ПЛАН №1283).
-   * #ЧТО: Полный набор адаптивных обложек (96-512px). Статичные пути из /assets/cover/.
-   */
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
 

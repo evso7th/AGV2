@@ -1,7 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V56.2 — "Calibration Fix".
- * #ЗАЧЕМ: Исправление TypeError: chordsSampler.setPreampGain is not a function.
- * #ЧТО: ПЛАН №1301. Переход на единый интерфейс калибровки HarmonySynthManager.
+ * @fileOverview Audio Engine Context V56.3 — "Texture Volume Reform".
+ * #ЗАЧЕМ: Увеличение базового уровня Sparkles и SFX для лучшей читаемости атмосферы.
  */
 'use client';
 
@@ -36,8 +35,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.65,           
   accompaniment: 0.80,
   drums: 0.85,            
-  sparkles: 0.45,       
-  sfx: 0.45,            
+  sparkles: 0.65,       // Повышено с 0.45 для сочности новых текстур
+  sfx: 0.65,            // Повышено с 0.45 для сочности новых текстур
   harmony: 0.80,        
   pianoAccompaniment: 0.325, 
 };
@@ -82,6 +81,7 @@ interface AudioEngineContextType {
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
+  calculateMasterFade: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: () => void;
   stopRecording: () => void;
@@ -217,7 +217,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
       
-      // #ЗАЧЕМ: Унифицированный вызов калибровки слоя гармонии (ПЛАН №1301).
       harmonyManagerRef.current?.setPreampGains(
           SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
           SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
@@ -502,6 +501,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const preset = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(preset || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(preset || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(preset || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(preset || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
+      calculateMasterFade: () => {},
       startRecording: () => { 
         if (!recDestRef.current || isRecording) return; 
         recordedChunksRef.current = []; 
