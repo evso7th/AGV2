@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Welcome Page V3.3 — "The Contained Core".
- * #ЗАЧЕМ: Ограничение анимации OrbitalAnimation рамками карточки для стабильности интерфейса.
+ * @fileOverview Welcome Page V3.4 — "Animated Footer Update".
+ * #ЗАЧЕМ: Реализация бегущей строки для копирайта с отступами 5%.
  */
 'use client';
 
@@ -30,6 +30,19 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background text-foreground overflow-hidden">
       
+      {/* Marquee Animation Styles */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes marquee {
+          0% { left: 100%; }
+          100% { left: -100%; }
+        }
+        .animate-marquee-slow {
+          position: absolute;
+          white-space: nowrap;
+          animation: marquee 30s linear infinite;
+        }
+      ` }} />
+
       <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
         
         {/* Анимация "Живое Ядро" - теперь строго внутри карточки */}
@@ -75,11 +88,17 @@ export default function Home() {
             <Music className="mr-2 h-4 w-4" />
             {t('btn_start')}
           </Button>
-          <div className="mt-8 text-[9px] opacity-40 uppercase tracking-tighter whitespace-nowrap">
-            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
-          </div>
+          {/* Пустой блок для сохранения пропорций карточки */}
+          <div className="mt-8 h-4"></div>
         </CardFooter>
       </Card>
+
+      {/* Бегущая строка внизу экрана с отступами 5% */}
+      <div className="absolute bottom-6 left-[5%] right-[5%] h-6 overflow-hidden pointer-events-none select-none">
+        <div className="animate-marquee-slow text-[9px] opacity-40 uppercase tracking-tighter">
+          © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+        </div>
+      </div>
     </main>
   );
 }
