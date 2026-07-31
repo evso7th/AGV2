@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V123.0 — "Voice Saturation Active".
- * #ЗАЧЕМ: ПЛАН №1330 — Повышение частоты и разборчивости голосов.
+ * @fileOverview Ambient Brain V124.0 — "Spice Protocol Active".
+ * #ЗАЧЕМ: ПЛАН №1331 — Разрежение атмосферы. Эффекты как специя, а не основное блюдо.
  */
 
 import type {
@@ -69,7 +69,6 @@ export class AmbientBrain {
     private currentPreferredInstrument: string | null = null;
     private currentMutationType: string = 'none';
 
-    // #ЗАЧЕМ: ПЛАН №1267. Межтактовая память для борьбы с гудением.
     private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
 
     private readonly MELODY_CEILING = 88;
@@ -105,9 +104,6 @@ export class AmbientBrain {
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
-    /**
-     * #ЗАЧЕМ: Протокол «Respiration» (ПЛАН №1266).
-     */
     private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5, currentTension: number = 0.5): FractalEvent[] {
         if (e.chordName) return [e]; 
         if (e.duration < 5.0) return [e]; 
@@ -148,9 +144,6 @@ export class AmbientBrain {
         return rippled;
     }
 
-    /**
-     * #ЗАЧЕМ: Протокол «Анти-Педаль» (ПЛАН №1267).
-     */
     private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return events;
 
@@ -230,7 +223,6 @@ export class AmbientBrain {
                 const maxDonorBars = Math.max(...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
                 const sameOffsetPool = filteredPool.filter(ax => (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')) && (ax.barOffset || 0) === targetOffset);
                 const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
                 const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
@@ -242,15 +234,11 @@ export class AmbientBrain {
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
                     const cid = normalizeStr(selected.compositionId);
                     
-                    const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bassSibling) {
-                        this.currentBassTheme = { phrase: decompressCompactPhrase(bassSibling.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bassSibling.id };
-                    }
+                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
 
-                    const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accompSiblings.map(ax => ({ 
-                        phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument 
-                    }));
+                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
                     const baseBars = selected.bars || 4;
                     this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
@@ -411,7 +399,7 @@ export class AmbientBrain {
             mutationType: this.currentMutationType,
             instrumentOverrides,
             activeAxioms: layerAxioms,
-            narrative: `Ambient Evolution: ${this.currentTrackName} [Aura of Magnitude Active]`
+            narrative: `Ambient Evolution: ${this.currentTrackName} [Spice Protocol Active]`
         };
     }
 
@@ -532,7 +520,7 @@ export class AmbientBrain {
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): { events: FractalEvent[], instrument: string | null } {
         const events: FractalEvent[] = [];
         let instrument: string | null = null;
-        if (calculateMusiNum(epoch, 11, this.seed, 10) < 12) {
+        if (calculateMusiNum(epoch, 11, this.seed, 10) < 1.2) {
             const rootNote = chord.rootNote;
             const rootName = NOTE_NAMES[rootNote % 12] || 'C';
             const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
@@ -582,16 +570,13 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация ПЛАНА №1330 — Voice Saturation.
-     * #ЧТО: Повышена частота появления голосов в Ambient.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
-        if (epoch < 4) return [];
+        if (epoch < 8) return []; // Later start for "Spice" principle
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 15) {
+        // #ЗАЧЕМ: ПЛАН №1331. Принцип «Специи». Шанс снижен до 9%.
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 9) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle', note: 60, time: this.random.next() * 3.5, 
@@ -602,8 +587,8 @@ export class AmbientBrain {
             });
         }
 
-        // #ЗАЧЕМ: ПЛАН №1330. Вероятность SFX повышена до 18%, вес голоса в категории — до 40%.
-        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 18) {
+        // #ЗАЧЕМ: ПЛАН №1331. Вероятность SFX снижена до 7%.
+        if (calculateMusiNum(seedVal + 11, 19, 0, 100) < 7) {
             events.push({
                 type: 'sfx', note: 60, time: 1.0 + this.random.next() * 2.5, 
                 duration: 5.0, 
@@ -614,7 +599,7 @@ export class AmbientBrain {
                     genre: this.genre,
                     rules: {
                         categories: [
-                            { name: 'voice', weight: 0.40 }, // Значительно повышено
+                            { name: 'voice', weight: 0.40 }, 
                             { name: 'common', weight: 0.30 },
                             { name: 'loop', weight: 0.25 },
                             { name: 'glitch', weight: 0.05 }
@@ -629,3 +614,4 @@ export class AmbientBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return n; }
 }
+

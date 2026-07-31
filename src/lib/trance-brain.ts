@@ -1,6 +1,6 @@
 /**
- * @fileOverview Psybient Brain V56.0 — "Voice Saturation Active".
- * #ЗАЧЕМ: ПЛАН №1330 — Повышение частоты и разборчивости голосов.
+ * @fileOverview Psybient Brain V57.0 — "Atmospheric Dilution Active".
+ * #ЗАЧЕМ: ПЛАН №1331 — Разрежение атмосферы. Специя, а не блюдо.
  */
 
 import type {
@@ -300,7 +300,7 @@ export class TranceBrain {
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
                 drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro'
             },
-            narrative: `Psybient Spiral: [Kitchen V10.0 Active]`
+            narrative: `Psybient Spiral: [Atmospheric Balance V1.0]`
         };
     }
 
@@ -430,8 +430,9 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
+        // #ЗАЧЕМ: ПЛАН №1331. Разрежение трубок в Psybient.
         for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            if (this.rng.chance(30 + tension * 20)) {
+            if (this.rng.chance(10 + tension * 10)) {
                 events.push({
                     type: 'sfx', note: 60, time: t * TICK_TO_BEAT, duration: 0.4, 
                     weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
@@ -508,23 +509,21 @@ export class TranceBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: Реализация ПЛАНА №1330 — Voice Saturation.
-     * #ЧТО: Повышена частота появления голосов в Psybient.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         if (epoch < 12) return [];
         const events: FractalEvent[] = [];
-        if (this.rng.chance(12)) {
+        
+        // #ЗАЧЕМ: ПЛАН №1331. Разрежение Sparkles до 7%.
+        if (this.rng.chance(7)) {
             events.push({ 
                 type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
                 duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', 
                 phrasing: 'legato', params: { category: this.rng.chance(60) ? 'MELODIC' : 'ORGANIC' } 
             });
         }
-        // #ЗАЧЕМ: ПЛАН №1330. Вероятность SFX повышена до 15-25%, вес голоса в категории — до 70%.
-        const breathChance = tension < 0.4 ? 25 : 15;
-        if (this.rng.chance(breathChance)) {
+        
+        // #ЗАЧЕМ: ПЛАН №1331. Разрежение SFX до 6%.
+        if (this.rng.chance(6)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
                 weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
@@ -533,7 +532,7 @@ export class TranceBrain {
                     genre: this.genre, 
                     rules: { 
                         categories: [
-                            { name: 'voice', weight: 0.70 }, // Значительно повышено
+                            { name: 'voice', weight: 0.70 }, 
                             { name: 'glitch', weight: 0.30 }
                         ] 
                     } 
@@ -573,3 +572,4 @@ export class TranceBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }
+

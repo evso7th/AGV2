@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V24.1 — "Tube Kitchen V10.0".
- * #ЗАЧЕМ: Реализация ПЛАНА №1285. Интеграция трубок в Riddim грув.
+ * @fileOverview Reggae Brain V24.2 — "Roots Purification".
+ * #ЗАЧЕМ: ПЛАН №1331. Удаление «трубной перкуссии» из Reggae по запросу.
  */
 
 import type {
@@ -227,11 +227,8 @@ export class ReggaeBrain {
 
         // 1. DRUMS
         if (hints.drums) {
-            if (isDrumResting) {
-                if (this.random.next() < 0.5) events.push(...this.renderPsybientKitchen(epoch, tension * 0.5, kit));
-            } else {
+            if (!isDrumResting) {
                 events.push(...this.renderReggaeGroove(epoch, tension, kit, bassTicks));
-                events.push(...this.renderPsybientKitchen(epoch, tension, kit));
                 if (this.random.next() < 0.03) {
                     events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
                 }
@@ -474,24 +471,6 @@ export class ReggaeBrain {
         }));
     }
 
-    private renderPsybientKitchen(epoch: number, tension: number, kit: any): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: ПЛАН №1285. Интеграция "Трубной перкуссии" для Reggae.
-        // В регги трубки звучат более четко и ритмично (на 1.5, 4.5, 7.5, 10.5 тиках)
-        const kitchenTicks = [1.5, 4.5, 7.5, 10.5];
-        kitchenTicks.forEach(t => {
-            if (this.random.next() < (0.3 + tension * 0.2)) {
-                events.push({
-                    type: 'sfx', note: 48, time: t * TICK_TO_BEAT, duration: 0.4,
-                    weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
-                    pan: (this.random.next() * 1.2) - 0.6,
-                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'tube', weight: 1.0 }] } }
-                });
-            }
-        });
-        return events;
-    }
-
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number): { events: FractalEvent[], style: string } {
         if (this.random.next() > 0.3) return { events: [], style: 'none' };
         const root = chord.rootNote + 12;
@@ -533,5 +512,5 @@ export class ReggaeBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 71) v -= 12; while (v < 48) v += 12; return n; }
 }
