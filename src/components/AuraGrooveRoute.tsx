@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview UI AuraGroove V14.2 — "The Pure Terminal Refined".
- * #ЗАЧЕМ: Исправление видимости ядра и замена кнопки RadioBridge на кнопку Записи.
- * #ЧТО: ПЛАН №21402 — Фиксация размеров контейнера орбит и ротация иконок в Pill-панели.
+ * @fileOverview UI AuraGroove V14.3 — "Ambient Focus Calibration".
+ * #ЗАЧЕМ: Центровка Ядра, увеличение масштаба и фикс логики закрытия.
+ * #ЧТО: ПЛАН №21403 — Позиция 40% по вертикали, размер 60vh, блокировка клика по фону.
  */
 'use client';
 
@@ -304,22 +305,22 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V14.2 Reform) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V14.3 Reform) */}
             {isAmbientMode && (
                 <div 
                     className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
-                    onClick={() => setIsAmbientMode(false)}
+                    // #ЗАЧЕМ: Удален сброс по клику на фон. Только по кнопке X.
                 >
-                    {/* focused Core Animation - 50% Size, shifted up by 30% from center */}
-                    {/* #ЗАЧЕМ: ПЛАН №21402. Добавлены явные размеры контейнера для видимости. */}
+                    {/* focused Core Animation - 60% Size, shifted down to 40% total offset */}
+                    {/* #ЗАЧЕМ: ПЛАН №21403. Смещено ниже (40% вместо 20%), размер увеличен до 60vh. */}
                     <div 
-                        className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none"
-                        style={{ width: '50vh', height: '50vh' }}
+                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none"
+                        style={{ width: '60vh', height: '60vh' }}
                     >
                         <OrbitalAnimation 
                             tension={props.tension} 
                             isPlaying={true} 
-                            size="50vh" 
+                            size="60vh" 
                             className="opacity-90"
                         />
                     </div>
@@ -377,7 +378,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <ThumbsUp className="h-6 w-6" />
                         </Button>
 
-                        {/* #ЗАЧЕМ: Замена иконки на Запись (Radio). Исправление по требованию. */}
+                        {/* Record Session Button */}
                         <Button 
                             variant="ghost" 
                             size="icon" 
