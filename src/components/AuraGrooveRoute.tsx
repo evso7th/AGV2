@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V9.1.0 — "Visual Synesthesia".
- * #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation на основе Tension.
- * #ЧТО: ПЛАН №21200 — Динамический расчет цвета для текстовых оверлеев.
+ * @fileOverview UI AuraGroove V9.1.1 — "High Visibility Synesthesia".
+ * #ЗАЧЕМ: Повышение яркости и читаемости HUD в Ambient Mode.
+ * #ЧТО: ПЛАН №21201 — Коррекция HSL и opacity для текстовых оверлеев.
  */
 'use client';
 
@@ -318,11 +318,11 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         };
     }, [resetIdleTimer]);
 
-    // #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation.
+    // #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation. Повышенная яркость (V12.2).
     const hudColor = useMemo(() => {
         const hue = 270 + (props.tension * 20);
-        const saturation = 50 + (props.tension * 20);
-        const light = 50 + (props.tension * 25);
+        const saturation = 70 + (props.tension * 25); // Повышено с 50
+        const light = 60 + (props.tension * 25);      // Повышено с 50
         return `hsl(${hue}, ${saturation}%, ${light}%)`;
     }, [props.tension]);
 
@@ -366,33 +366,36 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         className="opacity-90"
                     />
                     
-                    {/* HUD Minimalistic with Dynamic Synesthesia */}
-                    <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-40">
+                    {/* HUD Minimalistic with High Visibility Synesthesia (V12.2) */}
+                    <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-90">
                         <div 
-                            className="text-[12px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
+                            className="text-[13px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
                             style={{ 
                                 color: hudColor,
-                                textShadow: `0 0 20px ${hudColor}`
+                                textShadow: `0 0 30px ${hudColor}, 0 0 10px rgba(0,0,0,0.5)`
                             }}
                         >
                             {t(`g_${props.genre}` as any)} // {t(`m_${props.mood}` as any)}
                         </div>
                     </div>
                     
-                    <div className="absolute bottom-10 right-10 flex flex-col items-end gap-1 select-none pointer-events-none opacity-40">
+                    <div className="absolute bottom-10 right-10 flex flex-col items-end gap-1 select-none pointer-events-none opacity-90">
                         <div 
-                            className="text-[10px] font-mono font-bold tracking-widest uppercase transition-colors duration-500"
-                            style={{ color: hudColor }}
+                            className="text-[11px] font-mono font-bold tracking-widest uppercase transition-colors duration-500"
+                            style={{ 
+                                color: hudColor,
+                                textShadow: `0 0 20px ${hudColor}`
+                            }}
                         >
                             Step {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
-                        <div className="text-[9px] font-mono opacity-60">
+                        <div className="text-[10px] font-mono opacity-80" style={{ color: hudColor }}>
                             Bar {props.currentBar} // {props.totalBars}
                         </div>
                     </div>
 
                     <div 
-                        className="absolute top-10 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-[0.5em] opacity-20 select-none transition-colors duration-500"
+                        className="absolute top-10 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-[0.5em] opacity-40 select-none transition-colors duration-500"
                         style={{ color: hudColor }}
                     >
                         AuraGroove Infinity Take Orchestra
