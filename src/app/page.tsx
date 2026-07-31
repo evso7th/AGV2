@@ -70,7 +70,7 @@ export default function Home() {
             <CardDescription className="text-sm leading-relaxed pt-2">
               <span className="text-white">{t('welcome_desc_main')}</span><br />
               <span className="text-primary font-bold bg-transparent">{t('welcome_desc_orchestra')}</span><br />
-              <span className="text-white opacity-60 text-[10px]">v 0.3.62 stream bridge pwa edition</span>
+              <span className="text-white opacity-60 text-[10px]">v 0.4.12 stream bridge pwa edition</span>
             </CardDescription>
           </div>
         </CardHeader>
