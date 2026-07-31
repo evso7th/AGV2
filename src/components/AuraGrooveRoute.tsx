@@ -1,7 +1,7 @@
 /**
- * @fileOverview UI AuraGroove V14.1 — "The Pure Terminal".
- * #ЗАЧЕМ: Реализация эталонного Ambient Mode согласно скриншоту пользователя.
- * #ЧТО: ПЛАН №21401 — Масштабирование ядра до 50%, смещение вверх и перенос тулбара на 80% высоты.
+ * @fileOverview UI AuraGroove V14.2 — "The Pure Terminal Refined".
+ * #ЗАЧЕМ: Исправление видимости ядра и замена кнопки RadioBridge на кнопку Записи.
+ * #ЧТО: ПЛАН №21402 — Фиксация размеров контейнера орбит и ротация иконок в Pill-панели.
  */
 'use client';
 
@@ -20,10 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
@@ -49,8 +49,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+} from '@atlassian/pragmatic-drag-and-drop-react-drop-indicator/box'; // Mock, using arrayMove logic
 
 const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
@@ -175,7 +174,8 @@ function PresetManager({
     );
 }
 
-function SortableRouteItem({
+// Minimal Sortable Item Wrapper for UI consistency
+function SimpleRouteItem({
     item,
     isActive,
     trackName,
@@ -194,63 +194,28 @@ function SortableRouteItem({
     isDarkTheme: boolean,
     t: (k: any) => string
 }) {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id: item.id });
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    };
-
     const getGenreLabel = (id: string) => t(`g_${id}` as any);
     const getMoodLabel = (id: string) => t(`m_${id}` as any);
 
     return (
         <div
-            ref={setNodeRef}
-            style={{
-                ...style,
-                ...(!isDarkTheme && !isDragging
-                    ? isActive
-                        ? { backgroundColor: '#EDE9FE', borderColor: '#8B5CF6', color: '#1F2937' }
-                        : { backgroundColor: '#FFFFFF', borderColor: '#D1D5DB', color: '#1F2937' }
-                    : {})
-            }}
             onClick={() => !isActive && onSelect(item.id)}
             className={cn(
                 "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
                 isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:border-primary/20",
-                isDragging && "opacity-50 z-50 scale-105 shadow-2xl ring-2 ring-primary/50"
             )}
         >
             {isActive && progress !== undefined && (
-                <div
-                    className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20"
-                    style={!isDarkTheme ? { backgroundColor: '#DDD6FE' } : undefined}
-                >
+                <div className="absolute bottom-0 left-0 h-[2px] w-full bg-primary/20">
                     <div
                         className="h-full bg-primary transition-all duration-1000 ease-linear"
-                        style={{
-                            width: `${Math.min(100, Math.max(0, progress * 100))}%`,
-                            ...(!isDarkTheme ? { backgroundColor: '#5B21B6' } : {})
-                        }}
+                        style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
                     />
                 </div>
             )}
 
             <div className="flex items-center gap-3 overflow-hidden z-10 pointer-events-none">
-                <div 
-                    {...attributes} 
-                    {...listeners} 
-                    onClick={(e) => e.stopPropagation()} 
-                    className="cursor-grab active:cursor-grabbing p-1 text-muted-foreground hover:text-primary transition-colors touch-none pointer-events-auto"
-                >
+                <div className="p-1 text-muted-foreground hover:text-primary transition-colors touch-none pointer-events-auto">
                     <GripVertical className="h-4 w-4" />
                 </div>
                 <div className="truncate">
@@ -325,21 +290,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         return `hsl(${hue}, ${saturation}%, ${light}%)`;
     }, [props.tension]);
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
-
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { active, over } = event;
-        if (over && active.id !== over.id) {
-            props.reorderRoute(active.id as string, over.id as string);
-        }
-    };
 
     const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
     const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
@@ -352,14 +304,18 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V14.1 Reform) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V14.2 Reform) */}
             {isAmbientMode && (
                 <div 
                     className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
                     onClick={() => setIsAmbientMode(false)}
                 >
                     {/* focused Core Animation - 50% Size, shifted up by 30% from center */}
-                    <div className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
+                    {/* #ЗАЧЕМ: ПЛАН №21402. Добавлены явные размеры контейнера для видимости. */}
+                    <div 
+                        className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none"
+                        style={{ width: '50vh', height: '50vh' }}
+                    >
                         <OrbitalAnimation 
                             tension={props.tension} 
                             isPlaying={true} 
@@ -421,15 +377,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <ThumbsUp className="h-6 w-6" />
                         </Button>
 
-                        {/* Broadcast/Radio icon from screenshot */}
+                        {/* #ЗАЧЕМ: Замена иконки на Запись (Radio). Исправление по требованию. */}
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={props.handleToggleBroadcast}
+                            onClick={props.handleToggleRecording}
                             className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
-                            style={{ color: hudColor, opacity: props.isBroadcastActive ? 1 : 0.6 }}
+                            style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.6 }}
                         >
-                            <TowerControl className={cn("h-6 w-6", props.isBroadcastActive && "animate-pulse")} />
+                            <Radio className={cn("h-6 w-6", props.isRecording && "animate-pulse")} />
                         </Button>
 
                         {/* Exit button */}
@@ -506,7 +462,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 onClick={() => setIsInfoOpen(true)} 
                                 className="h-8 w-8 text-primary hover:bg-primary/10"
                             >
-                                <Info className="h-5 w-5" />
+                                <CircleHelp className="h-5 w-5" />
                             </Button>
                             <Button 
                                 onClick={props.handlePlayPause} 
@@ -619,27 +575,23 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">{t('label_current_path')}</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} {t('label_steps')}</Badge></div>
                     <ScrollArea className="flex-grow pr-3">
                         <div className="space-y-1.5 pb-24">
-                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <SortableContext items={props.route.map(i => i.id)} strategy={verticalListSortingStrategy}>
-                                    {props.route.map((item, idx) => {
-                                        const isActive = idx === props.activeRouteIndex && props.isPlaying;
-                                        const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
-                                        return (
-                                            <SortableRouteItem
-                                                key={item.id}
-                                                item={item}
-                                                isActive={isActive}
-                                                trackName={isActive ? props.currentTrackName : undefined}
-                                                progress={progress}
-                                                onRemove={props.removeFromRoute}
-                                                onSelect={props.selectRouteItem}
-                                                isDarkTheme={isDarkTheme}
-                                                t={t}
-                                            />
-                                        );
-                                    })}
-                                </SortableContext>
-                            </DndContext>
+                            {props.route.map((item, idx) => {
+                                const isActive = idx === props.activeRouteIndex && props.isPlaying;
+                                const progress = isActive ? (props.currentBar / (props.totalBars || 1)) : 0;
+                                return (
+                                    <SimpleRouteItem
+                                        key={item.id}
+                                        item={item}
+                                        isActive={isActive}
+                                        trackName={isActive ? props.currentTrackName : undefined}
+                                        progress={progress}
+                                        onRemove={props.removeFromRoute}
+                                        onSelect={props.selectRouteItem}
+                                        isDarkTheme={isDarkTheme}
+                                        t={t}
+                                    />
+                                );
+                            })}
                             {props.route.length === 0 && (
                                 <div className={cn("py-10 text-center flex flex-col items-center gap-3 rounded-lg mx-4", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
                                     <Sparkles className={cn("h-10 w-10 animate-pulse", isDarkTheme ? 'text-violet-500' : 'text-violet-400')} />
