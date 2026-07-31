@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Welcome Page V3.2 — "The Living Core".
- * #ЗАЧЕМ: Интеграция 3D OrbitalAnimation для создания футуристического облика.
+ * @fileOverview Welcome Page V3.3 — "The Contained Core".
+ * #ЗАЧЕМ: Ограничение анимации OrbitalAnimation рамками карточки для стабильности интерфейса.
  */
 'use client';
 
@@ -30,20 +30,18 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background text-foreground overflow-hidden">
       
-      {/* Глобальная фоновая анимация (за картой) */}
-      <div className="absolute inset-0 pointer-events-none opacity-20 scale-150">
-         <OrbitalAnimation isPlaying={false} tempo={30} />
-      </div>
+      <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
+        
+        {/* Анимация "Живое Ядро" - теперь строго внутри карточки */}
+        <div 
+          className="absolute inset-0 pointer-events-none opacity-40 z-0 flex items-center justify-center"
+          style={{ '--orbital-size': '320px' } as React.CSSProperties}
+        >
+           <OrbitalAnimation isPlaying={false} tempo={60} />
+        </div>
 
-      <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden">
-        <CardHeader className="space-y-1 relative">
-          
-          {/* Анимация "Живое Ядро" за логотипом */}
-          <div className="absolute top-[-10%] left-0 w-full h-[120%] pointer-events-none opacity-60 z-0">
-             <OrbitalAnimation isPlaying={false} tempo={60} />
-          </div>
-
-          <div className="mx-auto mb-2 relative z-10">
+        <CardHeader className="space-y-1 relative z-10 pt-8">
+          <div className="mx-auto mb-4">
             <Image 
               src="/assets/icon8.jpeg" 
               alt="AuraGroove Logo" 
@@ -52,21 +50,23 @@ export default function Home() {
               className="rounded-full shadow-lg border-2 border-primary/20" 
             />
           </div>
-          <div className="relative z-10">
+          <div className="relative">
             <CardTitle className="font-headline text-2xl tracking-tight">
               {t('welcome_title')}
             </CardTitle>
-            <CardDescription className="text-sm leading-relaxed pt-1">
+            <CardDescription className="text-sm leading-relaxed pt-2">
               <span className="text-white">{t('welcome_desc_main')}</span><br />
               <span className="text-primary font-bold bg-transparent">{t('welcome_desc_orchestra')}</span><br />
-              <span className="text-white opacity-90 text-[10px]">v 0.3.62 stream bridge pwa edition</span>
+              <span className="text-white opacity-60 text-[10px]">v 0.3.62 stream bridge pwa edition</span>
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="min-h-0 py-1 flex flex-col items-center justify-center relative z-10">
-          {/* Контент минимизирован для подтяжки кнопки вверх */}
+        
+        <CardContent className="flex-grow relative z-10">
+          {/* Spacer for layout consistency */}
         </CardContent>
-        <CardFooter className="pt-0 flex-col relative z-10">
+
+        <CardFooter className="pt-0 flex-col relative z-10 pb-8">
           <Button 
             onClick={handleStart} 
             className="w-full text-[11px] py-5 uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90" 
