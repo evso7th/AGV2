@@ -1,8 +1,7 @@
-
 /**
- * @fileOverview UI AuraGroove V9.1.1 — "High Visibility Synesthesia".
- * #ЗАЧЕМ: Повышение яркости и читаемости HUD в Ambient Mode.
- * #ЧТО: ПЛАН №21201 — Коррекция HSL и opacity для текстовых оверлеев.
+ * @fileOverview UI AuraGroove V13.0 — "The Interactive Terminal".
+ * #ЗАЧЕМ: Превращение Ambient Mode в функциональный пульт управления.
+ * #ЧТО: ПЛАН №21300 — Добавление навигации по маршруту и кнопок управления в оверлей.
  */
 'use client';
 
@@ -12,7 +11,8 @@ import {
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
-    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp
+    GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp,
+    SkipBack, SkipForward, Play
 } from 'lucide-react';
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -321,8 +321,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     // #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation. Повышенная яркость (V12.2).
     const hudColor = useMemo(() => {
         const hue = 270 + (props.tension * 20);
-        const saturation = 70 + (props.tension * 25); // Повышено с 50
-        const light = 60 + (props.tension * 25);      // Повышено с 50
+        const saturation = 70 + (props.tension * 25); 
+        const light = 60 + (props.tension * 25);      
         return `hsl(${hue}, ${saturation}%, ${light}%)`;
     }, [props.tension]);
 
@@ -353,20 +353,100 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay */}
+            {/* Ambient Overlay - THE INTERACTIVE TERMINAL (V13.0) */}
             {isAmbientMode && (
                 <div 
-                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 flex items-center justify-center animate-in fade-in duration-1000 cursor-none"
+                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 flex items-center justify-center animate-in fade-in duration-1000 cursor-default"
                     onClick={() => setIsAmbientMode(false)}
                 >
-                    <OrbitalAnimation 
-                        tension={props.tension} 
-                        isPlaying={true} 
-                        size="450px" 
-                        className="opacity-90"
-                    />
+                    <div 
+                        className="relative flex flex-col items-center justify-center gap-12"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <OrbitalAnimation 
+                            tension={props.tension} 
+                            isPlaying={true} 
+                            size="450px" 
+                            className="opacity-90"
+                        />
+                        
+                        {/* Central Control Panel (V13.0) */}
+                        <div className="flex items-center gap-8 px-10 py-5 rounded-full bg-black/20 border border-white/5 backdrop-blur-md shadow-2xl opacity-90 transition-all">
+                            {/* Back Step */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                disabled={props.activeRouteIndex <= 0}
+                                onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
+                                className="h-12 w-12 hover:bg-white/5 disabled:opacity-20 transition-all active:scale-90"
+                                style={{ color: hudColor }}
+                            >
+                                <SkipBack className="h-6 w-6" />
+                            </Button>
+
+                            {/* Play/Pause */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={props.handlePlayPause}
+                                className="h-16 w-16 hover:bg-white/5 transition-all active:scale-95"
+                                style={{ color: hudColor }}
+                            >
+                                {props.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10 fill-current" />}
+                            </Button>
+
+                            {/* Next Step */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                disabled={props.activeRouteIndex >= props.route.length - 1}
+                                onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
+                                className="h-12 w-12 hover:bg-white/5 disabled:opacity-20 transition-all active:scale-90"
+                                style={{ color: hudColor }}
+                            >
+                                <SkipForward className="h-6 w-6" />
+                            </Button>
+
+                            <div className="w-px h-8 bg-white/10 mx-2" />
+
+                            {/* Like (Masterpiece) */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={props.handleSaveMasterpiece}
+                                className="h-12 w-12 hover:bg-white/5 transition-all active:scale-90"
+                                style={{ color: hudColor }}
+                                title="Save Masterpiece"
+                            >
+                                <ThumbsUp className="h-6 w-6" />
+                            </Button>
+
+                            {/* Recording */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={props.handleToggleRecording}
+                                className="h-12 w-12 hover:bg-white/5 transition-all active:scale-90"
+                                style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.6 }}
+                                title="Toggle Recording"
+                            >
+                                <Radio className={cn("h-6 w-6", props.isRecording && "animate-pulse")} />
+                            </Button>
+
+                            {/* Exit Ambient Mode */}
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setIsAmbientMode(false)}
+                                className="h-12 w-12 hover:bg-white/5 text-white/40 transition-all active:scale-90"
+                                title="Exit Terminal"
+                            >
+                                <X className="h-6 w-6" />
+                            </Button>
+                        </div>
+                    </div>
                     
-                    {/* HUD Minimalistic with High Visibility Synesthesia (V12.2) */}
+                    {/* HUD Labels with High Visibility Synesthesia */}
                     <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-90">
                         <div 
                             className="text-[13px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
@@ -470,7 +550,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </Button>
                         </div>
                         <div className="flex items-center gap-0.5">
-                            <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
+                            <Button variant="ghost" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
                             <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
                         </div>
                     </div>
