@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview UI AuraGroove V8.5.1 — "Audio Credits Integration".
- * #ЗАЧЕМ: Добавление вкладки Credits в Информационный Центр.
+ * @fileOverview UI AuraGroove V9.0.1 — "The Perpetual Spiral".
+ * #ЗАЧЕМ: Реализация Ambient Mode (Полноэкранный оверлей после 10 сек бездействия).
  */
 'use client';
 
@@ -28,7 +29,7 @@ import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
-import type { Language } from '@/lib/translations';
+import { OrbitalAnimation } from "./orbital-animation";
 
 // DND Kit Imports
 import {
@@ -291,6 +292,30 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isCapacityDialogOpen, setIsCapacityDialogOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
     const [isDarkTheme, setIsDarkTheme] = useState(true);
+    
+    // #ЗАЧЕМ: Протокол "Perpetual Spiral" — Ambient Mode Logic.
+    const [isAmbientMode, setIsAmbientMode] = useState(false);
+    const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const resetIdleTimer = useCallback(() => {
+        setIsAmbientMode(false);
+        if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        if (props.isPlaying) {
+            idleTimerRef.current = setTimeout(() => {
+                setIsAmbientMode(true);
+            }, 10000); // 10 секунд бездействия
+        }
+    }, [props.isPlaying]);
+
+    useEffect(() => {
+        const events = ['mousemove', 'mousedown', 'touchstart', 'keydown'];
+        events.forEach(e => window.addEventListener(e, resetIdleTimer));
+        resetIdleTimer();
+        return () => {
+            events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+            if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+        };
+    }, [resetIdleTimer]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -318,6 +343,42 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
+            
+            {/* Ambient Overlay */}
+            {isAmbientMode && (
+                <div 
+                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 flex items-center justify-center animate-in fade-in duration-1000 cursor-none"
+                    onClick={() => setIsAmbientMode(false)}
+                >
+                    <OrbitalAnimation 
+                        tension={props.tension} 
+                        isPlaying={true} 
+                        size="450px" 
+                        className="opacity-90"
+                    />
+                    
+                    {/* HUD Minimalistic */}
+                    <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-40">
+                        <div className="text-[12px] font-black uppercase tracking-[0.4em] text-primary">
+                            {t(`g_${props.genre}` as any)} // {t(`m_${props.mood}` as any)}
+                        </div>
+                    </div>
+                    
+                    <div className="absolute bottom-10 right-10 flex flex-col items-end gap-1 select-none pointer-events-none opacity-40">
+                        <div className="text-[10px] font-mono font-bold tracking-widest uppercase">
+                            Step {props.activeRouteIndex + 1} / {props.route.length}
+                        </div>
+                        <div className="text-[9px] font-mono opacity-60">
+                            Bar {props.currentBar} // {props.totalBars}
+                        </div>
+                    </div>
+
+                    <div className="absolute top-10 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-[0.5em] opacity-20 select-none">
+                        AuraGroove Infinity Take Orchestra
+                    </div>
+                </div>
+            )}
+
             {/* TOP: Header + Selectors */}
             <div className={cn("shrink-0 flex flex-col border-b transition-colors", borderClass)}>
                 <header className={cn("p-3 shrink-0 transition-colors", headerBgClass)}>

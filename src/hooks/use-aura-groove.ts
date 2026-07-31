@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V30.1 — "Default Texture Levels Update".
- * #ЗАЧЕМ: Установка дефолтных уровней Sparkles и SFX на 0.65.
+ * @fileOverview Music Control Hook V31.0 — "Tension Awareness Update".
+ * #ЗАЧЕМ: Добавление tension в пропсы для поддержки Ambient Mode.
  */
 'use client';
 
@@ -112,6 +112,7 @@ export interface AuraGrooveProps {
   currentBar: number;
   totalBars: number;
   currentTrackName: string;
+  tension: number; // Новое поле
   eqPresets: PresetItem[];
   activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
@@ -141,7 +142,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIsPlaying, updateSettings, refreshCloudAxioms, syncDna: engineSyncDna, setVolume, setInstrument, stopAllSounds,
     setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
     setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
-    resetWorker
+    tension, resetWorker
   } = useAudioEngine(); 
   
   const { toast } = useToast();
@@ -156,8 +157,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     pianoAccompaniment: { name: "piano", volume: 0.5 },
   });
   const [textureSettings, setTextureSettings] = useState<TextureSettings>({
-      sparkles: { enabled: true, volume: 0.65 }, // Повышено с 0.5
-      sfx: { enabled: true, volume: 0.65 },      // Повышено с 0.5
+      sparkles: { enabled: true, volume: 0.65 }, 
+      sfx: { enabled: true, volume: 0.65 },      
   });
   
   const [bpm, setBpm] = useState(75);
@@ -694,7 +695,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     saveRoute: (name: string) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     loadRoute, deleteSavedRoute: (id: string) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex, showAdvancedUI, setShowAdvancedUI,
-    currentBar, totalBars, currentTrackName,
+    currentBar, totalBars, currentTrackName, tension,
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre,
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
     useMelodyV2: true, toggleMelodyEngine: () => {},
@@ -705,7 +706,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setInstrument, handleVolumeChange, textureSettings, bpm, setBpm, score, setScore, density, setDensity, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
       calibrationGains, setCalibrationGain, timerSettings, mood, genre, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
-      savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, eqPresets, activeEqPresetId, 
+      savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
       saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre, mixerPresets, activeMixerPresetId, saveMixerPreset,
       updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
       language, toggleLanguage, t

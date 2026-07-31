@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V56.3 — "Texture Volume Reform".
- * #ЗАЧЕМ: Увеличение базового уровня Sparkles и SFX для лучшей читаемости атмосферы.
+ * @fileOverview Audio Engine Context V57.0 — "Visual Feedback Integration".
+ * #ЗАЧЕМ: Добавление состояния tension для синхронизации визуальных эффектов.
  */
 'use client';
 
@@ -35,8 +35,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.65,           
   accompaniment: 0.80,
   drums: 0.85,            
-  sparkles: 0.65,       // Повышено с 0.45 для сочности новых текстур
-  sfx: 0.65,            // Повышено с 0.45 для сочности новых текстур
+  sparkles: 0.65,       
+  sfx: 0.65,            
   harmony: 0.80,        
   pianoAccompaniment: 0.325, 
 };
@@ -65,6 +65,7 @@ interface AudioEngineContextType {
   currentBar: number;
   totalBars: number;
   currentTrackName: string;
+  tension: number; // Новое поле для визуализации
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -115,6 +116,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [availableCompositions, setAvailableCompositions] = useState<{ id: string; count: number; genres: string[]; moods: string[] }[]>([]);
   const [backgroundLoadInProgress, setBackgroundLoadInProgress] = useState(false);
   const [backgroundLoadComplete, setBackgroundLoadComplete] = useState(false);
+  const [tension, setTension] = useState(0.5);
 
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -444,6 +446,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const ctx = audioContextRef.current; if (!ctx) return;
                     setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
+                    if (isFinite(payload.tension)) setTension(payload.tension); // Синхронизируем tension
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
                     if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
@@ -493,7 +496,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete, availableCompositions, initialize,
-      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
+      analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName, tension,
       setIsPlaying: handleTogglePlay,
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
       refreshCloudAxioms, syncDna, getWorker: () => workerRef.current, resetWorker: () => { setCurrentBar(0); workerRef.current?.postMessage({ command: 'reset' }); },
@@ -531,7 +534,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete,
       availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, syncDna,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, 
-      stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, scheduleEvents
+      stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents
   ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
