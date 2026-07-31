@@ -1,7 +1,7 @@
 /**
- * @fileOverview UI AuraGroove V13.0 — "The Interactive Terminal".
- * #ЗАЧЕМ: Превращение Ambient Mode в функциональный пульт управления.
- * #ЧТО: ПЛАН №21300 — Добавление навигации по маршруту и кнопок управления в оверлей.
+ * @fileOverview UI AuraGroove V14.0 — "The Pure Terminal".
+ * #ЗАЧЕМ: Реализация эталонного Ambient Mode согласно скриншоту пользователя.
+ * #ЧТО: ПЛАН №21400 — Полноэкранное ядро, Pill-панель управления и статичный HUD.
  */
 'use client';
 
@@ -299,14 +299,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const resetIdleTimer = useCallback(() => {
-        setIsAmbientMode(false);
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-        if (props.isPlaying) {
+        if (props.isPlaying && !isAmbientMode) {
             idleTimerRef.current = setTimeout(() => {
                 setIsAmbientMode(true);
-            }, 10000); // 10 секунд бездействия
+            }, 10000); 
         }
-    }, [props.isPlaying]);
+    }, [props.isPlaying, isAmbientMode]);
 
     useEffect(() => {
         const events = ['mousemove', 'mousedown', 'touchstart', 'keydown'];
@@ -353,132 +352,128 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE INTERACTIVE TERMINAL (V13.0) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V14.0) */}
             {isAmbientMode && (
                 <div 
                     className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 flex items-center justify-center animate-in fade-in duration-1000 cursor-default"
                     onClick={() => setIsAmbientMode(false)}
                 >
-                    <div 
-                        className="relative flex flex-col items-center justify-center gap-12"
-                        onClick={(e) => e.stopPropagation()}
-                    >
+                    {/* Background Animation - Full Screen */}
+                    <div className="absolute inset-0 z-0">
                         <OrbitalAnimation 
                             tension={props.tension} 
                             isPlaying={true} 
-                            size="450px" 
-                            className="opacity-90"
+                            size="120vw" 
+                            className="opacity-80 scale-110"
                         />
-                        
-                        {/* Central Control Panel (V13.0) */}
-                        <div className="flex items-center gap-8 px-10 py-5 rounded-full bg-black/20 border border-white/5 backdrop-blur-md shadow-2xl opacity-90 transition-all">
-                            {/* Back Step */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                disabled={props.activeRouteIndex <= 0}
-                                onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
-                                className="h-12 w-12 hover:bg-white/5 disabled:opacity-20 transition-all active:scale-90"
-                                style={{ color: hudColor }}
-                            >
-                                <SkipBack className="h-6 w-6" />
-                            </Button>
-
-                            {/* Play/Pause */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={props.handlePlayPause}
-                                className="h-16 w-16 hover:bg-white/5 transition-all active:scale-95"
-                                style={{ color: hudColor }}
-                            >
-                                {props.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10 fill-current" />}
-                            </Button>
-
-                            {/* Next Step */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                disabled={props.activeRouteIndex >= props.route.length - 1}
-                                onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
-                                className="h-12 w-12 hover:bg-white/5 disabled:opacity-20 transition-all active:scale-90"
-                                style={{ color: hudColor }}
-                            >
-                                <SkipForward className="h-6 w-6" />
-                            </Button>
-
-                            <div className="w-px h-8 bg-white/10 mx-2" />
-
-                            {/* Like (Masterpiece) */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={props.handleSaveMasterpiece}
-                                className="h-12 w-12 hover:bg-white/5 transition-all active:scale-90"
-                                style={{ color: hudColor }}
-                                title="Save Masterpiece"
-                            >
-                                <ThumbsUp className="h-6 w-6" />
-                            </Button>
-
-                            {/* Recording */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={props.handleToggleRecording}
-                                className="h-12 w-12 hover:bg-white/5 transition-all active:scale-90"
-                                style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.6 }}
-                                title="Toggle Recording"
-                            >
-                                <Radio className={cn("h-6 w-6", props.isRecording && "animate-pulse")} />
-                            </Button>
-
-                            {/* Exit Ambient Mode */}
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                onClick={() => setIsAmbientMode(false)}
-                                className="h-12 w-12 hover:bg-white/5 text-white/40 transition-all active:scale-90"
-                                title="Exit Terminal"
-                            >
-                                <X className="h-6 w-6" />
-                            </Button>
-                        </div>
                     </div>
                     
-                    {/* HUD Labels with High Visibility Synesthesia */}
-                    <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-90">
+                    {/* Central Control Panel - Pill Shape (Screenshot Accurate) */}
+                    <div 
+                        className="relative z-10 flex items-center gap-6 px-12 py-6 rounded-full bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-all active:scale-95"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Back Step */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={props.activeRouteIndex <= 0}
+                            onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
+                            className="h-10 w-10 hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+                            style={{ color: hudColor }}
+                        >
+                            <SkipBack className="h-6 w-6" />
+                        </Button>
+
+                        {/* Play/Pause (Central large) */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={props.handlePlayPause}
+                            className="h-14 w-14 hover:bg-white/10 transition-all active:scale-90"
+                            style={{ color: hudColor }}
+                        >
+                            {props.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10 fill-current" />}
+                        </Button>
+
+                        {/* Next Step */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            disabled={props.activeRouteIndex >= props.route.length - 1}
+                            onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
+                            className="h-10 w-10 hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+                            style={{ color: hudColor }}
+                        >
+                            <SkipForward className="h-6 w-6" />
+                        </Button>
+
+                        <div className="w-[1px] h-10 bg-white/20 mx-2" />
+
+                        {/* Like (Masterpiece) */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={props.handleSaveMasterpiece}
+                            className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
+                            style={{ color: hudColor }}
+                        >
+                            <ThumbsUp className="h-6 w-6" />
+                        </Button>
+
+                        {/* Broadcast/Radio icon from screenshot */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={props.handleToggleBroadcast}
+                            className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
+                            style={{ color: hudColor, opacity: props.isBroadcastActive ? 1 : 0.6 }}
+                        >
+                            <TowerControl className={cn("h-6 w-6", props.isBroadcastActive && "animate-pulse")} />
+                        </Button>
+
+                        {/* Exit button */}
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => setIsAmbientMode(false)}
+                            className="h-10 w-10 hover:bg-white/10 text-white/30 transition-all active:scale-90"
+                        >
+                            <X className="h-6 w-6" />
+                        </Button>
+                    </div>
+                    
+                    {/* Top Text (Screenshot Accurate) */}
+                    <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-40">
                         <div 
-                            className="text-[13px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
+                            className="text-[10px] font-black uppercase tracking-[0.6em] transition-colors duration-500"
+                            style={{ color: hudColor }}
+                        >
+                            AURAGROOVE INFINITY TAKE ORCHESTRA
+                        </div>
+                    </div>
+
+                    {/* Bottom Label (Screenshot Accurate) */}
+                    <div className="absolute bottom-12 left-10 select-none pointer-events-none opacity-90">
+                        <div 
+                            className="text-[14px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
                             style={{ 
                                 color: hudColor,
-                                textShadow: `0 0 30px ${hudColor}, 0 0 10px rgba(0,0,0,0.5)`
+                                textShadow: `0 0 40px ${hudColor}`
                             }}
                         >
                             {t(`g_${props.genre}` as any)} // {t(`m_${props.mood}` as any)}
                         </div>
                     </div>
                     
-                    <div className="absolute bottom-10 right-10 flex flex-col items-end gap-1 select-none pointer-events-none opacity-90">
-                        <div 
-                            className="text-[11px] font-mono font-bold tracking-widest uppercase transition-colors duration-500"
-                            style={{ 
-                                color: hudColor,
-                                textShadow: `0 0 20px ${hudColor}`
-                            }}
-                        >
+                    {/* Info display right bottom */}
+                    <div className="absolute bottom-12 right-10 flex flex-col items-end select-none pointer-events-none opacity-60">
+                        <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: hudColor }}>
                             Step {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
-                        <div className="text-[10px] font-mono opacity-80" style={{ color: hudColor }}>
-                            Bar {props.currentBar} // {props.totalBars}
+                        <div className="text-[9px] font-mono" style={{ color: hudColor }}>
+                            Bar {props.currentBar} / {props.totalBars}
                         </div>
-                    </div>
-
-                    <div 
-                        className="absolute top-10 left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-[0.5em] opacity-40 select-none transition-colors duration-500"
-                        style={{ color: hudColor }}
-                    >
-                        AuraGroove Infinity Take Orchestra
                     </div>
                 </div>
             )}
