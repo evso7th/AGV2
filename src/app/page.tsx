@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Welcome Page V3.4 — "Animated Footer Update".
- * #ЗАЧЕМ: Реализация бегущей строки для копирайта с отступами 5%.
+ * @fileOverview Welcome Page V3.5 — "Embedded Marquee Update".
+ * #ЗАЧЕМ: Перенос копирайта внутрь карточки под кнопку Start.
  */
 'use client';
 
@@ -79,7 +79,7 @@ export default function Home() {
           {/* Spacer for layout consistency */}
         </CardContent>
 
-        <CardFooter className="pt-0 flex-col relative z-10 pb-8">
+        <CardFooter className="pt-0 flex-col relative z-10 pb-12">
           <Button 
             onClick={handleStart} 
             className="w-full text-[11px] py-5 uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90" 
@@ -88,17 +88,15 @@ export default function Home() {
             <Music className="mr-2 h-4 w-4" />
             {t('btn_start')}
           </Button>
-          {/* Пустой блок для сохранения пропорций карточки */}
-          <div className="mt-8 h-4"></div>
         </CardFooter>
-      </Card>
 
-      {/* Бегущая строка внизу экрана с отступами 5% */}
-      <div className="absolute bottom-6 left-[5%] right-[5%] h-6 overflow-hidden pointer-events-none select-none">
-        <div className="animate-marquee-slow text-[9px] opacity-40 uppercase tracking-tighter">
-          © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+        {/* Бегущая строка, притянутая к нижнему краю рамки карточки */}
+        <div className="absolute bottom-4 left-0 right-0 h-4 overflow-hidden pointer-events-none select-none z-20">
+          <div className="animate-marquee-slow text-[9px] opacity-40 uppercase tracking-tighter">
+            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+          </div>
         </div>
-      </div>
+      </Card>
     </main>
   );
 }
