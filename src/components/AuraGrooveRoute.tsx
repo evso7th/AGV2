@@ -1,11 +1,12 @@
 
 /**
- * @fileOverview UI AuraGroove V9.0.1 — "The Perpetual Spiral".
- * #ЗАЧЕМ: Реализация Ambient Mode (Полноэкранный оверлей после 10 сек бездействия).
+ * @fileOverview UI AuraGroove V9.1.0 — "Visual Synesthesia".
+ * #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation на основе Tension.
+ * #ЧТО: ПЛАН №21200 — Динамический расчет цвета для текстовых оверлеев.
  */
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
     Plus, X, Shuffle, Music, Pause, Settings2,
     Activity, Timer, ThumbsUp, Radio, TowerControl,
@@ -317,6 +318,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         };
     }, [resetIdleTimer]);
 
+    // #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation.
+    const hudColor = useMemo(() => {
+        const hue = 270 + (props.tension * 20);
+        const saturation = 50 + (props.tension * 20);
+        const light = 50 + (props.tension * 25);
+        return `hsl(${hue}, ${saturation}%, ${light}%)`;
+    }, [props.tension]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -357,15 +366,24 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         className="opacity-90"
                     />
                     
-                    {/* HUD Minimalistic */}
+                    {/* HUD Minimalistic with Dynamic Synesthesia */}
                     <div className="absolute bottom-10 left-10 flex flex-col gap-1 select-none pointer-events-none opacity-40">
-                        <div className="text-[12px] font-black uppercase tracking-[0.4em] text-primary">
+                        <div 
+                            className="text-[12px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
+                            style={{ 
+                                color: hudColor,
+                                textShadow: `0 0 20px ${hudColor}`
+                            }}
+                        >
                             {t(`g_${props.genre}` as any)} // {t(`m_${props.mood}` as any)}
                         </div>
                     </div>
                     
                     <div className="absolute bottom-10 right-10 flex flex-col items-end gap-1 select-none pointer-events-none opacity-40">
-                        <div className="text-[10px] font-mono font-bold tracking-widest uppercase">
+                        <div 
+                            className="text-[10px] font-mono font-bold tracking-widest uppercase transition-colors duration-500"
+                            style={{ color: hudColor }}
+                        >
                             Step {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
                         <div className="text-[9px] font-mono opacity-60">
@@ -373,7 +391,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     </div>
 
-                    <div className="absolute top-10 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-[0.5em] opacity-20 select-none">
+                    <div 
+                        className="absolute top-10 left-1/2 -translate-x-1/2 text-[8px] font-black uppercase tracking-[0.5em] opacity-20 select-none transition-colors duration-500"
+                        style={{ color: hudColor }}
+                    >
                         AuraGroove Infinity Take Orchestra
                     </div>
                 </div>
