@@ -1,7 +1,7 @@
 /**
- * @fileOverview UI AuraGroove V14.0 — "The Pure Terminal".
+ * @fileOverview UI AuraGroove V14.1 — "The Pure Terminal".
  * #ЗАЧЕМ: Реализация эталонного Ambient Mode согласно скриншоту пользователя.
- * #ЧТО: ПЛАН №21400 — Полноэкранное ядро, Pill-панель управления и статичный HUD.
+ * #ЧТО: ПЛАН №21401 — Масштабирование ядра до 50%, смещение вверх и перенос тулбара на 80% высоты.
  */
 'use client';
 
@@ -352,25 +352,25 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V14.0) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V14.1 Reform) */}
             {isAmbientMode && (
                 <div 
-                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 flex items-center justify-center animate-in fade-in duration-1000 cursor-default"
+                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
                     onClick={() => setIsAmbientMode(false)}
                 >
-                    {/* Background Animation - Full Screen */}
-                    <div className="absolute inset-0 z-0">
+                    {/* focused Core Animation - 50% Size, shifted up by 30% from center */}
+                    <div className="absolute top-[20%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0">
                         <OrbitalAnimation 
                             tension={props.tension} 
                             isPlaying={true} 
-                            size="120vw" 
-                            className="opacity-80 scale-110"
+                            size="50vh" 
+                            className="opacity-90"
                         />
                     </div>
                     
-                    {/* Central Control Panel - Pill Shape (Screenshot Accurate) */}
+                    {/* Control Panel - Positioned at 80% height (Pill Shape) */}
                     <div 
-                        className="relative z-10 flex items-center gap-6 px-12 py-6 rounded-full bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-all active:scale-95"
+                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-6 px-12 py-6 rounded-full bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Back Step */}
