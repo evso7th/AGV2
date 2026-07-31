@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V14.3 — "Ambient Focus Calibration".
- * #ЗАЧЕМ: Центровка Ядра, увеличение масштаба и фикс логики закрытия.
- * #ЧТО: ПЛАН №21403 — Позиция 40% по вертикали, размер 60vh, блокировка клика по фону.
+ * @fileOverview UI AuraGroove V14.5 — "HUD Alignment & Feedback".
+ * #ЗАЧЕМ: Центровка нижнего лейбла и визуальная обратная связь.
+ * #ЧТО: ПЛАН №21405 — Позиция лейбла по центру, внедрение feedbackMessage.
  */
 'use client';
 
@@ -50,7 +50,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@atlassian/pragmatic-drag-and-drop-react-drop-indicator/box'; // Mock, using arrayMove logic
+} from '@atlassian/pragmatic-drag-and-drop-react-drop-indicator/box'; // Mock
 
 const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
@@ -145,7 +145,7 @@ function PresetManager({
                     {presets.map(p => (
                         <div key={p.id} className={cn(
                             "flex items-center justify-between p-1.5 rounded border transition-all group",
-                            p.id === activeId ? "bg-primary/10 border-primary/30" : "bg-muted/30 border-transparent hover:border-primary/20"
+                            p.id === activeId ? "bg-primary/10 border-primary/30" : "border-transparent hover:bg-muted/50"
                         )}>
                             <span className="text-[10px] font-bold uppercase cursor-pointer flex-grow truncate min-w-0 mr-2" onClick={() => onLoad(p.id)}>{p.name}</span>
                             
@@ -175,7 +175,6 @@ function PresetManager({
     );
 }
 
-// Minimal Sortable Item Wrapper for UI consistency
 function SimpleRouteItem({
     item,
     isActive,
@@ -259,6 +258,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isCapacityDialogOpen, setIsCapacityDialogOpen] = useState(false);
     const [routeName, setRouteName] = useState("");
     const [isDarkTheme, setIsDarkTheme] = useState(true);
+    const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+    const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const showFeedback = useCallback((msg: string) => {
+        if (feedbackTimeoutRef.current) clearTimeout(feedbackTimeoutRef.current);
+        setFeedbackMessage(msg);
+        feedbackTimeoutRef.current = setTimeout(() => setFeedbackMessage(null), 3000);
+    }, []);
     
     // #ЗАЧЕМ: Протокол "Perpetual Spiral" — Ambient Mode Logic.
     const [isAmbientMode, setIsAmbientMode] = useState(false);
@@ -283,7 +290,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         };
     }, [resetIdleTimer]);
 
-    // #ЗАЧЕМ: Синхронизация цвета HUD с OrbitalAnimation. Повышенная яркость (V12.2).
     const hudColor = useMemo(() => {
         const hue = 270 + (props.tension * 20);
         const saturation = 70 + (props.tension * 25); 
@@ -305,7 +311,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V14.3 Reform) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V14.5 Reform) */}
             {isAmbientMode && (
                 <div 
                     className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
@@ -322,6 +328,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="opacity-90"
                         />
                     </div>
+
+                    {/* Feedback Message */}
+                    {feedbackMessage && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[120px] z-[10000] animate-in fade-in zoom-in duration-300">
+                            <Badge 
+                                variant="outline" 
+                                className="px-6 py-2 bg-black/60 backdrop-blur-xl border-primary/40 text-primary font-black uppercase text-[10px] tracking-widest shadow-[0_0_30px_rgba(168,85,247,0.3)]"
+                                style={{ color: hudColor, borderColor: hudColor }}
+                            >
+                                {feedbackMessage}
+                            </Badge>
+                        </div>
+                    )}
                     
                     {/* Control Panel - Positioned at 80% height (Pill Shape) */}
                     <div 
@@ -369,7 +388,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={props.handleSaveMasterpiece}
+                            onClick={() => { props.handleSaveMasterpiece(); showFeedback(t('toast_masterpiece_saved')); }}
                             className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
                             style={{ color: hudColor }}
                         >
@@ -380,7 +399,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            onClick={props.handleToggleRecording}
+                            onClick={() => { props.handleToggleRecording(); showFeedback(props.isRecording ? 'Recording Stopped' : 'Recording Started'); }}
                             className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
                             style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.6 }}
                         >
@@ -398,7 +417,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
                     
-                    {/* Top Text (Screenshot Accurate) */}
+                    {/* Top Text */}
                     <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-40">
                         <div 
                             className="text-[10px] font-black uppercase tracking-[0.6em] transition-colors duration-500"
@@ -408,8 +427,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     </div>
 
-                    {/* Bottom Label (Screenshot Accurate) */}
-                    <div className="absolute bottom-12 left-10 select-none pointer-events-none opacity-90">
+                    {/* Bottom Label - NOW CENTERED (V14.5) */}
+                    <div className="absolute bottom-12 left-0 right-0 text-center select-none pointer-events-none opacity-90">
                         <div 
                             className="text-[14px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
                             style={{ 
