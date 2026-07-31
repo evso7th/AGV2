@@ -5,7 +5,7 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №5 — Добавлены канонические PWA метаданные.
+ * #ЧТО: ПЛАН №5.1 — Синхронизация манифеста и Apple-специфичных метаданных.
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
@@ -13,14 +13,12 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'default',
+    statusBarStyle: 'black-translucent',
     title: 'AuraGroove',
+    startupImage: '/assets/icons/icon_512.png',
   },
   formatDetection: {
     telephone: false,
-  },
-  other: {
-    'mobile-web-app-capable': 'yes',
   },
 };
 
@@ -43,6 +41,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
+        <link rel="apple-touch-icon" href="/assets/icons/icon_192.png" />
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <Providers>

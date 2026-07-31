@@ -1,19 +1,53 @@
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "AI-powered pure digital neuro music generator",
-  "start_url": "/",
+  "description": "Infinite Take Orchestra - AI-Powered Generative Music Engine",
+  "id": "com.auragroove.v3",
+  "start_url": "/home",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#a855f7",
   "orientation": "portrait",
-  "scope": "/",
+  "background_color": "#0f0f0f",
+  "theme_color": "#a855f7",
   "icons": [
     {
-      "src": "/assets/icon8.jpeg",
+      "src": "assets/icons/icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon_512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/maskable-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/icons/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "AuraGroove Navigator Interface"
+    },
+    {
+      "src": "assets/icons/screenshot-desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "AuraGroove Desktop Experience"
     }
   ]
 }
