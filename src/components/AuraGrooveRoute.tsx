@@ -309,10 +309,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {isAmbientMode && (
                 <div 
                     className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
-                    // #ЗАЧЕМ: Удален сброс по клику на фон. Только по кнопке X.
                 >
                     {/* focused Core Animation - 60% Size, shifted down to 40% total offset */}
-                    {/* #ЗАЧЕМ: ПЛАН №21403. Смещено ниже (40% вместо 20%), размер увеличен до 60vh. */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none"
                         style={{ width: '60vh', height: '60vh' }}
@@ -502,7 +500,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </Button>
                         </div>
                         <div className="flex items-center gap-0.5">
-                            <Button variant="ghost" size="icon" onClick={() => setIsSpectrumOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
+                            <Button variant="ghost" size="icon" onClick={() => setIsEqOpen(true)} className="h-8 w-8 text-xs font-black shrink-0">EQ</Button>
                             <Button variant="ghost" size="icon" onClick={() => setIsStudioOpen(true)} className="h-8 w-8 shrink-0"><Settings2 className="h-4 w-4" /></Button>
                         </div>
                     </div>
@@ -780,7 +778,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
                     </DialogHeader>
-                    <Tabs defaultValue="guide" className="w-full">
+                    <Tabs defaultValue="guide" className="full">
                         <div className="px-6 flex items-center justify-between border-b border-primary/10">
                             <TabsList className="bg-transparent border-none p-0 h-10 gap-6">
                                 <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_user_guide')}</TabsTrigger>
