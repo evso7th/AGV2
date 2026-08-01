@@ -1,6 +1,7 @@
 /**
- * @fileOverview UI AuraGroove V15.5 — "Content Padding Polish".
- * #ЗАЧЕМ: Увеличение внутренних отступов в Инфоцентре для мобильных устройств.
+ * @fileOverview UI AuraGroove V15.6 — "The Pro Flex Fix".
+ * #ЗАЧЕМ: ПЛАН №1290 — Окно инфоцентра теперь флекс-контейнер во весь экран (96vw).
+ * #ЧТО: Сетка grid-cols-3 для табов и 2% внешние отступы.
  */
 'use client';
 
@@ -755,35 +756,38 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
-                <DialogContent className="w-[90vw] max-w-2xl bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
-                    <DialogHeader className="p-6 pb-2">
+                <DialogContent className="w-[96vw] max-w-4xl h-[90vh] flex flex-col bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
+                    <DialogHeader className="p-6 pb-2 shrink-0">
                         <DialogTitle className="font-black uppercase text-primary flex items-center gap-2 pr-8">
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
                     </DialogHeader>
-                    <Tabs defaultValue="guide" className="full">
-                        <div className="px-6 flex items-center justify-between border-b border-primary/10">
-                            <TabsList className="bg-transparent border-none p-0 h-10 gap-6">
-                                <TabsTrigger value="guide" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_user_guide')}</TabsTrigger>
-                                <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_disclaimer')}</TabsTrigger>
-                                <TabsTrigger value="credits" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_credits')}</TabsTrigger>
+                    
+                    <Tabs defaultValue="guide" className="flex-grow flex flex-col overflow-hidden">
+                        <div className="px-4 sm:px-6 shrink-0">
+                            <TabsList className="w-full h-11 grid grid-cols-3 bg-muted/20 border border-primary/10 p-1">
+                                <TabsTrigger value="guide" className="font-black uppercase text-[10px] tracking-tighter sm:tracking-widest rounded-sm">{t('tab_user_guide')}</TabsTrigger>
+                                <TabsTrigger value="disclaimer" className="font-black uppercase text-[10px] tracking-tighter sm:tracking-widest rounded-sm">{t('tab_disclaimer')}</TabsTrigger>
+                                <TabsTrigger value="credits" className="font-black uppercase text-[10px] tracking-tighter sm:tracking-widest rounded-sm">{t('tab_credits')}</TabsTrigger>
                             </TabsList>
-                            <Badge variant="outline" className="hidden sm:inline-flex text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
                         
-                        <ScrollArea className="h-[60vh] px-6 sm:px-10 py-6">
-                            <TabsContent value="guide" className="m-0 focus-visible:ring-0">
-                                <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
-                            </TabsContent>
-                            <TabsContent value="disclaimer" className="m-0 focus-visible:ring-0">
-                                <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? DISCLAIMER_RU : DISCLAIMER_EN }} />
-                            </TabsContent>
-                            <TabsContent value="credits" className="m-0 focus-visible:ring-0">
-                                <div dangerouslySetInnerHTML={{ __html: CREDITS_HTML }} />
-                            </TabsContent>
-                        </ScrollArea>
+                        <div className="flex-grow overflow-hidden mt-4">
+                            <ScrollArea className="h-full px-6 sm:px-10 pb-8">
+                                <TabsContent value="guide" className="m-0 focus-visible:ring-0">
+                                    <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
+                                </TabsContent>
+                                <TabsContent value="disclaimer" className="m-0 focus-visible:ring-0">
+                                    <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? DISCLAIMER_RU : DISCLAIMER_EN }} />
+                                </TabsContent>
+                                <TabsContent value="credits" className="m-0 focus-visible:ring-0">
+                                    <div dangerouslySetInnerHTML={{ __html: CREDITS_HTML }} />
+                                </TabsContent>
+                            </ScrollArea>
+                        </div>
                     </Tabs>
-                    <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6">
+                    
+                    <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6 shrink-0">
                         <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v0.4.12</span>
                         <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">{t('btn_close')}</Button>
                     </div>
