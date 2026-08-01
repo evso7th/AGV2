@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V15.0 — "Mobile Axis Optimization".
- * #ЗАЧЕМ: Оптимизация под мобильные экраны (90vw ширина).
- * #ЧТО: ПЛАН №21501 — Центровка инфо-блока, 5% отступы, компактная типографика.
+ * @fileOverview UI AuraGroove V15.1 — "Bottom Info Refinement".
+ * #ЗАЧЕМ: Тонкая настройка вертикального баланса и прозрачности.
+ * #ЧТО: ПЛАН №21511 — Опускание инфо-блока ниже, установка 50% прозрачности для текста.
  */
 'use client';
 
@@ -291,7 +291,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V15.0 Mobile Axis Fix) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V15.1 Axis Fix) */}
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[9999] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
@@ -318,7 +318,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
 
-                    {/* Feedback Message - Shifted for layout clearance */}
+                    {/* Feedback Message */}
                     {feedbackMessage && (
                         <div className="absolute top-[65%] left-1/2 -translate-x-1/2 z-[10000] animate-in fade-in zoom-in duration-300">
                             <Badge 
@@ -331,7 +331,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
                     
-                    {/* Control Pill - 90vw width, 80% Y-axis offset */}
+                    {/* Control Pill */}
                     <div 
                         className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-2 px-6 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
@@ -394,8 +394,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
 
-                    {/* Bottom Info Stack - Triple centered line (V15.0) */}
-                    <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
+                    {/* Bottom Info Stack - Lowered and refined opacity (V15.1) */}
+                    <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
                         <div 
                             className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500" 
                             style={{ color: hudColor }}
@@ -403,13 +403,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             STEP {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
                         <div 
-                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500"
+                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
                             style={{ color: hudColor }}
                         >
                             {t(`g_${props.genre}` as any)}
                         </div>
                         <div 
-                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500"
+                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
                             style={{ color: hudColor }}
                         >
                             {t(`m_${props.mood}` as any)}
