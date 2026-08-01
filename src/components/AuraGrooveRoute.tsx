@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V15.1 — "Bottom Info Refinement".
- * #ЗАЧЕМ: Тонкая настройка вертикального баланса и прозрачности.
- * #ЧТО: ПЛАН №21511 — Опускание инфо-блока ниже, установка 50% прозрачности для текста.
+ * @fileOverview UI AuraGroove V15.2 — "Bottom Stack Inversion".
+ * #ЗАЧЕМ: Перенос счетчика шагов в основание текстовой группы.
+ * #ЧТО: ПЛАН №21521 — Инверсия порядка: Genre -> Mood -> Step.
  */
 'use client';
 
@@ -291,7 +291,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V15.1 Axis Fix) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V15.2 Logic Fix) */}
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[9999] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
@@ -394,14 +394,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
 
-                    {/* Bottom Info Stack - Lowered and refined opacity (V15.1) */}
+                    {/* Bottom Info Stack - Step at Bottom (V15.2) */}
                     <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
-                        <div 
-                            className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500" 
-                            style={{ color: hudColor }}
-                        >
-                            STEP {props.activeRouteIndex + 1} / {props.route.length}
-                        </div>
                         <div 
                             className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
                             style={{ color: hudColor }}
@@ -413,6 +407,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             style={{ color: hudColor }}
                         >
                             {t(`m_${props.mood}` as any)}
+                        </div>
+                        <div 
+                            className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500 mt-1" 
+                            style={{ color: hudColor }}
+                        >
+                            STEP {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
                     </div>
                 </div>
