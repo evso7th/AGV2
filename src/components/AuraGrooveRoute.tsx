@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V14.5 — "HUD Alignment & Feedback".
- * #ЗАЧЕМ: Центровка нижнего лейбла и визуальная обратная связь.
- * #ЧТО: ПЛАН №21405 — Позиция лейбла по центру, внедрение feedbackMessage.
+ * @fileOverview UI AuraGroove V15.0 — "Mobile Axis Optimization".
+ * #ЗАЧЕМ: Оптимизация под мобильные экраны (90vw ширина).
+ * #ЧТО: ПЛАН №21501 — Центровка инфо-блока, 5% отступы, компактная типографика.
  */
 'use client';
 
@@ -32,25 +32,6 @@ import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
 import { OrbitalAnimation } from "./orbital-animation";
-
-// DND Kit Imports
-import {
-  DndContext, 
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  TouchSensor
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@atlassian/pragmatic-drag-and-drop-react-drop-indicator/box'; // Mock
 
 const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
@@ -267,7 +248,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         feedbackTimeoutRef.current = setTimeout(() => setFeedbackMessage(null), 3000);
     }, []);
     
-    // #ЗАЧЕМ: Протокол "Perpetual Spiral" — Ambient Mode Logic.
     const [isAmbientMode, setIsAmbientMode] = useState(false);
     const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -311,27 +291,36 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V14.5 Reform) */}
+            {/* Ambient Overlay - THE PURE TERMINAL (V15.0 Mobile Axis Fix) */}
             {isAmbientMode && (
-                <div 
-                    className="fixed inset-0 z-[9999] backdrop-blur-2xl bg-black/60 animate-in fade-in duration-1000 cursor-default"
-                >
-                    {/* focused Core Animation - 60% Size, shifted down to 40% total offset */}
+                <div className="fixed inset-0 z-[9999] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
+                    
+                    {/* Top Status */}
+                    <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-30">
+                        <div 
+                            className="text-[9px] font-black uppercase tracking-[0.5em] transition-colors duration-500"
+                            style={{ color: hudColor }}
+                        >
+                            AURAGROOVE INFINITY TAKE ORCHESTRA
+                        </div>
+                    </div>
+
+                    {/* Focused Core - 90vw width, 40% Y-axis offset */}
                     <div 
-                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none"
-                        style={{ width: '60vh', height: '60vh' }}
+                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center"
+                        style={{ width: '90vw', height: '90vw', maxWidth: '60vh', maxHeight: '60vh' }}
                     >
                         <OrbitalAnimation 
                             tension={props.tension} 
                             isPlaying={true} 
-                            size="60vh" 
+                            size="100%" 
                             className="opacity-90"
                         />
                     </div>
 
-                    {/* Feedback Message */}
+                    {/* Feedback Message - Shifted for layout clearance */}
                     {feedbackMessage && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-[120px] z-[10000] animate-in fade-in zoom-in duration-300">
+                        <div className="absolute top-[65%] left-1/2 -translate-x-1/2 z-[10000] animate-in fade-in zoom-in duration-300">
                             <Badge 
                                 variant="outline" 
                                 className="px-6 py-2 bg-black/60 backdrop-blur-xl border-primary/40 text-primary font-black uppercase text-[10px] tracking-widest shadow-[0_0_30px_rgba(168,85,247,0.3)]"
@@ -342,111 +331,88 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
                     
-                    {/* Control Panel - Positioned at 80% height (Pill Shape) */}
+                    {/* Control Pill - 90vw width, 80% Y-axis offset */}
                     <div 
-                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center gap-6 px-12 py-6 rounded-full bg-black/40 border border-white/10 backdrop-blur-3xl shadow-[0_0_100px_rgba(0,0,0,0.5)] transition-all active:scale-95"
+                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-2 px-6 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {/* Back Step */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             disabled={props.activeRouteIndex <= 0}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
-                            className="h-10 w-10 hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+                            className="h-10 w-10 hover:bg-white/5 disabled:opacity-10"
                             style={{ color: hudColor }}
                         >
-                            <SkipBack className="h-6 w-6" />
+                            <SkipBack className="h-5 w-5" />
                         </Button>
 
-                        {/* Play/Pause (Central large) */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             onClick={props.handlePlayPause}
-                            className="h-14 w-14 hover:bg-white/10 transition-all active:scale-90"
+                            className="h-12 w-12 hover:bg-white/5 transition-transform active:scale-90"
                             style={{ color: hudColor }}
                         >
-                            {props.isPlaying ? <Pause className="h-10 w-10" /> : <Play className="h-10 w-10 fill-current" />}
+                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
                         </Button>
 
-                        {/* Next Step */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             disabled={props.activeRouteIndex >= props.route.length - 1}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
-                            className="h-10 w-10 hover:bg-white/10 disabled:opacity-20 transition-all active:scale-90"
+                            className="h-10 w-10 hover:bg-white/5 disabled:opacity-10"
                             style={{ color: hudColor }}
                         >
-                            <SkipForward className="h-6 w-6" />
+                            <SkipForward className="h-5 w-5" />
                         </Button>
 
-                        <div className="w-[1px] h-10 bg-white/20 mx-2" />
+                        <div className="w-[1px] h-8 bg-white/10 mx-1" />
 
-                        {/* Like (Masterpiece) */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             onClick={() => { props.handleSaveMasterpiece(); showFeedback(t('toast_masterpiece_saved')); }}
-                            className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
+                            className="h-10 w-10 hover:bg-white/5"
                             style={{ color: hudColor }}
                         >
-                            <ThumbsUp className="h-6 w-6" />
+                            <ThumbsUp className="h-5 w-5" />
                         </Button>
 
-                        {/* Record Session Button */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             onClick={() => { props.handleToggleRecording(); showFeedback(props.isRecording ? 'Recording Stopped' : 'Recording Started'); }}
-                            className="h-10 w-10 hover:bg-white/10 transition-all active:scale-90"
-                            style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.6 }}
+                            className="h-10 w-10 hover:bg-white/5"
+                            style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.4 }}
                         >
-                            <Radio className={cn("h-6 w-6", props.isRecording && "animate-pulse")} />
+                            <Radio className={cn("h-5 w-5", props.isRecording && "animate-pulse")} />
                         </Button>
 
-                        {/* Exit button */}
                         <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="ghost" size="icon" 
                             onClick={() => setIsAmbientMode(false)}
-                            className="h-10 w-10 hover:bg-white/10 text-white/30 transition-all active:scale-90"
+                            className="h-10 w-10 hover:bg-white/5 text-white/20"
                         >
-                            <X className="h-6 w-6" />
+                            <X className="h-5 w-5" />
                         </Button>
                     </div>
-                    
-                    {/* Top Text */}
-                    <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-40">
+
+                    {/* Bottom Info Stack - Triple centered line (V15.0) */}
+                    <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
                         <div 
-                            className="text-[10px] font-black uppercase tracking-[0.6em] transition-colors duration-500"
+                            className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500" 
                             style={{ color: hudColor }}
                         >
-                            AURAGROOVE INFINITY TAKE ORCHESTRA
+                            STEP {props.activeRouteIndex + 1} / {props.route.length}
                         </div>
-                    </div>
-
-                    {/* Bottom Label - NOW CENTERED (V14.5) */}
-                    <div className="absolute bottom-12 left-0 right-0 text-center select-none pointer-events-none opacity-90">
                         <div 
-                            className="text-[14px] font-black uppercase tracking-[0.4em] transition-colors duration-500"
-                            style={{ 
-                                color: hudColor,
-                                textShadow: `0 0 40px ${hudColor}`
-                            }}
+                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500"
+                            style={{ color: hudColor }}
                         >
-                            {t(`g_${props.genre}` as any)} // {t(`m_${props.mood}` as any)}
+                            {t(`g_${props.genre}` as any)}
                         </div>
-                    </div>
-                    
-                    {/* Info display right bottom */}
-                    <div className="absolute bottom-12 right-10 flex flex-col items-end select-none pointer-events-none opacity-60">
-                        <div className="text-[10px] font-mono font-bold uppercase tracking-widest" style={{ color: hudColor }}>
-                            Step {props.activeRouteIndex + 1} / {props.route.length}
-                        </div>
-                        <div className="text-[9px] font-mono" style={{ color: hudColor }}>
-                            Bar {props.currentBar} / {props.totalBars}
+                        <div 
+                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500"
+                            style={{ color: hudColor }}
+                        >
+                            {t(`m_${props.mood}` as any)}
                         </div>
                     </div>
                 </div>
