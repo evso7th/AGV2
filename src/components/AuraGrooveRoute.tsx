@@ -1,8 +1,6 @@
-
 /**
- * @fileOverview UI AuraGroove V15.2 — "Bottom Stack Inversion".
- * #ЗАЧЕМ: Перенос счетчика шагов в основание текстовой группы.
- * #ЧТО: ПЛАН №21521 — Инверсия порядка: Genre -> Mood -> Step.
+ * @fileOverview UI AuraGroove V15.3 — "Documentation & Version Sync".
+ * #ЗАЧЕМ: Обновление версии до 0.4.12 и коррекция отступов инфо-центра.
  */
 'use client';
 
@@ -773,7 +771,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
                         
-                        <ScrollArea className="h-[50vh] px-6 py-6">
+                        <ScrollArea className="h-[50vh] px-5 sm:px-10 py-6">
                             <TabsContent value="guide" className="m-0 focus-visible:ring-0">
                                 <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                             </TabsContent>
@@ -786,7 +784,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </ScrollArea>
                     </Tabs>
                     <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6">
-                        <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v0.3.62</span>
+                        <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v0.4.12</span>
                         <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">{t('btn_close')}</Button>
                     </div>
                 </DialogContent>
@@ -794,3 +792,4 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
+
