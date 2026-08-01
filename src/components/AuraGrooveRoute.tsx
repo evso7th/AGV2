@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.3 — "Documentation & Version Sync".
- * #ЗАЧЕМ: Обновление версии до 0.4.12 и коррекция отступов инфо-центра.
+ * @fileOverview UI AuraGroove V15.4 — "Responsive Info Center".
+ * #ЗАЧЕМ: Приведение Инфоцентра к 90vw (5% margins) и предотвращение обрезания текста.
  */
 'use client';
 
@@ -289,7 +289,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL (V15.2 Logic Fix) */}
+            {/* Ambient Overlay - THE PURE TERMINAL */}
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[9999] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
@@ -303,7 +303,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     </div>
 
-                    {/* Focused Core - 90vw width, 40% Y-axis offset */}
+                    {/* Focused Core */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center"
                         style={{ width: '90vw', height: '90vw', maxWidth: '60vh', maxHeight: '60vh' }}
@@ -392,7 +392,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
 
-                    {/* Bottom Info Stack - Step at Bottom (V15.2) */}
+                    {/* Bottom Info Stack */}
                     <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
                         <div 
                             className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
@@ -755,9 +755,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
-                <DialogContent className="sm:max-w-2xl bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="w-[90vw] max-w-2xl bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2">
-                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2 pr-8">
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
                     </DialogHeader>
@@ -768,10 +768,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <TabsTrigger value="disclaimer" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_disclaimer')}</TabsTrigger>
                                 <TabsTrigger value="credits" className="px-0 border-b-2 border-transparent data-[state=active]:border-primary rounded-none font-black uppercase text-[10px] tracking-widest bg-transparent">{t('tab_credits')}</TabsTrigger>
                             </TabsList>
-                            <Badge variant="outline" className="text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
+                            <Badge variant="outline" className="hidden sm:inline-flex text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
                         
-                        <ScrollArea className="h-[50vh] px-5 sm:px-10 py-6">
+                        <ScrollArea className="h-[60vh] px-4 sm:px-10 py-6">
                             <TabsContent value="guide" className="m-0 focus-visible:ring-0">
                                 <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                             </TabsContent>
@@ -792,4 +792,3 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
-
