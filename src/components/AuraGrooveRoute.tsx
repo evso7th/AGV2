@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.4 — "Responsive Info Center".
- * #ЗАЧЕМ: Приведение Инфоцентра к 90vw (5% margins) и предотвращение обрезания текста.
+ * @fileOverview UI AuraGroove V15.5 — "Content Padding Polish".
+ * #ЗАЧЕМ: Увеличение внутренних отступов в Инфоцентре для мобильных устройств.
  */
 'use client';
 
@@ -771,7 +771,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Badge variant="outline" className="hidden sm:inline-flex text-[9px] font-black uppercase border-primary/20 text-primary">{props.language}</Badge>
                         </div>
                         
-                        <ScrollArea className="h-[60vh] px-4 sm:px-10 py-6">
+                        <ScrollArea className="h-[60vh] px-6 sm:px-10 py-6">
                             <TabsContent value="guide" className="m-0 focus-visible:ring-0">
                                 <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                             </TabsContent>
