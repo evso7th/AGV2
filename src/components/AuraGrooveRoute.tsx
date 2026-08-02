@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.9 — "HUD Controls Brightness Update".
- * #ЗАЧЕМ: Повышение яркости кнопок EQ и Микшера в HUD до уровня основных контроллов.
+ * @fileOverview UI AuraGroove V16.0 — "Layering Sovereignty Update".
+ * #ЗАЧЕМ: Обеспечение возможности вызова модальных окон поверх HUD без его отключения.
  */
 'use client';
 
@@ -244,7 +244,7 @@ function SimpleRouteItem({
             <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
+                className="h-7 v-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
                 onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} 
             >
                 <X className="h-4 w-4" />
@@ -363,7 +363,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             
             {/* Ambient Overlay - THE PURE TERMINAL */}
             {isAmbientMode && (
-                <div className="fixed inset-0 z-[9999] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
+                <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
                     {/* Top Status */}
                     <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-30">
@@ -377,7 +377,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                     {/* Focused Core */}
                     <div 
-                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center"
+                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center overflow-visible"
                         style={{ width: '90vw', height: '90vw', maxWidth: '60vh', maxHeight: '60vh' }}
                     >
                         <OrbitalAnimation 
@@ -406,104 +406,96 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-2 px-6 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             disabled={props.activeRouteIndex <= 0}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
-                            className="h-10 w-10 hover:bg-white/5 disabled:opacity-10"
+                            className="p-2 hover:bg-white/5 disabled:opacity-10 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <SkipBack className="h-5 w-5" />
-                        </Button>
+                        </button>
 
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             onClick={props.handlePlayPause}
-                            className="h-12 w-12 hover:bg-white/5 transition-transform active:scale-90"
+                            className="p-3 hover:bg-white/5 transition-all active:scale-90"
                             style={{ color: hudColor }}
                         >
                             {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
-                        </Button>
+                        </button>
 
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             disabled={props.activeRouteIndex >= props.route.length - 1}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
-                            className="h-10 w-10 hover:bg-white/5 disabled:opacity-10"
+                            className="p-2 hover:bg-white/5 disabled:opacity-10 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <SkipForward className="h-5 w-5" />
-                        </Button>
+                        </button>
 
                         <div className="w-[1px] h-8 bg-white/10 mx-1" />
 
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             onClick={() => { props.handleSaveMasterpiece(); showFeedback(t('toast_masterpiece_saved')); }}
-                            className="h-10 w-10 hover:bg-white/5"
+                            className="p-2 hover:bg-white/5 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <ThumbsUp className="h-5 w-5" />
-                        </Button>
+                        </button>
 
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             onClick={() => { props.handleToggleRecording(); showFeedback(props.isRecording ? 'Recording Started' : 'Recording Stopped'); }}
-                            className="h-10 w-10 hover:bg-white/5"
+                            className="p-2 hover:bg-white/5 transition-colors"
                             style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.4 }}
                         >
                             <Radio className={cn("h-5 w-5", props.isRecording && "animate-pulse")} />
-                        </Button>
+                        </button>
 
-                        <Button 
-                            variant="ghost" size="icon" 
+                        <button 
                             onClick={() => setIsAmbientMode(false)}
-                            className="h-10 w-10 hover:bg-white/5 text-white/20"
+                            className="p-2 hover:bg-white/5 text-white/20 transition-colors"
                         >
                             <X className="h-5 w-5" />
-                        </Button>
+                        </button>
                     </div>
 
                     {/* Bottom Info Stack with Quick Access Controls */}
-                    <div className="absolute bottom-6 left-[5%] right-[5%] z-20 flex items-center justify-between pointer-events-none">
-                        <Button 
-                            variant="ghost" size="sm" 
+                    <div className="absolute bottom-6 left-0 right-0 z-20 flex items-center justify-between px-[5vw]">
+                        <button 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
-                            className="h-8 px-2 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
-                            style={{ color: hudColor, opacity: 1 }}
+                            className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
+                            style={{ color: hudColor }}
                         >
-                            <SlidersHorizontal className="h-4 w-4" />
-                        </Button>
+                            <SlidersHorizontal className="h-5 w-5" />
+                        </button>
 
-                        <div className="flex flex-col items-center select-none pointer-events-none gap-0.5 flex-grow">
+                        <div className="flex flex-col items-center select-none pointer-events-none gap-0.5">
                             <div 
-                                className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
+                                className="text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
                                 style={{ color: hudColor }}
                             >
                                 {t(`g_${props.genre}` as any)}
                             </div>
                             <div 
-                                className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
+                                className="text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
                                 style={{ color: hudColor }}
                             >
                                 {t(`m_${props.mood}` as any)}
                             </div>
                             <div 
-                                className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500 mt-1" 
+                                className="text-[8px] font-mono font-black uppercase tracking-tighter opacity-70 transition-colors duration-500 mt-1" 
                                 style={{ color: hudColor }}
                             >
                                 STEP {props.activeRouteIndex + 1} / {props.route.length}
                             </div>
                         </div>
 
-                        <Button 
-                            variant="ghost" size="sm" 
+                        <button 
                             onClick={(e) => { e.stopPropagation(); setIsEqOpen(true); }}
-                            className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
-                            style={{ color: hudColor, opacity: 1 }}
+                            className="h-10 w-10 text-[11px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
+                            style={{ color: hudColor }}
                         >
                             EQ
-                        </Button>
+                        </button>
                     </div>
                 </div>
             )}
@@ -797,7 +789,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
-                <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl">
+                <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
@@ -832,7 +824,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
-                <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+                <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
