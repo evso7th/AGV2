@@ -13,8 +13,8 @@ import {
     GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp,
     SkipBack, SkipForward, Play
 } from 'lucide-react';
-import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
@@ -535,7 +535,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 disabled={props.isInitializing} 
                                 className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
                             >
-                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4 fill-current" />}
+                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4 fill-current" />}
                                 {props.isPlaying ? t('btn_pause') : t('btn_play')}
                             </Button>
                         </div>
@@ -787,7 +787,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Mixer & EQ - Glass Style Enabled */}
+            {/* Mixer & EQ - Frosted Glass Style Applied */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent className="sm:max-w-xl bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>

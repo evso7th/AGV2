@@ -10,7 +10,7 @@ import { Providers } from '@/components/Providers';
 export const metadata: Metadata = {
   title: 'AuraGroove',
   description: 'AI-powered ambient music generator',
-  manifest: '/manifest.json',
+  manifest: null, // Отключаем генерацию манифеста
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
@@ -42,6 +42,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
         <link rel="apple-touch-icon" href="/assets/icons/icon_192.png" />
+        <link rel="manifest" href="/manifest.json" /> 
       </head>
       <body className="font-body antialiased bg-background text-foreground">
         <Providers>
