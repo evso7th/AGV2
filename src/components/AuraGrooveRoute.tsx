@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.0 — "Layering Sovereignty Update".
- * #ЗАЧЕМ: Обеспечение возможности вызова модальных окон поверх HUD без его отключения.
+ * @fileOverview UI AuraGroove V16.1 — "Frosted Glass Modals".
+ * #ЗАЧЕМ: Эстетическая интеграция настроек с Ambient HUD через прозрачность и блюр.
  */
 'use client';
 
@@ -375,10 +375,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     </div>
 
-                    {/* Focused Core */}
+                    {/* Focused Core with Axis Alignment */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center overflow-visible"
-                        style={{ width: '90vw', height: '90vw', maxWidth: '60vh', maxHeight: '60vh' }}
+                        style={{ width: '90vw', height: '60vh', maxWidth: '400px', maxHeight: '60vh' }}
                     >
                         <OrbitalAnimation 
                             tension={props.tension} 
@@ -401,9 +401,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
                     
-                    {/* Control Pill */}
+                    {/* Control Pill - Fixed 90vw width */}
                     <div 
-                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-2 px-6 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
+                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-1 px-4 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button 
@@ -420,7 +420,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="p-3 hover:bg-white/5 transition-all active:scale-90"
                             style={{ color: hudColor }}
                         >
-                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
+                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Music className="h-8 w-8 fill-current" />}
                         </button>
 
                         <button 
@@ -458,17 +458,17 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Bottom Info Stack with Quick Access Controls */}
-                    <div className="absolute bottom-6 left-0 right-0 z-20 flex items-center justify-between px-[5vw]">
+                    {/* Bottom Info Stack - Axis Symmetry 90vw */}
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
                             className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
-                            style={{ color: hudColor }}
+                            style={{ color: hudColor, opacity: 1 }}
                         >
                             <SlidersHorizontal className="h-5 w-5" />
                         </button>
 
-                        <div className="flex flex-col items-center select-none pointer-events-none gap-0.5">
+                        <div className="flex flex-col items-center select-none pointer-events-none gap-0.5 flex-1">
                             <div 
                                 className="text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
                                 style={{ color: hudColor }}
@@ -492,7 +492,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsEqOpen(true); }}
                             className="h-10 w-10 text-[11px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
-                            style={{ color: hudColor }}
+                            style={{ color: hudColor, opacity: 1 }}
                         >
                             EQ
                         </button>
@@ -535,7 +535,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 disabled={props.isInitializing} 
                                 className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
                             >
-                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
+                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4 fill-current" />}
                                 {props.isPlaying ? t('btn_pause') : t('btn_play')}
                             </Button>
                         </div>
@@ -787,9 +787,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Mixer & EQ */}
+            {/* Mixer & EQ - Glass Style Enabled */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
-                <DialogContent className="sm:max-w-xl bg-card border-primary/20 shadow-2xl z-[50]">
+                <DialogContent className="sm:max-w-xl bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
@@ -824,7 +824,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
-                <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl z-[50]">
+                <DialogContent className="sm:max-w-md bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
