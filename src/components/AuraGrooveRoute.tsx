@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.8 — "HUD Controls Graphics Update".
- * #ЗАЧЕМ: Замена текста на иконку для Микшера и "EQ" для Эквалайзера в HUD.
+ * @fileOverview UI AuraGroove V15.9 — "HUD Controls Brightness Update".
+ * #ЗАЧЕМ: Повышение яркости кнопок EQ и Микшера в HUD до уровня основных контроллов.
  */
 'use client';
 
@@ -470,7 +470,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             variant="ghost" size="sm" 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
                             className="h-8 px-2 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
-                            style={{ color: hudColor, opacity: 0.4 }}
+                            style={{ color: hudColor, opacity: 1 }}
                         >
                             <SlidersHorizontal className="h-4 w-4" />
                         </Button>
@@ -500,7 +500,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             variant="ghost" size="sm" 
                             onClick={(e) => { e.stopPropagation(); setIsEqOpen(true); }}
                             className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
-                            style={{ color: hudColor, opacity: 0.4 }}
+                            style={{ color: hudColor, opacity: 1 }}
                         >
                             EQ
                         </Button>
