@@ -5,17 +5,17 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №5.1 — Синхронизация манифеста и Apple-специфичных метаданных.
+ * #ЧТО: ПЛАН №5.2 — Синхронизация манифеста и исправление путей к иконкам (jpeg вместо png).
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
   description: 'AI-powered ambient music generator',
-  manifest: null, // Отключаем генерацию манифеста
+  manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'AuraGroove',
-    startupImage: '/assets/icons/icon_512.png',
+    startupImage: '/assets/icon8.jpeg',
   },
   formatDetection: {
     telephone: false,
@@ -41,7 +41,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" href="/assets/icons/icon_192.png" />
+        <link rel="apple-touch-icon" href="/assets/icon8.jpeg" />
         <link rel="manifest" href="/manifest.json" /> 
       </head>
       <body className="font-body antialiased bg-background text-foreground">

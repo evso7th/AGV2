@@ -1,0 +1,16 @@
+{
+  "placeholderImages": [
+    {
+      "id": "pwa-screenshot-wide",
+      "description": "Desktop PWA Screenshot",
+      "imageUrl": "https://picsum.photos/seed/ag1/1280/720",
+      "imageHint": "music dashboard"
+    },
+    {
+      "id": "pwa-screenshot-mobile",
+      "description": "Mobile PWA Screenshot",
+      "imageUrl": "https://picsum.photos/seed/ag2/720/1280",
+      "imageHint": "music app"
+    }
+  ]
+}
