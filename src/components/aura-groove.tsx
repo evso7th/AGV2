@@ -1,8 +1,6 @@
-
-
 "use client";
 
-import { Loader2, Music, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw } from "lucide-react";
+import { Loader2, Play, Pause, Speaker, FileMusic, Drum, SlidersHorizontal, Waves, GitBranch, Atom, Piano, Home, X, Sparkles, Sprout, LayoutGrid, Timer, Guitar, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -132,7 +130,7 @@ export function AuraGroove({
         case 'bass': return <Waves {...iconProps} />;
         case 'melody': return <GitBranch {...iconProps} />;
         case 'accompaniment': return <Piano {...iconProps} />;
-        default: return <Music {...iconProps} />;
+        default: return <Play {...iconProps} />;
     }
   };
 
@@ -239,7 +237,7 @@ export function AuraGroove({
                 </Select>
             </div>
             <div className="grid grid-cols-3 items-center gap-4">
-                <Label className="text-right flex items-center gap-1.5"><Music className="h-4 w-4"/> BPM</Label>
+                <Label className="text-right flex items-center gap-1.5"><Play className="h-4 w-4"/> BPM</Label>
                 <Slider
                     value={[bpm]}
                     min={60}
@@ -442,7 +440,7 @@ export function AuraGroove({
             {isPlaying ? (
               <Pause className="mr-2 h-6 w-6" />
             ) : (
-              <Music className="mr-2 h-6 w-6" />
+              <Play className="mr-2 h-6 w-6 fill-current" />
             )}
             {isPlaying ? "Pause" : "Play"}
           </Button>
@@ -461,4 +459,3 @@ export function AuraGroove({
     </Card>
   );
 }
-

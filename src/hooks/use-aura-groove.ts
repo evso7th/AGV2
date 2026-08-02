@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V31.0 — "Tension Awareness Update".
- * #ЗАЧЕМ: Добавление tension в пропсы для поддержки Ambient Mode.
+ * @fileOverview Music Control Hook V31.1 — "Queue Priority & Icon Standard".
+ * #ЗАЧЕМ: ПЛАН №1350 — Старт с первого трека очереди вместо дефолта.
  */
 'use client';
 
@@ -112,7 +112,7 @@ export interface AuraGrooveProps {
   currentBar: number;
   totalBars: number;
   currentTrackName: string;
-  tension: number; // Новое поле
+  tension: number;
   eqPresets: PresetItem[];
   activeEqPresetId: string | null;
   saveEqPreset: (name: string) => void;
@@ -470,8 +470,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setCurrentSeed(Date.now());
     const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
     if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
+    
+    // #ЗАЧЕМ: ПЛАН №1350. Автоматическая установка первого шага при загрузке.
     const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
-    if (lR) { try { setRoute(JSON.parse(lR)); } catch (e) {} }
+    if (lR) { 
+        try { 
+            const parsed = JSON.parse(lR);
+            setRoute(parsed); 
+            if (parsed.length > 0) setActiveRouteItemId(parsed[0].id);
+        } catch (e) {} 
+    }
+
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     if (savedMixes) {
         try {
@@ -628,14 +637,38 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (success) {
             applyCurrentMixToEngine();
             eqSettings.forEach((v, i) => setEQGain(i, v));
-            if (route.length > 0 && !activeRouteItemId) setActiveRouteItemId(route[0].id);
+            
+            // #ЗАЧЕМ: ПЛАН №1350. Принудительная синхронизация первого трека перед стартом.
+            if (route.length > 0 && !activeRouteItemId) {
+                const first = route[0];
+                const g = first.genre === 'random' ? genre : (first.genre as Genre);
+                const m = first.mood === 'random' ? mood : (first.mood as Mood);
+                
+                setGenreState(g);
+                setMoodState(m);
+                setActiveRouteItemId(first.id);
+                updateSettings({ genre: g, mood: m });
+            }
+            
             prevBarRef.current = 0; setIsPlaying(true);
         }
     } else { 
-        if (!isPlaying) prevBarRef.current = 0;
+        if (!isPlaying) {
+            // Синхронизация при старте после паузы, если активный элемент был сброшен
+            if (route.length > 0 && !activeRouteItemId) {
+                const first = route[0];
+                const g = first.genre === 'random' ? genre : (first.genre as Genre);
+                const m = first.mood === 'random' ? mood : (first.mood as Mood);
+                setGenreState(g);
+                setMoodState(m);
+                setActiveRouteItemId(first.id);
+                updateSettings({ genre: g, mood: m });
+            }
+            prevBarRef.current = 0;
+        }
         setIsPlaying(!isPlaying); 
     }
-  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain]);
+  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain, genre, mood, updateSettings]);
 
   const loadRoute = useCallback((saved: SavedRoute) => {
     const next: RouteItem[] = saved.items.map((it, idx) => ({
