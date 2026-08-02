@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.7 — "HUD Quick Controls".
- * #ЗАЧЕМ: Добавление кнопок Микшера и EQ в иммерсивный режим (HUD).
+ * @fileOverview UI AuraGroove V15.8 — "HUD Controls Graphics Update".
+ * #ЗАЧЕМ: Замена текста на иконку для Микшера и "EQ" для Эквалайзера в HUD.
  */
 'use client';
 
@@ -469,10 +469,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Button 
                             variant="ghost" size="sm" 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
-                            className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
+                            className="h-8 px-2 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
                             style={{ color: hudColor, opacity: 0.4 }}
                         >
-                            {t('dialog_mixer_title')}
+                            <SlidersHorizontal className="h-4 w-4" />
                         </Button>
 
                         <div className="flex flex-col items-center select-none pointer-events-none gap-0.5 flex-grow">
@@ -502,7 +502,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
                             style={{ color: hudColor, opacity: 0.4 }}
                         >
-                            {t('dialog_eq_title')}
+                            EQ
                         </Button>
                     </div>
                 </div>
