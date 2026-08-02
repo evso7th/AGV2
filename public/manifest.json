@@ -1,7 +1,7 @@
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "AI-powered ambient music generator",
+  "description": "Personal digital live-music generator",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f0f",

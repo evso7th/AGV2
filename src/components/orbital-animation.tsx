@@ -13,18 +13,22 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V4.0 — "The Emotional Core".
- * #ЗАЧЕМ: Реакция на Tension — управление цветом, скоростью и свечением.
+ * @fileOverview Orbital Animation V5.0 — "The Rhythmic Core".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1402 — Синхронизация пульсации ядра с BPM.
  */
 export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
 
-  // #ЗАЧЕМ: Маппинг напряжения на параметры анимации
-  // Скорость: от 80с (ползком) до 20с (нормальный шаг).
-  const duration = useMemo(() => {
+  // Скорость вращения орбит (зависит от Tension)
+  const rotationDuration = useMemo(() => {
       const base = isPlaying ? 40 : 60;
       return base / (0.5 + tension * 1.0) + 's';
   }, [isPlaying, tension]);
+
+  // Длительность пульса ядра (BPM Sync: 60 / BPM = секунды на удар)
+  const pulseDuration = useMemo(() => {
+      return (60 / Math.max(30, tempo || 90)) + 's';
+  }, [tempo]);
 
   // Цвета и свечение
   const dynamicStyles = useMemo(() => {
@@ -36,15 +40,17 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
       return {
           '--orbital-color': `hsl(${hue}, ${saturation}%, ${light}%)`,
           '--orbital-glow': `${glow}px`,
-          '--orbital-size': size || '300px'
+          '--orbital-size': size || '300px',
+          '--pulse-duration': pulseDuration,
+          '--pulse-play-state': isPlaying ? 'running' : 'paused'
       } as React.CSSProperties;
-  }, [tension, size]);
+  }, [tension, size, pulseDuration, isPlaying]);
 
   useEffect(() => {
     if (planeRef.current) {
-        planeRef.current.style.animationDuration = duration;
+        planeRef.current.style.animationDuration = rotationDuration;
     }
-  }, [duration]);
+  }, [rotationDuration]);
 
   return (
     <div className={cn(styles.view, className)} style={dynamicStyles}>

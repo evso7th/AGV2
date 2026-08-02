@@ -55,14 +55,20 @@
   background: hsl(var(--primary));
   box-sizing: border-box;
   box-shadow: 0 0 30px 2px hsl(var(--primary));
+  
+  /* #ЗАЧЕМ: Ритмическая пульсация ядра (BPM Sync) */
+  animation: core-pulse var(--pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
+  animation-play-state: var(--pulse-play-state, paused);
 }
 
 .circle::before {
-  transform: translateZ(calc(var(--orbital-size, 300px) * -0.5));
+  --z-offset: calc(var(--orbital-size, 300px) * -0.5);
+  transform: translateZ(var(--z-offset));
 }
 
 .circle::after {
-  transform: translateZ(calc(var(--orbital-size, 300px) * 0.5));
+  --z-offset: calc(var(--orbital-size, 300px) * 0.5);
+  transform: translateZ(var(--z-offset));
 }
 
 .circle:nth-child(1) { transform: rotateZ(calc(1 / 6 * 360deg)) rotateX(63.435deg); }
@@ -79,5 +85,18 @@
   }
   100% {
     transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg);
+  }
+}
+
+/* #ЗАЧЕМ: Анимация пульсации ядра */
+@keyframes core-pulse {
+  0%, 100% { 
+    transform: translateZ(var(--z-offset)) scale(1);
+    filter: brightness(1);
+  }
+  10% { 
+    transform: translateZ(var(--z-offset)) scale(1.4);
+    filter: brightness(1.8);
+    box-shadow: 0 0 50px 4px hsl(var(--primary));
   }
 }
