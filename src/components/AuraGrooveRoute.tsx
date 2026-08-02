@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.1 — "Frosted Glass Modals".
- * #ЗАЧЕМ: Эстетическая интеграция настроек с Ambient HUD через прозрачность и блюр.
+ * @fileOverview UI AuraGroove V16.1.1 — "True Frosted Glass Fix".
+ * #ЗАЧЕМ: Гарантированное применение прозрачности и блюра к фону настроек.
  */
 'use client';
 
@@ -787,9 +787,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Mixer & EQ - Frosted Glass Style Applied */}
+            {/* Mixer & EQ - Frosted Glass Style Applied surgically with ! override */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
-                <DialogContent className="sm:max-w-xl bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
+                <DialogContent className="sm:max-w-xl !bg-card/50 !backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
@@ -824,7 +824,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
-                <DialogContent className="sm:max-w-md bg-card/50 backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
+                <DialogContent className="sm:max-w-md !bg-card/50 !backdrop-blur-xl border-primary/20 shadow-2xl z-[50]">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
