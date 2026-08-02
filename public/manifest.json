@@ -1,52 +1,52 @@
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "Personal pure digital fractal music generator",
-  "id": "/",
-  "start_url": "/?source=pwa",
+  "description": "AI-powered ambient music generator",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#111111",
+  "background_color": "#0f0f0f",
   "theme_color": "#a855f7",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/assets/icon8.jpeg",
+      "src": "/assets/icons/icon_192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icon8.jpeg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/icon8.jpeg",
+      "src": "/assets/icons/maskable-icon-192.png",
       "sizes": "192x192",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/assets/icon8.jpeg",
+      "src": "/assets/icons/icon_512.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "https://picsum.photos/seed/ag1/1280/720",
+      "src": "/assets/icons/screenshot-desktop.png",
       "sizes": "1280x720",
-      "type": "image/jpeg",
+      "type": "image/png",
       "form_factor": "wide",
-      "label": "AuraGroove Studio"
+      "label": "AuraGroove Desktop Interface"
     },
     {
-      "src": "https://picsum.photos/seed/ag2/720/1280",
-      "sizes": "720x1280",
-      "type": "image/jpeg",
-      "label": "AuraGroove Mobile"
+      "src": "/assets/icons/screenshot-mobile.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "AuraGroove Mobile Player"
     }
   ]
 }

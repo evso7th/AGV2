@@ -5,7 +5,7 @@ import { Providers } from '@/components/Providers';
 
 /**
  * #ЗАЧЕМ: Корневой лейаут AuraGroove.
- * #ЧТО: ПЛАН №5.2 — Синхронизация манифеста и исправление путей к иконкам (jpeg вместо png).
+ * #ЧТО: ПЛАН №5.3 — Синхронизация манифеста и путей к иконкам (png стандарт).
  */
 export const metadata: Metadata = {
   title: 'AuraGroove',
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: 'AuraGroove',
-    startupImage: '/assets/icon8.jpeg',
+    startupImage: '/assets/icons/icon_512.png',
   },
   formatDetection: {
     telephone: false,
@@ -41,7 +41,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet" />
-        <link rel="apple-touch-icon" href="/assets/icon8.jpeg" />
+        <link rel="apple-touch-icon" href="/assets/icons/icon_512.png" />
         <link rel="manifest" href="/manifest.json" /> 
       </head>
       <body className="font-body antialiased bg-background text-foreground">
