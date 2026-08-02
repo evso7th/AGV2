@@ -1,7 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V15.7 — "Route DND Restoration".
- * #ЗАЧЕМ: Восстановление функции перетаскивания треков в очереди (Drag and Drop).
- * #ЧТО: Интеграция dnd-kit с поддержкой Pointer и Touch сенсоров.
+ * @fileOverview UI AuraGroove V15.7 — "HUD Quick Controls".
+ * #ЗАЧЕМ: Добавление кнопок Микшера и EQ в иммерсивный режим (HUD).
  */
 'use client';
 
@@ -465,26 +464,46 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Button>
                     </div>
 
-                    {/* Bottom Info Stack */}
-                    <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center select-none pointer-events-none gap-0.5">
-                        <div 
-                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
-                            style={{ color: hudColor }}
+                    {/* Bottom Info Stack with Quick Access Controls */}
+                    <div className="absolute bottom-6 left-[5%] right-[5%] z-20 flex items-center justify-between pointer-events-none">
+                        <Button 
+                            variant="ghost" size="sm" 
+                            onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
+                            className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
+                            style={{ color: hudColor, opacity: 0.4 }}
                         >
-                            {t(`g_${props.genre}` as any)}
+                            {t('dialog_mixer_title')}
+                        </Button>
+
+                        <div className="flex flex-col items-center select-none pointer-events-none gap-0.5 flex-grow">
+                            <div 
+                                className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
+                                style={{ color: hudColor }}
+                            >
+                                {t(`g_${props.genre}` as any)}
+                            </div>
+                            <div 
+                                className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
+                                style={{ color: hudColor }}
+                            >
+                                {t(`m_${props.mood}` as any)}
+                            </div>
+                            <div 
+                                className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500 mt-1" 
+                                style={{ color: hudColor }}
+                            >
+                                STEP {props.activeRouteIndex + 1} / {props.route.length}
+                            </div>
                         </div>
-                        <div 
-                            className="text-[12px] font-black uppercase tracking-widest transition-colors duration-500 opacity-50"
-                            style={{ color: hudColor }}
+
+                        <Button 
+                            variant="ghost" size="sm" 
+                            onClick={(e) => { e.stopPropagation(); setIsEqOpen(true); }}
+                            className="h-8 px-2 text-[10px] font-black uppercase tracking-tighter pointer-events-auto transition-all active:scale-95"
+                            style={{ color: hudColor, opacity: 0.4 }}
                         >
-                            {t(`m_${props.mood}` as any)}
-                        </div>
-                        <div 
-                            className="text-[8px] font-mono font-black uppercase tracking-tight opacity-40 transition-colors duration-500 mt-1" 
-                            style={{ color: hudColor }}
-                        >
-                            STEP {props.activeRouteIndex + 1} / {props.route.length}
-                        </div>
+                            {t('dialog_eq_title')}
+                        </Button>
                     </div>
                 </div>
             )}
