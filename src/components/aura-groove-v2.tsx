@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview UI AuraGroove V5.4 — "Yamaha Chords Integration".
  */
@@ -5,7 +6,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  Music, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home,
+  Play, Pause, Speaker, FileMusic, Drum, Atom, Piano, Home,
   Sparkles, Sprout, Timer, RefreshCw, Bot, Waves, Radio,
   ThumbsUp, TowerControl, Database, Filter, Check, RotateCcw,
   Search, Eye, EyeOff, SlidersHorizontal, Cog, GitBranch, LayoutGrid, X,
@@ -180,7 +181,7 @@ function getPartIcon(part: string) {
         case 'drums': return <Drum className="h-4 w-4"/>;
         case 'sparkles': return <Sparkles className="h-4 w-4"/>;
         case 'sfx': return <Sprout className="h-4 w-4"/>;
-        default: return <Music className="h-4 w-4"/>;
+        default: return <Settings2 className="h-4 w-4"/>;
     }
 }
 
@@ -352,7 +353,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                 : "bg-violet-600 hover:bg-violet-700 text-white"
             )}
            >
-                {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4" />}
+                {isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4 fill-current" />}
                 {isPlaying ? "Pause" : "Play"}
            </Button>
            <Button type="button" onClick={handleToggleBroadcast} variant={isBroadcastActive ? "destructive" : "outline"} className="h-10 w-10 p-0"><TowerControl className={cn("h-5 w-5", isBroadcastActive && "animate-pulse text-primary")} /></Button>

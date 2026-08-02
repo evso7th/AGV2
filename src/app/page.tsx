@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Music } from 'lucide-react';
+import { Play } from 'lucide-react';
 import Image from 'next/image';
 import { useAuraGroove } from '@/hooks/use-aura-groove';
 import { OrbitalAnimation } from '@/components/orbital-animation';
@@ -85,7 +85,7 @@ export default function Home() {
             className="w-full text-[11px] py-5 uppercase tracking-widest shadow-xl bg-primary hover:bg-primary/90" 
             disabled={!isClient}
           >
-            <Music className="mr-2 h-4 w-4" />
+            <Play className="mr-2 h-4 w-4 fill-current" />
             {t('btn_start')}
           </Button>
         </CardFooter>

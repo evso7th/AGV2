@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview UI AuraGroove V16.1.3 — "Absolute Glass Restoration".
  * #ЗАЧЕМ: Гарантированный Frosted Glass и фикс DND Kit импортов.
@@ -6,12 +7,12 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-    Plus, X, Shuffle, Music, Pause, Settings2,
+    Plus, X, Shuffle, Play, Pause, Settings2,
     Activity, Timer, ThumbsUp, Radio, TowerControl,
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
     GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp,
-    SkipBack, SkipForward, Play
+    SkipBack, SkipForward
 } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -424,7 +425,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             className="p-3 hover:bg-white/5 transition-all active:scale-90"
                             style={{ color: hudColor }}
                         >
-                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Music className="h-8 w-8 fill-current" />}
+                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
                         </button>
 
                         <button 
@@ -539,7 +540,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 disabled={props.isInitializing} 
                                 className="h-8 px-4 text-[10px] font-black uppercase tracking-tight shadow-md"
                             >
-                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Music className="mr-1.5 h-4 w-4 fill-current" />}
+                                {props.isPlaying ? <Pause className="mr-1.5 h-4 w-4" /> : <Play className="mr-1.5 h-4 w-4 fill-current" />}
                                 {props.isPlaying ? t('btn_pause') : t('btn_play')}
                             </Button>
                         </div>
