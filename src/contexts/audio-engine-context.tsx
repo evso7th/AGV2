@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V57.0 — "Visual Feedback Integration".
- * #ЗАЧЕМ: Добавление состояния tension для синхронизации визуальных эффектов.
+ * @fileOverview Audio Engine Context V58.0 — "Core Pulse Dispatcher".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1335. Синхронизация визуального пульса с ударами бочки и баса.
  */
 'use client';
 
@@ -65,7 +65,7 @@ interface AudioEngineContextType {
   currentBar: number;
   totalBars: number;
   currentTrackName: string;
-  tension: number; // Новое поле для визуализации
+  tension: number;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -446,11 +446,27 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const ctx = audioContextRef.current; if (!ctx) return;
                     setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
                     if (payload.trackName) setCurrentTrackName(payload.trackName);
-                    if (isFinite(payload.tension)) setTension(payload.tension); // Синхронизируем tension
+                    if (isFinite(payload.tension)) setTension(payload.tension); 
+                    
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
                     if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
-                    scheduleEvents(payload.events, scheduleTime, payload.actualBpm || 75, payload.barCount, payload.instrumentHints);
+                    
+                    // --- IMPULSE SYNC (PLAN №1335) ---
+                    const tempo = payload.actualBpm || 75;
+                    const bDur = 60 / tempo;
+                    payload.events.forEach((e: any) => {
+                        const et = Array.isArray(e.type) ? e.type[0] : e.type;
+                        const isKick = typeof et === 'string' && (et.toLowerCase().includes('kick') || et.toLowerCase().includes('drum_kick'));
+                        const isStrongBass = et === 'bass' && Math.abs(e.time % 2) < 0.01; 
+                        
+                        if (isKick || isStrongBass) {
+                            const hitT = scheduleTime + (e.time * bDur);
+                            window.dispatchEvent(new CustomEvent('AG_CORE_PULSE', { detail: { time: hitT } }));
+                        }
+                    });
+
+                    scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                     nextBarTimeRef.current = scheduleTime + payload.barDuration;
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }

@@ -1,3 +1,7 @@
+/**
+ * @fileOverview Orbital Animation Styles V6.1 — "Synesthetic Core".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1335. Разделение фонового дыхания и событийного импульса.
+ */
 
 .view {
   position: absolute;
@@ -11,7 +15,6 @@
   align-items: center;
   justify-content: center;
   pointer-events: none;
-  /* #ЗАЧЕМ: Убираем обрезку свечения и 3D-краев */
   overflow: visible;
 }
 
@@ -19,7 +22,6 @@
   width: var(--orbital-size, 300px);
   height: var(--orbital-size, 300px);
   transform-style: preserve-3d;
-  /* #ЗАЧЕМ: Дополнительный запас для 3D вращения */
   margin: auto;
 }
 
@@ -56,9 +58,23 @@
   box-sizing: border-box;
   box-shadow: 0 0 calc(var(--orbital-glow) * 0.5) var(--orbital-color);
   
-  /* #ЗАЧЕМ: Ритмическая пульсация ядра (BPM Sync) */
-  animation: core-pulse var(--pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
+  /* #ЗАЧЕМ: Фоновое "дыхание" (система жива) */
+  animation: core-breath 5s infinite ease-in-out;
   animation-play-state: var(--pulse-play-state, paused);
+
+  /* #ЗАЧЕМ: Плавный, но быстрый отклик на импульс */
+  transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), 
+              filter 0.1s ease-out, 
+              box-shadow 0.1s ease-out;
+  will-change: transform, filter, box-shadow;
+}
+
+/* --- EVENT-BASED PULSE (PLAN №1335) --- */
+.view[data-pulsing="true"] .circle::before,
+.view[data-pulsing="true"] .circle::after {
+  transform: translateZ(var(--z-offset)) scale(1.35);
+  filter: brightness(1.7) saturate(1.2);
+  box-shadow: 0 0 calc(var(--orbital-glow) * 2.5) var(--orbital-color);
 }
 
 .circle::before {
@@ -78,25 +94,13 @@
 .circle:nth-child(5) { transform: rotateZ(calc(5 / 6 * 360deg)) rotateX(63.435deg); }
 .circle:nth-child(6) { transform: rotateZ(calc(6 / 6 * 360deg)) rotateX(63.435deg); }
 
-
 @keyframes rotate {
-  0% {
-    transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg);
-  }
-  100% {
-    transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg);
-  }
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
 }
 
-/* #ЗАЧЕМ: Анимация пульсации ядра */
-@keyframes core-pulse {
-  0%, 100% { 
-    transform: translateZ(var(--z-offset)) scale(1);
-    filter: brightness(1);
-  }
-  10% { 
-    transform: translateZ(var(--z-offset)) scale(1.4);
-    filter: brightness(1.5);
-    box-shadow: 0 0 var(--orbital-glow) var(--orbital-color);
-  }
+/* #ЗАЧЕМ: Очень мягкое мерцание в паузах */
+@keyframes core-breath {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }

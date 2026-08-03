@@ -1,8 +1,8 @@
-
 "use client";
-import React, { useEffect, useRef, useMemo } from 'react';
+import React, { useEffect, useRef, useMemo, useState } from 'react';
 import styles from './orbital-animation.module.css';
 import { cn } from '@/lib/utils';
+import { useAudioEngine } from '@/contexts/audio-engine-context';
 
 interface OrbitalAnimationProps {
     isPlaying?: boolean;
@@ -13,12 +13,15 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V5.2 — "High Contrast Spectrum".
- * #ЗАЧЕМ: Расширение цветового диапазона для более заметной реакции на музыку.
- * #ЧТО: Hue shift увеличен до 80 градусов (Indigo -> Magenta).
+ * @fileOverview Orbital Animation V6.0 — "Synesthetic Heart".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1335. Визуальный отклик на удары бочки и баса.
+ * #ЧТО: Подписка на AG_CORE_PULSE и управление состоянием импульса.
  */
 export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
+  const { analyser } = useAudioEngine();
+  const [isPulsing, setIsPulsing] = useState(false);
+  const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Скорость вращения орбит (зависит от Tension)
   const rotationDuration = useMemo(() => {
@@ -26,18 +29,12 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
       return base / (0.5 + tension * 1.5) + 's';
   }, [isPlaying, tension]);
 
-  // Длительность пульса ядра (BPM Sync: 60 / BPM = секунды на удар)
-  const pulseDuration = useMemo(() => {
-      return (60 / Math.max(30, tempo || 90)) + 's';
-  }, [tempo]);
-
   // Цвета и свечение - РАСШИРЕННЫЙ СПЕКТР
   const dynamicStyles = useMemo(() => {
-      // 250 (Indigo/Violet) -> 330 (Magenta/Hot Pink)
       const hue = 250 + (tension * 80); 
-      const saturation = 40 + (tension * 55); // Глубокий рост насыщенности
-      const light = 35 + (tension * 30);      // Заметный рост яркости
-      const glow = 15 + (tension * 85);       // Экстремальное свечение на пиках
+      const saturation = 40 + (tension * 55); 
+      const light = 35 + (tension * 30);      
+      const glow = 15 + (tension * 85);       
       
       return {
           '--orbital-hue': hue,
@@ -46,10 +43,40 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
           '--orbital-color': `hsl(${hue}, ${saturation}%, ${light}%)`,
           '--orbital-glow': `${glow}px`,
           '--orbital-size': size || '300px',
-          '--pulse-duration': pulseDuration,
           '--pulse-play-state': isPlaying ? 'running' : 'paused'
       } as React.CSSProperties;
-  }, [tension, size, pulseDuration, isPlaying]);
+  }, [tension, size, isPlaying]);
+
+  // --- IMPULSE LISTENER (PLAN №1335) ---
+  useEffect(() => {
+    const onPulse = (e: any) => {
+        if (!isPlaying) return;
+        
+        const hitTime = e.detail.time;
+        const audioContext = analyser?.context;
+        if (!audioContext) return;
+
+        const now = audioContext.currentTime;
+        const delay = (hitTime - now) * 1000;
+        
+        // Планируем визуальную вспышку в будущем (синхронно со звуком)
+        if (delay > -50) {
+            const t = setTimeout(() => {
+                setIsPulsing(true);
+                const t2 = setTimeout(() => setIsPulsing(false), 120);
+                pulseTimeoutsRef.current.push(t2);
+            }, Math.max(0, delay));
+            pulseTimeoutsRef.current.push(t);
+        }
+    };
+    
+    window.addEventListener('AG_CORE_PULSE', onPulse);
+    return () => {
+        window.removeEventListener('AG_CORE_PULSE', onPulse);
+        pulseTimeoutsRef.current.forEach(clearTimeout);
+        pulseTimeoutsRef.current = [];
+    };
+  }, [isPlaying, analyser]);
 
   useEffect(() => {
     if (planeRef.current) {
@@ -58,7 +85,11 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
   }, [rotationDuration]);
 
   return (
-    <div className={cn(styles.view, className)} style={dynamicStyles}>
+    <div 
+        className={cn(styles.view, className)} 
+        style={dynamicStyles}
+        data-pulsing={isPulsing}
+    >
       <div ref={planeRef} className={cn(styles.plane, styles.main)}>
         {Array.from({ length: 6 }).map((_, i) => (
             <div 
