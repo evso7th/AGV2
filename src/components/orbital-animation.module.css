@@ -36,7 +36,7 @@
   border-radius: 100%;
   box-sizing: border-box;
   box-shadow: 0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color);
-  border: 1px solid hsl(var(--primary) / 0.3);
+  border: 1px solid hsla(var(--orbital-hue), var(--orbital-saturation), var(--orbital-lightness), 0.3);
 }
 
 .circle::before,
@@ -52,9 +52,9 @@
   width: 8%;
   height: 8%;
   border-radius: 100%;
-  background: hsl(var(--primary));
+  background: var(--orbital-color);
   box-sizing: border-box;
-  box-shadow: 0 0 30px 2px hsl(var(--primary));
+  box-shadow: 0 0 calc(var(--orbital-glow) * 0.5) var(--orbital-color);
   
   /* #ЗАЧЕМ: Ритмическая пульсация ядра (BPM Sync) */
   animation: core-pulse var(--pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
@@ -96,7 +96,7 @@
   }
   10% { 
     transform: translateZ(var(--z-offset)) scale(1.4);
-    filter: brightness(1.8);
-    box-shadow: 0 0 50px 4px hsl(var(--primary));
+    filter: brightness(1.5);
+    box-shadow: 0 0 var(--orbital-glow) var(--orbital-color);
   }
 }

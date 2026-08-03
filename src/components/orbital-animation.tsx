@@ -13,8 +13,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V5.0 — "The Rhythmic Core".
- * #ЗАЧЕМ: Реализация ПЛАНА №1402 — Синхронизация пульсации ядра с BPM.
+ * @fileOverview Orbital Animation V5.1 — "Color Sync Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1405 — Полная цветовая синхронизация Ядра и Орбит.
  */
 export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
@@ -38,6 +38,9 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
       const glow = 20 + (tension * 60); // Интенсивность размытия тени
       
       return {
+          '--orbital-hue': hue,
+          '--orbital-saturation': `${saturation}%`,
+          '--orbital-lightness': `${light}%`,
           '--orbital-color': `hsl(${hue}, ${saturation}%, ${light}%)`,
           '--orbital-glow': `${glow}px`,
           '--orbital-size': size || '300px',
@@ -61,7 +64,7 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
                 className={styles.circle}
                 style={{ 
                     boxShadow: `0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color)`,
-                    borderColor: `hsla(270, 50%, 50%, ${0.2 + tension * 0.3})`
+                    borderColor: `hsla(var(--orbital-hue), var(--orbital-saturation), var(--orbital-lightness), ${0.2 + tension * 0.3})`
                 }}
             ></div>
         ))}
