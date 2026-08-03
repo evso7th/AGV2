@@ -1,7 +1,7 @@
 /**
- * @fileOverview Orbital Animation Styles V6.1 — "Synesthetic Core".
- * #ЗАЧЕМ: Реализация ПЛАНА №1335. Разделение фонового дыхания и событийного импульса.
- * #ОБНОВЛЕНО: Добавлен эффект размытия (blur) для создания образа энергетической туманности.
+ * @fileOverview Orbital Animation Styles V6.2 — "Expanded Core".
+ * #ЗАЧЕМ: ПЛАН №1335. Разделение фонового дыхания и событийного импульса.
+ * #ОБНОВЛЕНО: Размер центрального элемента увеличен на 20% (с 8% до 10%).
  */
 
 .view {
@@ -52,8 +52,8 @@
   right: 0;
   bottom: 0;
   margin: auto;
-  width: 8%;
-  height: 8%;
+  width: 10%;
+  height: 10%;
   border-radius: 100%;
   background: var(--orbital-color);
   box-sizing: border-box;
