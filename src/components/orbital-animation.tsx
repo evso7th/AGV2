@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 import styles from './orbital-animation.module.css';
 import { cn } from '@/lib/utils';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface OrbitalAnimationProps {
     isPlaying?: boolean;
@@ -13,13 +14,14 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V6.0 — "Synesthetic Heart".
- * #ЗАЧЕМ: Реализация ПЛАНА №1335. Визуальный отклик на удары бочки и баса.
- * #ЧТО: Подписка на AG_CORE_PULSE и управление состоянием импульса.
+ * @fileOverview Orbital Animation V7.0 — "Mobile Lite Optimization".
+ * #ЗАЧЕМ: ПЛАН №1400. Разделение тяжелой JS-реактивности и легкого мобильного рендера.
+ * #ЧТО: Автономный CSS-пульс на мобильных вместо JS-триггеров.
  */
 export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
   const { analyser } = useAudioEngine();
+  const isMobile = useIsMobile();
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
@@ -29,12 +31,17 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
       return base / (0.5 + tension * 1.5) + 's';
   }, [isPlaying, tension]);
 
-  // Цвета и свечение - РАСШИРЕННЫЙ СПЕКТР
+  // Длительность пульса для мобильного CSS-цикла
+  const pulseDuration = useMemo(() => {
+    return (60 / (tempo || 90)) + 's';
+  }, [tempo]);
+
+  // Цвета и свечение
   const dynamicStyles = useMemo(() => {
       const hue = 250 + (tension * 80); 
       const saturation = 40 + (tension * 55); 
       const light = 35 + (tension * 30);      
-      const glow = 15 + (tension * 85);       
+      const glow = isMobile ? 8 + (tension * 30) : 15 + (tension * 85);       
       
       return {
           '--orbital-hue': hue,
@@ -43,12 +50,15 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
           '--orbital-color': `hsl(${hue}, ${saturation}%, ${light}%)`,
           '--orbital-glow': `${glow}px`,
           '--orbital-size': size || '300px',
-          '--pulse-play-state': isPlaying ? 'running' : 'paused'
+          '--pulse-play-state': isPlaying ? 'running' : 'paused',
+          '--mobile-pulse-duration': pulseDuration
       } as React.CSSProperties;
-  }, [tension, size, isPlaying]);
+  }, [tension, size, isPlaying, isMobile, pulseDuration]);
 
-  // --- IMPULSE LISTENER (PLAN №1335) ---
+  // --- DESKTOP ONLY: IMPULSE LISTENER ---
   useEffect(() => {
+    if (isMobile) return; // На мобилках не слушаем, крутимся сами
+
     const onPulse = (e: any) => {
         if (!isPlaying) return;
         
@@ -59,7 +69,6 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
         const now = audioContext.currentTime;
         const delay = (hitTime - now) * 1000;
         
-        // Планируем визуальную вспышку в будущем (синхронно со звуком)
         if (delay > -50) {
             const t = setTimeout(() => {
                 setIsPulsing(true);
@@ -76,7 +85,7 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
         pulseTimeoutsRef.current.forEach(clearTimeout);
         pulseTimeoutsRef.current = [];
     };
-  }, [isPlaying, analyser]);
+  }, [isPlaying, analyser, isMobile]);
 
   useEffect(() => {
     if (planeRef.current) {
@@ -89,6 +98,7 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
         className={cn(styles.view, className)} 
         style={dynamicStyles}
         data-pulsing={isPulsing}
+        data-mobile={isMobile}
     >
       <div ref={planeRef} className={cn(styles.plane, styles.main)}>
         {Array.from({ length: 6 }).map((_, i) => (

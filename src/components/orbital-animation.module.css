@@ -1,7 +1,7 @@
 /**
- * @fileOverview Orbital Animation Styles V6.3 — "Extreme Nebula".
- * #ЗАЧЕМ: ПЛАН №1335. Разделение фонового дыхания и событийного импульса.
- * #ОБНОВЛЕНО: Экстремальное размытие ядра в спокойном состоянии (12px) для эффекта туманности.
+ * @fileOverview Orbital Animation Styles V7.0 — "Mobile Lite Optimization".
+ * #ЗАЧЕМ: ПЛАН №1400. Оптимизация для мобильных устройств.
+ * #ЧТО: Снижение blur и использование автономной анимации для мобилок.
  */
 
 .view {
@@ -58,15 +58,13 @@
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  /* #ЗАЧЕМ: Эффект экстремальной небулы (размытый контур) */
+  /* #ЗАЧЕМ: Эффект небулы (размытый контур) */
   filter: blur(12px);
   box-shadow: 0 0 calc(var(--orbital-glow) * 2.5) var(--orbital-color);
   
-  /* #ЗАЧЕМ: Фоновое "дыхание" */
   animation: core-breath 5s infinite ease-in-out;
   animation-play-state: var(--pulse-play-state, paused);
 
-  /* #ЗАЧЕМ: Плавный, но быстрый отклик на импульс */
   transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), 
               filter 0.1s ease-out, 
               box-shadow 0.1s ease-out,
@@ -74,11 +72,19 @@
   will-change: transform, filter, box-shadow;
 }
 
-/* --- EVENT-BASED PULSE (PLAN №1335) --- */
-.view[data-pulsing="true"] .circle::before,
-.view[data-pulsing="true"] .circle::after {
+/* --- MOBILE OPTIMIZATIONS (PLAN №1400) --- */
+.view[data-mobile="true"] .circle::before,
+.view[data-mobile="true"] .circle::after {
+  filter: blur(6px); /* Снижаем размытие для GPU */
+  box-shadow: 0 0 var(--orbital-glow) var(--orbital-color); /* Упрощаем тени */
+  animation: mobile-pulse var(--mobile-pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
+  animation-play-state: var(--pulse-play-state, paused);
+}
+
+/* --- EVENT-BASED PULSE (DESKTOP) --- */
+.view:not([data-mobile="true"])[data-pulsing="true"] .circle::before,
+.view:not([data-mobile="true"])[data-pulsing="true"] .circle::after {
   transform: translateZ(var(--z-offset)) scale(1.35);
-  /* При вспышке ядро становится ярче и немного четче (но остается мягким) */
   filter: blur(4px) brightness(2.0) saturate(1.4);
   box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color);
   opacity: 1;
@@ -106,8 +112,13 @@
   100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
 }
 
-/* #ЗАЧЕМ: Очень мягкое мерцание в паузах */
 @keyframes core-breath {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.7; }
+}
+
+@keyframes mobile-pulse {
+  0% { transform: translateZ(var(--z-offset)) scale(1); filter: blur(6px); opacity: 0.5; }
+  10% { transform: translateZ(var(--z-offset)) scale(1.2); filter: blur(3px) brightness(1.5); opacity: 1; }
+  100% { transform: translateZ(var(--z-offset)) scale(1); filter: blur(6px); opacity: 0.5; }
 }
