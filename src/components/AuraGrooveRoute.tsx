@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview UI AuraGroove V16.1.3 — "Absolute Glass Restoration".
- * #ЗАЧЕМ: Гарантированный Frosted Glass и фикс DND Kit импортов.
+ * @fileOverview UI AuraGroove V16.2.0 — "Floating Console Update".
+ * #ЗАЧЕМ: ПЛАН №1420 — Редизайн тулбара и уплотнение интерфейса.
+ * #ЧТО: Парящая панель с зазором 2px, перенос копирайта, сжатие селекторов.
  */
 'use client';
 
@@ -579,9 +580,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </header>
 
                 <div className="flex flex-col">
-                    <div className="px-3 py-2 flex-shrink-0">
+                    <div className="px-3 py-1 flex-shrink-0">
                         <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">{t('label_genre')}</Label>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-1">
                             {GENRE_IDS.map(id => (
                                 <button
                                     key={id}
@@ -600,9 +601,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             ))}
                         </div>
                     </div>
-                    <div className="px-3 py-2 flex-shrink-0">
+                    <div className="px-3 py-1 flex-shrink-0">
                         <Label className="text-[10px] font-black uppercase opacity-60 tracking-wider">{t('label_mood')}</Label>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        <div className="flex flex-wrap gap-1 mt-1">
                             {MOOD_IDS.map(id => (
                                 <button
                                     key={id}
@@ -690,7 +691,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </ScrollArea>
                 </div>
 
-                <footer className={cn("px-4 pt-3 pb-1 backdrop-blur-sm flex flex-col shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-colors border-t", isDarkTheme ? 'bg-neutral-900/80 border-neutral-800' : 'bg-white/80 border-gray-200')}>
+                <footer className={cn("mx-[2px] mb-[2px] p-3 backdrop-blur-md flex flex-col shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-all border rounded-xl shadow-2xl", isDarkTheme ? 'bg-neutral-950/90 border-neutral-800' : 'bg-white/95 border-gray-200')}>
+                    <div className="text-center mb-2.5 opacity-30 pointer-events-none select-none">
+                        <span className="text-[7px] font-black uppercase tracking-[0.2em]">
+                            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
+                        </span>
+                    </div>
                     <div className="flex items-center justify-between w-full">
                         <div className="flex gap-1">
                             <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
@@ -783,11 +789,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 </DialogContent>
                             </Dialog>
                         </div>
-                    </div>
-                    <div className="text-center mt-1.5 opacity-30 pointer-events-none select-none">
-                        <span className="text-[7px] font-black uppercase tracking-[0.1em]">
-                            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
-                        </span>
                     </div>
                 </footer>
             </div>
