@@ -1,7 +1,7 @@
 /**
- * @fileOverview Orbital Animation Styles V6.2 — "Expanded Core".
+ * @fileOverview Orbital Animation Styles V6.3 — "Extreme Nebula".
  * #ЗАЧЕМ: ПЛАН №1335. Разделение фонового дыхания и событийного импульса.
- * #ОБНОВЛЕНО: Размер центрального элемента увеличен на 20% (с 8% до 10%).
+ * #ОБНОВЛЕНО: Экстремальное размытие ядра в спокойном состоянии (12px) для эффекта туманности.
  */
 
 .view {
@@ -58,9 +58,9 @@
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  /* #ЗАЧЕМ: Эффект туманности (размытый контур) */
-  filter: blur(4px);
-  box-shadow: 0 0 calc(var(--orbital-glow) * 1.5) var(--orbital-color);
+  /* #ЗАЧЕМ: Эффект экстремальной небулы (размытый контур) */
+  filter: blur(12px);
+  box-shadow: 0 0 calc(var(--orbital-glow) * 2.5) var(--orbital-color);
   
   /* #ЗАЧЕМ: Фоновое "дыхание" */
   animation: core-breath 5s infinite ease-in-out;
@@ -78,9 +78,9 @@
 .view[data-pulsing="true"] .circle::before,
 .view[data-pulsing="true"] .circle::after {
   transform: translateZ(var(--z-offset)) scale(1.35);
-  /* При вспышке ядро становится ярче и "четче" (меньше блюра) */
-  filter: blur(2px) brightness(2.0) saturate(1.4);
-  box-shadow: 0 0 calc(var(--orbital-glow) * 3.5) var(--orbital-color);
+  /* При вспышке ядро становится ярче и немного четче (но остается мягким) */
+  filter: blur(4px) brightness(2.0) saturate(1.4);
+  box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color);
   opacity: 1;
 }
 
@@ -108,6 +108,6 @@
 
 /* #ЗАЧЕМ: Очень мягкое мерцание в паузах */
 @keyframes core-breath {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 0.8; }
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
 }
