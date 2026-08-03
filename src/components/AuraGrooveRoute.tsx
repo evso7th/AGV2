@@ -52,7 +52,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
-} from '@dnd-kit/sortable';
+} from '@radix-ui/react-sortable';
 
 // DND Kit Utilities
 import { CSS } from '@dnd-kit/utilities';
@@ -407,15 +407,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
                     
-                    {/* Control Pill - Fixed 90vw width */}
+                    {/* Control Pill - Fixed 90vw width - COMPACTED FOR MOBILE */}
                     <div 
-                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-1 px-4 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
+                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-around gap-0.5 px-2.5 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[90vw] max-w-[400px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button 
                             disabled={props.activeRouteIndex <= 0}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex - 1].id)}
-                            className="p-2 hover:bg-white/5 disabled:opacity-10 transition-colors"
+                            className="p-1.5 hover:bg-white/5 disabled:opacity-10 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <SkipBack className="h-5 w-5" />
@@ -423,7 +423,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                         <button 
                             onClick={props.handlePlayPause}
-                            className="p-3 hover:bg-white/5 transition-all active:scale-90"
+                            className="p-2 hover:bg-white/5 transition-all active:scale-90"
                             style={{ color: hudColor }}
                         >
                             {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
@@ -432,7 +432,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <button 
                             disabled={props.activeRouteIndex >= props.route.length - 1}
                             onClick={() => props.selectRouteItem(props.route[props.activeRouteIndex + 1].id)}
-                            className="p-2 hover:bg-white/5 disabled:opacity-10 transition-colors"
+                            className="p-1.5 hover:bg-white/5 disabled:opacity-10 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <SkipForward className="h-5 w-5" />
@@ -442,7 +442,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                         <button 
                             onClick={() => { props.handleSaveMasterpiece(); showFeedback(t('toast_masterpiece_saved')); }}
-                            className="p-2 hover:bg-white/5 transition-colors"
+                            className="p-1.5 hover:bg-white/5 transition-colors"
                             style={{ color: hudColor }}
                         >
                             <ThumbsUp className="h-5 w-5" />
@@ -450,7 +450,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                         <button 
                             onClick={() => { props.handleToggleRecording(); showFeedback(props.isRecording ? 'Recording Started' : 'Recording Stopped'); }}
-                            className="p-2 hover:bg-white/5 transition-colors"
+                            className="p-1.5 hover:bg-white/5 transition-colors"
                             style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.4 }}
                         >
                             <Radio className={cn("h-5 w-5", props.isRecording && "animate-pulse")} />
@@ -458,7 +458,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                         <button 
                             onClick={() => setIsAmbientMode(false)}
-                            className="p-2 hover:bg-white/5 text-white/20 transition-colors"
+                            className="p-1.5 hover:bg-white/5 text-white/20 transition-colors"
                         >
                             <X className="h-5 w-5" />
                         </button>
