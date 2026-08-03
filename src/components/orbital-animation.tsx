@@ -13,8 +13,9 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V5.1 — "Color Sync Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1405 — Полная цветовая синхронизация Ядра и Орбит.
+ * @fileOverview Orbital Animation V5.2 — "High Contrast Spectrum".
+ * #ЗАЧЕМ: Расширение цветового диапазона для более заметной реакции на музыку.
+ * #ЧТО: Hue shift увеличен до 80 градусов (Indigo -> Magenta).
  */
 export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
@@ -22,7 +23,7 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
   // Скорость вращения орбит (зависит от Tension)
   const rotationDuration = useMemo(() => {
       const base = isPlaying ? 40 : 60;
-      return base / (0.5 + tension * 1.0) + 's';
+      return base / (0.5 + tension * 1.5) + 's';
   }, [isPlaying, tension]);
 
   // Длительность пульса ядра (BPM Sync: 60 / BPM = секунды на удар)
@@ -30,12 +31,13 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
       return (60 / Math.max(30, tempo || 90)) + 's';
   }, [tempo]);
 
-  // Цвета и свечение
+  // Цвета и свечение - РАСШИРЕННЫЙ СПЕКТР
   const dynamicStyles = useMemo(() => {
-      const hue = 270 + (tension * 20); // Сдвиг от фиолетового к фуксии
-      const saturation = 50 + (tension * 30);
-      const light = 40 + (tension * 20);
-      const glow = 20 + (tension * 60); // Интенсивность размытия тени
+      // 250 (Indigo/Violet) -> 330 (Magenta/Hot Pink)
+      const hue = 250 + (tension * 80); 
+      const saturation = 40 + (tension * 55); // Глубокий рост насыщенности
+      const light = 35 + (tension * 30);      // Заметный рост яркости
+      const glow = 15 + (tension * 85);       // Экстремальное свечение на пиках
       
       return {
           '--orbital-hue': hue,
@@ -64,7 +66,7 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
                 className={styles.circle}
                 style={{ 
                     boxShadow: `0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color)`,
-                    borderColor: `hsla(var(--orbital-hue), var(--orbital-saturation), var(--orbital-lightness), ${0.2 + tension * 0.3})`
+                    borderColor: `hsla(var(--orbital-hue), var(--orbital-saturation), var(--orbital-lightness), ${0.1 + tension * 0.5})`
                 }}
             ></div>
         ))}
