@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V59.0 — "Clear Sky Protocol Integration".
- * #ЗАЧЕМ: Глобальная калибровка баланса для увеличения Headroom и устранения искажений.
+ * @fileOverview Audio Engine Context V60.0 — "Master Headroom Calibration".
+ * #ЗАЧЕМ: Установка дефолтного мастер-уровня на 0.65 для предотвращения клиппинга.
  */
 'use client';
 
@@ -31,20 +31,19 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 import { TRANSLATIONS, type Language } from '@/lib/translations';
 
 // #ЗАЧЕМ: "Протокол Чистого Неба". Реактивная калибровка уровней.
-// Снижение всех базовых уровней для предотвращения перегрузки лимитера.
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.35,            // Снижено с 0.50
-  melody: 0.45,          // Снижено с 0.65
-  accompaniment: 0.55,   // Снижено с 0.80
-  drums: 0.65,           // Снижено с 0.85
-  sparkles: 0.45,        // Снижено с 0.65
-  sfx: 0.45,             // Снижено с 0.65
-  harmony: 0.55,         // Снижено с 0.80
-  pianoAccompaniment: 0.22, // Снижено с 0.325
+  bass: 0.35,
+  melody: 0.45,
+  accompaniment: 0.55,
+  drums: 0.65,
+  sparkles: 0.45,
+  sfx: 0.45,
+  harmony: 0.55,
+  pianoAccompaniment: 0.22,
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 1.0,
+    master: 0.65, // #ЗАЧЕМ: ПЛАН №1355. Снижено для Headroom.
     acoustic: 0.15,
     electric: 0.15, 
     piano: 0.6,
@@ -166,7 +165,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 1.0, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0 };
+      const defaults = { master: 0.65, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0 };
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
@@ -206,7 +205,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 1.0;
+      const m = gains.master ?? 0.65;
       
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);
