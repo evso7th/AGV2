@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.4.1 — "Smart HUD Logic".
- * #ЗАЧЕМ: ПЛАН №1450 — Мгновенный HUD при наличии очереди, Навигатор при пустой.
+ * @fileOverview UI AuraGroove V16.5.1 — "Smart Gateway Logic".
+ * #ЗАЧЕМ: ПЛАН №1460 — Интеллектуальный запуск: Прелоадер -> HUD (если есть очередь) или Навигатор (если пусто).
  */
 'use client';
 
@@ -11,7 +11,7 @@ import {
     Home, RefreshCw, SlidersHorizontal, ArrowUp, ArrowDown, Mic2,
     Save, FolderOpen, Trash2, Check, Navigation, Sliders, Cog,
     GripVertical, Zap, Dna, SaveAll, RotateCcw, Layers, Repeat, Moon, Sun, Sparkles, DownloadCloud, Info, CircleHelp,
-    SkipBack, SkipForward
+    SkipBack, SkipForward, Loader2
 } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -22,12 +22,11 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
 import { OrbitalAnimation } from "./orbital-animation";
 
@@ -302,6 +301,22 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // --- SMART GATEWAY LOGIC (PLAN №1460) ---
+    const [isWarmingUp, setIsWarmingUp] = useState(true);
+    const [isAmbientMode, setIsAmbientMode] = useState(false);
+
+    useEffect(() => {
+        const analyzeTimer = setTimeout(() => {
+            setIsWarmingUp(false);
+            // Decision: Jump to HUD if queue exists
+            if (props.route.length > 0) {
+                setIsAmbientMode(true);
+            }
+        }, 2500); // 2.5s "Warming up" period for aesthetic feel
+
+        return () => clearTimeout(analyzeTimer);
+    }, [props.route.length]);
+
     // DND Sensors
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -322,7 +337,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         feedbackTimeoutRef.current = setTimeout(() => setFeedbackMessage(null), 3000);
     }, []);
     
-    const [isAmbientMode, setIsAmbientMode] = useState(false);
     const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
 
     const resetIdleTimer = useCallback(() => {
@@ -344,16 +358,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         };
     }, [resetIdleTimer]);
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1450. Умная логика появления HUD.
-     * #ЧТО: Если музыка играет и очередь НЕ пуста — переходим в HUD мгновенно.
-     */
-    useEffect(() => {
-        if (props.isPlaying && props.route.length > 0) {
-            setIsAmbientMode(true);
-        }
-    }, [props.isPlaying, props.route.length]);
-
     const hudColor = useMemo(() => {
         const hue = 270 + (props.tension * 20);
         const saturation = 70 + (props.tension * 25); 
@@ -371,6 +375,30 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const outlineStyle = !isDarkTheme
         ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
         : undefined;
+
+    // --- RENDER GATEWAY: PRELOADER ---
+    if (isWarmingUp) {
+        return (
+            <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
+                <div className="absolute inset-0 opacity-20 filter blur-3xl">
+                    <OrbitalAnimation isPlaying={true} tempo={60} tension={0.3} size="500px" />
+                </div>
+                <div className="relative z-10 flex flex-col items-center gap-6">
+                    <div className="w-16 h-16 rounded-full border-2 border-primary/20 flex items-center justify-center animate-pulse">
+                        <Dna className="h-8 w-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <h2 className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">Analyzing DNA</h2>
+                        <div className="flex gap-1">
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
@@ -536,14 +564,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
+                            <button 
                                 onClick={() => setIsInfoOpen(true)} 
-                                className="h-8 w-8 text-primary hover:bg-primary/10"
+                                className="h-8 w-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-full transition-colors"
                             >
                                 <CircleHelp className="h-5 w-5" />
-                            </Button>
+                            </button>
                             <Button 
                                 onClick={props.handlePlayPause} 
                                 disabled={props.isInitializing} 
