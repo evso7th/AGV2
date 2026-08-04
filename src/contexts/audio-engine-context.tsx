@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V58.0 — "Core Pulse Dispatcher".
- * #ЗАЧЕМ: Реализация ПЛАНА №1335. Синхронизация визуального пульса с ударами бочки и баса.
+ * @fileOverview Audio Engine Context V59.0 — "Clear Sky Protocol Integration".
+ * #ЗАЧЕМ: Глобальная калибровка баланса для увеличения Headroom и устранения искажений.
  */
 'use client';
 
@@ -30,15 +30,17 @@ import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 import { TRANSLATIONS, type Language } from '@/lib/translations';
 
+// #ЗАЧЕМ: "Протокол Чистого Неба". Реактивная калибровка уровней.
+// Снижение всех базовых уровней для предотвращения перегрузки лимитера.
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.50,            
-  melody: 0.65,           
-  accompaniment: 0.80,
-  drums: 0.85,            
-  sparkles: 0.65,       
-  sfx: 0.65,            
-  harmony: 0.80,        
-  pianoAccompaniment: 0.325, 
+  bass: 0.35,            // Снижено с 0.50
+  melody: 0.45,          // Снижено с 0.65
+  accompaniment: 0.55,   // Снижено с 0.80
+  drums: 0.65,           // Снижено с 0.85
+  sparkles: 0.45,        // Снижено с 0.65
+  sfx: 0.45,             // Снижено с 0.65
+  harmony: 0.55,         // Снижено с 0.80
+  pianoAccompaniment: 0.22, // Снижено с 0.325
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {

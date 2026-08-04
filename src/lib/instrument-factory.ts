@@ -1,7 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.3 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
- * #ЧТО: Внедрение cancelScheduledValues перед каждой установкой громкости.
+ * @fileOverview Центральная фабрика инструментов V8.5 — "Clear Sky Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1301 и №1305. 
+ * #ЧТО: Внедрение Gain Staging (-6dB Headroom) и High-Pass Filter (150Hz) для всех не-басовых слоев.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -385,6 +385,15 @@ const createIndependentVoice = (
         nodes.push(shaper);
     }
 
+    // #ЗАЧЕМ: "Протокол Чистого Неба". Удаление гула в нижнем регистре.
+    const hpf = ctx.createBiquadFilter();
+    hpf.type = 'highpass';
+    hpf.frequency.value = (type === 'bass' || type === 'drums') ? 20 : 150;
+    hpf.Q.value = 0.5;
+    chainHead.connect(hpf);
+    chainHead = hpf;
+    nodes.push(hpf);
+
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     const baseCutoff = preset.post?.lpf || preset.lpf?.cutoff || preset.lpf || 2000;
@@ -422,7 +431,8 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    const peak = velocity * 0.8 * humLevel;
+    // #ЗАЧЕМ: Gain Staging. Снижение пикового уровня с 0.8 до 0.45 для Headroom.
+    const peak = velocity * 0.45 * humLevel;
     voiceGain.gain.setValueAtTime(0.0001, now);
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
