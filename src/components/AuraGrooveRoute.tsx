@@ -1,7 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.2.1 — "Sortable Fix & Ultra Compact HUD".
- * #ЗАЧЕМ: ПЛАН №1420 — Исправление ошибки сборки и уплотнение HUD.
- * #ЧТО: Корректный импорт DND Kit и сжатие кнопок в Ambient Mode.
+ * @fileOverview UI AuraGroove V16.4.1 — "Smart HUD Logic".
+ * #ЗАЧЕМ: ПЛАН №1450 — Мгновенный HUD при наличии очереди, Навигатор при пустой.
  */
 'use client';
 
@@ -344,6 +343,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         };
     }, [resetIdleTimer]);
+
+    /**
+     * #ЗАЧЕМ: ПЛАН №1450. Умная логика появления HUD.
+     * #ЧТО: Если музыка играет и очередь НЕ пуста — переходим в HUD мгновенно.
+     */
+    useEffect(() => {
+        if (props.isPlaying && props.route.length > 0) {
+            setIsAmbientMode(true);
+        }
+    }, [props.isPlaying, props.route.length]);
 
     const hudColor = useMemo(() => {
         const hue = 270 + (props.tension * 20);
