@@ -1,56 +1,44 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Версия 0.4.12. Добавлено описание HUD и Ambient Mode.
+ * #ОБНОВЛЕНО: Версия 0.4.32. Добавлено описание новых элементов HUD и мгновенного отклика.
  */
 
 export const GUIDE_RU = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Полное руководство пользователя</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.12 (Infinite Take Orchestra)</p>
-    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v15.5 | Core: v3.7.0</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.32 (Infinite Take Orchestra)</p>
+    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v16.2 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект, имитирующий работу живого ансамбля. Это руководство поможет вам понять философию проекта, настроить систему под себя и научиться управлять генерацией музыки в реальном времени.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.32 представляет полностью модернизированный иммерсивный режим HUD с расширенным контролем и мгновенной реакцией.</p>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Введение: Что такое AuraGroove?</h2>
-    <p>AuraGroove — это детерминированный алгоритмический движок, создающий уникальную фоновую музыку в реальном времени с помощью фрактальной математики, цепей Маркова и генетических алгоритмов.</p>
-    <div class="bg-muted/30 p-3 rounded-lg space-y-2 border border-border/50">
-      <p class="font-bold text-[11px] uppercase opacity-70">Важно понимать, чем AuraGroove НЕ является:</p>
-      <ul class="space-y-1 text-[12px]">
-        <li class="flex gap-2"><span>❌</span> <span>Это не нейросеть. Здесь нет LLM-моделей (как в SUNO или Udio). Никаких текстовых промптов.</span></li>
-        <li class="flex gap-2"><span>❌</span> <span>Это не плеер. Приложение не хранит и не воспроизводит готовые аудиофайлы или MIDI-треки.</span></li>
-        <li class="flex gap-2"><span>✅</span> <span>Это математический генератор. Каждая нота, ритм и тембр создаются «здесь и сейчас».</span></li>
-      </ul>
-    </div>
-  </section>
-
-  <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Иммерсивный режим (HUD)</h2>
-    <p>Новая функция версии 0.4 — режим полного погружения. Если вы не взаимодействуете с интерфейсом в течение 10 секунд при включенной музыке, приложение переходит в режим <strong>Ambient HUD</strong>.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Интерактивный HUD (Иммерсивный режим)</h2>
+    <p>Режим HUD активируется автоматически при отсутствии активности. Теперь он превратился в полноценный терминал управления:</p>
     <ul class="list-disc pl-5 space-y-2">
-      <li><strong>Живое Ядро:</strong> Центральная визуализация энергии (Орбиты), которая меняет цвет, скорость и свечение в зависимости от музыкального напряжения (Tension).</li>
-      <li><strong>Минималистичный пульт:</strong> В нижней части экрана остается только «пилюля» с основными кнопками управления и счетчик шагов.</li>
-      <li><strong>Обратная связь:</strong> При нажатии «Лайк» или «Запись» в HUD всплывают деликатные уведомления.</li>
+      <li><strong>Активный брендинг:</strong> Нажмите на заголовок <em>AuraGroove Infinite Take Orchestra</em> в верхней части экрана, чтобы мгновенно вызвать это окно Инфоцентра.</li>
+      <li><strong>Четырехточечный контроль:</strong> В углах экрана расположены основные функции. Сверху: Регенерация (слева) и Broadcast Bridge (справа). Снизу: Студийный Микшер (слева) и Эквалайзер (справа).</li>
+      <li><strong>Прогресс-бар:</strong> Прямо над нижним пультом управления появилась тонкая линия, отображающая ход текущей музыкальной сюиты.</li>
+      <li><strong>Мгновенный отклик:</strong> Иконка Play/Pause меняется немедленно при нажатии, обеспечивая безупречную визуальную связь.</li>
+      <li><strong>Квадратное Ядро:</strong> Центральная визуализация теперь идеально сбалансирована в форме квадрата для лучшего восприятия энергии.</li>
     </ul>
-    <p class="text-muted-foreground italic text-[11px] sm:text-[12px]">Чтобы выйти из режима HUD, просто коснитесь любой кнопки управления или нажмите «X» на пульте.</p>
   </section>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Настройка звука</h2>
-    <p>Звук синтезируется через Web Audio API. Рекомендуется настроить <strong>System Mixer</strong> и <strong>Эквалайзер</strong> под вашу акустику. Настройки сохраняются локально.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Студийные настройки</h2>
+    <p>Все окна настроек (Микшер, EQ, Инфоцентр) теперь имеют единый стиль «матового стекла», не отвлекая от погружения в музыку.</p>
     <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 flex gap-3">
       <span class="text-lg">💡</span>
-      <p class="text-[12px]"><span class="font-black text-primary uppercase">Совет:</span> Вы можете связать пресеты микшера с жанрами для автоматической загрузки идеального баланса.</p>
+      <p class="text-[12px]"><span class="font-black text-primary uppercase">Совет:</span> Используйте кнопку Broadcast Bridge (иконка вышки) в верхнем правом углу HUD для обеспечения стабильности звука в фоновом режиме на мобильных устройствах.</p>
     </div>
   </section>
 
   <section class="space-y-3 px-2 pb-6">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">4. Конфиденциальность</h2>
-    <p>AuraGroove полностью уважает вашу приватность. Ноль телеметрии. Все данные хранятся только локально.</p>
-    <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy listening!</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Конфиденциальность</h2>
+    <p>AuraGroove работает локально. Ваши пресеты, маршруты и настройки хранятся только в памяти вашего браузера. Ноль телеметрии, 100% музыки.</p>
+    <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the flow!</p>
   </section>
 </div>
 `;
@@ -59,37 +47,33 @@ export const GUIDE_EN = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Complete User Guide</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.12 (Infinite Take Orchestra)</p>
-    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v15.5 | Core: v3.7.0</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.32 (Infinite Take Orchestra)</p>
+    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v16.2 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3—an autonomous musical intelligence that simulates the dynamics of a live ensemble. This guide will help you understand the project's philosophy and master real-time music generation.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.32 introduces a fully modernized Immersive HUD with expanded control points and instant tactile feedback.</p>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Introduction</h2>
-    <p>AuraGroove is a deterministic algorithmic engine creating unique background music via fractal math, Markov chains, and genetic algorithms.</p>
-  </section>
-
-  <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Immersive Mode (HUD)</h2>
-    <p>New in version 0.4: the <strong>Ambient HUD</strong>. If you remain inactive for 10 seconds while music is playing, the app enters a focused immersion state.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Immersive HUD Evolution</h2>
+    <p>The HUD activates automatically during inactivity, turning your screen into a high-tech music terminal:</p>
     <ul class="list-disc pl-5 space-y-2">
-      <li><strong>The Living Core:</strong> A central energy visualization (Orbitals) that reacts to musical Tension by changing color, speed, and glow intensity.</li>
-      <li><strong>Control Pill:</strong> A floating minimalist toolbar containing essential playback and capture buttons.</li>
-      <li><strong>Visual Feedback:</strong> Confirmation messages for Likes and Recordings float elegantly within the HUD.</li>
+      <li><strong>Interactive Branding:</strong> Tap the <em>AuraGroove Infinite Take Orchestra</em> header at the top to instantly open this Info Center.</li>
+      <li><strong>Four-Corner Control:</strong> Essential tools are now surrounding the Core. Top: Regenerate (left) and Broadcast Bridge (right). Bottom: Studio Mixer (left) and Equalizer (right).</li>
+      <li><strong>Progress Indicator:</strong> A sleek progress bar is now visible just above the bottom control pill, tracking the duration of the current suite.</li>
+      <li><strong>Instant Feedback:</strong> The Play/Pause icon toggles immediately upon click or tap, providing zero-latency visual confirmation.</li>
+      <li><strong>Perfect Square Core:</strong> The central orbital animation is now locked to a perfect square geometry for visual balance.</li>
     </ul>
-    <p class="text-muted-foreground italic text-[11px] sm:text-[12px]">Simply interact with any control or press 'X' to return to the standard interface.</p>
   </section>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Sound Setup</h2>
-    <p>Sound is synthesized in real time. We recommend calibrating the <strong>System Mixer</strong> and <strong>Equalizer</strong> for your specific audio equipment.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Studio Aesthetics</h2>
+    <p>All control windows (Mixer, EQ, Info Center) now feature a consistent "frosted glass" style that maintains visual harmony across the app.</p>
   </section>
 
   <section class="space-y-2 px-2 pb-6">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">4. Privacy</h2>
-    <p>AuraGroove respects your privacy. Zero telemetry. All data remains locally on your device.</p>
-    <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy listening!</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Privacy and Autonomy</h2>
+    <p>AuraGroove stays local. Your presets, journeys, and settings remain on your device. Zero telemetry. Zero tracking.</p>
+    <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the music!</p>
   </section>
 </div>
 `;
@@ -99,22 +83,16 @@ export const DISCLAIMER_RU = `
   <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3</h2>
   
   <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Что это такое</h3>
-    <p>AuraGroove — это детерминированный алгоритмический движок. Это не генератор на основе нейросетей (как SUNO или Udio).</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Техническая природа</h3>
+    <p>AuraGroove — это детерминированный алгоритмический движок. Он не является «плеером» в привычном понимании, так как не воспроизводит записанные файлы, а создает их в реальном времени.</p>
     <ul class="list-disc pl-4 opacity-80">
-      <li>Без промптов: Мы не обрабатываем текстовые запросы.</li>
-      <li>Без нейросетей: Система построена на фракталах и цепи Маркова.</li>
-      <li>Не плеер: Весь звук синтезируется «на лету» с нуля.</li>
+      <li><strong>HUD:</strong> Интерактивный режим погружения с активными элементами управления.</li>
+      <li><strong>Мгновенность:</strong> Визуальный отклик интерфейса оптимизирован для исключения задержек восприятия.</li>
+      <li><strong>Приватность:</strong> Никакие данные о прослушивании не покидают ваше устройство.</li>
     </ul>
   </section>
 
-  <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Основные Принципы</h3>
-    <p><strong>Математический Суверенитет:</strong> 100% генерация. Никакого семплирования существующей музыки.</p>
-    <p><strong>Приватность:</strong> Ноль телеметрии. Ноль профилей. Все настройки хранятся только локально.</p>
-  </section>
-
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.12</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.32</p>
 </div>
 `;
 
@@ -123,22 +101,16 @@ export const DISCLAIMER_EN = `
   <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3</h2>
   
   <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Definition</h3>
-    <p>AuraGroove is a deterministic, algorithmic music engine. It is NOT a neural network-based generator.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">1. Technical Definition</h3>
+    <p>AuraGroove is a deterministic algorithmic engine. It is NOT a standard media player as it does not play pre-recorded files; it synthesizes them on-the-fly.</p>
     <ul class="list-disc pl-4 opacity-80">
-      <li>No prompts: We do not process text-to-music requests.</li>
-      <li>No neural networks: Built entirely on fractal math and Markov chains.</li>
-      <li>Not a playback engine: Audio is synthesized on-the-fly.</li>
+      <li><strong>HUD:</strong> Interactive immersion mode with live control points.</li>
+      <li><strong>Responsiveness:</strong> UI feedback is optimized for zero-latency icon toggling.</li>
+      <li><strong>Privacy:</strong> No listening data ever leaves your device.</li>
     </ul>
   </section>
 
-  <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Core Principles</h3>
-    <p><strong>Mathematical Sovereignty:</strong> 100% generative. No sampling of existing music.</p>
-    <p><strong>Zero Data Collection:</strong> No telemetry, no user profiles.</p>
-  </section>
-
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.12</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.32</p>
 </div>
 `;
 
@@ -149,25 +121,25 @@ export const CREDITS_HTML = `
   <p>AuraGroove is a strictly non-commercial project. All audio assets are used under Creative Commons or Public Domain licenses.</p>
 
   <section class="space-y-1">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">⚠️ CC-BY 4.0 Attribution</h3>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">⚠️ Attribution Requirements</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
       <li><strong>Fender Telecaster</strong> by JohnZealeyMusic (Freesound)</li>
       <li><strong>SFX Collection</strong> by akelley6 (Freesound)</li>
-      <li><strong>Robotic Transformer</strong> by VectorSpace</li>
+      <li><strong>Microfreak Texture Pack</strong> by Deleted_User_6725533</li>
     </ul>
   </section>
 
   <section class="space-y-1">
     <h3 class="text-[11px] font-black uppercase text-primary/70">✅ Public Domain & CC0</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
-      <li><strong>Voice Assets</strong> by alien_i_trust, fidelfortune, universfield (Pixabay)</li>
+      <li><strong>Voice Assets</strong> by alien_i_trust, universfield</li>
       <li><strong>Drum Kits</strong> by Karoryfer & Walter_Odington</li>
       <li><strong>Ambient Textures</strong> by DneproMan</li>
     </ul>
   </section>
 
   <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 text-[10px] italic">
-    <strong>DMCA:</strong> If you believe an asset is used incorrectly, please contact us for immediate removal.
+    <strong>Note:</strong> All code logic and generative algorithms are proprietary to the AuraGroove engine.
   </div>
 </div>
 `;
