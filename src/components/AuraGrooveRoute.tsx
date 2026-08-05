@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.6.1 — "Preset Update Implementation".
- * #ЗАЧЕМ: ПЛАН №1365 — Передача функций обновления в PresetManager.
+ * @fileOverview UI AuraGroove V16.7.0 — "HUD Control Polish".
+ * #ЗАЧЕМ: ПЛАН №1410 — Модернизация кнопок Закрыть и Запись в HUD.
  */
 'use client';
 
@@ -466,18 +466,29 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
 
                         <button 
-                            onClick={() => { props.handleToggleRecording(); showFeedback(props.isRecording ? 'Recording Started' : 'Recording Stopped'); }}
-                            className="p-1 hover:bg-white/5 transition-colors"
-                            style={{ color: hudColor, opacity: props.isRecording ? 1 : 0.4 }}
+                            onClick={() => { 
+                                props.handleToggleRecording(); 
+                                showFeedback(props.isRecording ? t('toast_record_stopped') : t('toast_record_started')); 
+                            }}
+                            className={cn("p-1.5 hover:bg-white/5 transition-all rounded-full", props.isRecording && "animate-pulse")}
+                            style={{ color: hudColor }}
                         >
-                            <Radio className={cn("h-5 w-5", props.isRecording && "animate-pulse")} />
+                            <div className="relative h-7 w-7 flex items-center justify-center">
+                                <div className="absolute inset-0 border-2 border-current rounded-full" />
+                                {props.isRecording ? (
+                                    <div className="h-3 w-3 bg-current rounded-sm animate-pulse" />
+                                ) : (
+                                    <div className="h-4 w-4 bg-current rounded-full opacity-60" />
+                                )}
+                            </div>
                         </button>
 
                         <button 
                             onClick={() => setIsAmbientMode(false)}
-                            className="p-1 hover:bg-white/5 text-white/20 transition-colors"
+                            className="p-2 hover:bg-white/10 transition-colors rounded-full"
+                            style={{ color: hudColor }}
                         >
-                            <X className="h-5 w-5" />
+                            <X className="h-7 w-7" />
                         </button>
                     </div>
 
@@ -916,3 +927,4 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
+
