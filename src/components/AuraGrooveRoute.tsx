@@ -386,13 +386,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
-                    {/* Top Status */}
-                    <div className="absolute top-12 left-0 right-0 text-center select-none pointer-events-none opacity-30">
+                    {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) */}
+                    <div className="absolute top-10 left-0 right-0 text-center select-none pointer-events-none opacity-50">
                         <div 
-                            className="text-[9px] font-black uppercase tracking-[0.5em] transition-colors duration-500"
+                            className="text-[11px] font-black uppercase tracking-[0.4em] transition-colors duration-500 flex flex-col gap-0.5"
                             style={{ color: hudColor }}
                         >
-                            AURAGROOVE INFINITY TAKE ORCHESTRA
+                            <span>AURAGROOVE</span>
+                            <span>INFINITE TAKE</span>
+                            <span>ORCHESTRA</span>
                         </div>
                     </div>
 
@@ -914,3 +916,4 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
+
