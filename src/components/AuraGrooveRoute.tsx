@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.5.1 — "Smart Gateway Logic".
- * #ЗАЧЕМ: ПЛАН №1460 — Интеллектуальный запуск: Прелоадер -> HUD (если есть очередь) или Навигатор (если пусто).
+ * @fileOverview UI AuraGroove V16.6.0 — "Smart Gateway Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError (Select/Checkbox) и активация HUD-логики.
  */
 'use client';
 
@@ -23,6 +23,14 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
 import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
@@ -301,21 +309,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // --- SMART GATEWAY LOGIC (PLAN №1460) ---
-    const [isWarmingUp, setIsWarmingUp] = useState(true);
+    // --- SMART HUD LOGIC (PLAN №1460) ---
     const [isAmbientMode, setIsAmbientMode] = useState(false);
 
     useEffect(() => {
-        const analyzeTimer = setTimeout(() => {
-            setIsWarmingUp(false);
-            // Decision: Jump to HUD if queue exists
-            if (props.route.length > 0) {
-                setIsAmbientMode(true);
-            }
-        }, 2500); // 2.5s "Warming up" period for aesthetic feel
-
-        return () => clearTimeout(analyzeTimer);
-    }, [props.route.length]);
+        // If we have items in queue on mount, go to HUD immediately
+        if (props.route.length > 0) {
+            setIsAmbientMode(true);
+        }
+    }, []);
 
     // DND Sensors
     const sensors = useSensors(
@@ -342,9 +344,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const resetIdleTimer = useCallback(() => {
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         if (props.isPlaying && !isAmbientMode) {
+            // Period of inactivity = 5s (as requested)
             idleTimerRef.current = setTimeout(() => {
                 setIsAmbientMode(true);
-            }, 10000); 
+            }, 5000); 
         }
     }, [props.isPlaying, isAmbientMode]);
 
@@ -375,30 +378,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const outlineStyle = !isDarkTheme
         ? { backgroundColor: '#FFFFFF', color: '#1F2937', borderColor: '#D1D5DB', borderWidth: '1px' }
         : undefined;
-
-    // --- RENDER GATEWAY: PRELOADER ---
-    if (isWarmingUp) {
-        return (
-            <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
-                <div className="absolute inset-0 opacity-20 filter blur-3xl">
-                    <OrbitalAnimation isPlaying={true} tempo={60} tension={0.3} size="500px" />
-                </div>
-                <div className="relative z-10 flex flex-col items-center gap-6">
-                    <div className="w-16 h-16 rounded-full border-2 border-primary/20 flex items-center justify-center animate-pulse">
-                        <Dna className="h-8 w-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
-                    </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <h2 className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">Analyzing DNA</h2>
-                        <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                            <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>

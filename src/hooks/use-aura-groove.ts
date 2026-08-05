@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V31.1 — "Queue Priority & Icon Standard".
- * #ЗАЧЕМ: ПЛАН №1350 — Старт с первого трека очереди вместо дефолта.
+ * @fileOverview Music Control Hook V32.0 — "Stability & Synchronization".
+ * #ЗАЧЕМ: ПЛАН №1360 — Устранение бесконечного цикла и фикс экспортов пресетов.
  */
 'use client';
 
@@ -222,9 +222,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (isPlaying) await setIsPlaying(false);
     stopAllSounds();
     router.push('/');
-    setTimeout(() => {
-      if (typeof window !== 'undefined') window.location.reload();
-    }, 300);
   }, [isPlaying, setIsPlaying, stopAllSounds, router]);
 
   const handleVolumeChange = useCallback((part: any, value: number) => {
@@ -239,11 +236,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [setVolume]);
 
   const handleEqChange = useCallback((idx: number, val: number) => {
-    const n = [...eqSettings];
-    n[idx] = val;
-    setEqSettings(n);
+    setEqSettings(prev => {
+        const n = [...prev];
+        n[idx] = val;
+        return n;
+    });
     setEQGain(idx, val);
-  }, [eqSettings, setEQGain]);
+  }, [setEQGain]);
 
   const applyCurrentMixToEngine = useCallback(() => {
       setVolume('master', calibrationGains.master);
@@ -283,10 +282,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
                     localStorage.setItem(LAST_MIX_BY_GENRE_KEY, JSON.stringify(m));
                 } catch (e) {}
             }
-            toast({ title: t('toast_journey_loaded'), description: target.name });
         }
     } catch (e) {}
-  }, [handleVolumeChange, toast, t]);
+  }, [handleVolumeChange]);
 
   const saveMixerPreset = useCallback((name: string) => {
     const values = {
@@ -308,8 +306,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
     setActiveMixerPresetId(newPreset.id);
     localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
-    toast({ title: "Mixer Preset Saved", description: name });
-  }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
+  }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
 
   const updateActiveMixerPreset = useCallback(() => {
     if (!activeMixerPresetId) return;
@@ -329,8 +326,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
         return next;
     });
-    toast({ title: "Mixer Preset Updated" });
-  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
+  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
 
   const deleteMixerPreset = useCallback((id: string) => {
     setMixerPresets(prev => {
@@ -350,8 +346,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
-    toast({ title: "System Mix Restored" });
-  }, [handleVolumeChange, toast, genre]);
+  }, [handleVolumeChange, genre]);
 
   const loadEqPreset = useCallback((id: string) => {
     const saved = localStorage.getItem(EQ_PRESETS_KEY);
@@ -372,10 +367,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
                     localStorage.setItem(LAST_EQ_BY_GENRE_KEY, JSON.stringify(m));
                 } catch (e) {}
             }
-            toast({ title: t('dialog_eq_title'), description: target.name });
         }
     } catch (e) {}
-  }, [handleEqChange, toast, t]);
+  }, [handleEqChange]);
 
   const saveEqPreset = useCallback((name: string) => {
     const newPreset: PresetItem = { id: `eq-${Date.now()}`, name, values: [...eqSettings] };
@@ -386,8 +380,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
     setActiveEqPresetId(newPreset.id);
     localStorage.setItem(ACTIVE_EQ_ID_KEY, newPreset.id);
-    toast({ title: "EQ Preset Saved", description: name });
-  }, [eqSettings, toast]);
+  }, [eqSettings]);
 
   const updateActiveEqPreset = useCallback(() => {
     if (!activeEqPresetId) return;
@@ -396,8 +389,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
         return next;
     });
-    toast({ title: "EQ Preset Updated" });
-  }, [activeEqPresetId, eqSettings, toast]);
+  }, [activeEqPresetId, eqSettings]);
 
   const deleteEqPreset = useCallback((id: string) => {
     setEqPresets(prev => {
@@ -471,7 +463,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     const sJ = localStorage.getItem(SAVED_JOURNEYS_KEY);
     if (sJ) { try { setSavedRoutes(JSON.parse(sJ)); } catch (e) {} }
     
-    // #ЗАЧЕМ: ПЛАН №1350. Автоматическая установка первого шага при загрузке.
     const lR = localStorage.getItem(CURRENT_ROUTE_KEY);
     if (lR) { 
         try { 
@@ -526,7 +517,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
             }
         } catch(e) {}
     }
-  }, []);
+  }, [setCalibrationGain]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -545,9 +536,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
-
     const origin = window.location.origin;
-
     navigator.mediaSession.metadata = new MediaMetadata({
         title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
         artist: 'AuraGroove',
@@ -560,42 +549,26 @@ export const useAuraGroove = (): AuraGrooveProps => {
             { src: `${origin}/assets/cover/cover512.jpg`, sizes: '512x512', type: 'image/jpeg' }
         ]
     });
-
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-
     if ('setPositionState' in navigator.mediaSession) {
         if (isPlaying) {
             if (sessionStartTimeRef.current === 0) sessionStartTimeRef.current = Date.now();
             const position = (Date.now() - sessionStartTimeRef.current) / 1000;
-            try { 
-                navigator.mediaSession.setPositionState({ 
-                    duration: 7200, 
-                    playbackRate: 1.0, 
-                    position: Math.min(position, 7199) 
-                }); 
-            } catch(e) {}
+            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
         } else {
             sessionStartTimeRef.current = 0;
-            try {
-                navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 0, position: 0 });
-            } catch(e) {}
+            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 0, position: 0 }); } catch(e) {}
         }
     }
-
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
     navigator.mediaSession.setActionHandler('nexttrack', () => { 
-        toast({ title: t('toast_next_pattern'), description: t('toast_next_desc') });
         setIsRegenerating(true); setCurrentSeed(Date.now());
         setTimeout(() => setIsRegenerating(false), 500);
     });
-    navigator.mediaSession.setActionHandler('previoustrack', () => {
-        toast({ title: t('toast_prev_pattern'), description: t('toast_prev_desc') });
-        resetWorker();
-    });
-
-  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, toast, resetWorker, t]);
+    navigator.mediaSession.setActionHandler('previoustrack', () => { resetWorker(); });
+  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, resetWorker, t]);
 
   const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
@@ -637,31 +610,22 @@ export const useAuraGroove = (): AuraGrooveProps => {
         if (success) {
             applyCurrentMixToEngine();
             eqSettings.forEach((v, i) => setEQGain(i, v));
-            
-            // #ЗАЧЕМ: ПЛАН №1350. Принудительная синхронизация первого трека перед стартом.
             if (route.length > 0 && !activeRouteItemId) {
                 const first = route[0];
                 const g = first.genre === 'random' ? genre : (first.genre as Genre);
                 const m = first.mood === 'random' ? mood : (first.mood as Mood);
-                
-                setGenreState(g);
-                setMoodState(m);
-                setActiveRouteItemId(first.id);
+                setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
                 updateSettings({ genre: g, mood: m });
             }
-            
             prevBarRef.current = 0; setIsPlaying(true);
         }
     } else { 
         if (!isPlaying) {
-            // Синхронизация при старте после паузы, если активный элемент был сброшен
             if (route.length > 0 && !activeRouteItemId) {
                 const first = route[0];
                 const g = first.genre === 'random' ? genre : (first.genre as Genre);
                 const m = first.mood === 'random' ? mood : (first.mood as Mood);
-                setGenreState(g);
-                setMoodState(m);
-                setActiveRouteItemId(first.id);
+                setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
                 updateSettings({ genre: g, mood: m });
             }
             prevBarRef.current = 0;
@@ -683,18 +647,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: t('toast_journey_loaded'), description: saved.name });
   }, [toast, t]);
 
-  const syncDna = useCallback(async () => {
-    const l = getLanguage();
-    await refreshCloudAxioms();
-    toast({ title: TRANSLATIONS.toast_dna_synced[l], description: TRANSLATIONS.toast_dna_synced_desc[l] });
-  }, [refreshCloudAxioms, toast]);
-
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
-    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna,
+    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna: engineSyncDna,
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
@@ -723,7 +681,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
     removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
-    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); return; } prevBarRef.current = 0; resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } toast({ title: "Refresh Path" }); },
+    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); return; } prevBarRef.current = 0; resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } },
     moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     saveRoute: (name: string) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     loadRoute, deleteSavedRoute: (id: string) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
@@ -734,14 +692,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
     useMelodyV2: true, toggleMelodyEngine: () => {},
     language, toggleLanguage, t
   }), [
-      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, syncDna,
+      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, engineSyncDna,
       handlePlayPauseCallback, isRecording, stopRecording, startRecording, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
-      setInstrument, handleVolumeChange, textureSettings, bpm, setBpm, score, setScore, density, setDensity, composerControlsInstruments, 
+      setInstrument, handleVolumeChange, textureSettings, score, setScore, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
-      calibrationGains, setCalibrationGain, timerSettings, mood, genre, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
+      calibrationGains, setCalibrationGain, timerSettings, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
       savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
-      saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre, mixerPresets, activeMixerPresetId, saveMixerPreset,
-      updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
+      saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset,
+      updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
       language, toggleLanguage, t
   ]);
 };
