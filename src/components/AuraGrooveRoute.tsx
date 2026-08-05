@@ -401,7 +401,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     {/* Focused Core with Axis Alignment */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center overflow-visible"
-                        style={{ width: '90vw', height: '60vh', maxWidth: '400px', maxHeight: '60vh' }}
+                        style={{ width: '90vw', height: '90vw', maxWidth: '400px', maxHeight: '400px' }}
                     >
                         <OrbitalAnimation 
                             tension={props.tension} 
