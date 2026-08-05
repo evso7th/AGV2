@@ -386,6 +386,25 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
+                    {/* Top Controls Stack - Axis Symmetry with Bottom Stack */}
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-[90vw] max-w-[400px] flex items-center justify-between">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); props.handleRegenerate(); showFeedback(t('toast_next_desc')); }}
+                            className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
+                            style={{ color: hudColor }}
+                        >
+                            <RefreshCw className={cn("h-5 w-5", props.isRegenerating && "animate-spin")} />
+                        </button>
+
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); props.handleToggleBroadcast(); }}
+                            className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
+                            style={{ color: hudColor }}
+                        >
+                            <TowerControl className={cn("h-5 w-5", props.isBroadcastActive && "animate-pulse")} />
+                        </button>
+                    </div>
+
                     {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) */}
                     <div className="absolute top-10 left-0 right-0 text-center select-none pointer-events-none opacity-50">
                         <div 
