@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Blues Brain V81.0 — "The Living Pulse Update".
  * #ЗАЧЕМ: Реализация ПЛАНА №1310. Разнообразие ударных: томовые пробежки и snare ghosting.
@@ -382,6 +381,10 @@ export class BluesBrain {
 
     if (isBridge) {
         events.push(...this.renderLiquidBridge(epoch, resChord, tension, hints));
+        
+        // #ЗАЧЕМ: ПЛАН №1335. Density Guard Injection.
+        events.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
+
         return {
             events, lickId: 'Liquid Bridge', mutationType: 'none',
             trackName: this.currentTrackName,
@@ -475,6 +478,12 @@ export class BluesBrain {
             usedTargetLayers.add('harmony');
         }
     }
+
+    // #ЗАЧЕМ: ПЛАН №1335. Density Guard Injection.
+    events.forEach(e => {
+        if (!e.params) e.params = {};
+        e.params.tension = tension;
+    });
 
     const modeStr = this.config.isImprovising ? 'IMPROVISATION' : 'RESTORATION';
 

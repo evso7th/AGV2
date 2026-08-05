@@ -284,6 +284,7 @@ const createIndependentVoice = (
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
+    const tension = isFinite(eventParams?.tension) ? eventParams.tension : 0.5;
 
     const hz = preset.humanize;
     const humDetune = hz ? (Math.random() * 2 - 1) * (isFinite(hz.detuneCents) ? hz.detuneCents : 2.5) : 0;
@@ -385,14 +386,31 @@ const createIndependentVoice = (
         nodes.push(shaper);
     }
 
-    // #ЗАЧЕМ: "Протокол Чистого Неба". Удаление гула в нижнем регистре.
+    // #ЗАЧЕМ: "Протокол Чистого Неба 2.0". 
+    // #ЧТО: HPF 45Hz для баса/ударных, 220Hz для остальных (Density Guard поднимает до 280Hz).
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    hpf.frequency.value = (type === 'bass' || type === 'drums') ? 20 : 150;
+    let hpfFreq = (type === 'bass' || type === 'drums') ? 45 : 220;
+    if (type !== 'bass' && type !== 'drums' && tension > 0.7) {
+        hpfFreq = 280; 
+    }
+    hpf.frequency.value = hpfFreq;
     hpf.Q.value = 0.5;
     chainHead.connect(hpf);
     chainHead = hpf;
     nodes.push(hpf);
+
+    // #ЗАЧЕМ: ПЛАН №1335. Anti-Box Dip для разрежения "каши" в нижней середине.
+    if (type !== 'bass' && type !== 'drums') {
+        const dip = ctx.createBiquadFilter();
+        dip.type = 'peaking';
+        dip.frequency.value = 350;
+        dip.Q.value = 1.0;
+        dip.gain.value = -2.0; // -2dB dip
+        chainHead.connect(dip);
+        chainHead = dip;
+        nodes.push(dip);
+    }
 
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
@@ -431,7 +449,6 @@ const createIndependentVoice = (
 
     chainHead.connect(output);
 
-    // #ЗАЧЕМ: Gain Staging. Снижение пикового уровня с 0.8 до 0.45 для Headroom.
     const peak = velocity * 0.45 * humLevel;
     voiceGain.gain.setValueAtTime(0.0001, now);
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
@@ -587,7 +604,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             currentPreset = { ...p };
             if (type === 'guitar' && currentPreset.attackTransient > 0) ensureTransientsLoaded(ctx);
             
-            // #ЗАЧЕМ: Детерминированный сброс.
             instrumentGain.gain.cancelScheduledValues(now);
             instrumentGain.gain.setTargetAtTime(p.volume || 0.7, now, 0.05);
             
@@ -605,7 +621,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (!isFinite(v)) return;
             const bounded = Math.max(0, Math.min(1, v));
             const now = ctx.currentTime;
-            // #ЗАЧЕМ: Закон Микшера.
             instrumentGain.gain.cancelScheduledValues(now);
             instrumentGain.gain.setTargetAtTime(bounded, now, 0.02);
         },

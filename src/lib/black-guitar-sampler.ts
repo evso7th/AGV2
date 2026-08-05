@@ -109,7 +109,8 @@ export class BlackGuitarSampler {
         this.bodyFilter.type = 'peaking';
         this.bodyFilter.frequency.value = 220;
         this.bodyFilter.Q.value = 1.2;
-        this.bodyFilter.gain.value = 3.5;
+        // #ЗАЧЕМ: "Протокол Чистого Неба 2.0". Снижение резонансного гула.
+        this.bodyFilter.gain.value = 1.0; 
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeAcousticWarmthCurve();

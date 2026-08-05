@@ -1,6 +1,5 @@
-
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1177): Громкость лидов снижена в 2 раза.
+// #ОБНОВЛЕНО (ПЛАН №1335): Реализация "Протокола Чистого Неба 2.0".
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -18,7 +17,8 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
     ],
     noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.7, r: 2.0 },
+    // #ЗАЧЕМ: ПЛАН №1335. Снижение уровня накопления хвостов.
+    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.2 },
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
   },
@@ -32,7 +32,8 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.85, r: 2.5 },
+    // #ЗАЧЕМ: ПЛАН №1335. Разрежение текстурного слоя.
+    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 1.8 },
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
   },
@@ -46,11 +47,10 @@ export const V2_PRESETS = {
     name: 'Clean Organ',
     volume: 0.4,
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0],
-    // #ЗАЧЕМ: длинный плавный release — хвост ноты гаснет мягко, как у пианиста, без обрыва
-    adsr: { a: 0.05, d: 0.1, s: 0.9, r: 1.2 },
+    // #ЗАЧЕМ: ПЛАН №1335. Сокращение релиза для чистоты микса.
+    adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
     lpf: 1800,
     reverbMix: 0,
-    // #LESLIE: мизер — лёгкий шиммер; ротор «дышит» (#1), ноты не идентичны (#2)
     leslie: { rate: 5.5, pitchDepth: 0.0002, ampDepth: 0.03, driftPct: 0.18, driftRate: 0.2 },
     humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
   },
@@ -61,10 +61,9 @@ export const V2_PRESETS = {
     volume: 0.4,
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0],
     lpf: 1400,
-    // #ЗАЧЕМ: длинный плавный release — мягкий «фортепианный» хвост вместо резкого обрыва
-    adsr: { a: 0.03, d: 0.1, s: 0.85, r: 1.0 },
+    // #ЗАЧЕМ: ПЛАН №1335. Минимизация наслоения в нижней середине.
+    adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
     reverbMix: 0,
-    // #LESLIE: мизер — чуть медленнее для джаза; ротор «дышит» (#1) + humanize (#2)
     leslie: { rate: 5.0, pitchDepth: 0.0002, ampDepth: 0.025, driftPct: 0.18, driftRate: 0.17 },
     humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
   },
@@ -86,7 +85,6 @@ export const V2_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    // #ЗАЧЕМ: ПЛАН №1177. Снижено в 2 раза (0.19 -> 0.10)
     volume: 0.10,
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
@@ -94,18 +92,15 @@ export const V2_PRESETS = {
     adsr: { a: 0.020, d: 0.35, s: 0.85, r: 1.8 },
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0,
-    // #ГИБРИД: реальный щипок (тонкий край атаки, сэмплы «горячие») + яркая атака + вибрато
     attackTransient: 0.15,
     pluckBrightness: 1.5,
     vibrato: { rate: 5.0, depthCents: 8, delay: 0.40 },
-    // #КАЛИБРОВКА: пост-лимитерный трим до уровня telecaster (офлайн-замер RMS)
     calibrationTrimDb: 7.54
   },
 
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    // #ЗАЧЕМ: ПЛАН №1177. Снижено в 2 раза (0.12 -> 0.06)
     volume: 0.06,
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
@@ -113,11 +108,9 @@ export const V2_PRESETS = {
     adsr: { a: 0.020, d: 0.5, s: 0.65, r: 1.0 },
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0,
-    // #ГИБРИД: фузз маскирует атаку → транзиент и яркость скромнее, вибрато глубже
     attackTransient: 0.10,
     pluckBrightness: 0.8,
     vibrato: { rate: 5.5, depthCents: 10, delay: 0.30 },
-    // #КАЛИБРОВКА: пост-лимитерный трим до уровня telecaster (офлайн-замер RMS)
     calibrationTrimDb: 3.13
   },
 
@@ -129,7 +122,8 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    adsr: { a: 0.01, d: 0.3, s: 0.65, r: 0.6 },
+    // #ЗАЧЕМ: ПЛАН №1335. Сокращение релиза для Rhodes.
+    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 0.4 },
     lpf: { cutoff: 2400, q: 0.7 }, 
     reverbMix: 0
   }
