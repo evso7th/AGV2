@@ -309,11 +309,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // --- OPTIMISTIC HUD STATE ---
+    const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(props.isPlaying);
+    useEffect(() => { setOptimisticIsPlaying(props.isPlaying); }, [props.isPlaying]);
+
     // --- SMART HUD LOGIC (PLAN №1460) ---
     const [isAmbientMode, setIsAmbientMode] = useState(false);
 
     useEffect(() => {
-        // If we have items in queue on mount, go to HUD immediately
         if (props.route.length > 0) {
             setIsAmbientMode(true);
         }
@@ -344,7 +347,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const resetIdleTimer = useCallback(() => {
         if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
         if (props.isPlaying && !isAmbientMode) {
-            // Period of inactivity = 5s (as requested)
             idleTimerRef.current = setTimeout(() => {
                 setIsAmbientMode(true);
             }, 5000); 
@@ -470,11 +472,15 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
 
                         <button 
-                            onClick={props.handlePlayPause}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setOptimisticIsPlaying(!optimisticIsPlaying);
+                                props.handlePlayPause();
+                            }}
                             className="p-2 hover:bg-white/5 transition-all active:scale-90"
-                            style={{ color: hudColor, opacity: props.isPlaying ? 0.5 : 1 }}
+                            style={{ color: hudColor, opacity: optimisticIsPlaying ? 0.5 : 1 }}
                         >
-                            {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
+                            {optimisticIsPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
                         </button>
 
                         <button 
