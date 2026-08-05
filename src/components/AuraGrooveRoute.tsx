@@ -441,7 +441,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <button 
                             onClick={props.handlePlayPause}
                             className="p-2 hover:bg-white/5 transition-all active:scale-90"
-                            style={{ color: hudColor }}
+                            style={{ color: hudColor, opacity: props.isPlaying ? 0.5 : 1 }}
                         >
                             {props.isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
                         </button>
@@ -927,4 +927,3 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
-
