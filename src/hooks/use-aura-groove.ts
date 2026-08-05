@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V32.1 — "Master Headroom Calibration".
- * #ЗАЧЕМ: ПЛАН №1360 — Установка дефолтного мастер-уровня на 0.65 для предотвращения клиппинга.
+ * @fileOverview Music Control Hook V32.2 — "Preset Persistence Fix".
+ * #ЗАЧЕМ: ПЛАН №1365 — Исправление кнопок обновления пресетов.
  */
 'use client';
 
@@ -306,7 +306,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
     setActiveMixerPresetId(newPreset.id);
     localStorage.setItem(ACTIVE_MIXER_ID_KEY, newPreset.id);
-  }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
+    toast({ title: "Mixer Preset Saved" });
+  }, [instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const updateActiveMixerPreset = useCallback(() => {
     if (!activeMixerPresetId) return;
@@ -326,7 +327,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(next));
         return next;
     });
-  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master]);
+    toast({ title: "Mixer Preset Updated" });
+  }, [activeMixerPresetId, instrumentSettings, textureSettings, drumSettings, calibrationGains.master, toast]);
 
   const deleteMixerPreset = useCallback((id: string) => {
     setMixerPresets(prev => {
@@ -342,7 +344,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const resetMixerToSystem = useCallback(() => {
     const mix = GENRE_MASTER_MIX[genre] ?? GENRE_MASTER_MIX['ambient'];
-    // #ЗАЧЕМ: ПЛАН №1360. Дефолтный уровень 0.65.
     handleVolumeChange('master', 0.65);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
@@ -381,7 +382,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
     setActiveEqPresetId(newPreset.id);
     localStorage.setItem(ACTIVE_EQ_ID_KEY, newPreset.id);
-  }, [eqSettings]);
+    toast({ title: "EQ Preset Saved" });
+  }, [eqSettings, toast]);
 
   const updateActiveEqPreset = useCallback(() => {
     if (!activeEqPresetId) return;
@@ -390,7 +392,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
         return next;
     });
-  }, [activeEqPresetId, eqSettings]);
+    toast({ title: "EQ Preset Updated" });
+  }, [activeEqPresetId, eqSettings, toast]);
 
   const deleteEqPreset = useCallback((id: string) => {
     setEqPresets(prev => {
@@ -440,7 +443,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         setActiveMixerPresetId(chosen.id);
     } else {
         const mix = GENRE_MASTER_MIX[g] ?? GENRE_MASTER_MIX['ambient'];
-        // #ЗАЧЕМ: ПЛАН №1360. Дефолтный уровень 0.65.
         handleVolumeChange('master', 0.65);
         Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
         setActiveMixerPresetId(null);

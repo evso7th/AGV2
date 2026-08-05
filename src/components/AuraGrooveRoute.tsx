@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.6.0 — "Smart Gateway Fix".
- * #ЗАЧЕМ: Исправление ReferenceError (Select/Checkbox) и активация HUD-логики.
+ * @fileOverview UI AuraGroove V16.6.1 — "Preset Update Implementation".
+ * #ЗАЧЕМ: ПЛАН №1365 — Передача функций обновления в PresetManager.
  */
 'use client';
 
@@ -916,4 +916,3 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
-
