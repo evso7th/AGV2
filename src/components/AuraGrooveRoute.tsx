@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.7.0 — "HUD Control Polish".
- * #ЗАЧЕМ: ПЛАН №1410 — Модернизация кнопок Закрыть и Запись в HUD.
+ * @fileOverview UI AuraGroove V16.8.0 — "HUD Branding Interaction".
+ * #ЗАЧЕМ: ПЛАН №1420 — Интерактивный заголовок в HUD для быстрого доступа к инфо.
  */
 'use client';
 
@@ -405,19 +405,20 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) */}
-                    <div className="absolute top-10 left-0 right-0 text-center select-none pointer-events-none opacity-50">
-                        <div 
-                            className="text-[11px] font-black uppercase tracking-[0.4em] transition-colors duration-500 flex flex-col gap-0.5"
+                    {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) - NOW ACTIVE */}
+                    <div className="absolute top-10 left-0 right-0 text-center select-none z-20">
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
+                            className="text-[11px] font-black uppercase tracking-[0.4em] transition-all duration-500 flex flex-col gap-0.5 opacity-50 hover:opacity-100 active:scale-95 cursor-pointer mx-auto"
                             style={{ color: hudColor }}
                         >
                             <span>AURAGROOVE</span>
                             <span>INFINITE TAKE</span>
                             <span>ORCHESTRA</span>
-                        </div>
+                        </button>
                     </div>
 
-                    {/* Focused Core with Axis Alignment */}
+                    {/* Focused Core with Axis Alignment - PERFECT SQUARE */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center overflow-visible"
                         style={{ width: '90vw', height: '90vw', maxWidth: '400px', maxHeight: '400px' }}
