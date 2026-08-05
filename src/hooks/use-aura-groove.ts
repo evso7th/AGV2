@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V32.0 — "Stability & Synchronization".
- * #ЗАЧЕМ: ПЛАН №1360 — Устранение бесконечного цикла и фикс экспортов пресетов.
+ * @fileOverview Music Control Hook V32.1 — "Master Headroom Calibration".
+ * #ЗАЧЕМ: ПЛАН №1360 — Установка дефолтного мастер-уровня на 0.65 для предотвращения клиппинга.
  */
 'use client';
 
@@ -342,7 +342,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const resetMixerToSystem = useCallback(() => {
     const mix = GENRE_MASTER_MIX[genre] ?? GENRE_MASTER_MIX['ambient'];
-    handleVolumeChange('master', 1.0);
+    // #ЗАЧЕМ: ПЛАН №1360. Дефолтный уровень 0.65.
+    handleVolumeChange('master', 0.65);
     Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
     setActiveMixerPresetId(null);
     localStorage.removeItem(ACTIVE_MIXER_ID_KEY);
@@ -439,7 +440,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         setActiveMixerPresetId(chosen.id);
     } else {
         const mix = GENRE_MASTER_MIX[g] ?? GENRE_MASTER_MIX['ambient'];
-        handleVolumeChange('master', 1.0);
+        // #ЗАЧЕМ: ПЛАН №1360. Дефолтный уровень 0.65.
+        handleVolumeChange('master', 0.65);
         Object.entries(mix).forEach(([part, vol]) => handleVolumeChange(part, vol as number));
         setActiveMixerPresetId(null);
     }
