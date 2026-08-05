@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.8.0 — "HUD Branding Interaction".
- * #ЗАЧЕМ: ПЛАН №1420 — Интерактивный заголовок в HUD для быстрого доступа к инфо.
+ * @fileOverview UI AuraGroove V16.8.1 — "Info Center Styling Fix".
+ * #ЗАЧЕМ: ПЛАН №1421 — Синхронизация фона Инфоцентра с Микшером и EQ.
  */
 'use client';
 
@@ -907,7 +907,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             </Dialog>
 
             <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
-                <DialogContent className="w-[96vw] max-w-4xl h-[90vh] flex flex-col bg-card border-primary/20 shadow-2xl p-0 overflow-hidden">
+                <DialogContent className="w-[96vw] max-w-4xl h-[90vh] flex flex-col !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl p-0 overflow-hidden">
                     <DialogHeader className="p-6 pb-2 shrink-0">
                         <DialogTitle className="font-black uppercase text-primary flex items-center gap-2 pr-8">
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
