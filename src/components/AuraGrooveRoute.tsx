@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.8.1 — "Info Center Styling Fix".
- * #ЗАЧЕМ: ПЛАН №1421 — Синхронизация фона Инфоцентра с Микшером и EQ.
+ * @fileOverview UI AuraGroove V16.8.5 — "HUD Progress Protocol".
+ * #ЗАЧЕМ: ПЛАН №1422 — Индикация прогресса сюиты в иммерсивном режиме.
  */
 'use client';
 
@@ -443,6 +443,17 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </Badge>
                         </div>
                     )}
+
+                    {/* Progress Bar - NEW (PLAN №1422) */}
+                    <div className="absolute top-[73%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] h-[1px] bg-white/10 overflow-hidden z-10 rounded-full">
+                        <div 
+                            className="h-full transition-all duration-1000 ease-linear"
+                            style={{ 
+                                width: `${Math.min(100, Math.max(0, (props.currentBar / (props.totalBars || 1)) * 100))}%`,
+                                backgroundColor: hudColor
+                            }}
+                        />
+                    </div>
                     
                     {/* Control Pill - Ultra Compact for narrow screens */}
                     <div 
