@@ -1,8 +1,8 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V10.4 — "Voice Presence Reform".
- * #ЗАЧЕМ: ПЛАН №1330 — Повышение громкости и разборчивости голосов.
+ * @fileOverview Менеджер SFX V11.0 — "The Vinyl Bridge & Full Rotation".
+ * #ЗАЧЕМ: ПЛАН №1452 — Поддержка винилового треска и полная очистка жанров.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
@@ -85,6 +85,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/339628__carmsie__you-cannot-harm-me.ogg',
         '/assets/music/sfx/voice/339630__carmsie__theft.ogg',
         '/assets/music/sfx/voice/339631__carmsie__robot-statements.ogg',
+        '/assets/music/sfx/voice/342258__mooncubedesign__robot-voice-drop-the-bass.ogg',
         '/assets/music/sfx/voice/342944__carmsie__evil-is-a-master-of-disguise.ogg',
         '/assets/music/sfx/voice/342945__carmsie__forever.ogg',
         '/assets/music/sfx/voice/343094__carmsie__think-about-it.ogg',
@@ -99,6 +100,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/674306__theendofacycle__robot-talk-sfx.ogg',
         '/assets/music/sfx/voice/699850__8bitmyketison__cyber-robot-voice__1_.ogg',
         '/assets/music/sfx/voice/717306__iceofdoom__the-upload-finally-finished.ogg',
+        '/assets/music/sfx/voice/747684__jeddalo__mighty-morphin-power-rangers-megazord-activated-computer-voice.ogg',
         '/assets/music/sfx/voice/759879__chungus43a__the-moonbase-doctor-who-cyberman-voice.ogg',
         '/assets/music/sfx/voice/771944__harrisonlace__robotic-deja-vu-vox.ogg',
         '/assets/music/sfx/voice/776420__chungus43a__doctor-who-cybus-cyberman-voice-recreated.ogg',
@@ -282,6 +284,10 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_02_(1).ogg',
         '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_04_(1).ogg',
         '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_01_(1).ogg'
+    ],
+    // #ЗАЧЕМ: ПЛАН №1452. Поддержка Протокола «Винилового перехода».
+    vinyl: [
+        '/assets/music/vinyl_disk.ogg'
     ]
 };
 
@@ -296,7 +302,6 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        // #ЗАЧЕМ: ПЛАН №1330. Базовая громкость повышена для слышимости голосов.
         this.preamp.gain.value = 0.65;
         this.preamp.connect(destination);
     }
@@ -333,13 +338,38 @@ export class SfxSynthManager {
         }
     }
 
+    /** #ЗАЧЕМ: Ручной триггер для системных звуков (например, винила). */
+    public triggerManual(category: string, time: number, volume: number = 0.4): void {
+        if (!this.isReady) return;
+        const samplePool = this.buffers.get(category);
+        if (!samplePool || samplePool.length === 0) return;
+
+        const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
+        const source = this.context.createBufferSource();
+        source.buffer = buffer;
+        
+        const manualGain = this.context.createGain();
+        manualGain.gain.value = volume;
+        source.connect(manualGain).connect(this.preamp);
+        
+        const now = Math.max(time, this.context.currentTime);
+        source.start(now);
+        this.activeSources.add(source);
+        source.onended = () => { 
+            this.activeSources.delete(source); 
+            try { manualGain.disconnect(); } catch(e) {}
+            try { source.disconnect(); } catch(e) {} 
+        };
+    }
+
     public trigger(events: FractalEvent[], barStartTime: number, tempo: number): void {
         if (!this.isReady) return;
         events.forEach(event => {
             if (event.type !== 'sfx') return;
             const { mood, genre, rules } = event.params as { mood: Mood, genre: Genre, rules?: SfxRule };
             
-            if (genre === 'blues') return;
+            // #ЗАЧЕМ: ПЛАН №1451. Блюз и Регги стерильны от случайных эффектов.
+            if (genre === 'blues' || genre === 'reggae') return;
 
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
@@ -380,18 +410,18 @@ export class SfxSynthManager {
         if (genre === 'psybient') {
             if (rand < 0.3) return 'glitch';
             if (rand < 0.5) return 'laser';
-            if (rand < 0.9) return 'voice'; // Повышен шанс на голос в Psybient
+            if (rand < 0.9) return 'voice';
             return 'tube';
         }
 
         if (genre === 'ambient') {
             if (mood === 'dark' || mood === 'anxious') {
                 if (rand < 0.4) return 'dark';
-                return 'voice'; // Повышен шанс на голос в Ambient (Dark)
+                return 'voice';
             }
             if (rand < 0.5) return 'common';
             if (rand < 0.8) return 'loop';
-            return 'voice'; // Теперь голоса могут быть и в светлом Ambient
+            return 'voice';
         }
         
         return 'common';

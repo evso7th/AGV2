@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V60.0 — "Master Headroom Calibration".
- * #ЗАЧЕМ: Установка дефолтного мастер-уровня на 0.65 для предотвращения клиппинга.
+ * @fileOverview Audio Engine Context V61.0 — "Vinyl Bridge Integration".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1452 — Протокол «Винилового перехода».
  */
 'use client';
 
@@ -43,7 +43,7 @@ const VOICE_BALANCE: Record<string, number> = {
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 0.65, // #ЗАЧЕМ: ПЛАН №1355. Снижено для Headroom.
+    master: 0.65, 
     acoustic: 0.15,
     electric: 0.15, 
     piano: 0.6,
@@ -453,7 +453,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     const now = ctx.currentTime;
                     if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
                     
-                    // --- IMPULSE SYNC (PLAN №1335) ---
                     const tempo = payload.actualBpm || 75;
                     const bDur = 60 / tempo;
                     payload.events.forEach((e: any) => {
@@ -471,7 +470,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     nextBarTimeRef.current = scheduleTime + payload.barDuration;
                 } else if (type === 'HISTORY_UPDATE' && payload) { localStorage.setItem('AuraGroove_TrackHistory', JSON.stringify(payload)); }
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
-                else if (type === 'SUITE_TRANSITION') { window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); }
+                else if (type === 'SUITE_TRANSITION') { 
+                    window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); 
+                    // #ЗАЧЕМ: Протокол «Винилового перехода». Создаем эффект смены пластинки.
+                    if (sfxSynthManagerRef.current && audioContextRef.current) {
+                        sfxSynthManagerRef.current.triggerManual('vinyl', audioContextRef.current.currentTime + 0.1, 0.4);
+                    }
+                }
                 else if (type === 'error') {
                     const l = getLanguage();
                     toast({ variant: "destructive", title: TRANSLATIONS.toast_sync_fail[l], description: error });
