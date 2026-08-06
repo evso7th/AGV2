@@ -4,28 +4,52 @@ import styles from './orbital-animation.module.css';
 import { cn } from '@/lib/utils';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type { Genre } from '@/types/music';
 
 interface OrbitalAnimationProps {
     isPlaying?: boolean;
     tempo?: number;
     tension?: number; // 0.1 - 1.0
+    genre?: Genre;    // #ЗАЧЕМ: Управление жанровой палитрой
     className?: string;
     size?: string;
 }
 
 /**
- * @fileOverview Orbital Animation V7.0 — "Mobile Lite Optimization".
- * #ЗАЧЕМ: ПЛАН №1400. Разделение тяжелой JS-реактивности и легкого мобильного рендера.
- * #ЧТО: Автономный CSS-пульс на мобильных вместо JS-триггеров.
+ * @fileOverview Orbital Animation V8.0 — "Pastel Sprout Protocol".
+ * #ЗАЧЕМ: Реализация органического прорастания палитры сквозь кольца.
+ * #ЧТО: Жанровый Hue + каскадные задержки в CSS.
  */
-export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5, className, size }: OrbitalAnimationProps) {
+export function OrbitalAnimation({ 
+    isPlaying = false, 
+    tempo = 90, 
+    tension = 0.5, 
+    genre = 'ambient', 
+    className, 
+    size 
+}: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
   const { analyser } = useAudioEngine();
   const isMobile = useIsMobile();
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
-  // Скорость вращения орбит (зависит от Tension)
+  // 1. Определение базового тона (Hue) по жанру (Пастельный Атлас)
+  const hue = useMemo(() => {
+    const genreHues: Record<string, number> = {
+        ambient: 260,     // Мистический Ирис
+        psybient: 285,    // Астральный Пурпур
+        blues: 30,        // Медный Песок
+        reggae: 150       // Тропический Шалфей
+    };
+    return genreHues[genre as string] || 260;
+  }, [genre]);
+
+  // 2. Расчет пастельной насыщенности и яркости (Soft Focus)
+  const saturation = useMemo(() => 25 + (tension * 10), [tension]); // 25% - 35%
+  const lightness = useMemo(() => 40 + (tension * 15), [tension]);  // 40% - 55%
+
+  // Скорость вращения орбит
   const rotationDuration = useMemo(() => {
       const base = isPlaying ? 40 : 60;
       return base / (0.5 + tension * 1.5) + 's';
@@ -38,26 +62,23 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
 
   // Цвета и свечение
   const dynamicStyles = useMemo(() => {
-      const hue = 250 + (tension * 80); 
-      const saturation = 40 + (tension * 55); 
-      const light = 35 + (tension * 30);      
-      const glow = isMobile ? 8 + (tension * 30) : 15 + (tension * 85);       
+      const glow = isMobile ? 8 + (tension * 20) : 15 + (tension * 60);       
       
       return {
-          '--orbital-hue': hue,
-          '--orbital-saturation': `${saturation}%`,
-          '--orbital-lightness': `${light}%`,
-          '--orbital-color': `hsl(${hue}, ${saturation}%, ${light}%)`,
+          '--aura-hue': hue,
+          '--aura-sat': `${saturation}%`,
+          '--aura-light': `${lightness}%`,
+          '--orbital-color': `hsl(${hue}, ${saturation}%, ${lightness}%)`,
           '--orbital-glow': `${glow}px`,
           '--orbital-size': size || '300px',
           '--pulse-play-state': isPlaying ? 'running' : 'paused',
           '--mobile-pulse-duration': pulseDuration
       } as React.CSSProperties;
-  }, [tension, size, isPlaying, isMobile, pulseDuration]);
+  }, [hue, saturation, lightness, tension, size, isPlaying, isMobile, pulseDuration]);
 
   // --- DESKTOP ONLY: IMPULSE LISTENER ---
   useEffect(() => {
-    if (isMobile) return; // На мобилках не слушаем, крутимся сами
+    if (isMobile) return; 
 
     const onPulse = (e: any) => {
         if (!isPlaying) return;
@@ -105,10 +126,6 @@ export function OrbitalAnimation({ isPlaying = false, tempo = 90, tension = 0.5,
             <div 
                 key={i} 
                 className={styles.circle}
-                style={{ 
-                    boxShadow: `0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color)`,
-                    borderColor: `hsla(var(--orbital-hue), var(--orbital-saturation), var(--orbital-lightness), ${0.1 + tension * 0.5})`
-                }}
             ></div>
         ))}
       </div>

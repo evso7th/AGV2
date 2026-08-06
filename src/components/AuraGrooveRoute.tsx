@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.8.5 — "HUD Progress Protocol".
- * #ЗАЧЕМ: ПЛАН №1422 — Индикация прогресса сюиты в иммерсивном режиме.
+ * @fileOverview UI AuraGroove V16.8.6 — "Sprout Integration".
+ * #ЗАЧЕМ: ПЛАН №1462 — Проброс жанра в анимацию Ядра.
  */
 'use client';
 
@@ -430,6 +430,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             isPlaying={true} 
                             size="100%" 
                             className="opacity-90"
+                            genre={props.genre} 
                         />
                     </div>
 
