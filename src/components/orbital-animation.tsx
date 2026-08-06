@@ -16,8 +16,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V8.0 — "Pastel Sprout Protocol".
- * #ЗАЧЕМ: Реализация органического прорастания палитры сквозь кольца.
+ * @fileOverview Orbital Animation V8.1 — "Ash Mauve Integration".
+ * #ЗАЧЕМ: Обновление палитры для Blues (Пепельный Маув).
  * #ЧТО: Жанровый Hue + каскадные задержки в CSS.
  */
 export function OrbitalAnimation({ 
@@ -39,7 +39,7 @@ export function OrbitalAnimation({
     const genreHues: Record<string, number> = {
         ambient: 260,     // Мистический Ирис
         psybient: 285,    // Астральный Пурпур
-        blues: 30,        // Медный Песок
+        blues: 334,       // 🌸 Пепельный Маув (#B39AA5)
         reggae: 150       // Тропический Шалфей
     };
     return genreHues[genre as string] || 260;
