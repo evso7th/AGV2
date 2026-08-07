@@ -1,23 +1,22 @@
 
 /**
- * @fileOverview Liquid Nebula CSS V3.0 — "Absolute Fit Protocol".
- * #ЗАЧЕМ: Вписывание всей композиции YaMus2.html в квадрат HUD.
+ * @fileOverview Liquid Nebula CSS V3.1 — "Infinite Space Protocol".
+ * #ЗАЧЕМ: Убраны фоновые цвета и обрезка, чтобы анимация вытекала за пределы контейнера.
  */
 
 .container {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  background: #000;
+  overflow: visible; /* Разрешаем вытекание */
   z-index: 0;
+  /* background: #000; - УДАЛЕНО: используем прозрачный фон для интеграции */
 }
 
-/* Контейнер-масштабатор для вписывания в квадрат */
 .scaler {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.35); /* Сжимаем оригинал, чтобы он влез в 400px */
+  transform: translate(-50%, -50%) scale(0.35);
   width: 100vw;
   height: 100vw;
   display: flex;
@@ -25,7 +24,6 @@
   justify-content: center;
 }
 
-/* В режиме Pastel (Hybrid) масштабируем чуть меньше, чтобы заполнить фон */
 .container[data-mode="pastel"] .scaler {
   transform: translate(-50%, -50%) scale(0.6);
 }
@@ -39,7 +37,6 @@
 .fluid {
   position: absolute;
   inset: 0;
-  background: #000;
   animation: swirl 52s ease-in-out infinite alternate, hueflow 47s ease-in-out infinite;
 }
 
@@ -64,21 +61,18 @@
   margin: calc(var(--s)/-2) 0 0 calc(var(--s)/-2);
 }
 
-/* Original HEX Color Classes for Nebula Mode */
 .container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
 .container[data-mode="reference"] .y { background: #d8cc2f; }
 .container[data-mode="reference"] .m { background: #c4009a; }
 .container[data-mode="reference"] .p { background: #6a14d8; opacity: .7; }
 .container[data-mode="reference"] .o { background: #e07820; opacity: .6; }
 
-/* Hybrid Mode (Pastel) Variables Overrides */
 .container[data-mode="pastel"] .rim { background: var(--color-r); opacity: 0.4; }
 .container[data-mode="pastel"] .y { background: var(--color-y); }
 .container[data-mode="pastel"] .m { background: var(--color-m); }
 .container[data-mode="pastel"] .p { background: var(--color-p); opacity: 0.5; }
 .container[data-mode="pastel"] .o { background: var(--color-o); opacity: 0.4; }
 
-/* Individual Blob Settings */
 .m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
 .m1 { --s: 62vmin; --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
 .m2 { --s: 56vmin; --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
@@ -93,7 +87,6 @@
 .y3 { --s: 46vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
 .o1 { --s: 40vmin; --x: 46%; --y: 62%; animation: o1 21s ease-in-out infinite, wobB 7s ease-in-out -1s infinite; }
 
-/* Keyframes */
 @keyframes y1 { 0%,100%{transform:translate(0,0) scale(1,1) rotate(0deg)} 25%{transform:translate(15vmin,-8vmin) scale(1.2,.85) rotate(18deg)} 50%{transform:translate(5vmin,12vmin) scale(.92) rotate(0deg)} 75%{transform:translate(-16vmin,-2vmin) scale(.85,1.15) rotate(-14deg)} }
 @keyframes y2 { 0%,100%{transform:translate(0,0) scale(1)} 30%{transform:translate(-14vmin,-12vmin) scale(1.25)} 60%{transform:translate(12vmin,8vmin) scale(.75)} }
 @keyframes y3 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(10vmin,14vmin) scale(1.2,.9) rotate(12deg)} 70%{transform:translate(-9vmin,-10vmin) scale(.85)} }
@@ -112,7 +105,6 @@
 @keyframes swapM { 0%,100%{background-color:#c4009a} 20%{background-color:#d05a2a} 40%,60%{background-color:#d8cc2f} 80%{background-color:#b400ad} }
 @keyframes swapR { 0%,100%{background-color:#d3d93c} 20%{background-color:#ffd23f} 40%,60%{background-color:#ff3fa4} 80%{background-color:#d3d93c} }
 
-/* Rays */
 .rays { position: absolute; inset: -15%; mix-blend-mode: screen; pointer-events: none; }
 .corA {
   opacity: .55; filter: blur(6px);
@@ -138,10 +130,4 @@
 @keyframes spinA { to { transform: rotate(1turn); } }
 @keyframes swayA { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
 
-.vig {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.8) 100%);
-  z-index: 5;
-}
+/* Виньетка удалена для устранения границ квадрата */

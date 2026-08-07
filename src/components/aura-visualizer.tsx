@@ -19,10 +19,11 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V16.2 — "The Masterpiece Balance".
- * #ЗАЧЕМ: ПЛАН №1480. 
- * 1. Hybrid Mode (Default): Кольца + Пастельный туман.
- * 2. Nebula Mode: Оригинальный YaMus2.html, вписанный в квадрат.
+ * @fileOverview Aura Visualizer V16.3 — "Unlimited Flow".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1482. 
+ * 1. Убраны границы квадрата и черный фон (анимация затекает под интерфейс).
+ * 2. Hybrid Mode временно дублирует Orbital (без небулы).
+ * 3. Nebula Mode сохраняет масштабирование оригинала, но без фона.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
@@ -56,11 +57,11 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
 
     return (
         <div 
-            className={cn("relative cursor-pointer select-none overflow-hidden rounded-2xl bg-black", className)} 
+            className={cn("relative cursor-pointer select-none overflow-visible", className)} 
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%' }}
         >
-            {/* MODE 1: PURE NEBULA (SCALED ORIGINAL) */}
+            {/* MODE 1: PURE NEBULA (SCALED ORIGINAL, NO BG) */}
             {mode === 'nebula' && (
                 <LiquidNebula 
                     genre={genre} 
@@ -80,30 +81,21 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                 />
             )}
 
-            {/* MODE 3: HYBRID (PASTEL SYNC) */}
+            {/* MODE 3: HYBRID (USER DIRECTIVE: COPY OF ORBITAL FOR NOW) */}
             {mode === 'hybrid' && (
-                <>
-                    <LiquidNebula 
-                        genre={genre} 
-                        tension={tension} 
-                        isReference={false}
-                        className="opacity-70"
-                    />
-                    <OrbitalAnimation 
-                        genre={genre} 
-                        tension={tension} 
-                        isPlaying={isPlaying} 
-                        tempo={tempo}
-                        size="100%"
-                        className="z-10"
-                    />
-                </>
+                <OrbitalAnimation 
+                    genre={genre} 
+                    tension={tension} 
+                    isPlaying={isPlaying} 
+                    tempo={tempo}
+                    size="100%"
+                />
             )}
 
             {/* Mode Feedback Overlay */}
             {feedback && (
                 <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none animate-out fade-out duration-1000">
-                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60 bg-black/40 px-6 py-3 rounded-full backdrop-blur-md border border-white/10 shadow-2xl">
+                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white/40 bg-black/20 px-6 py-3 rounded-full backdrop-blur-sm border border-white/5 shadow-2xl">
                         {feedback} MODE
                     </span>
                 </div>
