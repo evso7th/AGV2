@@ -7,7 +7,7 @@ import { LiquidNebula } from './liquid-nebula';
 import { cn } from '@/lib/utils';
 import type { Genre } from '@/types/music';
 
-type ViewMode = 'orbital' | 'nebula' | 'hybrid';
+type ViewMode = 'orbital' | 'hybrid'; // Режим 'nebula' удален
 
 interface AuraVisualizerProps {
     genre: Genre;
@@ -19,17 +19,19 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V1.0 — "Intuitive Shift".
- * #ЗАЧЕМ: Переключатель режимов визуализации по дабл-тапу.
- * #ЧТО: Контейнер для Orbital, Nebula и Hybrid режимов.
+ * @fileOverview Aura Visualizer V1.2 — "Ensemble Focus".
+ * #ЗАЧЕМ: Исключение режима Nebula (только блобы) из ротации.
+ * #ЧТО: ПЛАН №1470 — Цикл теперь только Orbital <-> Hybrid. Hybrid — дефолт.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-            return saved || 'orbital';
+            // Если в кэше был старый режим 'nebula', сбрасываем на 'hybrid'
+            if (saved === 'orbital' || saved === 'hybrid') return saved;
+            return 'hybrid'; 
         }
-        return 'orbital';
+        return 'hybrid';
     });
 
     const [feedback, setFeedback] = useState<string | null>(null);
@@ -37,7 +39,8 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
         setMode(prev => {
-            const next: ViewMode = prev === 'orbital' ? 'nebula' : (prev === 'nebula' ? 'hybrid' : 'orbital');
+            // Переключаемся только между двумя режимами
+            const next: ViewMode = prev === 'orbital' ? 'hybrid' : 'orbital';
             localStorage.setItem('AG_ViewMode', next);
             setFeedback(next.toUpperCase());
             return next;
@@ -57,16 +60,16 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%' }}
         >
-            {/* Layer 1: Nebula (Background in Hybrid) */}
-            {(mode === 'nebula' || mode === 'hybrid') && (
+            {/* Layer 1: Nebula (Отображается только в режиме Hybrid) */}
+            {(mode === 'hybrid') && (
                 <LiquidNebula 
                     genre={genre} 
                     tension={tension} 
-                    className={cn("transition-opacity duration-1000", mode === 'hybrid' ? "opacity-60" : "opacity-100")} 
+                    className={cn("transition-opacity duration-1000", "opacity-60")} 
                 />
             )}
 
-            {/* Layer 2: Orbital (Foreground in Hybrid) */}
+            {/* Layer 2: Orbital (Отображается всегда, так как Nebula-only режим отключен) */}
             {(mode === 'orbital' || mode === 'hybrid') && (
                 <OrbitalAnimation 
                     genre={genre} 
