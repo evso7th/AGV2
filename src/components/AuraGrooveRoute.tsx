@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview UI AuraGroove V16.8.6 — "Sprout Integration".
- * #ЗАЧЕМ: ПЛАН №1462 — Проброс жанра в анимацию Ядра.
+ * @fileOverview UI AuraGroove V16.9.0 — "Visualizer Integration".
+ * #ЗАЧЕМ: ПЛАН №1463 — Замена OrbitalAnimation на AuraVisualizer с поддержкой переключения режимов.
  */
 'use client';
 
@@ -36,7 +37,7 @@ import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/mus
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
-import { OrbitalAnimation } from "./orbital-animation";
+import { AuraVisualizer } from "./aura-visualizer";
 
 // DND Kit Core
 import {
@@ -422,15 +423,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                     {/* Focused Core with Axis Alignment - PERFECT SQUARE */}
                     <div 
-                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 pointer-events-none flex items-center justify-center overflow-visible"
+                        className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 flex items-center justify-center overflow-visible"
                         style={{ width: '90vw', height: '90vw', maxWidth: '400px', maxHeight: '400px' }}
                     >
-                        <OrbitalAnimation 
+                        <AuraVisualizer 
+                            genre={props.genre}
                             tension={props.tension} 
                             isPlaying={true} 
+                            tempo={props.bpm}
                             size="100%" 
                             className="opacity-90"
-                            genre={props.genre} 
                         />
                     </div>
 

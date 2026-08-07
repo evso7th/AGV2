@@ -1,0 +1,99 @@
+
+/**
+ * @fileOverview Liquid Nebula Styles V1.0 — "The Organic Fog".
+ * #ЗАЧЕМ: Адаптация YaMus2.html для генеративного движка.
+ * #ЧТО: Жидкие блобы, корона лучей и виньетка.
+ */
+
+.container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.soft {
+  position: absolute;
+  inset: -15%;
+  filter: blur(var(--nebula-blur, 40px));
+  opacity: var(--nebula-opacity, 0.6);
+  transition: opacity 2s ease-in-out;
+}
+
+.fluid {
+  position: absolute;
+  inset: 0;
+  animation: swirl 52s ease-in-out infinite alternate;
+}
+
+@keyframes swirl {
+  from { transform: translate(-5vmin, 2vmin) rotate(-5deg) scale(1); }
+  to { transform: translate(5vmin, -2vmin) rotate(5deg) scale(1.1); }
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  width: var(--s);
+  height: var(--s);
+  left: var(--x);
+  top: var(--y);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  transition: background-color 3s ease-in-out;
+}
+
+/* --- BLOB LAYERS --- */
+.m { background-color: var(--color-m); opacity: 0.8; }
+.p { background-color: var(--color-p); opacity: 0.6; }
+.y { background-color: var(--color-y); opacity: 0.7; }
+.r { background-color: var(--color-r); opacity: 0.5; }
+.o { background-color: var(--color-o); opacity: 0.4; }
+
+.m0 { --s: 100vmin; --x: 50%; --y: 50%; animation: move0 40s ease-in-out infinite, wobA 12s ease-in-out infinite; }
+.m1 { --s: 60vmin; --x: 30%; --y: 44%; animation: move1 31s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
+.m2 { --s: 55vmin; --x: 72%; --y: 54%; animation: move2 27s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
+.p1 { --s: 50vmin; --x: 68%; --y: 26%; animation: move1 30s ease-in-out infinite, wobB 9.5s ease-in-out -5s infinite; }
+.r1 { --s: 75vmin; --x: 50%; --y: 44%; animation: move0 36s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
+.y1 { --s: 70vmin; --x: 45%; --y: 60%; animation: move2 33s ease-in-out infinite, wobB 11s ease-in-out -2s infinite; }
+
+@keyframes move0 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(4vmin, -3vmin) scale(1.1); } }
+@keyframes move1 { 0%, 100% { transform: translate(0, 0); } 35% { transform: translate(10vmin, 7vmin) scale(1.2); } 70% { transform: translate(-5vmin, -8vmin) scale(0.9); } }
+@keyframes move2 { 0%, 100% { transform: translate(0, 0); } 40% { transform: translate(-8vmin, 10vmin) scale(1.1); } 75% { transform: translate(6vmin, -6vmin) scale(0.8); } }
+
+@keyframes wobA {
+  0%, 100% { border-radius: 50%; }
+  20% { border-radius: 38% 62% 56% 44% / 60% 38% 62% 40%; }
+  50% { border-radius: 46% 54% 62% 38% / 56% 44% 58% 42%; }
+  80% { border-radius: 58% 42% 40% 60% / 42% 58% 44% 56%; }
+}
+
+@keyframes wobB {
+  0%, 100% { border-radius: 50%; }
+  25% { border-radius: 56% 44% 40% 60% / 44% 60% 40% 56%; }
+  75% { border-radius: 60% 40% 46% 54% / 40% 56% 44% 60%; }
+}
+
+/* --- THE CORONA (RAYS) --- */
+.rays {
+  position: absolute;
+  inset: -20%;
+  mix-blend-mode: screen;
+  opacity: var(--corona-opacity, 0.4);
+  transition: opacity 1s ease-in-out;
+}
+
+.corA {
+  background: conic-gradient(from 0deg at 50% 50%, transparent 0, var(--color-p) 15deg, transparent 30deg, var(--color-m) 45deg, transparent 60deg);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 50%, transparent 30%, #000 50%, transparent 90%);
+  animation: spin 180s linear infinite;
+  filter: blur(10px);
+}
+
+@keyframes spin { to { transform: rotate(1turn); } }
+
+.vig {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0, var(--vignette-alpha, 0.4)) 100%);
+}
