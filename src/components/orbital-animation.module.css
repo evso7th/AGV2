@@ -1,7 +1,6 @@
 /**
- * @fileOverview Orbital Animation Styles V8.0 — "Pastel Sprout Protocol".
- * #ЗАЧЕМ: Реализация органического прорастания палитры через 6 колец.
- * #ЧТО: Каскадные задержки transition-delay и пастельные переменные.
+ * @fileOverview Orbital Animation Styles V8.2 — "True Sync Protocol".
+ * #ЗАЧЕМ: ПЛАН №1470. Полное удаление бесконечных циклов пульсации.
  */
 
 .view {
@@ -39,14 +38,12 @@
   border-radius: 100%;
   box-sizing: border-box;
   
-  /* #ЗАЧЕМ: Протокол прорастания. Плавный переход цвета и тени. */
   transition: border-color 2s ease-in-out, box-shadow 2s ease-in-out;
   
   border: 1px solid hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.3);
   box-shadow: 0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color);
 }
 
-/* --- CASCADING SPROUT DELAYS (PLAN №1405) --- */
 .circle:nth-child(1) { transition-delay: 0s; }
 .circle:nth-child(2) { transition-delay: 0.3s; }
 .circle:nth-child(3) { transition-delay: 0.6s; }
@@ -70,33 +67,21 @@
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  /* #ЗАЧЕМ: Эффект небулы */
   filter: blur(12px);
   box-shadow: 0 0 calc(var(--orbital-glow) * 2.5) var(--orbital-color);
   
-  animation: core-breath 5s infinite ease-in-out;
-  animation-play-state: var(--pulse-play-state, paused);
-
   transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), 
               filter 0.1s ease-out, 
               box-shadow 0.1s ease-out,
               opacity 0.2s ease-in-out,
               background-color 2s ease-in-out;
   will-change: transform, filter, box-shadow;
+  opacity: 0.5;
 }
 
-/* --- MOBILE OPTIMIZATIONS --- */
-.view[data-mobile="true"] .circle::before,
-.view[data-mobile="true"] .circle::after {
-  filter: blur(6px);
-  box-shadow: 0 0 var(--orbital-glow) var(--orbital-color);
-  animation: mobile-pulse var(--mobile-pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
-  animation-play-state: var(--pulse-play-state, paused);
-}
-
-/* --- EVENT-BASED PULSE (DESKTOP) --- */
-.view:not([data-mobile="true"])[data-pulsing="true"] .circle::before,
-.view:not([data-mobile="true"])[data-pulsing="true"] .circle::after {
+/* --- EVENT-DRIVEN PULSE (ALL DEVICES) --- */
+.view[data-pulsing="true"] .circle::before,
+.view[data-pulsing="true"] .circle::after {
   transform: translateZ(var(--z-offset)) scale(1.35);
   filter: blur(4px) brightness(2.0) saturate(1.4);
   box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color);
@@ -123,15 +108,4 @@
 @keyframes rotate {
   0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
   100% { transform: rotateX(360deg) rotateY(360deg) rotateZ(360deg); }
-}
-
-@keyframes core-breath {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.7; }
-}
-
-@keyframes mobile-pulse {
-  0% { transform: translateZ(var(--z-offset)) scale(1); filter: blur(6px); opacity: 0.5; }
-  10% { transform: translateZ(var(--z-offset)) scale(1.2); filter: blur(3px) brightness(1.5); opacity: 1; }
-  100% { transform: translateZ(var(--z-offset)) scale(1); filter: blur(6px); opacity: 0.5; }
 }

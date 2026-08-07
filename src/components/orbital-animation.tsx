@@ -16,9 +16,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V8.1 — "Ash Mauve Integration".
- * #ЗАЧЕМ: Обновление палитры для Blues (Пепельный Маув).
- * #ЧТО: Жанровый Hue + каскадные задержки в CSS.
+ * @fileOverview Orbital Animation V8.2 — "Strict Pulse Sync".
+ * #ЗАЧЕМ: ПЛАН №1470. Удаление автономных циклов. Пульс только по событию.
  */
 export function OrbitalAnimation({ 
     isPlaying = false, 
@@ -34,33 +33,25 @@ export function OrbitalAnimation({
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
-  // 1. Определение базового тона (Hue) по жанру (Пастельный Атлас)
+  // 1. Определение базового тона (Hue) по жанру
   const hue = useMemo(() => {
     const genreHues: Record<string, number> = {
-        ambient: 260,     // Мистический Ирис
-        psybient: 285,    // Астральный Пурпур
-        blues: 334,       // 🌸 Пепельный Маув (#B39AA5)
-        reggae: 150       // Тропический Шалфей
+        ambient: 260,
+        psybient: 285,
+        blues: 334,
+        reggae: 150
     };
     return genreHues[genre as string] || 260;
   }, [genre]);
 
-  // 2. Расчет пастельной насыщенности и яркости (Soft Focus)
-  const saturation = useMemo(() => 25 + (tension * 10), [tension]); // 25% - 35%
-  const lightness = useMemo(() => 40 + (tension * 15), [tension]);  // 40% - 55%
+  const saturation = useMemo(() => 25 + (tension * 10), [tension]);
+  const lightness = useMemo(() => 40 + (tension * 15), [tension]);
 
-  // Скорость вращения орбит
   const rotationDuration = useMemo(() => {
       const base = isPlaying ? 40 : 60;
       return base / (0.5 + tension * 1.5) + 's';
   }, [isPlaying, tension]);
 
-  // Длительность пульса для мобильного CSS-цикла
-  const pulseDuration = useMemo(() => {
-    return (60 / (tempo || 90)) + 's';
-  }, [tempo]);
-
-  // Цвета и свечение
   const dynamicStyles = useMemo(() => {
       const glow = isMobile ? 8 + (tension * 20) : 15 + (tension * 60);       
       
@@ -71,15 +62,11 @@ export function OrbitalAnimation({
           '--orbital-color': `hsl(${hue}, ${saturation}%, ${lightness}%)`,
           '--orbital-glow': `${glow}px`,
           '--orbital-size': size || '300px',
-          '--pulse-play-state': isPlaying ? 'running' : 'paused',
-          '--mobile-pulse-duration': pulseDuration
       } as React.CSSProperties;
-  }, [hue, saturation, lightness, tension, size, isPlaying, isMobile, pulseDuration]);
+  }, [hue, saturation, lightness, tension, size, isMobile]);
 
-  // --- DESKTOP ONLY: IMPULSE LISTENER ---
+  // --- UNIFIED PULSE LISTENER (NO MOBILE BYPASS) ---
   useEffect(() => {
-    if (isMobile) return; 
-
     const onPulse = (e: any) => {
         if (!isPlaying) return;
         
@@ -106,7 +93,7 @@ export function OrbitalAnimation({
         pulseTimeoutsRef.current.forEach(clearTimeout);
         pulseTimeoutsRef.current = [];
     };
-  }, [isPlaying, analyser, isMobile]);
+  }, [isPlaying, analyser]);
 
   useEffect(() => {
     if (planeRef.current) {

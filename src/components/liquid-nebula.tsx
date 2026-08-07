@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
@@ -18,9 +17,8 @@ interface LiquidNebulaProps {
 }
 
 /**
- * @fileOverview Liquid Nebula V6.0 — "Focused Core Pulse".
- * #ЗАЧЕМ: ПЛАН №1465. Пульсация теперь воздействует ТОЛЬКО на центральный блоб.
- * #ЧТО: Внедрена обертка .centralCore для изоляции ритмического масштабирования.
+ * @fileOverview Liquid Nebula V6.1 — "Strict Core Pulse Sync".
+ * #ЗАЧЕМ: ПЛАН №1470. Удаление бесконечных анимаций. Пульсация только по MIDI-событию.
  */
 export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, className, isReference = false }: LiquidNebulaProps) {
   const { analyser } = useAudioEngine();
@@ -28,10 +26,8 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
-  // 1. Музыкальная пульсация (Event Listener)
+  // 1. Музыкальная пульсация (Event Listener - Now for all devices)
   useEffect(() => {
-    if (isMobile) return; 
-
     const onPulse = (e: any) => {
         if (!isPlaying) return;
         
@@ -58,12 +54,10 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
         pulseTimeoutsRef.current.forEach(clearTimeout);
         pulseTimeoutsRef.current = [];
     };
-  }, [isPlaying, analyser, isMobile]);
+  }, [isPlaying, analyser]);
 
   // 2. Цвета и динамические переменные
   const dynamicStyles = useMemo(() => {
-    const pulseDuration = (60 / (tempo || 75)) + 's';
-    
     if (!isReference) {
       const genreHues: Record<string, number> = {
         ambient: 260,   
@@ -80,15 +74,10 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
         '--color-y': `hsl(${hue - 25}, ${s + 5}%, ${l + 5}%)`,
         '--color-r': `hsl(${hue}, 15%, 70%)`,
         '--color-o': `hsl(${hue + 40}, ${s}%, ${l - 10}%)`,
-        '--pulse-play-state': isPlaying ? 'running' : 'paused',
-        '--mobile-pulse-duration': pulseDuration
       } as React.CSSProperties;
     }
-    return {
-        '--pulse-play-state': isPlaying ? 'running' : 'paused',
-        '--mobile-pulse-duration': pulseDuration
-    } as React.CSSProperties;
-  }, [genre, tension, isReference, isPlaying, tempo]);
+    return {} as React.CSSProperties;
+  }, [genre, tension, isReference]);
 
   return (
     <div

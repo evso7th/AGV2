@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Liquid Nebula CSS V6.0 — "Core Pulse Logic".
- * #ЗАЧЕМ: Изоляция пульсации. Теперь только центральный блоб реагирует на ритм.
+ * @fileOverview Liquid Nebula CSS V6.1 — "Strict Core Pulse Sync".
+ * #ЗАЧЕМ: ПЛАН №1470. Удаление бесконечных мобильных циклов. Ритм только по событию.
  */
 
 .container {
@@ -40,7 +39,7 @@
   --current-scale: 0.65;
 }
 
-/* --- CENTRAL CORE PULSE (V6.0) --- */
+/* --- CENTRAL CORE PULSE (EVENT-DRIVEN ONLY) --- */
 .centralCore {
   position: absolute;
   inset: 0;
@@ -52,19 +51,8 @@
 }
 
 .container[data-pulsing="true"] .centralCore {
-  transform: scale(1.12); /* Пульсирует только центр */
+  transform: scale(1.12);
   filter: brightness(1.3) saturate(1.2);
-}
-
-.container[data-mobile="true"] .centralCore {
-  animation: mobile-pulse-core var(--mobile-pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
-  animation-play-state: var(--pulse-play-state, paused);
-}
-
-@keyframes mobile-pulse-core {
-  0% { transform: scale(1); filter: brightness(1); }
-  10% { transform: scale(1.08); filter: brightness(1.2); }
-  100% { transform: scale(1); filter: brightness(1); }
 }
 
 .soft {
