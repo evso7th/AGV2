@@ -1,8 +1,7 @@
+
 /**
- * @fileOverview Liquid Nebula CSS V3.8 — "Flow Restoration Protocol".
- * #ЗАЧЕМ: вернуть перетекание цветов в обоих режимах.
- * #ЧТО: swapM/Y/R всегда в animation литералами (важно для CSS Modules),
- *       палитра цикла — через --sw-* переменные контейнера.
+ * @fileOverview Liquid Nebula CSS V4.0 — "Pulse Dynamics".
+ * #ЗАЧЕМ: Реализация пульсации всего облака.
  */
 
 .container {
@@ -10,13 +9,15 @@
   inset: 0;
   overflow: visible;
   z-index: 0;
-  /* Reference: оригинальная палитра цикла из YaMus2 */
   --sw-m-a: #c4009a; --sw-m-b: #d05a2a; --sw-m-c: #d8cc2f; --sw-m-d: #b400ad;
   --sw-y-a: #d8cc2f; --sw-y-b: #e0a52c; --sw-y-c: #cf0f9e; --sw-y-d: #d5c93a;
   --sw-r-a: #d3d93c; --sw-r-b: #ffd23f; --sw-r-c: #ff3fa4; --sw-r-d: #d3d93c;
+  
+  /* #ЗАЧЕМ: Плавное растворение краев */
+  mask-image: radial-gradient(circle at 50% 46%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 50% 46%, black 20%, transparent 80%);
 }
 
-/* Pastel: тот же цикл на жанровой палитре (нужна статика — приравняй все стопы) */
 .container[data-mode="pastel"] {
   --sw-m-a: var(--color-m); --sw-m-b: var(--color-o); --sw-m-c: var(--color-y); --sw-m-d: var(--color-p);
   --sw-y-a: var(--color-y); --sw-y-b: var(--color-o); --sw-y-c: var(--color-m); --sw-y-d: var(--color-y);
@@ -27,16 +28,38 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.35);
+  transform: translate(-50%, -50%) scale(var(--current-scale, 0.35));
   width: 100vw;
   height: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  --current-scale: 0.35;
+  transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), filter 0.1s ease-out;
+  will-change: transform;
 }
 
 .container[data-mode="pastel"] .scaler {
-  transform: translate(-50%, -50%) scale(0.65);
+  --current-scale: 0.65;
+}
+
+/* --- PULSE LOGIC --- */
+
+.container[data-pulsing="true"] .scaler {
+  transform: translate(-50%, -50%) scale(calc(var(--current-scale) * 1.08));
+  filter: brightness(1.2) saturate(1.1);
+}
+
+.container[data-mobile="true"] .scaler {
+  animation: mobile-pulse-nebula var(--mobile-pulse-duration, 0.8s) infinite cubic-bezier(0.25, 1, 0.5, 1);
+  animation-play-state: var(--pulse-play-state, paused);
+}
+
+@keyframes mobile-pulse-nebula {
+  0% { transform: translate(-50%, -50%) scale(var(--current-scale)); filter: brightness(1); }
+  10% { transform: translate(-50%, -50%) scale(calc(var(--current-scale) * 1.05)); filter: brightness(1.2); }
+  100% { transform: translate(-50%, -50%) scale(var(--current-scale)); filter: brightness(1); }
 }
 
 .soft {
@@ -64,7 +87,7 @@
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px); /* глубокая диффузия */
+  filter: blur(90px);
   width: var(--s);
   height: var(--s);
   left: var(--x);
@@ -73,21 +96,18 @@
   transition: background-color 3s ease-in-out;
 }
 
-/* ORIGINAL COLORS (Only for Reference mode) */
 .container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
 .container[data-mode="reference"] .y   { background: #d8cc2f; }
 .container[data-mode="reference"] .m   { background: #c4009a; }
 .container[data-mode="reference"] .p   { background: #6a14d8; opacity: .7; }
 .container[data-mode="reference"] .o   { background: #e07820; opacity: .6; }
 
-/* DYNAMIC GENRE COLORS (For Pastel mode) */
 .container[data-mode="pastel"] .m   { background-color: var(--color-m); opacity: 0.5; }
 .container[data-mode="pastel"] .p   { background-color: var(--color-p); opacity: 0.4; }
 .container[data-mode="pastel"] .y   { background-color: var(--color-y); opacity: 0.4; }
 .container[data-mode="pastel"] .rim { background-color: var(--color-r); opacity: 0.2; }
 .container[data-mode="pastel"] .o   { background-color: var(--color-o); opacity: 0.3; }
 
-/* Слои: имена анимаций — литералами, чтобы CSS Modules захешил их согласованно с @keyframes */
 .m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
 .m1 { --s: 62vmin;  --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
 .m2 { --s: 56vmin;  --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
@@ -102,7 +122,6 @@
 .y3 { --s: 46vmin;  --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
 .o1 { --s: 40vmin;  --x: 46%; --y: 62%; animation: o1 21s ease-in-out infinite, wobB 7s ease-in-out -1s infinite; }
 
-/* Движение */
 @keyframes y1 { 0%,100%{transform:translate(0,0) scale(1,1) rotate(0deg)} 25%{transform:translate(15vmin,-8vmin) scale(1.2,.85) rotate(18deg)} 50%{transform:translate(5vmin,12vmin) scale(.92) rotate(0deg)} 75%{transform:translate(-16vmin,-2vmin) scale(.85,1.15) rotate(-14deg)} }
 @keyframes y2 { 0%,100%{transform:translate(0,0) scale(1)} 30%{transform:translate(-14vmin,-12vmin) scale(1.25)} 60%{transform:translate(12vmin,8vmin) scale(.75)} }
 @keyframes y3 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(10vmin,14vmin) scale(1.2,.9) rotate(12deg)} 70%{transform:translate(-9vmin,-10vmin) scale(.85)} }
@@ -114,16 +133,13 @@
 @keyframes p1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-14vmin,10vmin) scale(1.2)} }
 @keyframes o1 { 0%,100%{transform:translate(0,0) scale(.9)} 30%{transform:translate(10vmin,-12vmin) scale(1.2)} 65%{transform:translate(-10vmin,6vmin) scale(1.05)} }
 
-/* Жидкий морфинг границ */
 @keyframes wobA { 0%,100%{border-radius:50%} 20%{border-radius:38% 62% 56% 44% / 60% 38% 62% 40%} 40%{border-radius:62% 38% 44% 56% / 40% 62% 38% 60%} 60%{border-radius:46% 54% 62% 38% / 56% 44% 58% 42%} 80%{border-radius:58% 42% 40% 60% / 42% 58% 44% 56%} }
 @keyframes wobB { 0%,100%{border-radius:50%} 25%{border-radius:56% 44% 40% 60% / 44% 60% 40% 56%} 50%{border-radius:40% 60% 58% 42% / 62% 40% 60% 38%} 75%{border-radius:60% 40% 46% 54% / 40% 56% 44% 60%} }
 
-/* Перетекание: цикл один, цвета — из переменных контейнера */
 @keyframes swapY { 0%,100%{background-color:var(--sw-y-a)} 20%{background-color:var(--sw-y-b)} 40%,60%{background-color:var(--sw-y-c)} 80%{background-color:var(--sw-y-d)} }
 @keyframes swapM { 0%,100%{background-color:var(--sw-m-a)} 20%{background-color:var(--sw-m-b)} 40%,60%{background-color:var(--sw-m-c)} 80%{background-color:var(--sw-m-d)} }
 @keyframes swapR { 0%,100%{background-color:var(--sw-r-a)} 20%{background-color:var(--sw-r-b)} 40%,60%{background-color:var(--sw-r-c)} 80%{background-color:var(--sw-r-d)} }
 
-/* Корона лучей */
 .rays { position: absolute; inset: -15%; mix-blend-mode: screen; pointer-events: none; }
 
 .corA {

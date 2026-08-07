@@ -1,32 +1,74 @@
+
 "use client";
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import styles from './liquid-nebula.module.css';
 import { cn } from '@/lib/utils';
+import { useAudioEngine } from '@/contexts/audio-engine-context';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
 interface LiquidNebulaProps {
   genre: Genre;
   tension: number;
+  isPlaying?: boolean;
+  tempo?: number;
   className?: string;
   isReference?: boolean; // true = YaMus2.html, false = Pastel Fog
 }
 
 /**
- * @fileOverview Liquid Nebula V3.8 — "Flow Restoration Update".
- * #ЗАЧЕМ: вернуть перетекание цветов в обоих режимах.
- * #ЧТО: swap-цикл всегда активен; палитра цикла приходит через --sw-* из CSS.
+ * @fileOverview Liquid Nebula V4.0 — "Pulse Reactive Update".
+ * #ЗАЧЕМ: Реализация пульсации, идентичной OrbitalAnimation.
  */
-export function LiquidNebula({ genre, tension, className, isReference = false }: LiquidNebulaProps) {
+export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, className, isReference = false }: LiquidNebulaProps) {
+  const { analyser } = useAudioEngine();
+  const isMobile = useIsMobile();
+  const [isPulsing, setIsPulsing] = useState(false);
+  const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
+  // 1. Музыкальная пульсация (Event Listener)
+  useEffect(() => {
+    if (isMobile) return; 
+
+    const onPulse = (e: any) => {
+        if (!isPlaying) return;
+        
+        const hitTime = e.detail.time;
+        const audioContext = analyser?.context;
+        if (!audioContext) return;
+
+        const now = audioContext.currentTime;
+        const delay = (hitTime - now) * 1000;
+        
+        if (delay > -50) {
+            const t = setTimeout(() => {
+                setIsPulsing(true);
+                const t2 = setTimeout(() => setIsPulsing(false), 120);
+                pulseTimeoutsRef.current.push(t2);
+            }, Math.max(0, delay));
+            pulseTimeoutsRef.current.push(t);
+        }
+    };
+    
+    window.addEventListener('AG_CORE_PULSE', onPulse);
+    return () => {
+        window.removeEventListener('AG_CORE_PULSE', onPulse);
+        pulseTimeoutsRef.current.forEach(clearTimeout);
+        pulseTimeoutsRef.current = [];
+    };
+  }, [isPlaying, analyser, isMobile]);
+
+  // 2. Цвета и динамические переменные
   const colors = useMemo(() => {
+    const pulseDuration = (60 / (tempo || 75)) + 's';
+    
     if (!isReference) {
-      // Пастельная палитра на основе жанра (Sprout Protocol)
-      // Точно такие же углы Hue, как в OrbitalAnimation
       const genreHues: Record<string, number> = {
-        ambient: 260,   // Мистический Ирис
-        psybient: 285,  // Астральный Пурпур
-        blues: 334,     // 🌸 Пепельный Маув
-        reggae: 150,    // Тропический Шалфей
+        ambient: 260,   
+        psybient: 285,  
+        blues: 334,     
+        reggae: 150,    
       };
       const hue = genreHues[genre as string] || 260;
       const s = 25 + tension * 10;
@@ -37,16 +79,23 @@ export function LiquidNebula({ genre, tension, className, isReference = false }:
         '--color-y': `hsl(${hue - 25}, ${s + 5}%, ${l + 5}%)`,
         '--color-r': `hsl(${hue}, 15%, 70%)`,
         '--color-o': `hsl(${hue + 40}, ${s}%, ${l - 10}%)`,
+        '--pulse-play-state': isPlaying ? 'running' : 'paused',
+        '--mobile-pulse-duration': pulseDuration
       } as React.CSSProperties;
     }
-    return {} as React.CSSProperties;
-  }, [genre, tension, isReference]);
+    return {
+        '--pulse-play-state': isPlaying ? 'running' : 'paused',
+        '--mobile-pulse-duration': pulseDuration
+    } as React.CSSProperties;
+  }, [genre, tension, isReference, isPlaying, tempo]);
 
   return (
     <div
       className={cn(styles.container, className)}
       style={colors}
       data-mode={isReference ? "reference" : "pastel"}
+      data-pulsing={isPulsing}
+      data-mobile={isMobile}
     >
       <div className={styles.scaler}>
         <div className={styles.soft}>
@@ -66,7 +115,6 @@ export function LiquidNebula({ genre, tension, className, isReference = false }:
             <i className={cn(styles.blob, styles.o, styles.o1)} />
           </div>
         </div>
-        {/* Корона лучей — только в режиме Reference */}
         {isReference && (
           <>
             <div className={cn(styles.rays, styles.corA)} />
