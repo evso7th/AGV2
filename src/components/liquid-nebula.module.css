@@ -1,7 +1,8 @@
 
 /**
- * @fileOverview Liquid Nebula CSS V3.5 — "Dual Core Animation".
- * #ЗАЧЕМ: Совмещение оригинальной анимации и пастельного тумана.
+ * @fileOverview Liquid Nebula CSS V3.7 — "Color Isolation Protocol".
+ * #ЗАЧЕМ: Устранение конфликта цветов в режиме Hybrid.
+ * #ЧТО: Анимации swapM/Y/R теперь активны только в режиме Reference.
  */
 
 .container {
@@ -9,13 +10,23 @@
   inset: 0;
   overflow: visible;
   z-index: 0;
+  /* По умолчанию анимации цвета отключены для Pastel мода */
+  --color-swap-m: none;
+  --color-swap-y: none;
+  --color-swap-r: none;
+}
+
+.container[data-mode="reference"] {
+  --color-swap-m: swapM;
+  --color-swap-y: swapY;
+  --color-swap-r: swapR;
 }
 
 .scaler {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.35); /* Scale for Reference mode */
+  transform: translate(-50%, -50%) scale(0.35);
   width: 100vw;
   height: 100vw;
   display: flex;
@@ -23,15 +34,14 @@
   justify-content: center;
 }
 
-/* Увеличенный масштаб для пастельного фона в Hybrid моде */
 .container[data-mode="pastel"] .scaler {
   transform: translate(-50%, -50%) scale(0.65);
 }
 
 .soft {
   position: absolute;
-  inset: -15%;
-  filter: blur(45px); /* Increased blur for background fog */
+  inset: -20%;
+  filter: blur(50px);
 }
 
 .fluid {
@@ -53,7 +63,7 @@
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px); /* Massive diffusion */
+  filter: blur(90px); /* Глубокая диффузия */
   width: var(--s);
   height: var(--s);
   left: var(--x);
@@ -62,33 +72,33 @@
   transition: background-color 3s ease-in-out;
 }
 
-/* ORIGINAL COLORS FOR REFERENCE MODE */
+/* ORIGINAL COLORS (Only for Reference mode) */
 .container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
 .container[data-mode="reference"] .y { background: #d8cc2f; }
 .container[data-mode="reference"] .m { background: #c4009a; }
 .container[data-mode="reference"] .p { background: #6a14d8; opacity: .7; }
 .container[data-mode="reference"] .o { background: #e07820; opacity: .6; }
 
-/* DYNAMIC COLORS FOR PASTEL FOG */
-.container[data-mode="pastel"] .blob { background-color: var(--color-m); opacity: 0.6; }
-.container[data-mode="pastel"] .m { background-color: var(--color-m); }
-.container[data-mode="pastel"] .p { background-color: var(--color-p); }
-.container[data-mode="pastel"] .y { background-color: var(--color-y); }
-.container[data-mode="pastel"] .rim { background-color: var(--color-r); opacity: 0.3; }
-.container[data-mode="pastel"] .o { background-color: var(--color-o); }
+/* DYNAMIC GENRE COLORS (For Hybrid/Pastel mode) */
+.container[data-mode="pastel"] .m { background-color: var(--color-m); opacity: 0.5; }
+.container[data-mode="pastel"] .p { background-color: var(--color-p); opacity: 0.4; }
+.container[data-mode="pastel"] .y { background-color: var(--color-y); opacity: 0.4; }
+.container[data-mode="pastel"] .rim { background-color: var(--color-r); opacity: 0.2; }
+.container[data-mode="pastel"] .o { background-color: var(--color-o); opacity: 0.3; }
 
-.m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
-.m1 { --s: 62vmin; --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
-.m2 { --s: 56vmin; --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
-.m3 { --s: 48vmin; --x: 55%; --y: 20%; animation: m3 23s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 8s ease-in-out -2s infinite; }
-.m4 { --s: 60vmin; --x: 50%; --y: 80%; animation: m4 34s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 11s ease-in-out -9s infinite; }
+/* Анимации слоев с поддержкой динамического включения swap-циклов */
+.m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
+.m1 { --s: 62vmin; --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
+.m2 { --s: 56vmin; --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
+.m3 { --s: 48vmin; --x: 55%; --y: 20%; animation: m3 23s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobB 8s ease-in-out -2s infinite; }
+.m4 { --s: 60vmin; --x: 50%; --y: 80%; animation: m4 34s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 11s ease-in-out -9s infinite; }
 .p1 { --s: 52vmin; --x: 68%; --y: 26%; animation: p1 30s ease-in-out infinite, wobB 9.5s ease-in-out -5s infinite; }
-.r1 { --s: 80vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, swapR 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
-.r2 { --s: 56vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, swapR 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
-.r3 { --s: 52vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapR 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
-.y1 { --s: 74vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
-.y2 { --s: 50vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, swapY 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
-.y3 { --s: 46vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
+.r1 { --s: 80vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
+.r2 { --s: 56vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
+.r3 { --s: 52vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
+.y1 { --s: 74vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
+.y2 { --s: 50vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
+.y3 { --s: 46vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
 .o1 { --s: 40vmin; --x: 46%; --y: 62%; animation: o1 21s ease-in-out infinite, wobB 7s ease-in-out -1s infinite; }
 
 @keyframes y1 { 0%,100%{transform:translate(0,0) scale(1,1) rotate(0deg)} 25%{transform:translate(15vmin,-8vmin) scale(1.2,.85) rotate(18deg)} 50%{transform:translate(5vmin,12vmin) scale(.92) rotate(0deg)} 75%{transform:translate(-16vmin,-2vmin) scale(.85,1.15) rotate(-14deg)} }
@@ -131,5 +141,3 @@
   background: conic-gradient(from 100deg at 50% 46%,transparent 0 34deg,rgba(255,70,200,.25) 34.4deg 34.8deg,transparent 35.4deg 150deg,rgba(255,160,60,.22) 150.4deg 150.7deg,transparent 151.4deg 262deg,rgba(255,70,200,.25) 262.4deg 262.8deg,transparent 263.6deg 360deg);
   animation: swayA 90s ease-in-out infinite alternate-reverse;
 }
-@keyframes spinA { to { transform: rotate(1turn); } }
-@keyframes swayA { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }

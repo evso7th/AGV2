@@ -14,20 +14,20 @@ interface LiquidNebulaProps {
 }
 
 /**
- * @fileOverview Liquid Nebula V3.5 — "Dual Mode Integration".
- * #ЗАЧЕМ: Поддержка двух типов анимации:
- * 1. Reference: Точная копия YaMus2.html (для режима Nebula).
- * 2. Pastel: Органический туман в цвет жанра (для режима Hybrid).
+ * @fileOverview Liquid Nebula V3.7 — "Sprout Consistency Update".
+ * #ЗАЧЕМ: Принудительная синхронизация палитры в режиме Hybrid.
+ * #ЧТО: В режиме Pastel (isReference=false) блобы используют цвета жанра.
  */
 export function LiquidNebula({ genre, tension, className, isReference = false }: LiquidNebulaProps) {
     
     const colors = useMemo(() => {
         if (!isReference) {
             // Пастельная палитра на основе жанра (Sprout Protocol)
+            // Точно такие же углы Hue, как в OrbitalAnimation
             const genreHues: Record<string, number> = {
                 ambient: 260,     // Мистический Ирис
                 psybient: 285,    // Астральный Пурпур
-                blues: 334,       // Пепельный Маув
+                blues: 334,       // 🌸 Пепельный Маув
                 reggae: 150       // Тропический Шалфей
             };
             const hue = genreHues[genre as string] || 260;
