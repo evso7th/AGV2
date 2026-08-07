@@ -7,7 +7,7 @@ import { LiquidNebula } from './liquid-nebula';
 import { cn } from '@/lib/utils';
 import type { Genre } from '@/types/music';
 
-type ViewMode = 'orbital' | 'hybrid' | 'nebula';
+type ViewMode = 'orbital' | 'ether' | 'nebula';
 
 interface AuraVisualizerProps {
     genre: Genre;
@@ -19,16 +19,16 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V16.7 — "Infinite Canvas Polish".
- * #ЗАЧЕМ: Полное удаление фонов и границ для бесшовной интеграции.
+ * @fileOverview Aura Visualizer V17.0 — "Ether Edition".
+ * #ЗАЧЕМ: Переименование Hybrid в Ether. Оптимизация слоев.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-            if (['orbital', 'hybrid', 'nebula'].includes(saved)) return saved;
+            if (['orbital', 'ether', 'nebula'].includes(saved)) return saved;
         }
-        return 'hybrid';
+        return 'ether';
     });
 
     const [feedback, setFeedback] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
         setMode(prev => {
-            const cycle: ViewMode[] = ['hybrid', 'orbital', 'nebula'];
+            const cycle: ViewMode[] = ['ether', 'orbital', 'nebula'];
             const nextIdx = (cycle.indexOf(prev) + 1) % cycle.length;
             const next = cycle[nextIdx];
             localStorage.setItem('AG_ViewMode', next);
@@ -59,7 +59,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
             style={{ width: size || '100%', height: size || '100%', background: 'transparent' }}
         >
             {/* BACKGROUND LAYER: NEBULA FOG */}
-            {(mode === 'hybrid' || mode === 'nebula') && (
+            {(mode === 'ether' || mode === 'nebula') && (
                 <LiquidNebula 
                     genre={genre} 
                     tension={tension} 
@@ -68,13 +68,13 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                     isReference={mode === 'nebula'} 
                     className={cn(
                         "animate-in fade-in duration-1000",
-                        mode === 'hybrid' ? "opacity-40" : "opacity-100"
+                        mode === 'ether' ? "opacity-40" : "opacity-100"
                     )}
                 />
             )}
 
             {/* FOREGROUND LAYER: ORBITAL RINGS */}
-            {(mode === 'hybrid' || mode === 'orbital') && (
+            {(mode === 'ether' || mode === 'orbital') && (
                 <OrbitalAnimation 
                     genre={genre} 
                     tension={tension} 

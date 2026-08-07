@@ -1,18 +1,19 @@
+
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Версия 0.4.40. Добавлена инструкция по визуальным режимам и жестам.
+ * #ОБНОВЛЕНО: Версия 0.4.45. Переименование Hybrid -> Ether.
  */
 
 export const GUIDE_RU = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Полное руководство пользователя</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.40 (Infinite Take Orchestra)</p>
-    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v16.5 | Core: v3.7.0</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.45 (Infinite Take Orchestra)</p>
+    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.40 представляет полностью модернизированный иммерсивный режим HUD с расширенным контролем и интерактивной визуализацией.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.45 представляет режим Ether — совершенный баланс геометрии и атмосферы.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Интерактивная Визуализация (HUD)</h2>
@@ -20,24 +21,19 @@ export const GUIDE_RU = `
     <ul class="list-disc pl-5 space-y-2">
       <li><strong>Переключение режимов (Double-Tap):</strong> Дважды нажмите (или кликните) в зоне анимации, чтобы сменить режим:
         <ul class="list-circle pl-5 mt-1 opacity-80">
-          <li><em>Hybrid (по умолчанию):</em> Сочетание колец и мягкого тумана в цвет жанра.</li>
-          <li><em>Orbital:</em> Чистая математическая геометрия орбит.</li>
-          <li><em>Nebula (Pure):</em> Автономная художественная анимация с оригинальной палитрой.</li>
+          <li><em>Ether (по умолчанию):</em> Сочетание орбитальных колец и глубокого органического тумана.</li>
+          <li><em>Orbital:</em> Чистая математическая геометрия светящихся орбит.</li>
+          <li><em>Nebula (Pure):</em> Автономная художественная анимация с оригинальной палитрой перетекания.</li>
         </ul>
       </li>
       <li><strong>Бесконечное пространство:</strong> Анимация больше не ограничена рамками и плавно затекает под элементы интерфейса.</li>
-      <li><strong>Активный брендинг:</strong> Нажмите на заголовок <em>AuraGroove</em> вверху HUD для быстрого возврата в это окно.</li>
-      <li><strong>Четырехточечный контроль:</strong> В углах HUD расположены Регенерация, Broadcast, Микшер и EQ.</li>
+      <li><strong>Тактовая пульсация:</strong> Ядро реагирует на ритм музыки, создавая эффект живого присутствия.</li>
     </ul>
   </section>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Студийные настройки</h2>
     <p>Все окна настроек (Микшер, EQ, Инфоцентр) теперь имеют единый стиль «матового стекла», не отвлекая от погружения в музыку.</p>
-    <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 flex gap-3">
-      <span class="text-lg">💡</span>
-      <p class="text-[12px]"><span class="font-black text-primary uppercase">Совет:</span> Используйте кнопку Broadcast Bridge (иконка вышки) в верхнем правом углу HUD для обеспечения стабильности звука в фоновом режиме на мобильных устройствах.</p>
-    </div>
   </section>
 
   <section class="space-y-3 px-2 pb-6">
@@ -52,11 +48,11 @@ export const GUIDE_EN = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Complete User Guide</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.40 (Infinite Take Orchestra)</p>
-    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v16.5 | Core: v3.7.0</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.45 (Infinite Take Orchestra)</p>
+    <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.40 introduces a fully modernized Immersive HUD with interactive visualization and expanded control points.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.45 introduces Ether mode — a perfect balance of geometry and atmosphere.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Interactive Visualization (HUD)</h2>
@@ -64,14 +60,13 @@ export const GUIDE_EN = `
     <ul class="list-disc pl-5 space-y-2">
       <li><strong>Mode Switching (Double-Tap):</strong> Double-tap or double-click within the animation area to cycle modes:
         <ul class="list-circle pl-5 mt-1 opacity-80">
-          <li><em>Hybrid (default):</em> A fusion of orbital rings and organic fog matched to the genre.</li>
-          <li><em>Orbital:</em> Pure geometric orbits.</li>
-          <li><em>Nebula (Pure):</em> Autonomous artistic animation with original color palette.</li>
+          <li><em>Ether (default):</em> A fusion of orbital rings and deep organic fog.</li>
+          <li><em>Orbital:</em> Pure geometric orbits of light.</li>
+          <li><em>Nebula (Pure):</em> Autonomous artistic animation with its original flow palette.</li>
         </ul>
       </li>
       <li><strong>Infinite Canvas:</strong> Animations are no longer boxed and flow seamlessly behind the interface elements.</li>
-      <li><strong>Interactive Branding:</strong> Tap the <em>AuraGroove</em> header at the top to instantly open this Info Center.</li>
-      <li><strong>Four-Corner Control:</strong> Quick access to Regenerate, Broadcast, Mixer, and EQ in the corners.</li>
+      <li><strong>Beat Pulse:</strong> The Core reacts to the music's rhythm, creating a live performance feel.</li>
     </ul>
   </section>
 
@@ -102,7 +97,7 @@ export const DISCLAIMER_RU = `
     </ul>
   </section>
 
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.40</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.45</p>
 </div>
 `;
 
@@ -120,7 +115,7 @@ export const DISCLAIMER_EN = `
     </ul>
   </section>
 
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.40</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.45</p>
 </div>
 `;
 

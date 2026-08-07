@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Orbital Animation Styles V8.5 — "Calibrated Glow Protocol".
- * #ЗАЧЕМ: ПЛАН №1480. Смягчение вспышек для комфорта зрения (яркость +30% вместо +100%).
+ * @fileOverview Orbital Animation Styles V8.6 — "Ether Calibration".
+ * #ЗАЧЕМ: Восстановление динамики масштаба и свечения при минимальной яркости вспышек.
  */
 
 .view {
@@ -79,13 +80,13 @@
   opacity: 0.5;
 }
 
-/* --- CALIBRATED PULSE (EYE COMFORT V8.5) --- */
+/* --- ETHER CALIBRATION (FULL POWER PULSE, LOW BRIGHTNESS) --- */
 .view[data-pulsing="true"] .circle::before,
 .view[data-pulsing="true"] .circle::after {
-  transform: translateZ(var(--z-offset)) scale(1.22); /* Reduced jump */
-  filter: blur(8px) brightness(1.3) saturate(1.15); /* Calibrated brightness (+30%) */
-  box-shadow: 0 0 calc(var(--orbital-glow) * 3.2) var(--orbital-color); /* Milder glow */
-  opacity: 0.85; /* Soft transparency */
+  transform: translateZ(var(--z-offset)) scale(1.35); /* Restored high amplitude */
+  filter: blur(10px) brightness(1.15) saturate(1.1); /* Minimal brightness (+15%) */
+  box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color); /* Restored heavy glow */
+  opacity: 0.9;
 }
 
 .circle::before {
