@@ -19,8 +19,8 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V16.6 — "Pulse Sync Update".
- * #ЗАЧЕМ: Синхронизация пульсации LiquidNebula с музыкой.
+ * @fileOverview Aura Visualizer V16.7 — "Infinite Canvas Polish".
+ * #ЗАЧЕМ: Полное удаление фонов и границ для бесшовной интеграции.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
@@ -56,7 +56,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
         <div 
             className={cn("relative cursor-pointer select-none overflow-visible", className)} 
             onDoubleClick={handleCycleMode}
-            style={{ width: size || '100%', height: size || '100%' }}
+            style={{ width: size || '100%', height: size || '100%', background: 'transparent' }}
         >
             {/* BACKGROUND LAYER: NEBULA FOG */}
             {(mode === 'hybrid' || mode === 'nebula') && (
