@@ -1,6 +1,6 @@
 /**
- * @fileOverview Orbital Animation Styles V8.2 — "True Sync Protocol".
- * #ЗАЧЕМ: ПЛАН №1470. Полное удаление бесконечных циклов пульсации.
+ * @fileOverview Orbital Animation Styles V8.5 — "Calibrated Glow Protocol".
+ * #ЗАЧЕМ: ПЛАН №1480. Смягчение вспышек для комфорта зрения (яркость +30% вместо +100%).
  */
 
 .view {
@@ -79,13 +79,13 @@
   opacity: 0.5;
 }
 
-/* --- EVENT-DRIVEN PULSE (ALL DEVICES) --- */
+/* --- CALIBRATED PULSE (EYE COMFORT V8.5) --- */
 .view[data-pulsing="true"] .circle::before,
 .view[data-pulsing="true"] .circle::after {
-  transform: translateZ(var(--z-offset)) scale(1.35);
-  filter: blur(4px) brightness(2.0) saturate(1.4);
-  box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color);
-  opacity: 1;
+  transform: translateZ(var(--z-offset)) scale(1.22); /* Reduced jump */
+  filter: blur(8px) brightness(1.3) saturate(1.15); /* Calibrated brightness (+30%) */
+  box-shadow: 0 0 calc(var(--orbital-glow) * 3.2) var(--orbital-color); /* Milder glow */
+  opacity: 0.85; /* Soft transparency */
 }
 
 .circle::before {
