@@ -1,22 +1,21 @@
 
 /**
- * @fileOverview Liquid Nebula CSS V3.1 — "Infinite Space Protocol".
- * #ЗАЧЕМ: Убраны фоновые цвета и обрезка, чтобы анимация вытекала за пределы контейнера.
+ * @fileOverview Liquid Nebula CSS V3.5 — "Dual Core Animation".
+ * #ЗАЧЕМ: Совмещение оригинальной анимации и пастельного тумана.
  */
 
 .container {
   position: absolute;
   inset: 0;
-  overflow: visible; /* Разрешаем вытекание */
+  overflow: visible;
   z-index: 0;
-  /* background: #000; - УДАЛЕНО: используем прозрачный фон для интеграции */
 }
 
 .scaler {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.35);
+  transform: translate(-50%, -50%) scale(0.35); /* Scale for Reference mode */
   width: 100vw;
   height: 100vw;
   display: flex;
@@ -24,14 +23,15 @@
   justify-content: center;
 }
 
+/* Увеличенный масштаб для пастельного фона в Hybrid моде */
 .container[data-mode="pastel"] .scaler {
-  transform: translate(-50%, -50%) scale(0.6);
+  transform: translate(-50%, -50%) scale(0.65);
 }
 
 .soft {
   position: absolute;
-  inset: -8%;
-  filter: blur(38px);
+  inset: -15%;
+  filter: blur(45px); /* Increased blur for background fog */
 }
 
 .fluid {
@@ -42,7 +42,7 @@
 
 @keyframes swirl {
   from { transform: translate(-2vmin, 1vmin) rotate(-2deg) scale(1); }
-  to { transform: translate(2vmin,-1vmin) rotate(2deg) scale(1.05); }
+  to { transform: translate(2vmin,-1vmin) rotate(2deg) scale(1.1); }
 }
 
 @keyframes hueflow {
@@ -53,25 +53,29 @@
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(70px);
+  filter: blur(80px); /* Massive diffusion */
   width: var(--s);
   height: var(--s);
   left: var(--x);
   top: var(--y);
   margin: calc(var(--s)/-2) 0 0 calc(var(--s)/-2);
+  transition: background-color 3s ease-in-out;
 }
 
+/* ORIGINAL COLORS FOR REFERENCE MODE */
 .container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
 .container[data-mode="reference"] .y { background: #d8cc2f; }
 .container[data-mode="reference"] .m { background: #c4009a; }
 .container[data-mode="reference"] .p { background: #6a14d8; opacity: .7; }
 .container[data-mode="reference"] .o { background: #e07820; opacity: .6; }
 
-.container[data-mode="pastel"] .rim { background: var(--color-r); opacity: 0.4; }
-.container[data-mode="pastel"] .y { background: var(--color-y); }
-.container[data-mode="pastel"] .m { background: var(--color-m); }
-.container[data-mode="pastel"] .p { background: var(--color-p); opacity: 0.5; }
-.container[data-mode="pastel"] .o { background: var(--color-o); opacity: 0.4; }
+/* DYNAMIC COLORS FOR PASTEL FOG */
+.container[data-mode="pastel"] .blob { background-color: var(--color-m); opacity: 0.6; }
+.container[data-mode="pastel"] .m { background-color: var(--color-m); }
+.container[data-mode="pastel"] .p { background-color: var(--color-p); }
+.container[data-mode="pastel"] .y { background-color: var(--color-y); }
+.container[data-mode="pastel"] .rim { background-color: var(--color-r); opacity: 0.3; }
+.container[data-mode="pastel"] .o { background-color: var(--color-o); }
 
 .m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
 .m1 { --s: 62vmin; --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
@@ -129,5 +133,3 @@
 }
 @keyframes spinA { to { transform: rotate(1turn); } }
 @keyframes swayA { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
-
-/* Виньетка удалена для устранения границ квадрата */

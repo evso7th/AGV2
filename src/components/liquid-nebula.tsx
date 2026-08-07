@@ -10,22 +10,25 @@ interface LiquidNebulaProps {
     genre: Genre;
     tension: number;
     className?: string;
-    isReference?: boolean;
+    isReference?: boolean; // true = YaMus2.html, false = Pastel Fog
 }
 
 /**
- * @fileOverview Liquid Nebula V3.1 — "Border-Free Integration".
- * #ЗАЧЕМ: Убраны виньетка и жесткие границы. Анимация вливается в HUD.
+ * @fileOverview Liquid Nebula V3.5 — "Dual Mode Integration".
+ * #ЗАЧЕМ: Поддержка двух типов анимации:
+ * 1. Reference: Точная копия YaMus2.html (для режима Nebula).
+ * 2. Pastel: Органический туман в цвет жанра (для режима Hybrid).
  */
 export function LiquidNebula({ genre, tension, className, isReference = false }: LiquidNebulaProps) {
     
     const colors = useMemo(() => {
         if (!isReference) {
+            // Пастельная палитра на основе жанра (Sprout Protocol)
             const genreHues: Record<string, number> = {
-                ambient: 260,
-                psybient: 285,
-                blues: 334,
-                reggae: 150
+                ambient: 260,     // Мистический Ирис
+                psybient: 285,    // Астральный Пурпур
+                blues: 334,       // Пепельный Маув
+                reggae: 150       // Тропический Шалфей
             };
             const hue = genreHues[genre as string] || 260;
             const s = 25 + (tension * 10); 
@@ -58,19 +61,23 @@ export function LiquidNebula({ genre, tension, className, isReference = false }:
                         <i className={cn(styles.blob, styles.m, styles.m4)}></i>
                         <i className={cn(styles.blob, styles.p, styles.p1)}></i>
                         <i className={cn(styles.blob, styles.rim, styles.r1)}></i>
-                        <i className={cn(styles.blob, styles.rim, styles.r2)}></i>
-                        <i className={cn(styles.blob, styles.rim, styles.r3)}></i>
+                        <i className={cn(styles.blob, styles.r2)}></i>
+                        <i className={cn(styles.blob, styles.r3)}></i>
                         <i className={cn(styles.blob, styles.y, styles.y1)}></i>
                         <i className={cn(styles.blob, styles.y, styles.y2)}></i>
                         <i className={cn(styles.blob, styles.y, styles.y3)}></i>
                         <i className={cn(styles.blob, styles.o, styles.o1)}></i>
                     </div>
                 </div>
-                <div className={cn(styles.rays, styles.corA)}></div>
-                <div className={cn(styles.rays, styles.corB)}></div>
-                <div className={cn(styles.rays, styles.whisk)}></div>
+                {/* Корона лучей — только в режиме Reference */}
+                {isReference && (
+                    <>
+                        <div className={cn(styles.rays, styles.corA)}></div>
+                        <div className={cn(styles.rays, styles.corB)}></div>
+                        <div className={cn(styles.rays, styles.whisk)}></div>
+                    </>
+                )}
             </div>
-            {/* Vignette removed to eliminate square boundaries */}
         </div>
     );
 }

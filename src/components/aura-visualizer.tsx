@@ -19,11 +19,12 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V16.3 — "Unlimited Flow".
- * #ЗАЧЕМ: Реализация ПЛАНА №1482. 
- * 1. Убраны границы квадрата и черный фон (анимация затекает под интерфейс).
- * 2. Hybrid Mode временно дублирует Orbital (без небулы).
- * 3. Nebula Mode сохраняет масштабирование оригинала, но без фона.
+ * @fileOverview Aura Visualizer V16.5 — "Hybrid Convergence".
+ * #ЗАЧЕМ: Реализация режима Hybrid (Кольца + Пастельный туман).
+ * #ЧТО:
+ * 1. Режим Hybrid рендерит LiquidNebula (в цвете жанра) под OrbitalAnimation.
+ * 2. Режим Nebula остается чистой изолированной копией YaMus2.html.
+ * 3. Режим Orbital — только чистая геометрия.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
@@ -61,34 +62,34 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%' }}
         >
-            {/* MODE 1: PURE NEBULA (SCALED ORIGINAL, NO BG) */}
+            {/* BACKGROUND LAYER: NEBULA FOG (Only in Hybrid and Nebula modes) */}
+            {mode === 'hybrid' && (
+                <LiquidNebula 
+                    genre={genre} 
+                    tension={tension} 
+                    isReference={false} // Use dynamic genre colors
+                    className="opacity-40 animate-in fade-in duration-1000"
+                />
+            )}
+
             {mode === 'nebula' && (
                 <LiquidNebula 
                     genre={genre} 
                     tension={tension} 
-                    isReference={true}
+                    isReference={true} // Pure YaMus2.html reference
+                    className="opacity-100 animate-in fade-in duration-1000"
                 />
             )}
 
-            {/* MODE 2: ORBITAL (PURE GEOMETRY) */}
-            {mode === 'orbital' && (
+            {/* FOREGROUND LAYER: ORBITAL RINGS (In Hybrid and Orbital modes) */}
+            {(mode === 'hybrid' || mode === 'orbital') && (
                 <OrbitalAnimation 
                     genre={genre} 
                     tension={tension} 
                     isPlaying={isPlaying} 
                     tempo={tempo}
                     size="100%"
-                />
-            )}
-
-            {/* MODE 3: HYBRID (USER DIRECTIVE: COPY OF ORBITAL FOR NOW) */}
-            {mode === 'hybrid' && (
-                <OrbitalAnimation 
-                    genre={genre} 
-                    tension={tension} 
-                    isPlaying={isPlaying} 
-                    tempo={tempo}
-                    size="100%"
+                    className="relative z-10"
                 />
             )}
 
