@@ -1,21 +1,25 @@
 
 /**
- * @fileOverview Liquid Nebula Styles V1.0 — "The Organic Fog".
- * #ЗАЧЕМ: Адаптация YaMus2.html для генеративного движка.
- * #ЧТО: Жидкие блобы, корона лучей и виньетка.
+ * @fileOverview Liquid Nebula Styles V1.2 — "Edge Dissolve Protocol".
+ * #ЗАЧЕМ: Устранение эффекта "видимого квадрата".
+ * #ЧТО: Внедрение радиальной маски и удаление жесткого overflow.
  */
 
 .container {
   position: absolute;
-  inset: 0;
-  overflow: hidden;
+  /* Расширяем область, чтобы блюр не упирался в стенки */
+  inset: -20%; 
   pointer-events: none;
   z-index: 0;
+  
+  /* #ЗАЧЕМ: Главный фикс. Радиальная маска скрывает углы квадрата. */
+  -webkit-mask-image: radial-gradient(circle at center, black 20%, rgba(0,0,0,0.5) 50%, transparent 80%);
+  mask-image: radial-gradient(circle at center, black 20%, rgba(0,0,0,0.5) 50%, transparent 80%);
 }
 
 .soft {
   position: absolute;
-  inset: -15%;
+  inset: -10%;
   filter: blur(var(--nebula-blur, 40px));
   opacity: var(--nebula-opacity, 0.6);
   transition: opacity 2s ease-in-out;
@@ -28,8 +32,8 @@
 }
 
 @keyframes swirl {
-  from { transform: translate(-5vmin, 2vmin) rotate(-5deg) scale(1); }
-  to { transform: translate(5vmin, -2vmin) rotate(5deg) scale(1.1); }
+  from { transform: translate(-2vmin, 1vmin) rotate(-2deg) scale(1); }
+  to { transform: translate(2vmin, -1vmin) rotate(2deg) scale(1.05); }
 }
 
 .blob {
@@ -77,7 +81,7 @@
 /* --- THE CORONA (RAYS) --- */
 .rays {
   position: absolute;
-  inset: -20%;
+  inset: -10%;
   mix-blend-mode: screen;
   opacity: var(--corona-opacity, 0.4);
   transition: opacity 1s ease-in-out;
