@@ -19,9 +19,10 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V1.5 — "Absolute Logic Partition".
- * #ЗАЧЕМ: Реализация ПЛАНА №1475. Тройной цикл с изолированным режимом Nebula.
- * #ЧТО: Hybrid (Pastel) -> Orbital (Pastel) -> Nebula (Original).
+ * @fileOverview Aura Visualizer V16.2 — "The Masterpiece Balance".
+ * #ЗАЧЕМ: ПЛАН №1480. 
+ * 1. Hybrid Mode (Default): Кольца + Пастельный туман.
+ * 2. Nebula Mode: Оригинальный YaMus2.html, вписанный в квадрат.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const [mode, setMode] = useState<ViewMode>(() => {
@@ -55,11 +56,11 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
 
     return (
         <div 
-            className={cn("relative cursor-pointer select-none overflow-hidden", className)} 
+            className={cn("relative cursor-pointer select-none overflow-hidden rounded-2xl bg-black", className)} 
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%' }}
         >
-            {/* MODE 1: PURE NEBULA (ORIGINAL REFERENCE) */}
+            {/* MODE 1: PURE NEBULA (SCALED ORIGINAL) */}
             {mode === 'nebula' && (
                 <LiquidNebula 
                     genre={genre} 
@@ -68,7 +69,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                 />
             )}
 
-            {/* MODE 2: ORBITAL (PASTEL PROTOCOL) */}
+            {/* MODE 2: ORBITAL (PURE GEOMETRY) */}
             {mode === 'orbital' && (
                 <OrbitalAnimation 
                     genre={genre} 
@@ -79,14 +80,14 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                 />
             )}
 
-            {/* MODE 3: HYBRID (PASTEL MIX) */}
+            {/* MODE 3: HYBRID (PASTEL SYNC) */}
             {mode === 'hybrid' && (
                 <>
                     <LiquidNebula 
                         genre={genre} 
                         tension={tension} 
                         isReference={false}
-                        className="opacity-60"
+                        className="opacity-70"
                     />
                     <OrbitalAnimation 
                         genre={genre} 

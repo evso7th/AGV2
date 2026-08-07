@@ -1,16 +1,33 @@
 
 /**
- * @fileOverview Liquid Nebula CSS — Pure Reference V1.0.
- * Содержит оригинальный код из YaMus2.html для режима Nebula.
- * Добавлены переменные только для поддержки Hybrid мода.
+ * @fileOverview Liquid Nebula CSS V3.0 — "Absolute Fit Protocol".
+ * #ЗАЧЕМ: Вписывание всей композиции YaMus2.html в квадрат HUD.
  */
 
 .container {
   position: absolute;
-  inset: -20%;
+  inset: 0;
   overflow: hidden;
   background: #000;
   z-index: 0;
+}
+
+/* Контейнер-масштабатор для вписывания в квадрат */
+.scaler {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.35); /* Сжимаем оригинал, чтобы он влез в 400px */
+  width: 100vw;
+  height: 100vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* В режиме Pastel (Hybrid) масштабируем чуть меньше, чтобы заполнить фон */
+.container[data-mode="pastel"] .scaler {
+  transform: translate(-50%, -50%) scale(0.6);
 }
 
 .soft {
@@ -28,7 +45,7 @@
 
 @keyframes swirl {
   from { transform: translate(-2vmin, 1vmin) rotate(-2deg) scale(1); }
-  to { transform: translate(2vmin, -1vmin) rotate(2deg) scale(1.05); }
+  to { transform: translate(2vmin,-1vmin) rotate(2deg) scale(1.05); }
 }
 
 @keyframes hueflow {
@@ -47,19 +64,19 @@
   margin: calc(var(--s)/-2) 0 0 calc(var(--s)/-2);
 }
 
-/* Original Color Classes from YaMus2.html */
-.rim { background: #d3d93c; opacity: .55; }
-.y { background: #d8cc2f; }
-.m { background: #c4009a; }
-.p { background: #6a14d8; opacity: .7; }
-.o { background: #e07820; opacity: .6; }
+/* Original HEX Color Classes for Nebula Mode */
+.container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
+.container[data-mode="reference"] .y { background: #d8cc2f; }
+.container[data-mode="reference"] .m { background: #c4009a; }
+.container[data-mode="reference"] .p { background: #6a14d8; opacity: .7; }
+.container[data-mode="reference"] .o { background: #e07820; opacity: .6; }
 
-/* Hybrid Mode Variables Overrides */
-.container[data-mode="pastel"] .rim { background: var(--color-r, #d3d93c); }
-.container[data-mode="pastel"] .y { background: var(--color-y, #d8cc2f); }
-.container[data-mode="pastel"] .m { background: var(--color-m, #c4009a); }
-.container[data-mode="pastel"] .p { background: var(--color-p, #6a14d8); }
-.container[data-mode="pastel"] .o { background: var(--color-o, #e07820); }
+/* Hybrid Mode (Pastel) Variables Overrides */
+.container[data-mode="pastel"] .rim { background: var(--color-r); opacity: 0.4; }
+.container[data-mode="pastel"] .y { background: var(--color-y); }
+.container[data-mode="pastel"] .m { background: var(--color-m); }
+.container[data-mode="pastel"] .p { background: var(--color-p); opacity: 0.5; }
+.container[data-mode="pastel"] .o { background: var(--color-o); opacity: 0.4; }
 
 /* Individual Blob Settings */
 .m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
@@ -125,5 +142,6 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(90% 80% at 50% 46%,transparent 50%,rgba(0,0,0,.92) 96%);
+  background: radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,0.8) 100%);
+  z-index: 5;
 }
