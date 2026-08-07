@@ -1,7 +1,6 @@
 
 /**
- * @fileOverview UI AuraGroove V16.9.0 — "Visualizer Integration".
- * #ЗАЧЕМ: ПЛАН №1463 — Замена OrbitalAnimation на AuraVisualizer с поддержкой переключения режимов.
+ * @fileOverview UI AuraGroove V16.9.1 — "Visualizer Integration".
  */
 'use client';
 
