@@ -14,12 +14,13 @@ interface LiquidNebulaProps {
   isPlaying?: boolean;
   tempo?: number;
   className?: string;
-  isReference?: boolean; // true = YaMus2.html, false = Pastel Fog
+  isReference?: boolean; // true = YaMus2.html (Pure), false = Hybrid Fog
 }
 
 /**
- * @fileOverview Liquid Nebula V4.0 — "Pulse Reactive Update".
- * #ЗАЧЕМ: Реализация пульсации, идентичной OrbitalAnimation.
+ * @fileOverview Liquid Nebula V6.0 — "Focused Core Pulse".
+ * #ЗАЧЕМ: ПЛАН №1465. Пульсация теперь воздействует ТОЛЬКО на центральный блоб.
+ * #ЧТО: Внедрена обертка .centralCore для изоляции ритмического масштабирования.
  */
 export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, className, isReference = false }: LiquidNebulaProps) {
   const { analyser } = useAudioEngine();
@@ -60,7 +61,7 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
   }, [isPlaying, analyser, isMobile]);
 
   // 2. Цвета и динамические переменные
-  const colors = useMemo(() => {
+  const dynamicStyles = useMemo(() => {
     const pulseDuration = (60 / (tempo || 75)) + 's';
     
     if (!isReference) {
@@ -92,7 +93,7 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
   return (
     <div
       className={cn(styles.container, className)}
-      style={colors}
+      style={dynamicStyles}
       data-mode={isReference ? "reference" : "pastel"}
       data-pulsing={isPulsing}
       data-mobile={isMobile}
@@ -100,7 +101,12 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
       <div className={styles.scaler}>
         <div className={styles.soft}>
           <div className={styles.fluid}>
-            <i className={cn(styles.blob, styles.m, styles.m0)} />
+            {/* CENTRAL CORE: Единственный элемент, который пульсирует */}
+            <div className={styles.centralCore}>
+                <i className={cn(styles.blob, styles.m, styles.m0)} />
+            </div>
+
+            {/* PERIPHERY: Стабильное движение */}
             <i className={cn(styles.blob, styles.m, styles.m1)} />
             <i className={cn(styles.blob, styles.m, styles.m2)} />
             <i className={cn(styles.blob, styles.m, styles.m3)} />
