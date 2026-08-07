@@ -1,8 +1,8 @@
-
 /**
- * @fileOverview Liquid Nebula CSS V3.7 — "Color Isolation Protocol".
- * #ЗАЧЕМ: Устранение конфликта цветов в режиме Hybrid.
- * #ЧТО: Анимации swapM/Y/R теперь активны только в режиме Reference.
+ * @fileOverview Liquid Nebula CSS V3.8 — "Flow Restoration Protocol".
+ * #ЗАЧЕМ: вернуть перетекание цветов в обоих режимах.
+ * #ЧТО: swapM/Y/R всегда в animation литералами (важно для CSS Modules),
+ *       палитра цикла — через --sw-* переменные контейнера.
  */
 
 .container {
@@ -10,16 +10,17 @@
   inset: 0;
   overflow: visible;
   z-index: 0;
-  /* По умолчанию анимации цвета отключены для Pastel мода */
-  --color-swap-m: none;
-  --color-swap-y: none;
-  --color-swap-r: none;
+  /* Reference: оригинальная палитра цикла из YaMus2 */
+  --sw-m-a: #c4009a; --sw-m-b: #d05a2a; --sw-m-c: #d8cc2f; --sw-m-d: #b400ad;
+  --sw-y-a: #d8cc2f; --sw-y-b: #e0a52c; --sw-y-c: #cf0f9e; --sw-y-d: #d5c93a;
+  --sw-r-a: #d3d93c; --sw-r-b: #ffd23f; --sw-r-c: #ff3fa4; --sw-r-d: #d3d93c;
 }
 
-.container[data-mode="reference"] {
-  --color-swap-m: swapM;
-  --color-swap-y: swapY;
-  --color-swap-r: swapR;
+/* Pastel: тот же цикл на жанровой палитре (нужна статика — приравняй все стопы) */
+.container[data-mode="pastel"] {
+  --sw-m-a: var(--color-m); --sw-m-b: var(--color-o); --sw-m-c: var(--color-y); --sw-m-d: var(--color-p);
+  --sw-y-a: var(--color-y); --sw-y-b: var(--color-o); --sw-y-c: var(--color-m); --sw-y-d: var(--color-y);
+  --sw-r-a: var(--color-r); --sw-r-b: var(--color-o); --sw-r-c: var(--color-m); --sw-r-d: var(--color-r);
 }
 
 .scaler {
@@ -52,55 +53,56 @@
 
 @keyframes swirl {
   from { transform: translate(-2vmin, 1vmin) rotate(-2deg) scale(1); }
-  to { transform: translate(2vmin,-1vmin) rotate(2deg) scale(1.1); }
+  to   { transform: translate(2vmin, -1vmin) rotate(2deg) scale(1.1); }
 }
 
 @keyframes hueflow {
   0%, 100% { filter: hue-rotate(0deg); }
-  50% { filter: hue-rotate(14deg); }
+  50%      { filter: hue-rotate(14deg); }
 }
 
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px); /* Глубокая диффузия */
+  filter: blur(90px); /* глубокая диффузия */
   width: var(--s);
   height: var(--s);
   left: var(--x);
   top: var(--y);
-  margin: calc(var(--s)/-2) 0 0 calc(var(--s)/-2);
+  margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
   transition: background-color 3s ease-in-out;
 }
 
 /* ORIGINAL COLORS (Only for Reference mode) */
 .container[data-mode="reference"] .rim { background: #d3d93c; opacity: .55; }
-.container[data-mode="reference"] .y { background: #d8cc2f; }
-.container[data-mode="reference"] .m { background: #c4009a; }
-.container[data-mode="reference"] .p { background: #6a14d8; opacity: .7; }
-.container[data-mode="reference"] .o { background: #e07820; opacity: .6; }
+.container[data-mode="reference"] .y   { background: #d8cc2f; }
+.container[data-mode="reference"] .m   { background: #c4009a; }
+.container[data-mode="reference"] .p   { background: #6a14d8; opacity: .7; }
+.container[data-mode="reference"] .o   { background: #e07820; opacity: .6; }
 
-/* DYNAMIC GENRE COLORS (For Hybrid/Pastel mode) */
-.container[data-mode="pastel"] .m { background-color: var(--color-m); opacity: 0.5; }
-.container[data-mode="pastel"] .p { background-color: var(--color-p); opacity: 0.4; }
-.container[data-mode="pastel"] .y { background-color: var(--color-y); opacity: 0.4; }
+/* DYNAMIC GENRE COLORS (For Pastel mode) */
+.container[data-mode="pastel"] .m   { background-color: var(--color-m); opacity: 0.5; }
+.container[data-mode="pastel"] .p   { background-color: var(--color-p); opacity: 0.4; }
+.container[data-mode="pastel"] .y   { background-color: var(--color-y); opacity: 0.4; }
 .container[data-mode="pastel"] .rim { background-color: var(--color-r); opacity: 0.2; }
-.container[data-mode="pastel"] .o { background-color: var(--color-o); opacity: 0.3; }
+.container[data-mode="pastel"] .o   { background-color: var(--color-o); opacity: 0.3; }
 
-/* Анимации слоев с поддержкой динамического включения swap-циклов */
-.m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
-.m1 { --s: 62vmin; --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
-.m2 { --s: 56vmin; --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
-.m3 { --s: 48vmin; --x: 55%; --y: 20%; animation: m3 23s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobB 8s ease-in-out -2s infinite; }
-.m4 { --s: 60vmin; --x: 50%; --y: 80%; animation: m4 34s ease-in-out infinite, var(--color-swap-m) 44s ease-in-out infinite, wobA 11s ease-in-out -9s infinite; }
-.p1 { --s: 52vmin; --x: 68%; --y: 26%; animation: p1 30s ease-in-out infinite, wobB 9.5s ease-in-out -5s infinite; }
-.r1 { --s: 80vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
-.r2 { --s: 56vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
-.r3 { --s: 52vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, var(--color-swap-r) 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
-.y1 { --s: 74vmin; --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
-.y2 { --s: 50vmin; --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
-.y3 { --s: 46vmin; --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, var(--color-swap-y) 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
-.o1 { --s: 40vmin; --x: 46%; --y: 62%; animation: o1 21s ease-in-out infinite, wobB 7s ease-in-out -1s infinite; }
+/* Слои: имена анимаций — литералами, чтобы CSS Modules захешил их согласованно с @keyframes */
+.m0 { --s: 112vmin; --x: 50%; --y: 50%; animation: m0 40s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 12s ease-in-out infinite; }
+.m1 { --s: 62vmin;  --x: 30%; --y: 44%; animation: m1 31s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 9s ease-in-out -4s infinite; }
+.m2 { --s: 56vmin;  --x: 72%; --y: 54%; animation: m2 27s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 10s ease-in-out -7s infinite; }
+.m3 { --s: 48vmin;  --x: 55%; --y: 20%; animation: m3 23s ease-in-out infinite, swapM 44s ease-in-out infinite, wobB 8s ease-in-out -2s infinite; }
+.m4 { --s: 60vmin;  --x: 50%; --y: 80%; animation: m4 34s ease-in-out infinite, swapM 44s ease-in-out infinite, wobA 11s ease-in-out -9s infinite; }
+.p1 { --s: 52vmin;  --x: 68%; --y: 26%; animation: p1 30s ease-in-out infinite, wobB 9.5s ease-in-out -5s infinite; }
+.r1 { --s: 80vmin;  --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, swapR 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
+.r2 { --s: 56vmin;  --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, swapR 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
+.r3 { --s: 52vmin;  --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapR 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
+.y1 { --s: 74vmin;  --x: 50%; --y: 44%; animation: y1 36s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 9s ease-in-out -3s infinite; }
+.y2 { --s: 50vmin;  --x: 42%; --y: 58%; animation: y2 29s ease-in-out infinite, swapY 44s ease-in-out infinite, wobB 8s ease-in-out -6s infinite; }
+.y3 { --s: 46vmin;  --x: 58%; --y: 32%; animation: y3 25s ease-in-out infinite, swapY 44s ease-in-out infinite, wobA 10s ease-in-out -8s infinite; }
+.o1 { --s: 40vmin;  --x: 46%; --y: 62%; animation: o1 21s ease-in-out infinite, wobB 7s ease-in-out -1s infinite; }
 
+/* Движение */
 @keyframes y1 { 0%,100%{transform:translate(0,0) scale(1,1) rotate(0deg)} 25%{transform:translate(15vmin,-8vmin) scale(1.2,.85) rotate(18deg)} 50%{transform:translate(5vmin,12vmin) scale(.92) rotate(0deg)} 75%{transform:translate(-16vmin,-2vmin) scale(.85,1.15) rotate(-14deg)} }
 @keyframes y2 { 0%,100%{transform:translate(0,0) scale(1)} 30%{transform:translate(-14vmin,-12vmin) scale(1.25)} 60%{transform:translate(12vmin,8vmin) scale(.75)} }
 @keyframes y3 { 0%,100%{transform:translate(0,0) scale(1)} 40%{transform:translate(10vmin,14vmin) scale(1.2,.9) rotate(12deg)} 70%{transform:translate(-9vmin,-10vmin) scale(.85)} }
@@ -112,32 +114,69 @@
 @keyframes p1 { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-14vmin,10vmin) scale(1.2)} }
 @keyframes o1 { 0%,100%{transform:translate(0,0) scale(.9)} 30%{transform:translate(10vmin,-12vmin) scale(1.2)} 65%{transform:translate(-10vmin,6vmin) scale(1.05)} }
 
+/* Жидкий морфинг границ */
 @keyframes wobA { 0%,100%{border-radius:50%} 20%{border-radius:38% 62% 56% 44% / 60% 38% 62% 40%} 40%{border-radius:62% 38% 44% 56% / 40% 62% 38% 60%} 60%{border-radius:46% 54% 62% 38% / 56% 44% 58% 42%} 80%{border-radius:58% 42% 40% 60% / 42% 58% 44% 56%} }
 @keyframes wobB { 0%,100%{border-radius:50%} 25%{border-radius:56% 44% 40% 60% / 44% 60% 40% 56%} 50%{border-radius:40% 60% 58% 42% / 62% 40% 60% 38%} 75%{border-radius:60% 40% 46% 54% / 40% 56% 44% 60%} }
 
-@keyframes swapY { 0%,100%{background-color:#d8cc2f} 20%{background-color:#e0a52c} 40%,60%{background-color:#cf0f9e} 80%{background-color:#d5c93a} }
-@keyframes swapM { 0%,100%{background-color:#c4009a} 20%{background-color:#d05a2a} 40%,60%{background-color:#d8cc2f} 80%{background-color:#b400ad} }
-@keyframes swapR { 0%,100%{background-color:#d3d93c} 20%{background-color:#ffd23f} 40%,60%{background-color:#ff3fa4} 80%{background-color:#d3d93c} }
+/* Перетекание: цикл один, цвета — из переменных контейнера */
+@keyframes swapY { 0%,100%{background-color:var(--sw-y-a)} 20%{background-color:var(--sw-y-b)} 40%,60%{background-color:var(--sw-y-c)} 80%{background-color:var(--sw-y-d)} }
+@keyframes swapM { 0%,100%{background-color:var(--sw-m-a)} 20%{background-color:var(--sw-m-b)} 40%,60%{background-color:var(--sw-m-c)} 80%{background-color:var(--sw-m-d)} }
+@keyframes swapR { 0%,100%{background-color:var(--sw-r-a)} 20%{background-color:var(--sw-r-b)} 40%,60%{background-color:var(--sw-r-c)} 80%{background-color:var(--sw-r-d)} }
 
+/* Корона лучей */
 .rays { position: absolute; inset: -15%; mix-blend-mode: screen; pointer-events: none; }
+
 .corA {
-  opacity: .55; filter: blur(6px);
-  -webkit-mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 44%,#000 52% 62%,transparent 80%);
-  mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 44%,#000 52% 62%,transparent 80%);
-  background: conic-gradient(from 0deg at 50% 46%,transparent 0 10deg,rgba(255,45,190,.3) 11deg 11.8deg,transparent 12.6deg 29deg,rgba(255,130,50,.22) 30deg 30.6deg,transparent 31.4deg 51deg,rgba(255,45,190,.18) 52deg 53deg,transparent 54deg 73deg,rgba(255,200,70,.26) 74deg 74.7deg,transparent 75.6deg 95deg,rgba(255,45,190,.3) 96deg 97deg,transparent 98deg 120deg,rgba(255,130,50,.16) 121deg 121.5deg,transparent 122.4deg 142deg,rgba(255,45,190,.24) 143deg 143.8deg,transparent 144.8deg 167deg,rgba(255,200,70,.18) 168deg 168.6deg,transparent 169.6deg 189deg,rgba(255,45,190,.28) 190deg 191deg,transparent 192deg 213deg,rgba(255,130,50,.2) 214deg 214.7deg,transparent 215.7deg 238deg,rgba(255,45,190,.16) 239deg 239.6deg,transparent 240.6deg 261deg,rgba(255,200,70,.24) 262deg 262.8deg,transparent 263.8deg 286deg,rgba(255,45,190,.3) 287deg 288deg,transparent 289deg 311deg,rgba(255,130,50,.15) 312deg 312.5deg,transparent 313.5deg 335deg,rgba(255,45,190,.22) 336deg 336.7deg,transparent 337.7deg 360deg);
+  opacity: .55;
+  filter: blur(6px);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 44%, #000 52% 62%, transparent 80%);
+  mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 44%, #000 52% 62%, transparent 80%);
+  background: conic-gradient(from 0deg at 50% 46%,
+    transparent 0 10deg, rgba(255,45,190,.3) 11deg 11.8deg, transparent 12.6deg 29deg,
+    rgba(255,130,50,.22) 30deg 30.6deg, transparent 31.4deg 51deg,
+    rgba(255,45,190,.18) 52deg 53deg, transparent 54deg 73deg,
+    rgba(255,200,70,.26) 74deg 74.7deg, transparent 75.6deg 95deg,
+    rgba(255,45,190,.3) 96deg 97deg, transparent 98deg 120deg,
+    rgba(255,130,50,.16) 121deg 121.5deg, transparent 122.4deg 142deg,
+    rgba(255,45,190,.24) 143deg 143.8deg, transparent 144.8deg 167deg,
+    rgba(255,200,70,.18) 168deg 168.6deg, transparent 169.6deg 189deg,
+    rgba(255,45,190,.28) 190deg 191deg, transparent 192deg 213deg,
+    rgba(255,130,50,.2) 214deg 214.7deg, transparent 215.7deg 238deg,
+    rgba(255,45,190,.16) 239deg 239.6deg, transparent 240.6deg 261deg,
+    rgba(255,200,70,.24) 262deg 262.8deg, transparent 263.8deg 286deg,
+    rgba(255,45,190,.3) 287deg 288deg, transparent 289deg 311deg,
+    rgba(255,130,50,.15) 312deg 312.5deg, transparent 313.5deg 335deg,
+    rgba(255,45,190,.22) 336deg 336.7deg, transparent 337.7deg 360deg);
   animation: spinA 190s linear infinite;
 }
+
 .corB {
-  opacity: .5; filter: blur(14px);
-  -webkit-mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 40%,#000 50% 64%,transparent 84%);
-  mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 40%,#000 50% 64%,transparent 84%);
-  background: conic-gradient(from 40deg at 50% 46%,transparent 0 18deg,rgba(255,60,190,.16) 20deg 22deg,transparent 24deg 58deg,rgba(255,150,60,.14) 60deg 62deg,transparent 64deg 108deg,rgba(255,60,190,.18) 110deg 112.5deg,transparent 115deg 158deg,rgba(255,190,70,.14) 160deg 162deg,transparent 164deg 208deg,rgba(255,60,190,.16) 210deg 212.5deg,transparent 215deg 258deg,rgba(255,150,60,.14) 260deg 262deg,transparent 264deg 308deg,rgba(255,60,190,.18) 310deg 312.5deg,transparent 315deg 360deg);
+  opacity: .5;
+  filter: blur(14px);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 40%, #000 50% 64%, transparent 84%);
+  mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 40%, #000 50% 64%, transparent 84%);
+  background: conic-gradient(from 40deg at 50% 46%,
+    transparent 0 18deg, rgba(255,60,190,.16) 20deg 22deg, transparent 24deg 58deg,
+    rgba(255,150,60,.14) 60deg 62deg, transparent 64deg 108deg,
+    rgba(255,60,190,.18) 110deg 112.5deg, transparent 115deg 158deg,
+    rgba(255,190,70,.14) 160deg 162deg, transparent 164deg 208deg,
+    rgba(255,60,190,.16) 210deg 212.5deg, transparent 215deg 258deg,
+    rgba(255,150,60,.14) 260deg 262deg, transparent 264deg 308deg,
+    rgba(255,60,190,.18) 310deg 312.5deg, transparent 315deg 360deg);
   animation: spinA 240s linear infinite reverse;
 }
+
 .whisk {
-  opacity: .35; filter: blur(3px);
-  -webkit-mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 30%,#000 45% 70%,transparent 92%);
-  mask-image: radial-gradient(closest-side at 50% 46%,transparent 0 30%,#000 45% 70%,transparent 92%);
-  background: conic-gradient(from 100deg at 50% 46%,transparent 0 34deg,rgba(255,70,200,.25) 34.4deg 34.8deg,transparent 35.4deg 150deg,rgba(255,160,60,.22) 150.4deg 150.7deg,transparent 151.4deg 262deg,rgba(255,70,200,.25) 262.4deg 262.8deg,transparent 263.6deg 360deg);
+  opacity: .35;
+  filter: blur(3px);
+  -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 30%, #000 45% 70%, transparent 92%);
+  mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 30%, #000 45% 70%, transparent 92%);
+  background: conic-gradient(from 100deg at 50% 46%,
+    transparent 0 34deg, rgba(255,70,200,.25) 34.4deg 34.8deg, transparent 35.4deg 150deg,
+    rgba(255,160,60,.22) 150.4deg 150.7deg, transparent 151.4deg 262deg,
+    rgba(255,70,200,.25) 262.4deg 262.8deg, transparent 263.6deg 360deg);
   animation: swayA 90s ease-in-out infinite alternate-reverse;
 }
+
+@keyframes spinA { to { transform: rotate(1turn); } }
+@keyframes swayA { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
