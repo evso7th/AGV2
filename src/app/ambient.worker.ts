@@ -1,3 +1,4 @@
+
 /**
  * @file AuraGroove Music Worker V6.1.2 — "Bar Count Reset Fix".
  * #ЗАЧЕМ: Гарантированный сброс barCount при любой инициализации.
@@ -61,7 +62,9 @@ const Scheduler = {
         introBars: 8, 
         sessionLickHistory: [],
         selectedCompositionIds: [],
-        seed: generateTrueSeed()
+        seed: generateTrueSeed(),
+        route: [],
+        activeRouteIndex: 0
     } as WorkerSettings,
 
     get barDuration() { 

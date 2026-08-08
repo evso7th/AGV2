@@ -188,6 +188,8 @@ export type WorkerSettings = {
   ancestor?: any;
   masterpieces?: any[]; 
   targetBpm?: number | null; // For morphing
+  route?: RouteItem[];
+  activeRouteIndex?: number;
 };
 
 export type TimerSettings = {

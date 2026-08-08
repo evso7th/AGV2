@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Music Control Hook V32.3 — "Queue Refresh Fix".
- * #ЗАЧЕМ: ПЛАН №1365 — Исправление функциональности обновления очереди.
+ * @fileOverview Music Control Hook V32.4 — "Queue Sync Hardening".
+ * #ЗАЧЕМ: ПЛАН №1365 — Полная синхронизация состояния очереди с воркером.
  */
 'use client';
 
@@ -533,10 +534,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
               sfx: { enabled: textureSettings.sfx.enabled, volume: textureSettings.sfx.volume },
           },
           density, composerControlsInstruments, useHeritage, mood, introBars, 
-          selectedCompositionIds, seed: currentSeed
+          selectedCompositionIds, seed: currentSeed,
+          route, activeRouteIndex
         });
     }
-  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings]);
+  }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, route, activeRouteIndex]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
@@ -619,7 +621,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const g = first.genre === 'random' ? genre : (first.genre as Genre);
                 const m = first.mood === 'random' ? mood : (first.mood as Mood);
                 setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
-                updateSettings({ genre: g, mood: m });
+                updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
             }
             prevBarRef.current = 0; setIsPlaying(true);
         }
@@ -630,7 +632,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 const g = first.genre === 'random' ? genre : (first.genre as Genre);
                 const m = first.mood === 'random' ? mood : (first.mood as Mood);
                 setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
-                updateSettings({ genre: g, mood: m });
+                updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
             }
             prevBarRef.current = 0;
         }
@@ -691,10 +693,29 @@ export const useAuraGroove = (): AuraGrooveProps => {
             return; 
         } 
         prevBarRef.current = 0; 
-        resetWorker(); 
+        
         if (route.length > 0) { 
-            setActiveRouteItemId(route[0].id); 
+            const firstItem = route[0];
+            const g = firstItem.genre === 'random' ? genre : (firstItem.genre as Genre);
+            const m = firstItem.mood === 'random' ? mood : (firstItem.mood as Mood);
+            
+            // 1. Update local states
+            setGenreState(g);
+            setMoodState(m);
+            setActiveRouteItemId(firstItem.id);
+            
+            // 2. Explicitly force sync with worker (Re-read from UI Navigator)
+            updateSettings({ 
+                genre: g, 
+                mood: m, 
+                route: route,
+                activeRouteIndex: 0
+            });
         }
+        
+        // 3. Command worker to full reset (re-init engine with new settings)
+        resetWorker(); 
+        
         toast({ title: t('toast_queue_refreshed'), description: t('toast_queue_refreshed_desc') });
     },
     moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
@@ -715,6 +736,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
       saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset,
       updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
-      language, toggleLanguage, t
+      language, toggleLanguage, t, resetWorker, updateSettings
   ]);
 };
