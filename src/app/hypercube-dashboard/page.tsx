@@ -1,11 +1,11 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V7.0.0 — "System Pulse Evolution".
- * #ЗАЧЕМ: Добавлена визуализация анонимной статистики посещений (System Pulse).
+ * @fileOverview DNA Auditor V7.0.1 — "Reference Integrity Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError: MultiSelector is not defined.
  */
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   Database,
   Play,
@@ -151,6 +151,23 @@ const AVAILABLE_SCALES = ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian'
 
 const ROLE_OPTIONS = ['melody', 'accomp', 'bass', 'drums', 'pianoAccompaniment'];
 
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
+
+const DYNASTY_CONFIG: Record<string, { color: string, label: string }> = {
+  'slow-burn': { color: '#FF6B6B', label: 'Slow Burn' },
+  'texas': { color: '#4D96FF', label: 'Texas' },
+  'soul': { color: '#6BCB77', label: 'Soul' },
+  'chromatic': { color: '#FFD93D', label: 'Chromatic' },
+  'legacy': { color: '#9B59B6', label: 'Legacy' },
+  'lyrical': { color: '#1ABC9C', label: 'Lyrical' },
+  'moody-blues': { color: '#34495E', label: 'Moody Blues' },
+  'fifth-dimension': { color: '#E67E22', label: '5th Dimension' }
+};
+
 const INSTRUMENT_GROUPS = [
   {
     label: 'Acoustic Guitars',
@@ -266,6 +283,49 @@ const DISPLAY_NAMES: Record<string, string> = {
 
 const CHART_COLORS = ['#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE', '#EDE9FE'];
 
+// ───── HELPER UI ─────
+
+function MultiSelector<T extends string>({ 
+  options, 
+  values, 
+  onValuesChange, 
+  placeholder,
+  className 
+}: { 
+  options: T[], 
+  values: T[], 
+  onValuesChange: (vals: T[]) => void, 
+  placeholder: string,
+  className?: string
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className={cn("h-8 text-xs bg-background justify-between font-normal", className)}>
+          <span className="truncate pr-4">
+            {values.length > 0 ? values.join(", ") : placeholder}
+          </span>
+          <LayoutGrid className="ml-2 h-3 w-3 opacity-50 shrink-0" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[200px] p-0" align="start">
+        <ScrollArea className="h-48 p-2">
+          {options.map(opt => (
+            <div key={opt} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-sm cursor-pointer group" 
+                 onClick={() => {
+                   const next = values.includes(opt) ? values.filter(v => v !== opt) : [...values, opt];
+                   onValuesChange(next);
+                 }}>
+              <Checkbox checked={values.includes(opt)} onCheckedChange={() => {}} />
+              <Label className="text-[11px] font-bold uppercase cursor-pointer flex-grow leading-none">{opt}</Label>
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 // ───── ROOT AUDITOR CONTENT ─────
 
 function AuditorContent() {
@@ -283,7 +343,6 @@ function AuditorContent() {
   const docsQuery = useMemoFirebase(() => query(collection(db, 'project_documents')), [db]);
   const { data: projectDocs, isLoading: isDocsLoading } = useCollection(docsQuery);
 
-  // #ЗАЧЕМ: Получение анонимной телеметрии (System Pulse).
   const telemetryQuery = useMemoFirebase(() => query(collection(db, 'telemetry_daily'), orderBy('timestamp', 'desc'), limit(31)), [db]);
   const { data: telemetryData, isLoading: isTelLoading } = useCollection(telemetryQuery);
 
@@ -320,7 +379,6 @@ function AuditorContent() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Stats computation
   const globalStats = useMemo(() => {
     if (!globalAxioms) return { total: 0, genres: {}, moods: {}, commonMoods: {} };
     return globalAxioms.reduce((acc, ax) => {
@@ -367,11 +425,10 @@ function AuditorContent() {
       .sort(([a], [b]) => a.localeCompare(b));
   }, [globalAxioms, explorerSearch, selectedFilterGenres, selectedFilterMoods]);
 
-  // #ЗАЧЕМ: Подготовка данных для графиков System Pulse.
   const pulseLineData = useMemo(() => {
       if (!telemetryData) return [];
       return [...telemetryData].reverse().map(d => ({
-          date: d.id.split('-').slice(1).join('.'), // MM.DD
+          date: d.id.split('-').slice(1).join('.'), 
           total: d.total_hits || 0,
           new: d.new_users || 0,
           returning: d.returning_users || 0
@@ -399,7 +456,6 @@ function AuditorContent() {
     }).sort((a, b) => b.count - a.count);
   }, [globalAxioms]);
 
-  // Handler Logic
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -602,7 +658,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 7.0.0</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 7.0.1</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -842,6 +898,68 @@ function AuditorContent() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="pulse" className="flex-grow space-y-6 m-0 flex flex-col overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow overflow-hidden">
+                <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
+                    <CardHeader className="pb-2 shrink-0">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><BarChart3 className="h-5 w-5" /> Visit Dynamics</CardTitle>
+                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Traffic flow over the last 30 days</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow p-6 pt-0">
+                        {isTelLoading ? <div className="h-full flex items-center justify-center animate-pulse opacity-40">Scanning Pulse...</div> : (
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={pulseLineData}>
+                                    <defs>
+                                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ffffff10" />
+                                    <XAxis dataKey="date" stroke="#ffffff40" fontSize={10} axisLine={false} tickLine={false} />
+                                    <YAxis stroke="#ffffff40" fontSize={10} axisLine={false} tickLine={false} />
+                                    <RechartsTooltip contentStyle={{ backgroundColor: "#000", border: "1px solid #ffffff20", borderRadius: "8px", fontSize: "10px" }} />
+                                    <Area type="monotone" dataKey="total" stroke="#8B5CF6" fillOpacity={1} fill="url(#colorTotal)" strokeWidth={3} />
+                                    <Area type="monotone" dataKey="new" stroke="#10B981" fillOpacity={0} strokeWidth={2} strokeDasharray="5 5" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
+                    <CardHeader className="pb-2 shrink-0">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><PieChartIcon className="h-5 w-5" /> Regional Spread</CardTitle>
+                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Top Locales (Last 24h)</CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-grow overflow-hidden flex flex-col">
+                        <div className="h-48 shrink-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={pulseLocaleData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={40} outerRadius={60} paddingAngle={5}>
+                                        {pulseLocaleData.map((entry, index) => <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />)}
+                                    </Pie>
+                                    <RechartsTooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <ScrollArea className="flex-grow px-4 mt-4">
+                            <div className="space-y-2 pb-4">
+                                {pulseLocaleData.map((loc, idx) => (
+                                    <div key={loc.name} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
+                                            <span className="text-[10px] font-black uppercase">{loc.name}</span>
+                                        </div>
+                                        <span className="text-[10px] font-mono font-bold text-primary">{loc.value} hits</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </ScrollArea>
+                    </CardContent>
+                </Card>
+            </div>
+        </TabsContent>
+
         <TabsContent value="genetic" className="flex-grow space-y-6 m-0 overflow-hidden flex flex-col">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow overflow-hidden">
                 <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
@@ -861,7 +979,7 @@ function AuditorContent() {
                 </Card>
                 <Card className="border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
                     <CardHeader className="pb-2 shrink-0"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader>
-                    <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full px-4"><div className="space-y-3 pb-4">{dynastyStats.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count}</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent>
+                    <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full px-4"><div className="space-y-3 pb-4">{radarData.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count}</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent>
                 </Card>
             </div>
         </TabsContent>
@@ -1044,7 +1162,7 @@ function Gatekeeper({ children }: { children: React.ReactNode }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase opacity-40 ml-1 tracking-widest">Master Key (Track UID)</Label>
+                <Label className="text-[9px] font-black uppercase opacity-40 ml-1 tracking-widest">Master Key</Label>
                 <Input 
                   type="password" value={keyInput} onChange={(e) => setKeyInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
