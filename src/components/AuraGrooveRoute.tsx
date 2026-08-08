@@ -1,5 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V16.9.2 — "Queue Control Polish".
+ * @fileOverview UI AuraGroove V17.0.0 — "Vinyl Album Studio".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1455 — Интерфейс альбомной записи с лонг-тапом.
  */
 'use client';
 
@@ -307,6 +308,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isDarkTheme, setIsDarkTheme] = useState(true);
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
     // --- OPTIMISTIC HUD STATE ---
     const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(props.isPlaying);
@@ -371,6 +373,23 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
+
+    // --- Long Press Handlers ---
+    const handleRecordDown = () => {
+        if (props.isRecording) return; 
+        longPressTimer.current = setTimeout(() => {
+            props.handleStartAlbumMode();
+            longPressTimer.current = null;
+        }, 1500);
+    };
+
+    const handleRecordUp = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+            props.handleToggleRecording();
+        }
+    };
 
     const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
     const textClass = isDarkTheme ? 'text-neutral-100' : 'text-gray-900';
@@ -504,21 +523,26 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
 
                         <button 
-                            onClick={() => { 
-                                props.handleToggleRecording(); 
-                                showFeedback(props.isRecording ? t('toast_record_stopped') : t('toast_record_started')); 
-                            }}
-                            className={cn("p-1.5 hover:bg-white/5 transition-all rounded-full", props.isRecording && "animate-pulse")}
-                            style={{ color: hudColor }}
+                            onMouseDown={handleRecordDown}
+                            onMouseUp={handleRecordUp}
+                            onTouchStart={handleRecordDown}
+                            onTouchEnd={handleRecordUp}
+                            className={cn("p-1.5 hover:bg-white/5 transition-all rounded-full relative", (props.isRecording || props.isAlbumMode) && "animate-pulse")}
+                            style={{ color: props.isAlbumMode ? '#FFD700' : hudColor }}
                         >
                             <div className="relative h-7 w-7 flex items-center justify-center">
                                 <div className="absolute inset-0 border-2 border-current rounded-full" />
-                                {props.isRecording ? (
-                                    <div className="h-3 w-3 bg-current rounded-sm animate-pulse" />
+                                {(props.isRecording || props.isAlbumMode) ? (
+                                    <div className="h-3 w-3 bg-current rounded-sm" />
                                 ) : (
                                     <div className="h-4 w-4 bg-current rounded-full opacity-60" />
                                 )}
                             </div>
+                            {props.isAlbumMode && (
+                                <span className="absolute -top-1 -right-1 text-[7px] font-black bg-yellow-500 text-black px-1 rounded-full border border-black">
+                                    {props.activeRouteIndex + 1}/{props.route.length}
+                                </span>
+                            )}
                         </button>
 
                         <button 
@@ -617,8 +641,21 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             <Button variant="outline" onClick={props.handleToggleBroadcast} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <TowerControl className={cn("h-4 w-4", props.isBroadcastActive && "animate-pulse text-primary")} />
                             </Button>
-                            <Button variant="outline" onClick={props.handleToggleRecording} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
-                                <Radio className={cn("h-4 w-4", props.isRecording && "animate-pulse")} />
+                            <Button 
+                                variant="outline" 
+                                onMouseDown={handleRecordDown}
+                                onMouseUp={handleRecordUp}
+                                onTouchStart={handleRecordDown}
+                                onTouchEnd={handleRecordUp}
+                                style={outlineStyle} 
+                                className={cn("h-8 w-8 p-0 shrink-0 relative", (props.isRecording || props.isAlbumMode) && "border-primary")}
+                            >
+                                <Radio className={cn("h-4 w-4", (props.isRecording || props.isAlbumMode) && "animate-pulse", props.isAlbumMode ? "text-yellow-500" : "text-primary")} />
+                                {props.isAlbumMode && (
+                                    <span className="absolute -top-1 -right-1 text-[6px] font-black bg-yellow-500 text-black px-0.5 rounded-full">
+                                        {props.activeRouteIndex + 1}
+                                    </span>
+                                )}
                             </Button>
                             <Button variant="outline" onClick={props.handleSaveMasterpiece} disabled={!props.isPlaying} style={outlineStyle} className="h-8 w-8 p-0 shrink-0">
                                 <ThumbsUp className="h-4 w-4 text-primary" />

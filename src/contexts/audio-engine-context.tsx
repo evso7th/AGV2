@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V61.0 — "Vinyl Bridge Integration".
- * #ЗАЧЕМ: Реализация ПЛАНА №1452 — Протокол «Винилового перехода».
+ * @fileOverview Audio Engine Context V62.0 — "Album Studio Support".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1455 — Поддержка альбомной записи с префиксами.
  */
 'use client';
 
@@ -85,9 +85,10 @@ interface AudioEngineContextType {
   startMasterFadeOut: (durationInSeconds: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
-  startRecording: () => void;
+  startRecording: (prefix?: string) => void;
   stopRecording: () => void;
   toggleBroadcast: () => void;
+  triggerVinyl: () => void;
   getWorker: () => Worker | null;
   playRawEvents: (events: FractalEvent[], instrumentHints?: InstrumentHints, tempo?: number) => void;
   stopAllSounds: () => void;
@@ -233,6 +234,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
+  }, []);
+
+  const triggerVinyl = useCallback(() => {
+      if (sfxSynthManagerRef.current && audioContextRef.current) {
+          sfxSynthManagerRef.current.triggerManual('vinyl', audioContextRef.current.currentTime + 0.1, 0.4);
+      }
   }, []);
 
   const handleTogglePlay = useCallback(async (playing: boolean) => {
@@ -472,10 +479,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 else if (type === 'BPM_SYNC' && payload) { window.dispatchEvent(new CustomEvent('AG_BPM_SYNC', { detail: { bpm: payload } })); }
                 else if (type === 'SUITE_TRANSITION') { 
                     window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); 
-                    // #ЗАЧЕМ: Протокол «Винилового перехода». Создаем эффект смены пластинки.
-                    if (sfxSynthManagerRef.current && audioContextRef.current) {
-                        sfxSynthManagerRef.current.triggerManual('vinyl', audioContextRef.current.currentTime + 0.1, 0.4);
-                    }
+                    triggerVinyl();
                 }
                 else if (type === 'error') {
                     const l = getLanguage();
@@ -496,7 +500,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { return false; }
-  }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast]);
+  }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast, triggerVinyl]);
 
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) { const success = await initialize(); if (!success) return; }
@@ -527,7 +531,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
       calculateMasterFade: () => {},
-      startRecording: () => { 
+      startRecording: (prefix?: string) => { 
         if (!recDestRef.current || isRecording) return; 
         recordedChunksRef.current = []; 
         const mediaRecorder = new MediaRecorder(recDestRef.current.stream); 
@@ -537,11 +541,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             const url = URL.createObjectURL(blob); 
             const a = document.createElement('a'); 
             a.href = url; 
+            const prefixStr = prefix ? `${prefix}_` : '';
             const genreStr = settingsRef.current?.genre || 'ambient';
             const moodStr = settingsRef.current?.mood || 'melancholic';
             const dateStr = new Date().toISOString().split('T')[0];
             const uidStr = Math.random().toString(36).substring(2, 7);
-            a.download = `AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
+            a.download = `${prefixStr}AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
             a.click(); 
         }; 
         mediaRecorder.start(); 
@@ -550,12 +555,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       }, 
       stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
       toggleBroadcast: toggleBroadcastCallback, 
+      triggerVinyl,
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const previewInst = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = previewInst; const scheduleSeq = () => { const now = audioContextRef.current!.currentTime + 0.1; const seq = [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}]; seq.forEach(n => { previewInst.noteOn(n.m, now + n.t, 0.8, n.d); }); const totalDur = 4.0; if (loopingRef.current) { previewTimeoutRef.current = setTimeout(scheduleSeq, totalDur * 1000); } else { previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), totalDur * 1000); } }; scheduleSeq(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete,
       availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, syncDna,
-      setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, 
+      setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, triggerVinyl,
       stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents
   ]);
 

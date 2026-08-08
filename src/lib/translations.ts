@@ -75,6 +75,11 @@ export const TRANSLATIONS = {
     toast_queue_refreshed: { ru: "Очередь обновлена", en: "Queue Refreshed" },
     toast_queue_refreshed_desc: { ru: "Воспроизведение начнется с первого шага", en: "Playback will start from the first step" },
     
+    // Album Mode
+    toast_album_mode_started: { ru: "АЛЬБОМНЫЙ РЕЖИМ: запись начата", en: "ALBUM MODE: recording started" },
+    toast_album_exported: { ru: "АЛЬБОМ ЭКСПОРТИРОВАН", en: "ALBUM EXPORTED" },
+    toast_album_error_queue: { ru: "ОШИБКА: Маршрут пуст. Добавьте треки для альбома.", en: "ERROR: Route is empty. Add tracks for the album." },
+
     // UI Elements
     btn_refresh_queue: { ru: "Обновить очередь", en: "Refresh Queue" },
 

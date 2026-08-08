@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V32.5 — "Translation & Queue Safety".
- * #ЗАЧЕМ: ПЛАН №1365 — Полная синхронизация состояния очереди с воркером и защита от краша словаря.
+ * @fileOverview Music Control Hook V33.0 — "Vinyl Album Studio".
+ * #ЗАЧЕМ: ПЛАН №1455 — Реализация автоматизированной альбомной записи.
  */
 'use client';
 
@@ -36,6 +36,7 @@ export interface AuraGrooveProps {
   isInitializing: boolean;
   isRegenerating: boolean;
   isRecording: boolean;
+  isAlbumMode: boolean;
   isBroadcastActive: boolean;
   isWarmingUp: boolean;
   warmUpTimeLeft: number;
@@ -49,6 +50,7 @@ export interface AuraGrooveProps {
   handlePlayPause: () => void;
   handleRegenerate: () => void;
   handleToggleRecording: () => void;
+  handleStartAlbumMode: () => void;
   handleToggleBroadcast: () => void;
   handleSaveMasterpiece: () => void;
   drumSettings: DrumSettings;
@@ -140,7 +142,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const { 
     isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, 
     setIsPlaying, updateSettings, refreshCloudAxioms, syncDna: engineSyncDna, setVolume, setInstrument, stopAllSounds,
-    setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording,
+    setTextureSettings: setEngineTextureSettings, toggleBroadcast, startRecording, stopRecording, triggerVinyl,
     setEQGain, setCalibrationGain, calibrationGains, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName,
     tension, resetWorker
   } = useAudioEngine(); 
@@ -185,8 +187,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const [activeEqPresetId, setActiveEqPresetId] = useState<string | null>(null);
   const [mixerPresets, setMixerPresets] = useState<PresetItem[]>([]);
   const [activeMixerPresetId, setActiveMixerPresetId] = useState<string | null>(null);
+  const [isAlbumMode, setIsAlbumMode] = useState(false);
 
   const [language, setLanguage] = useState<Language>('en');
+
+  const isAlbumModeRef = useRef(isAlbumMode);
+  useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -211,8 +217,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, []);
 
   const t = useCallback((key: keyof typeof TRANSLATIONS) => {
-    // #ЗАЧЕМ: Защита от TypeError. Если ключа нет в словаре, возвращаем сам ключ.
-    const entry = TRANSLATIONS[key];
+    const entry = (TRANSLATIONS as any)[key];
     if (!entry) return String(key);
     return entry[language] || String(key);
   }, [language]);
@@ -278,13 +283,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             if (v.drums !== undefined) handleVolumeChange('drums', v.drums);
             setActiveMixerPresetId(id);
             localStorage.setItem(ACTIVE_MIXER_ID_KEY, id);
-            if (target.genre) {
-                try {
-                    const m = JSON.parse(localStorage.getItem(LAST_MIX_BY_GENRE_KEY) || '{}');
-                    m[target.genre] = id;
-                    localStorage.setItem(LAST_MIX_BY_GENRE_KEY, JSON.stringify(m));
-                } catch (e) {}
-            }
         }
     } catch (e) {}
   }, [handleVolumeChange]);
@@ -365,13 +363,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             });
             setActiveEqPresetId(id);
             localStorage.setItem(ACTIVE_EQ_ID_KEY, id);
-            if (target.genre) {
-                try {
-                    const m = JSON.parse(localStorage.getItem(LAST_EQ_BY_GENRE_KEY) || '{}');
-                    m[target.genre] = id;
-                    localStorage.setItem(LAST_EQ_BY_GENRE_KEY, JSON.stringify(m));
-                } catch (e) {}
-            }
         }
     } catch (e) {}
   }, [handleEqChange]);
@@ -597,20 +588,33 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   useEffect(() => {
     const onTransition = () => {
+        if (isAlbumModeRef.current) {
+            stopRecording();
+        }
+
         if (route.length > 0) {
             const nextIndex = activeRouteIndex + 1;
-            if (nextIndex < route.length) { setActiveRouteItemId(route[nextIndex].id); return; }
-            if (isRepeat) {
-                if (route[0].id === activeRouteItemId) { setCurrentSeed(Date.now()); }
-                else { setActiveRouteItemId(route[0].id); }
-                return;
+            if (nextIndex < route.length) { 
+                setActiveRouteItemId(route[nextIndex].id); 
+                if (isAlbumModeRef.current) {
+                    setTimeout(() => startRecording(String(nextIndex + 1).padStart(2, '0')), 200);
+                }
+                return; 
             }
         }
-        setCurrentSeed(Date.now());
+
+        if (isAlbumModeRef.current) {
+            setIsAlbumMode(false);
+            setIsPlaying(false);
+            stopAllSounds();
+            toast({ title: t('toast_album_exported'), description: "Album Studio Session complete." });
+        } else {
+            setCurrentSeed(Date.now());
+        }
     };
     window.addEventListener('AG_SUITE_TRANSITION', onTransition);
     return () => window.removeEventListener('AG_SUITE_TRANSITION', onTransition);
-  }, [route, activeRouteIndex, isRepeat, activeRouteItemId]);
+  }, [route, activeRouteIndex, isRepeat, activeRouteItemId, stopRecording, startRecording, stopAllSounds, setIsPlaying, t]);
 
   const handlePlayPauseCallback = useCallback(async () => { 
     if (!isInitialized) {
@@ -642,6 +646,38 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain, genre, mood, updateSettings]);
 
+  const handleStartAlbumMode = useCallback(async () => {
+    if (route.length === 0) {
+        toast({ variant: "destructive", title: t('toast_album_error_queue') });
+        return;
+    }
+    if (!isInitialized) {
+        const success = await initialize();
+        if (!success) return;
+    }
+    
+    setIsAlbumMode(true);
+    applyCurrentMixToEngine();
+    
+    const firstItem = route[0];
+    const g = firstItem.genre === 'random' ? genre : (firstItem.genre as Genre);
+    const m = firstItem.mood === 'random' ? mood : (firstItem.mood as Mood);
+    
+    setGenreState(g);
+    setMoodState(m);
+    setActiveRouteItemId(firstItem.id);
+    updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
+    
+    stopAllSounds();
+    triggerVinyl(); 
+    
+    setTimeout(() => {
+        setIsPlaying(true);
+        startRecording('01');
+        toast({ title: t('toast_album_mode_started'), description: `Recording 1 of ${route.length}: ${g}/${m}` });
+    }, 200);
+  }, [route, isInitialized, initialize, t, toast, triggerVinyl, setIsPlaying, startRecording, stopAllSounds, updateSettings, applyCurrentMixToEngine, genre, mood]);
+
   const loadRoute = useCallback((saved: SavedRoute) => {
     const next: RouteItem[] = saved.items.map((it, idx) => ({
       id: `route-${Date.now()}-${idx}`,
@@ -656,7 +692,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [toast, t]);
 
   return useMemo(() => ({
-    isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
+    isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
     availableCompositions, selectedCompositionIds, 
     toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
@@ -664,6 +700,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
+    handleStartAlbumMode,
     handleToggleBroadcast: () => toggleBroadcast(),
     handleSaveMasterpiece: () => { 
         if (isInitialized) { 
@@ -695,29 +732,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
             return; 
         } 
         prevBarRef.current = 0; 
-        
         if (route.length > 0) { 
             const firstItem = route[0];
             const g = firstItem.genre === 'random' ? genre : (firstItem.genre as Genre);
             const m = firstItem.mood === 'random' ? mood : (firstItem.mood as Mood);
-            
-            // 1. Update local states
-            setGenreState(g);
-            setMoodState(m);
-            setActiveRouteItemId(firstItem.id);
-            
-            // 2. Explicitly force sync with worker (Re-read from UI Navigator)
-            updateSettings({ 
-                genre: g, 
-                mood: m, 
-                route: route,
-                activeRouteIndex: 0
-            });
+            setGenreState(g); setMoodState(m); setActiveRouteItemId(firstItem.id);
+            updateSettings({ genre: g, mood: m, route: route, activeRouteIndex: 0 });
         }
-        
-        // 3. Command worker to full reset (re-init engine with new settings)
         resetWorker(); 
-        
         toast({ title: t('toast_queue_refreshed'), description: t('toast_queue_refreshed_desc') });
     },
     moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
@@ -730,8 +752,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     useMelodyV2: true, toggleMelodyEngine: () => {},
     language, toggleLanguage, t
   }), [
-      isInitializing, isPlaying, isRegenerating, isRecording, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, engineSyncDna,
-      handlePlayPauseCallback, isRecording, stopRecording, startRecording, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
+      isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, engineSyncDna,
+      handlePlayPauseCallback, isRecording, stopRecording, startRecording, handleStartAlbumMode, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
       setInstrument, handleVolumeChange, textureSettings, score, setScore, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
       calibrationGains, setCalibrationGain, timerSettings, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
