@@ -72,6 +72,8 @@ export const TRANSLATIONS = {
     toast_sync_fail: { ru: "Ошибка синхронизации", en: "Sync Failed" },
     toast_record_started: { ru: "Запись начата", en: "Recording started" },
     toast_record_stopped: { ru: "Запись остановлена", en: "Recording stopped" },
+    toast_queue_refreshed: { ru: "Очередь обновлена", en: "Queue Refreshed" },
+    toast_queue_refreshed_desc: { ru: "Воспроизведение начнется с первого шага", en: "Playback will start from the first step" },
     
     // Genres (UI Display)
     g_ambient: { ru: "Slow Fusion", en: "Slow Fusion" },

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V32.2 — "Preset Persistence Fix".
- * #ЗАЧЕМ: ПЛАН №1365 — Исправление кнопок обновления пресетов.
+ * @fileOverview Music Control Hook V32.3 — "Queue Refresh Fix".
+ * #ЗАЧЕМ: ПЛАН №1365 — Исправление функциональности обновления очереди.
  */
 'use client';
 
@@ -685,7 +685,18 @@ export const useAuraGroove = (): AuraGrooveProps => {
     route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
     removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
-    refreshRoute: () => { if (isPlaying) { toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); return; } prevBarRef.current = 0; resetWorker(); if (route.length > 0) { setActiveRouteItemId(route[0].id); } },
+    refreshRoute: () => { 
+        if (isPlaying) { 
+            toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); 
+            return; 
+        } 
+        prevBarRef.current = 0; 
+        resetWorker(); 
+        if (route.length > 0) { 
+            setActiveRouteItemId(route[0].id); 
+        }
+        toast({ title: t('toast_queue_refreshed'), description: t('toast_queue_refreshed_desc') });
+    },
     moveRouteItem: () => {}, reorderRoute: (a: any, o: any) => setRoute(p => { const next = arrayMove(p, p.findIndex(i => i.id === a), p.findIndex(i => i.id === o)); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     saveRoute: (name: string) => { const n = { id: `r-${Date.now()}`, userId: 'l', name, items: route.map(i => ({ genre: i.genre, mood: i.mood })), createdAt: new Date().toISOString() }; const u = [n, ...savedRoutes]; setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },
     loadRoute, deleteSavedRoute: (id: string) => { const u = savedRoutes.filter(r => r.id !== id); setSavedRoutes(u); localStorage.setItem(SAVED_JOURNEYS_KEY, JSON.stringify(u)); },

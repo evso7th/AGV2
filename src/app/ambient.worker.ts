@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V6.1.1 — "Stealth Deploy Mode".
- * #ЗАЧЕМ: ПЛАН №1282 — Временное отключение телеметрии перед деплоем.
+ * @file AuraGroove Music Worker V6.1.2 — "Bar Count Reset Fix".
+ * #ЗАЧЕМ: Гарантированный сброс barCount при любой инициализации.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -124,6 +124,7 @@ const Scheduler = {
 
     initializeEngine(settings: WorkerSettings) {
         this.awaitingDirective = false;
+        this.barCount = 0; // #ЗАЧЕМ: ПЛАН №1283. Принудительный сброс счетчика при любой инициализации.
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
@@ -205,7 +206,6 @@ const Scheduler = {
            }
 
            this.sessionLickHistory = []; 
-           this.barCount = 0; 
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
@@ -241,7 +241,6 @@ const Scheduler = {
                  this.sessionLickHistory = [];
                  this.settings.seed = generateTrueSeed();
                  this.initializeEngine(this.settings);
-                 this.barCount = 0;
                  return 2000;
              }
              return 500; 
@@ -253,33 +252,6 @@ const Scheduler = {
         } catch (e) {
             return this.barDuration * 1000;
         }
-
-        // #ЗАЧЕМ: ПЛАН №1282. Телеметрия консоли деактивирована для Silent Deploy.
-        /*
-        const sectionName = payload.navInfo?.currentPart.name || 'Unknown';
-        const ax = payload.activeAxioms || {};
-        const hints = payload.instrumentHints || {};
-        const track = payload.trackName || 'Generative';
-        const t = payload.tension.toFixed(2);
-        const b = (payload.beautyScore || 0.5).toFixed(2);
-        const mut = payload.mutationType || 'none';
-
-        const sfx = (n: any): string => {
-            const s = (n === undefined || n === null || n === '') ? 'none' : String(n);
-            const i = s.lastIndexOf('_');
-            return i >= 0 ? s.slice(i + 1) : s;
-        };
-        const dnaDisplay = (ax.melody && String(ax.melody).includes('_')) ? sfx(ax.melody) : track;
-        
-        console.log(
-            `%c${getTimestamp()} [Bar ${this.barCount}] [${sectionName}] [DNA: ${dnaDisplay}] (Mut: ${mut}) T:${t} B:${b} Axioms: [MEL: ${sfx(ax.melody)}] [BASS: ${sfx(ax.bass)}] [DRUM: ${sfx(ax.drums)}] [HAR: ${sfx(ax.harmony)}] [PNO: ${sfx(ax.piano)}]\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Algorithm'}\n` +
-            `%c  | Timbres: [MEL: ${hints.melody || 'none'}] [BASS: ${hints.bass || 'none'}] [ACC: ${hints.accompaniment || 'none'}] [HAR: ${hints.harmony || 'none'}] [PNO: ${hints.pianoAccompaniment || 'none'}]`,
-            'color: #888;',
-            'color: #c084fc;',
-            'color: #888;'
-        );
-        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -293,7 +265,8 @@ const Scheduler = {
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
                 trackName: payload.trackName || 'Generative',
-                sectionName: payload.navInfo?.currentPart.name || 'Unknown'
+                sectionName: payload.navInfo?.currentPart.name || 'Unknown',
+                tension: payload.tension
             }
         });
 

@@ -1,6 +1,5 @@
-
 /**
- * @fileOverview UI AuraGroove V16.9.1 — "Visualizer Integration".
+ * @fileOverview UI AuraGroove V16.9.2 — "Queue Control Polish".
  */
 'use client';
 
@@ -765,7 +764,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex items-center justify-between w-full">
                         <div className="flex gap-1">
                             <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
-                            <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10"><RefreshCw className="h-5 w-5 text-primary" /></Button>
+                            <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10" title={t('btn_refresh_queue' as any)}><RefreshCw className="h-5 w-5 text-primary" /></Button>
                         </div>
 
                         <div className="flex gap-1 items-center">
