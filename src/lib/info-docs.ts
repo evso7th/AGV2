@@ -1,7 +1,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Версия 0.4.46. Добавлено описание анонимной телеметрии.
+ * #ОБНОВЛЕНО: Версия 0.4.46. Добавлено описание Full Track Record (FTR).
  */
 
 export const GUIDE_RU = `
@@ -12,7 +12,7 @@ export const GUIDE_RU = `
     <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.46 представляет режим Ether и систему анонимного учета сессий.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.46 представляет режим Ether и систему Full Track Record.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Интерактивная Визуализация (HUD)</h2>
@@ -25,19 +25,32 @@ export const GUIDE_RU = `
           <li><em>Nebula (Pure):</em> Автономная художественная анимация с оригинальной палитрой перетекания.</li>
         </ul>
       </li>
-      <li><strong>Бесконечное пространство:</strong> Анимация больше не ограничена рамками и плавно затекает под элементы интерфейса.</li>
-      <li><strong>Тактовая пульсация:</strong> Ядро реагирует на ритм музыки, создавая эффект живого присутствия.</li>
     </ul>
   </section>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Студийные настройки</h2>
-    <p>Все окна настроек (Микшер, EQ, Инфоцентр) имеют единый стиль «матового стекла», не отвлекая от погружения в музыку.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Режимы записи (Recording)</h2>
+    <p>AuraGroove поддерживает два типа экспорта вашей музыки в формат .webm:</p>
+    <div class="space-y-4 bg-primary/5 p-4 rounded-lg border border-primary/10">
+      <div>
+        <h4 class="font-black text-[11px] uppercase text-primary">● Обычная запись (Manual)</h4>
+        <p class="text-[12px]">Активируется <strong>коротким нажатием</strong> на иконку Radio. Вы сами решаете, когда начать и закончить запись. Идеально для захвата коротких фрагментов.</p>
+      </div>
+      <div>
+        <h4 class="font-black text-[11px] uppercase text-primary">● Запись полного трека (Full Track Record)</h4>
+        <p class="text-[12px]">Активируется <strong>зажатием (1.5 сек)</strong> кнопки Radio. Студия дождется завершения текущей сюиты (160 тактов), автоматически сохранит файл с идеальным финалом и переведет систему в режим Паузы. Это гарантирует целостность композиции без лишних «хвостов».</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-3 px-2">
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Студийные настройки</h2>
+    <p>Все окна настроек (Микшер, EQ, Инфоцентр) имеют единый стиль «матового стекла», не отвлекая от погружения в музыку. Вы можете сохранять свои пресеты и привязывать их к жанрам.</p>
   </section>
 
   <section class="space-y-3 px-2 pb-6">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Конфиденциальность</h2>
-    <p>Мы ведем анонимный учет количества сессий и географии (на основе часового пояса), чтобы понимать масштаб оркестра. Никакие персональные данные, включая IP, не собираются и не хранятся.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">4. Конфиденциальность</h2>
+    <p>Мы ведем анонимный учет количества сессий и географии (на основе часового пояса), чтобы понимать масштаб оркестра. Никакие персональные данные не собираются.</p>
     <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the flow!</p>
   </section>
 </div>
@@ -51,7 +64,7 @@ export const GUIDE_EN = `
     <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.46 introduces Ether mode and anonymous session tracking.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.46 introduces Ether mode and the Full Track Record (FTR) system.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Interactive Visualization (HUD)</h2>
@@ -64,19 +77,32 @@ export const GUIDE_EN = `
           <li><em>Nebula (Pure):</em> Autonomous artistic animation with its original flow palette.</li>
         </ul>
       </li>
-      <li><strong>Infinite Canvas:</strong> Animations are no longer boxed and flow seamlessly behind the interface elements.</li>
-      <li><strong>Beat Pulse:</strong> The Core reacts to the music's rhythm, creating a live performance feel.</li>
     </ul>
   </section>
 
   <section class="space-y-3 px-2">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Studio Aesthetics</h2>
-    <p>All control windows (Mixer, EQ, Info Center) now feature a consistent "frosted glass" style that maintains visual harmony across the app.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Recording Modes</h2>
+    <p>AuraGroove supports two types of export to .webm format:</p>
+    <div class="space-y-4 bg-primary/5 p-4 rounded-lg border border-primary/10">
+      <div>
+        <h4 class="font-black text-[11px] uppercase text-primary">● Manual Recording</h4>
+        <p class="text-[12px]">Activated by a <strong>short tap</strong> on the Radio icon. You manually decide when to start and stop. Best for quick snippets.</p>
+      </div>
+      <div>
+        <h4 class="font-black text-[11px] uppercase text-primary">● Full Track Record (FTR)</h4>
+        <p class="text-[12px]">Activated by <strong>holding (1.5s)</strong> the Radio button. The studio will wait for the current suite (160 bars) to finish, automatically save the file with a perfect ending, and pause the system. This ensures a clean "start-to-finish" capture.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="space-y-3 px-2">
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Studio Aesthetics</h2>
+    <p>All control windows (Mixer, EQ, Info Center) feature a consistent "frosted glass" style. You can save custom presets and link them to specific genres.</p>
   </section>
 
   <section class="space-y-2 px-2 pb-6">
-    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Privacy and Autonomy</h2>
-    <p>We anonymously track session counts and regional distribution (via timezone) to understand our orchestra's reach. No personal data, including IP addresses, is ever collected or stored.</p>
+    <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">4. Privacy</h2>
+    <p>We anonymously track session counts and regional distribution. No personal data is ever collected or stored.</p>
     <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the music!</p>
   </section>
 </div>
