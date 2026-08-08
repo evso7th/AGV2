@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V62.0 — "Album Studio Support".
- * #ЗАЧЕМ: Реализация ПЛАНА №1455 — Поддержка альбомной записи с префиксами.
+ * @fileOverview Audio Engine Context V62.1 — "FTR Stability Fix".
+ * #ЗАЧЕМ: Исправление пустых файлов при записи и сбоев паузы в режиме FTR.
  */
 'use client';
 
@@ -30,7 +30,6 @@ import { V2_PRESETS } from '@/lib/presets-v2';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 import { TRANSLATIONS, type Language } from '@/lib/translations';
 
-// #ЗАЧЕМ: "Протокол Чистого Неба". Реактивная калибровка уровней.
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.35,
   melody: 0.45,
@@ -111,7 +110,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecording, setIsRecordingState] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [isPreviewLooping, setIsPreviewLooping] = useState(false);
@@ -535,8 +534,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!recDestRef.current || isRecording) return; 
         recordedChunksRef.current = []; 
         const mediaRecorder = new MediaRecorder(recDestRef.current.stream); 
-        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; 
+        
+        mediaRecorder.ondataavailable = (e) => { 
+          if (e.data.size > 0) recordedChunksRef.current.push(e.data); 
+        }; 
+        
         mediaRecorder.onstop = () => { 
+            if (recordedChunksRef.current.length === 0) {
+              console.warn('[AudioEngine] No data recorded. Chunks are empty.');
+              return;
+            }
             const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); 
             const url = URL.createObjectURL(blob); 
             const a = document.createElement('a'); 
@@ -549,11 +556,19 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             a.download = `${prefixStr}AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
             a.click(); 
         }; 
-        mediaRecorder.start(); 
+        
+        // #ЗАЧЕМ: Принудительное нарезание порций данных каждые 1000мс.
+        // #ЧТО: Это предотвращает создание пустых файлов при внезапной остановке.
+        mediaRecorder.start(1000); 
         mediaRecorderRef.current = mediaRecorder; 
-        setIsRecording(true); 
+        setIsRecordingState(true); 
       }, 
-      stopRecording: () => { if (mediaRecorderRef.current && isRecording) { mediaRecorderRef.current.stop(); setIsRecording(false); } },
+      stopRecording: () => { 
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { 
+          mediaRecorderRef.current.stop(); 
+          setIsRecordingState(false); 
+        } 
+      },
       toggleBroadcast: toggleBroadcastCallback, 
       triggerVinyl,
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },

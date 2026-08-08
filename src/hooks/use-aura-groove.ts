@@ -1,7 +1,6 @@
 /**
- * @fileOverview Music Control Hook V34.0 — "Full Track Record Fix".
- * #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Баг в фичу". 
- * #ЧТО: Автоматическая пауза и остановка записи по окончании трека.
+ * @fileOverview Music Control Hook V34.1 — "FTR Stability Refined".
+ * #ЗАЧЕМ: Исправление сбоя автоматической паузы и пустых файлов в режиме FTR.
  */
 'use client';
 
@@ -224,7 +223,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, [language]);
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
-  const prevBarRef = useRef(0);
   const sessionStartTimeRef = useRef<number>(0);
 
   const handleGoHome = useCallback(async () => {
@@ -552,11 +550,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     if ('setPositionState' in navigator.mediaSession) {
         if (isPlaying) {
-            if (sessionStartTimeRef.current === 0) sessionStartTimeRef.current = Date.now();
             const position = (Date.now() - sessionStartTimeRef.current) / 1000;
             try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
         } else {
-            sessionStartTimeRef.current = 0;
             try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 0, position: 0 }); } catch(e) {}
         }
     }
@@ -587,20 +583,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
-  /**
-   * #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Full Track Record".
-   * #ЧТО: Автоматическая пауза и остановка записи по окончании трека.
-   */
+  /** #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Full Track Record Stability". */
   useEffect(() => {
     const onTransition = () => {
-        // --- FULL TRACK RECORD LOGIC ---
+        // --- FULL TRACK RECORD LOGIC (FTR) ---
         if (isAlbumModeRef.current) {
-            stopRecording();
-            setIsAlbumMode(false);
+            // #ЗАЧЕМ: Мгновенная остановка во избежание "хвоста" следующего трека.
             setIsPlaying(false);
             stopAllSounds();
-            toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
-            return; // Прекращаем выполнение, предотвращая переход к следующему треку
+            
+            // #ЧТО: Закрываем файл СРАЗУ после паузы.
+            setTimeout(() => {
+                stopRecording();
+                setIsAlbumMode(false);
+                toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
+            }, 150);
+            
+            return;
         }
 
         // --- NORMAL ROUTE LOGIC ---
@@ -632,7 +631,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
                 updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
             }
-            prevBarRef.current = 0; setIsPlaying(true);
+            sessionStartTimeRef.current = Date.now();
+            setIsPlaying(true);
         }
     } else { 
         if (!isPlaying) {
@@ -643,13 +643,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
                 setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
                 updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
             }
-            prevBarRef.current = 0;
+            sessionStartTimeRef.current = Date.now();
         }
         setIsPlaying(!isPlaying); 
     }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain, genre, mood, updateSettings]);
 
-  /** #ЗАЧЕМ: Запуск режима записи полного трека. */
   const handleStartAlbumMode = useCallback(async () => {
     if (!isInitialized) {
         const success = await initialize();
@@ -663,8 +662,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     triggerVinyl(); 
     
     setTimeout(() => {
+        sessionStartTimeRef.current = Date.now();
         setIsPlaying(true);
-        startRecording('FTR'); // Full Track Record prefix
+        startRecording('FTR'); 
         toast({ title: t('toast_album_mode_started'), description: `Recording full track: ${genre}/${mood}` });
     }, 200);
   }, [isInitialized, initialize, t, toast, triggerVinyl, setIsPlaying, startRecording, stopAllSounds, applyCurrentMixToEngine, genre, mood]);
@@ -689,7 +689,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna: engineSyncDna,
     handlePlayPause: handlePlayPauseCallback,
-    handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
+    handleRegenerate: () => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => {
         if (isRecording || isAlbumMode) {
             stopRecording();
@@ -729,7 +729,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); 
             return; 
         } 
-        prevBarRef.current = 0; 
         if (route.length > 0) { 
             const firstItem = route[0];
             const g = firstItem.genre === 'random' ? genre : (firstItem.genre as Genre);
