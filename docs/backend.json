@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -34,6 +33,19 @@
       },
       "required": ["phrase", "role", "compositionId", "vector"]
     },
+    "TelemetryDaily": {
+      "title": "TelemetryDaily",
+      "description": "Anonymous aggregated session counters per day.",
+      "type": "object",
+      "properties": {
+        "total_hits": { "type": "number" },
+        "new_users": { "type": "number" },
+        "returning_users": { "type": "number" },
+        "locales": { "type": "object" },
+        "timezones": { "type": "object" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
     "SavedRoute": {
       "title": "SavedRoute",
       "description": "A named sequence of musical scenes.",
@@ -67,6 +79,10 @@
     "/heritage_axioms/{axiomId}": {
       "schema": { "$ref": "#/backend/entities/HeritageAxiom" },
       "description": "Shared musical fragments."
+    },
+    "/telemetry_daily/{dayId}": {
+      "schema": { "$ref": "#/backend/entities/TelemetryDaily" },
+      "description": "Daily anonymous metrics."
     },
     "/routes/{routeId}": {
       "schema": { "$ref": "#/backend/entities/SavedRoute" },

@@ -1,19 +1,18 @@
-
 /**
  * @fileOverview Справочные материалы AuraGroove (HTML-верстка).
  * #ЗАЧЕМ: Централизованное хранилище документации для пользователей.
- * #ОБНОВЛЕНО: Версия 0.4.45. Переименование Hybrid -> Ether.
+ * #ОБНОВЛЕНО: Версия 0.4.46. Добавлено описание анонимной телеметрии.
  */
 
 export const GUIDE_RU = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Полное руководство пользователя</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.45 (Infinite Take Orchestra)</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.46 (Infinite Take Orchestra)</p>
     <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.45 представляет режим Ether — совершенный баланс геометрии и атмосферы.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Версия 0.4.46 представляет режим Ether и систему анонимного учета сессий.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Интерактивная Визуализация (HUD)</h2>
@@ -33,12 +32,12 @@ export const GUIDE_RU = `
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">2. Студийные настройки</h2>
-    <p>Все окна настроек (Микшер, EQ, Инфоцентр) теперь имеют единый стиль «матового стекла», не отвлекая от погружения в музыку.</p>
+    <p>Все окна настроек (Микшер, EQ, Инфоцентр) имеют единый стиль «матового стекла», не отвлекая от погружения в музыку.</p>
   </section>
 
   <section class="space-y-3 px-2 pb-6">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Конфиденциальность</h2>
-    <p>AuraGroove работает локально. Ваши пресеты, маршруты и настройки хранятся только в памяти вашего браузера. Ноль телеметрии, 100% музыки.</p>
+    <p>Мы ведем анонимный учет количества сессий и географии (на основе часового пояса), чтобы понимать масштаб оркестра. Никакие персональные данные, включая IP, не собираются и не хранятся.</p>
     <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the flow!</p>
   </section>
 </div>
@@ -48,11 +47,11 @@ export const GUIDE_EN = `
 <div class="prose-info text-[13px] leading-relaxed space-y-6">
   <div class="text-center space-y-2 border-b border-primary/20 pb-4 mx-2">
     <h1 class="text-base sm:text-2xl font-black text-primary uppercase tracking-tighter">Complete User Guide</h1>
-    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.45 (Infinite Take Orchestra)</p>
+    <p class="text-sm sm:text-lg font-bold">AuraGroove V 0.4.46 (Infinite Take Orchestra)</p>
     <p class="text-[10px] font-black opacity-50 uppercase tracking-[0.2em]">Interface: v17.0 | Core: v3.7.0</p>
   </div>
 
-  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.45 introduces Ether mode — a perfect balance of geometry and atmosphere.</p>
+  <p class="italic text-muted-foreground text-[12px] sm:text-[13px] px-2">Welcome to AuraGroove V3. Version 0.4.46 introduces Ether mode and anonymous session tracking.</p>
 
   <section class="space-y-3 px-2">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">1. Interactive Visualization (HUD)</h2>
@@ -77,7 +76,7 @@ export const GUIDE_EN = `
 
   <section class="space-y-2 px-2 pb-6">
     <h2 class="text-[12px] sm:text-base font-black text-primary uppercase border-l-4 border-primary pl-3 py-1">3. Privacy and Autonomy</h2>
-    <p>AuraGroove stays local. Your presets, journeys, and settings remain on your device. Zero telemetry. Zero tracking.</p>
+    <p>We anonymously track session counts and regional distribution (via timezone) to understand our orchestra's reach. No personal data, including IP addresses, is ever collected or stored.</p>
     <p class="text-center font-black uppercase text-primary pt-4 tracking-widest">Enjoy the music!</p>
   </section>
 </div>
@@ -93,11 +92,11 @@ export const DISCLAIMER_RU = `
     <ul class="list-disc pl-4 opacity-80">
       <li><strong>HUD:</strong> Интерактивный режим погружения с поддержкой жестов переключения.</li>
       <li><strong>Мгновенность:</strong> Визуальный отклик интерфейса оптимизирован для исключения задержек восприятия.</li>
-      <li><strong>Приватность:</strong> Никакие данные о прослушивании не покидают ваше устройство.</li>
+      <li><strong>Приватность:</strong> Мы используем анонимные агрегаторы для статистики сессий. Персональные данные не собираются.</li>
     </ul>
   </section>
 
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.45</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Последнее обновление: Май 2026. Версия 0.4.46</p>
 </div>
 `;
 
@@ -111,11 +110,11 @@ export const DISCLAIMER_EN = `
     <ul class="list-disc pl-4 opacity-80">
       <li><strong>HUD:</strong> Interactive immersion mode with gesture-based switching support.</li>
       <li><strong>Responsiveness:</strong> UI feedback is optimized for zero-latency toggling.</li>
-      <li><strong>Privacy:</strong> No listening data ever leaves your device.</li>
+      <li><strong>Privacy:</strong> We use anonymous session counters. No personally identifiable information is collected.</li>
     </ul>
   </section>
 
-  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.45</p>
+  <p class="text-[10px] italic opacity-50 pt-2 border-t border-primary/10">Last Updated: May 2026. Version 0.4.46</p>
 </div>
 `;
 

@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Welcome Page V3.5 — "Embedded Marquee Update".
- * #ЗАЧЕМ: Перенос копирайта внутрь карточки под кнопку Start.
+ * @fileOverview Welcome Page V3.6 — "Telemetry Integrated".
+ * #ЗАЧЕМ: Внедрение анонимного счетчика посещений.
  */
 'use client';
 
@@ -13,9 +12,12 @@ import { Play } from 'lucide-react';
 import Image from 'next/image';
 import { useAuraGroove } from '@/hooks/use-aura-groove';
 import { OrbitalAnimation } from '@/components/orbital-animation';
+import { useFirestore } from '@/firebase';
+import { logAnonymousSession } from '@/lib/telemetry';
 
 export default function Home() {
   const router = useRouter();
+  const db = useFirestore();
   const [isClient, setIsClient] = useState(false);
   const { t } = useAuraGroove();
 
@@ -24,6 +26,8 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
+    // #ЗАЧЕМ: Анонимный лог сессии. Non-blocking.
+    logAnonymousSession(db);
     router.push('/home');
   };
 
@@ -45,7 +49,7 @@ export default function Home() {
 
       <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
         
-        {/* Анимация "Живое Ядро" - теперь строго внутри карточки */}
+        {/* Анимация "Живое Ядро" */}
         <div 
           className="absolute inset-0 pointer-events-none opacity-40 z-0 flex items-center justify-center"
           style={{ '--orbital-size': '320px' } as React.CSSProperties}
@@ -76,7 +80,6 @@ export default function Home() {
         </CardHeader>
         
         <CardContent className="flex-grow relative z-10">
-          {/* Spacer for layout consistency */}
         </CardContent>
 
         <CardFooter className="pt-0 flex-col relative z-10 pb-12">
@@ -90,7 +93,6 @@ export default function Home() {
           </Button>
         </CardFooter>
 
-        {/* Бегущая строка, притянутая к нижнему краю рамки карточки */}
         <div className="absolute bottom-4 left-0 right-0 h-4 overflow-hidden pointer-events-none select-none z-20">
           <div className="animate-marquee-slow text-[9px] opacity-40 uppercase tracking-tighter">
             © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
