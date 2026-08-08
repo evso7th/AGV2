@@ -75,6 +75,9 @@ export const TRANSLATIONS = {
     toast_queue_refreshed: { ru: "Очередь обновлена", en: "Queue Refreshed" },
     toast_queue_refreshed_desc: { ru: "Воспроизведение начнется с первого шага", en: "Playback will start from the first step" },
     
+    // UI Elements
+    btn_refresh_queue: { ru: "Обновить очередь", en: "Refresh Queue" },
+
     // Genres (UI Display)
     g_ambient: { ru: "Slow Fusion", en: "Slow Fusion" },
     g_psybient: { ru: "Neuro Space", en: "Neuro Space" },

@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Music Control Hook V32.4 — "Queue Sync Hardening".
- * #ЗАЧЕМ: ПЛАН №1365 — Полная синхронизация состояния очереди с воркером.
+ * @fileOverview Music Control Hook V32.5 — "Translation & Queue Safety".
+ * #ЗАЧЕМ: ПЛАН №1365 — Полная синхронизация состояния очереди с воркером и защита от краша словаря.
  */
 'use client';
 
@@ -212,7 +211,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
   }, []);
 
   const t = useCallback((key: keyof typeof TRANSLATIONS) => {
-    return TRANSLATIONS[key][language] || String(key);
+    // #ЗАЧЕМ: Защита от TypeError. Если ключа нет в словаре, возвращаем сам ключ.
+    const entry = TRANSLATIONS[key];
+    if (!entry) return String(key);
+    return entry[language] || String(key);
   }, [language]);
 
   const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
