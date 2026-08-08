@@ -1,6 +1,7 @@
 /**
- * @fileOverview Music Control Hook V33.1 — "Resilient Record Toggle".
- * #ЗАЧЕМ: ПЛАН №1456 — Унификация остановки записи (простой клик для любого режима).
+ * @fileOverview Music Control Hook V34.0 — "Full Track Record Fix".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Баг в фичу". 
+ * #ЧТО: Автоматическая пауза и остановка записи по окончании трека.
  */
 'use client';
 
@@ -586,35 +587,37 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
+  /**
+   * #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Full Track Record".
+   * #ЧТО: Автоматическая пауза и остановка записи по окончании трека.
+   */
   useEffect(() => {
     const onTransition = () => {
+        // --- FULL TRACK RECORD LOGIC ---
         if (isAlbumModeRef.current) {
             stopRecording();
+            setIsAlbumMode(false);
+            setIsPlaying(false);
+            stopAllSounds();
+            toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
+            return; // Прекращаем выполнение, предотвращая переход к следующему треку
         }
 
+        // --- NORMAL ROUTE LOGIC ---
         if (route.length > 0) {
             const nextIndex = activeRouteIndex + 1;
             if (nextIndex < route.length) { 
                 setActiveRouteItemId(route[nextIndex].id); 
-                if (isAlbumModeRef.current) {
-                    setTimeout(() => startRecording(String(nextIndex + 1).padStart(2, '0')), 200);
-                }
                 return; 
             }
         }
 
-        if (isAlbumModeRef.current) {
-            setIsAlbumMode(false);
-            setIsPlaying(false);
-            stopAllSounds();
-            toast({ title: t('toast_album_exported'), description: "Album Studio Session complete." });
-        } else {
-            setCurrentSeed(Date.now());
-        }
+        // --- LOOP LOGIC ---
+        setCurrentSeed(Date.now());
     };
     window.addEventListener('AG_SUITE_TRANSITION', onTransition);
     return () => window.removeEventListener('AG_SUITE_TRANSITION', onTransition);
-  }, [route, activeRouteIndex, isRepeat, activeRouteItemId, stopRecording, startRecording, stopAllSounds, setIsPlaying, t]);
+  }, [route, activeRouteIndex, isRepeat, activeRouteItemId, stopRecording, stopAllSounds, setIsPlaying, t, toast]);
 
   const handlePlayPauseCallback = useCallback(async () => { 
     if (!isInitialized) {
@@ -646,11 +649,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain, genre, mood, updateSettings]);
 
+  /** #ЗАЧЕМ: Запуск режима записи полного трека. */
   const handleStartAlbumMode = useCallback(async () => {
-    if (route.length === 0) {
-        toast({ variant: "destructive", title: t('toast_album_error_queue') });
-        return;
-    }
     if (!isInitialized) {
         const success = await initialize();
         if (!success) return;
@@ -659,24 +659,15 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setIsAlbumMode(true);
     applyCurrentMixToEngine();
     
-    const firstItem = route[0];
-    const g = firstItem.genre === 'random' ? genre : (firstItem.genre as Genre);
-    const m = firstItem.mood === 'random' ? mood : (firstItem.mood as Mood);
-    
-    setGenreState(g);
-    setMoodState(m);
-    setActiveRouteItemId(firstItem.id);
-    updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
-    
     stopAllSounds();
     triggerVinyl(); 
     
     setTimeout(() => {
         setIsPlaying(true);
-        startRecording('01');
-        toast({ title: t('toast_album_mode_started'), description: `Recording 1 of ${route.length}: ${g}/${m}` });
+        startRecording('FTR'); // Full Track Record prefix
+        toast({ title: t('toast_album_mode_started'), description: `Recording full track: ${genre}/${mood}` });
     }, 200);
-  }, [route, isInitialized, initialize, t, toast, triggerVinyl, setIsPlaying, startRecording, stopAllSounds, updateSettings, applyCurrentMixToEngine, genre, mood]);
+  }, [isInitialized, initialize, t, toast, triggerVinyl, setIsPlaying, startRecording, stopAllSounds, applyCurrentMixToEngine, genre, mood]);
 
   const loadRoute = useCallback((saved: SavedRoute) => {
     const next: RouteItem[] = saved.items.map((it, idx) => ({
