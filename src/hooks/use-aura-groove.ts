@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V33.0 — "Vinyl Album Studio".
- * #ЗАЧЕМ: ПЛАН №1455 — Реализация автоматизированной альбомной записи.
+ * @fileOverview Music Control Hook V33.1 — "Resilient Record Toggle".
+ * #ЗАЧЕМ: ПЛАН №1456 — Унификация остановки записи (простой клик для любого режима).
  */
 'use client';
 
@@ -699,7 +699,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
     clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna: engineSyncDna,
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: () => { prevBarRef.current = 0; setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
-    handleToggleRecording: () => isRecording ? stopRecording() : startRecording(),
+    handleToggleRecording: () => {
+        if (isRecording || isAlbumMode) {
+            stopRecording();
+            setIsAlbumMode(false);
+        } else {
+            startRecording();
+        }
+    },
     handleStartAlbumMode,
     handleToggleBroadcast: () => toggleBroadcast(),
     handleSaveMasterpiece: () => { 

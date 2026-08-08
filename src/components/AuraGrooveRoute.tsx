@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.0.0 — "Vinyl Album Studio".
- * #ЗАЧЕМ: Реализация ПЛАНА №1455 — Интерфейс альбомной записи с лонг-тапом.
+ * @fileOverview UI AuraGroove V17.0.1 — "Smart Stop Engine".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1456 — Остановка записи любым кликом.
  */
 'use client';
 
@@ -308,7 +308,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [isDarkTheme, setIsDarkTheme] = useState(true);
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
+    // --- SMART STOP LOGIC (PLAN №1456) ---
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+    const [longPressActive, setLongPressActive] = useState(false);
 
     // --- OPTIMISTIC HUD STATE ---
     const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(props.isPlaying);
@@ -374,21 +377,29 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
 
-    // --- Long Press Handlers ---
+    // --- Unified Long Press & Tap Handler ---
     const handleRecordDown = () => {
-        if (props.isRecording) return; 
+        setLongPressActive(false); 
+        if (props.isRecording || props.isAlbumMode) return; 
+
         longPressTimer.current = setTimeout(() => {
             props.handleStartAlbumMode();
+            setLongPressActive(true);
             longPressTimer.current = null;
         }, 1500);
     };
 
     const handleRecordUp = () => {
         if (longPressTimer.current) {
+            // Short click detected while idle
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
             props.handleToggleRecording();
+        } else if (!longPressActive) {
+            // We were already recording or holding, but not just triggered long-press
+            props.handleToggleRecording();
         }
+        // longPressActive will reset on next Down
     };
 
     const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
