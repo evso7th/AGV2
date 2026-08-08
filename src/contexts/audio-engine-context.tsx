@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V62.1 — "FTR Stability Fix".
- * #ЗАЧЕМ: Исправление пустых файлов при записи и сбоев паузы в режиме FTR.
+ * @fileOverview Audio Engine Context V62.2 — "Duration & Header Fix".
+ * #ЗАЧЕМ: Исправление отсутствующей длительности в записанных файлах.
  */
 'use client';
 
@@ -557,9 +557,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             a.click(); 
         }; 
         
-        // #ЗАЧЕМ: Принудительное нарезание порций данных каждые 1000мс.
-        // #ЧТО: Это предотвращает создание пустых файлов при внезапной остановке.
-        mediaRecorder.start(1000); 
+        // #ЗАЧЕМ: УДАЛЕН параметр 1000мс. Одиночный старт дает корректный заголовок длительности.
+        mediaRecorder.start(); 
         mediaRecorderRef.current = mediaRecorder; 
         setIsRecordingState(true); 
       }, 

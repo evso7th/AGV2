@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V34.1 — "FTR Stability Refined".
- * #ЗАЧЕМ: Исправление сбоя автоматической паузы и пустых файлов в режиме FTR.
+ * @fileOverview Music Control Hook V34.2 — "Duration Integrity Refined".
+ * #ЗАЧЕМ: Обеспечение записи длительности в WebM через правильный порядок остановки.
  */
 'use client';
 
@@ -583,22 +583,23 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
-  /** #ЗАЧЕМ: Реализация ПЛАНА №1456 — "Full Track Record Stability". */
+  /** #ЗАЧЕМ: Реализация ПЛАНА №1458 — "Duration Integrity Refined". */
   useEffect(() => {
     const onTransition = () => {
         // --- FULL TRACK RECORD LOGIC (FTR) ---
         if (isAlbumModeRef.current) {
-            // #ЗАЧЕМ: Мгновенная остановка во избежание "хвоста" следующего трека.
+            // #ЗАЧЕМ: ПЛАН №1458. Порядок Стоп-Крану.
+            // 1. Сначала тормозим рекордер (пока поток еще "жив"). Это критично для длительности.
+            stopRecording();
+            
+            // 2. Сразу переводим UI в паузу
             setIsPlaying(false);
+            
+            // 3. Гасим звуки
             stopAllSounds();
             
-            // #ЧТО: Закрываем файл СРАЗУ после паузы.
-            setTimeout(() => {
-                stopRecording();
-                setIsAlbumMode(false);
-                toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
-            }, 150);
-            
+            setIsAlbumMode(false);
+            toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
             return;
         }
 
@@ -745,8 +746,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex, showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName, tension,
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre,
-    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
-    useMelodyV2: true, toggleMelodyEngine: () => {},
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
     language, toggleLanguage, t
   }), [
       isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, engineSyncDna,
