@@ -389,7 +389,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
                     
                     {/* Top Controls Stack - Axis Symmetry with Bottom Stack */}
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 w-[90vw] max-w-[400px] flex items-center justify-between">
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); props.handleRegenerate(); showFeedback(t('toast_next_desc')); }}
                             className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
@@ -532,7 +532,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </div>
 
                     {/* Bottom Info Stack - Axis Symmetry 90vw */}
-                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 w-[90vw] max-w-[400px] flex items-center justify-between">
+                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
                             className="h-10 w-10 pointer-events-auto transition-all active:scale-95 flex items-center justify-center"
