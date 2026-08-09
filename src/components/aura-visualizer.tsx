@@ -5,6 +5,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { OrbitalAnimation } from './orbital-animation';
 import { LiquidNebula } from './liquid-nebula';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
 type ViewMode = 'orbital' | 'ether' | 'nebula';
@@ -19,31 +20,42 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V17.0 — "Ether Edition".
- * #ЗАЧЕМ: Переименование Hybrid в Ether. Оптимизация слоев.
+ * @fileOverview Aura Visualizer V17.1 — "Mobile Performance Shield".
+ * #ЗАЧЕМ: ПЛАН №1480. Полное исключение режима Ether на мобильных (заменяется на Orbital).
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
-    const [mode, setMode] = useState<ViewMode>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-            if (['orbital', 'ether', 'nebula'].includes(saved)) return saved;
-        }
-        return 'ether';
-    });
-
+    const isMobile = useIsMobile();
+    const [mode, setMode] = useState<ViewMode>('orbital');
     const [feedback, setFeedback] = useState<string | null>(null);
+
+    // Initial load and auto-fallback for mobile
+    useEffect(() => {
+        const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
+        let initialMode: ViewMode = (['orbital', 'ether', 'nebula'].includes(saved)) ? saved : 'ether';
+
+        if (isMobile && initialMode === 'ether') {
+            initialMode = 'orbital';
+        }
+        
+        setMode(initialMode);
+    }, [isMobile]);
 
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
+        
+        // Define effective modes based on device performance capability
+        const effectiveModes: ViewMode[] = isMobile ? ['orbital', 'nebula'] : ['ether', 'orbital', 'nebula'];
+        
         setMode(prev => {
-            const cycle: ViewMode[] = ['ether', 'orbital', 'nebula'];
-            const nextIdx = (cycle.indexOf(prev) + 1) % cycle.length;
-            const next = cycle[nextIdx];
+            const currentIdx = effectiveModes.indexOf(prev);
+            const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % effectiveModes.length;
+            const next = effectiveModes[nextIdx];
+            
             localStorage.setItem('AG_ViewMode', next);
             setFeedback(next.toUpperCase());
             return next;
         });
-    }, []);
+    }, [isMobile]);
 
     useEffect(() => {
         if (feedback) {
