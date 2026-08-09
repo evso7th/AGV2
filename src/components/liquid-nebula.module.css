@@ -1,6 +1,6 @@
 /**
- * @fileOverview Liquid Nebula CSS V6.1 — "Strict Core Pulse Sync".
- * #ЗАЧЕМ: ПЛАН №1470. Удаление бесконечных мобильных циклов. Ритм только по событию.
+ * @fileOverview Liquid Nebula CSS V6.2 — "Mobile Performance Shield".
+ * #ЗАЧЕМ: ПЛАН №1475. Агрессивное снижение нагрузки на мобильный GPU.
  */
 
 .container {
@@ -39,7 +39,20 @@
   --current-scale: 0.65;
 }
 
-/* --- CENTRAL CORE PULSE (EVENT-DRIVEN ONLY) --- */
+/* --- MOBILE PERFORMANCE OVERRIDES --- */
+.container[data-mobile="true"] .blob:not(.m0) {
+  display: none !important; /* Прячем все кроме ядра */
+}
+
+.container[data-mobile="true"] .blob {
+  filter: blur(40px) !important; /* Снижаем блюр для GPU */
+}
+
+.container[data-mobile="true"] .fluid {
+  animation: none !important; /* Отключаем swirl на мобилках */
+}
+
+/* --- CENTRAL CORE PULSE --- */
 .centralCore {
   position: absolute;
   inset: 0;
@@ -47,12 +60,12 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), filter 0.1s ease-out;
-  will-change: transform;
+  will-change: transform, filter;
 }
 
 .container[data-pulsing="true"] .centralCore {
-  transform: scale(1.12);
-  filter: brightness(1.3) saturate(1.2);
+  transform: scale(1.1);
+  filter: brightness(1.2);
 }
 
 .soft {
@@ -60,6 +73,10 @@
   inset: -100%; 
   filter: blur(50px);
   overflow: visible;
+}
+
+.container[data-mobile="true"] .soft {
+  filter: blur(25px);
 }
 
 .fluid {
