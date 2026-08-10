@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.0.1 — "Smart Stop Engine".
- * #ЗАЧЕМ: Реализация ПЛАНА №1456 — Остановка записи любым кликом.
+ * @fileOverview UI AuraGroove V17.0.2 — "HUD Layout Polish".
+ * #ЗАЧЕМ: Исправление перекрытия прогресс-бара рамкой тулбара на мобильных.
  */
 'use client';
 
@@ -477,8 +477,8 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
 
-                    {/* Progress Bar - NEW (PLAN №1422) */}
-                    <div className="absolute top-[73%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] h-[1px] bg-white/10 overflow-hidden z-10 rounded-full">
+                    {/* Progress Bar - UPDATED (PLAN №1482) - Moved up to top-[71%] to avoid overlap */}
+                    <div className="absolute top-[71%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] h-[1px] bg-white/10 overflow-hidden z-10 rounded-full">
                         <div 
                             className="h-full transition-all duration-1000 ease-linear"
                             style={{ 
@@ -488,9 +488,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
                     
-                    {/* Control Pill - Ultra Compact for narrow screens */}
+                    {/* Control Pill - UPDATED (PLAN №1482) - Shifted down to top-[82%] and height reduced with py-3.5 */}
                     <div 
-                        className="absolute top-[80%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-between gap-0.5 px-2 py-4 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[92vw] max-w-[380px] transition-all active:scale-95"
+                        className="absolute top-[82%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-between gap-0.5 px-2 py-3.5 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[92vw] max-w-[380px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <button 
