@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V62.2 — "Duration & Header Fix".
- * #ЗАЧЕМ: Исправление отсутствующей длительности в записанных файлах.
+ * @fileOverview Audio Engine Context V62.3 — "Forced English Locale".
+ * #ЗАЧЕМ: Отключение автоматической проверки локали для системных сообщений.
  */
 'use client';
 
@@ -151,6 +151,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
+  const authenticationRef = useRef<any>(null);
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const samplersMasterGainRef = useRef<GainNode | null>(null);
@@ -187,12 +188,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
+  /** #ЗАЧЕМ: Принудительный возврат 'en' для временной блокировки локалей. */
   const getLanguage = (): Language => {
-    if (typeof window === 'undefined') return 'en';
-    const saved = localStorage.getItem('AuraGroove_Language') as Language;
-    if (saved) return saved;
-    const sysLang = navigator.language.toLowerCase();
-    return (sysLang.includes('ru') || sysLang.includes('uk') || sysLang.includes('be')) ? 'ru' : 'en';
+    return 'en';
   };
 
   const getEffectivePreset = useCallback((presetName: string) => {
@@ -557,7 +555,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             a.click(); 
         }; 
         
-        // #ЗАЧЕМ: УДАЛЕН параметр 1000мс. Одиночный старт дает корректный заголовок длительности.
         mediaRecorder.start(); 
         mediaRecorderRef.current = mediaRecorder; 
         setIsRecordingState(true); 

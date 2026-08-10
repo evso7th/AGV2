@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V34.2 — "Duration Integrity Refined".
- * #ЗАЧЕМ: Обеспечение записи длительности в WebM через правильный порядок остановки.
+ * @fileOverview Music Control Hook V34.3 — "Forced English Locale".
+ * #ЗАЧЕМ: Временное отключение проверки локали по запросу пользователя.
  */
 'use client';
 
@@ -194,18 +194,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const isAlbumModeRef = useRef(isAlbumMode);
   useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
 
+  /**
+   * #ЗАЧЕМ: Принудительный запуск на английском языке.
+   * #ЧТО: Локальное сохранение и проверка локали временно игнорируются.
+   */
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const saved = localStorage.getItem(LANG_KEY) as Language;
-    if (saved) {
-        setLanguage(saved);
-    } else {
-        const sysLang = navigator.language.toLowerCase();
-        const isCyrillic = sysLang.includes('ru') || sysLang.includes('uk') || sysLang.includes('be') || sysLang.includes('kk');
-        const detected: Language = isCyrillic ? 'ru' : 'en';
-        setLanguage(detected);
-        localStorage.setItem(LANG_KEY, detected);
-    }
+    setLanguage('en');
   }, []);
 
   const toggleLanguage = useCallback(() => {
