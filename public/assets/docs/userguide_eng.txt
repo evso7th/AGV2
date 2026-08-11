@@ -1,0 +1,68 @@
+﻿AuraGroove V 03.62 (Infinite Take Orchestra) – Complete User Guide
+Welcome to AuraGroove V3—an autonomous musical intelligence that simulates the dynamics of a live ensemble. This guide will help you understand the project's philosophy, customize the system to your liking, and master real-time music generation.
+1. Introduction: What is AuraGroove?
+AuraGroove is a deterministic algorithmic engine that creates unique background music in real time using fractal mathematics, Markov chains, and genetic algorithms.
+It is important to understand what AuraGroove is NOT:
+* ❌ It is not a neural network. There are no LLM models here (like in SUNO or Udio). No text prompts.
+* ❌ It is not a media player. The app does not store or play back pre-recorded audio files or MIDI tracks.
+* ✅ It is a mathematical generator. Every note, rhythm, and timbre is created "here and now" from the system's internal state. Virtual musicians play "live," governed by strict mathematical laws and genetic memory.
+2. First Steps: Personal Sound Setup
+Sound in AuraGroove is synthesized in real time via the Web Audio API, meaning it will always sound slightly different depending on your device, headphones, and whether you're using a wired or Bluetooth connection.
+What to do immediately after loading:
+1. Open the System Mixer and Equalizer.
+2. Tweak them to your liking and match your acoustic setup.
+3. Do this ONCE—your settings will be saved locally on your device.
+� Pro Tip: You can link System Mixer presets to specific genres. Then, when you switch genres in the Queue, your perfect mix will load automatically.
+3. Genres and "Brains"
+The engine specializes in creating unobtrusive background music for relaxation or focus. Each genre is managed by a separate module—a "Brain"—which dictates its own rules for harmony, rhythm, and playing techniques.
+* � Cafe Blues: An extensive library of techniques. Expressive melodies, rhythmic patterns, and the ability to improvise live.
+* � Soft Fusion: Deep textures, atmospheric layers, and complex harmonies.
+* � Zoology: Stylized after the orchestral sound of the 1960s and 70s, complemented by synthesizer pads in the style of Neuro-Space and Soft Fusion. Includes guitars, organs, pianos, violins, drums, and SFX bots.
+*  Neuro Space: Trance-ambient structures with pronounced rhythmic elements.
+* A Roots Reggae: Understands the laws of the "riddim" and creates a specific groove (currently in active development for niche variations).
+4. The Genetic System: From Seed to Masterpiece
+Every session is a unique organism that evolves from a "seed" into a full-fledged piece.
+1. Seed Generation: Upon startup, a unique 32-bit number (the Seed) is generated—the grain from which the session's musical universe will grow.
+2. Genetic Crossover: If "Heritage" is enabled, the Seed is crossed at the bitwise level with Seeds from successful past sessions (masterpieces). The new seed inherits successful proportions but remains 100% unique.
+3. Suite DNA: Based on the Seed, the "backbone" of the piece is built for 160 bars: a harmonic map (Markov chains), a tension map (Tension Map), and the selection of a Dynasty (a set of musical phrase axioms).
+4. Navigation and Axioms: The engine maps the DNA onto a timeline (Intro, Climax, Coda) and activates "Axioms"—digitized fragments of human performance that undergo fractal mutations (inversion, retrograde, jitter).
+5. Interface and Controls
+Top Navigation Bar (Left to Right)
+1. � Home: Return to the start screen.
+2. � Broadcast: A special lightweight mode for low-end devices.
+3. ⏺️ Record: Allows you to record a favorite snippet in .webm format.
+4. ❤️ Like: If you hear a great fragment, hit this button. The axiom of this fragment will be remembered in the cloud library and improve generation for all users.
+5.  Regenerate: If you don't like the music, press this. The system will create a new seed and a new mutation within the selected genre and mood.
+Building the Queue (CURRENT PATH)
+You can assemble your own route for a musical journey.
+* Select a Genre and Mood.
+* Click ADD TO ROUTE to lock your choice into the queue.
+* The queue can be saved to your device, loaded, shuffled, or have items added/removed.
+* ⚠️ Important: After making changes to the queue, press Pause, then click the "Queue Refresh" button (second from the left in the bottom toolbar) so the system applies the new settings. Then press Play.
+Bottom Toolbar (Left to Right)
+1. � Spectrum Analyzer: Frequency visualization.
+2.  Queue Refresh: Applies changes made in the CURRENT PATH.
+3. � Heritage Indicator: Toggle for using the genetic pool (masterpieces) for generation.
+4. � Voice Control (ARP): Adjust the limit of active voices (more details in "Technical Settings").
+5.  Theme: Toggle between dark and light interface themes.
+6. ⏳ Sleep Timer: Auto-stop playback (up to 30 minutes).
+6. Technical Recommendations and Limitations
+Voice Count and Sound Quality (ARP)
+Sound quality is directly proportional to the number of active voices. This is adjusted via the ARP: Voice Limit panel (the CPU chip icon).
+* 50 voices: Experimental minimum. Below this threshold, severe artifacts and 8-bit distortion are possible.
+* Desktop: Recommended 256–512 voices.
+* Mobile devices: Recommended 50–120 voices for stable operation without throttling.
+* Note: Going above 512 voices offers no audible advantage and just wastes CPU resources.
+⚠️ Mobile Device Warning
+Using AuraGroove on a smartphone that you actively use for daily tasks is highly discouraged due to mobile OS limitations:
+* Calls and Notifications: Any incoming call will immediately interrupt the audio (this is an OS limitation, not a bug).
+* Resource Competition: Opening other apps steals CPU time, which will cause audio glitches and artifacts.
+* Battery Saver: Aggressive battery-saving algorithms may "kill" background processes, causing severe distortion or stopping playback entirely.
+* Recommendation: Use a dedicated device (tablet, old phone, PC) or "Broadcast" mode for mobile.
+7. Privacy and Autonomy
+AuraGroove fully respects your privacy:
+* Zero Telemetry: We do not collect statistics, analytics, or behavioral data.
+* Zero Profiles: No user accounts or activity histories are created.
+* Local Storage: All session data and settings are stored in your browser's localStorage or IndexedDB. Nothing is sent to servers.
+* Offline by Default: The engine can works without the internet. A network connection is only required for first run and optional syncing of the genetic pool (the cloud library of masterpieces). After a brief online connection (about 5 minutes), the app caches the data and can run completely offline.
+Enjoy listening! Let mathematics create the perfect soundtrack for your day.
