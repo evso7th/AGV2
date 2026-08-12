@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Psybient Brain V63.2 — "Loop Logic & Resilience Fix".
- * #ЗАЧЕМ: ПЛАН №1412 — Исправление опечатки в цикле rippleLongNote и стабилизация потока.
+ * @fileOverview Psybient Brain V63.3 — "Interface Sync Active".
+ * #ЗАЧЕМ: ПЛАН №13.1 — Синхронизация категорий эффектов с эталонным SFX менеджером.
  */
 
 import type {
@@ -86,7 +85,7 @@ export class TranceBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
 
-        if (wasEmpty && this.cloudAxioms.length > 0 && this.useHeritage) {
+        if (wasEmpty && this.cloudAxioms.length > 0 && this.config?.useHeritage) {
             this.soloistBusyUntilBar = -1;
         }
     }
@@ -345,7 +344,8 @@ export class TranceBrain {
             }
             
             if (this.rng.chance(20 + tension * 10)) {
-                const cat = isLight ? 'voice' : 'dark';
+                // #ЗАЧЕМ: ПЛАН №13.1. Синхронизация категорий с реестром менеджера.
+                const cat = isLight ? 'voices_pixabay' : 'sfx_glitch';
                 events.push({ 
                     type: 'sfx', note: 60, time: 1.5 + this.rng.next() * 2.0, duration: 4.0, 
                     weight: 1.1, technique: 'hit', dynamics: 'mf', 
@@ -407,7 +407,7 @@ export class TranceBrain {
         const offset = (mosaicBar % 4) * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.05,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9,
             technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }

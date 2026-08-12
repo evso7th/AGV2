@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V113.0 — "Anti-Pedal Protocol Active".
- * #ЗАЧЕМ: ПЛАН №1267 — Ликвидация межтактовой статики (Уровень 4).
+ * @fileOverview Ambient Brain V113.1 — "Interface Sync Active".
+ * #ЗАЧЕМ: ПЛАН №13.1 — Синхронизация категорий эффектов с реестром менеджера.
  */
 
 import type {
@@ -374,12 +374,6 @@ export class AmbientBrain {
         // 5. Atmospheric Events
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
-        // #ЗАЧЕМ: ПЛАН №1335. Density Guard Injection.
-        events.forEach(e => {
-            if (!e.params) e.params = {};
-            e.params.tension = tension;
-        });
-
         return {
             events, tension, beautyScore: 0.9,
             trackName: this.currentTrackName,
@@ -428,7 +422,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
             technique: 'pulse', dynamics: 'p', phrasing: 'detached'
         }));
     }
@@ -441,7 +435,7 @@ export class AmbientBrain {
 
         return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.2, release: 4.5 }
         }));
@@ -554,9 +548,10 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        // 1. INFREQUENT SPARKLES (8% Probability, Categories: Dark/Electro)
+        // 1. INFREQUENT SPARKLES (8% Probability)
         if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
-            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'DARK' : 'ELECTRONIC';
+            // #ЗАЧЕМ: ПЛАН №13.1. Синхронизация категорий.
+            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'sfx_glitch' : 'sfx_common';
             events.push({
                 type: 'sparkle',
                 note: 60,
@@ -570,7 +565,7 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INFREQUENT SFX (7% Probability, Excluding Voice)
+        // 2. INFREQUENT SFX (7% Probability)
         if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 7) {
             events.push({
                 type: 'sfx',

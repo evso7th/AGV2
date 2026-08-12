@@ -1,11 +1,9 @@
-
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V13.0 — "Registry Integrity Vindicated".
- * #ЗАЧЕМ: Полная синхронизация с файловой системой на основе assets_registry.txt.
- * Все категории и пути на 100% соответствуют фактическим файлам в /public/assets/music.
- * Старые, неверные пути и пустые категории удалены. Добавлена категория 'perc'.
+ * @fileOverview Менеджер SFX V13.1 — "Interface Aliasing Map".
+ * #ЗАЧЕМ: ПЛАН №13.1 — Стыковка интерфейсов через карту алиасов.
+ * #ЧТО: Добавлена поддержка общих имен категорий (dark, voice) для совместимости с Brains.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     perc: [
@@ -299,8 +297,8 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/voices/pixabay/freesound_community-tin-man-respect-103228.mp3',
         '/assets/music/voices/pixabay/freesound_community-vietnam-robot-flashback-31835.mp3',
         '/assets/music/voices/pixabay/freesound_community-voz-robot-2-81439.mp3',
-        '/assets/music/voices/pixabay/freesound_community-you-have-been-selected-94638.mp3',
         '/assets/music/voices/pixabay/freesound_community-youarenumberone-105047.mp3',
+        '/assets/music/voices/pixabay/freesound_community-you-have-been-selected-94638.mp3',
         '/assets/music/voices/pixabay/kuzu420-talking-robot-243649.mp3',
         '/assets/music/voices/pixabay/phatphrogstudio-android-voice-access-granted-477825.mp3',
         '/assets/music/voices/pixabay/phatphrogstudio-android-voice-standby-477826.mp3',
@@ -425,12 +423,23 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
+        // #ЗАЧЕМ: ПЛАН №13.1. Карта алиасов для стыковки интерфейсов.
+        const aliases: Record<string, string> = {
+            'dark': 'sfx_glitch',
+            'voice': 'voices_pixabay',
+            'DARK': 'sfx_glitch',
+            'ELECTRONIC': 'sfx_common'
+        };
+
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum, cat) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
             for (const category of rules.categories) {
                 rand -= category.weight;
-                if (rand <= 0) return category.name;
+                if (rand <= 0) {
+                    const name = category.name;
+                    return aliases[name] || name;
+                }
             }
         }
         
