@@ -2,11 +2,13 @@
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур V12.6 — "Registry Integrity Reclaimed".
- * #ЗАЧЕМ: 100% восстановление путей согласно assets_registry.txt и sparks.txt.
+ * @fileOverview Плеер текстур V12.7 — "Absolute Registry Integrity".
+ * #ЗАЧЕМ: 100% синхронизация путей согласно assets_registry.txt и sparks.txt.
+ * #ЧТО: ПЛАН №13.2 — Интеграция категорий MELODIC и ORGANIC с поддержкой всех ассетов.
  */
 const SPARKLE_SAMPLES = {
     MELODIC: [
+        // --- Core Sparkles ---
         '/assets/music/sparkles/180181__ecfike__slow-motion-music_(1).ogg',
         '/assets/music/sparkles/330392__talan_pl__deepspacepad_(1).ogg',
         '/assets/music/sparkles/330392__talan_pl__deepspacepad_(2).ogg',
@@ -46,9 +48,61 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/555547__waveplaysfx__synth-granular-untitled-atmos-sequence-pad-darkish.ogg',
         '/assets/music/sparkles/620113__waveplaysfx__synth-atmos-blue-pad-phrase.ogg',
         '/assets/music/sparkles/700901__laffik__smooth-pad-sytrus-02_(1).ogg',
-        '/assets/music/sparkles/812623__cvltiv8r__illusion-spell-synth-pad-burst_(1)_(1).ogg'
+        '/assets/music/sparkles/812623__cvltiv8r__illusion-spell-synth-pad-burst_(1)_(1).ogg',
+        // --- Droplets Melodic ---
+        '/assets/music/droplets/EPstein.ogg',
+        '/assets/music/droplets/Confusion.ogg',
+        '/assets/music/droplets/sweepingbells.ogg',
+        '/assets/music/droplets/icepad.ogg',
+        '/assets/music/droplets/belldom.ogg',
+        '/assets/music/droplets/GlassBell.ogg',
+        '/assets/music/droplets/Koto1.ogg',
+        '/assets/music/droplets/vibes_a.ogg',
+        '/assets/music/droplets/merimbo.ogg',
+        '/assets/music/droplets/BeepFreak.ogg',
+        '/assets/music/droplets/electro/Tubator.ogg',
+        '/assets/music/droplets/electro/SalvingPad.ogg',
+        '/assets/music/droplets/electro/Coil.ogg',
+        '/assets/music/droplets/electro/Plucker_(1).ogg',
+        '/assets/music/droplets/electro/NoiseFxB06.ogg',
+        '/assets/music/droplets/electro/Plucker.ogg',
+        '/assets/music/droplets/electro/CloseA.ogg',
+        '/assets/music/droplets/electro/E_Rhythm.ogg',
+        '/assets/music/droplets/electro/HousedBass7.ogg',
+        '/assets/music/droplets/electro/Brass_Pad.ogg',
+        '/assets/music/droplets/electro/Slow_Motion.ogg',
+        '/assets/music/droplets/electro/WhooshB.ogg',
+        '/assets/music/droplets/electro/New_Rave.ogg',
+        '/assets/music/droplets/electro/Metallix.ogg',
+        '/assets/music/droplets/electro/Deep_Sea.ogg',
+        '/assets/music/droplets/electro/Raw_Oscillator.ogg',
+        '/assets/music/droplets/electro/Flanged_Bells.ogg',
+        '/assets/music/droplets/electro/Starter.ogg',
+        '/assets/music/droplets/electro/ElectroShock.ogg',
+        '/assets/music/droplets/electro/Electro_Train.ogg',
+        '/assets/music/droplets/electro/MelancholicPad.ogg',
+        '/assets/music/droplets/electro/African_Night.ogg',
+        '/assets/music/droplets/electro/Barebelli.ogg',
+        '/assets/music/droplets/electro/Electricity.ogg',
+        '/assets/music/droplets/electro/Triologic.ogg',
+        '/assets/music/droplets/electro/Repeated.ogg',
+        '/assets/music/droplets/electro/Solina.ogg',
+        '/assets/music/droplets/electro/Smoking.ogg',
+        '/assets/music/droplets/electro/Collision.ogg',
+        '/assets/music/droplets/electro/Riot.ogg',
+        '/assets/music/droplets/electro/Tekki.ogg',
+        '/assets/music/droplets/light/Bpm174_E_MixedFeelings_Pad.ogg',
+        '/assets/music/droplets/light/Bpm174_E_China_Pad.ogg',
+        '/assets/music/droplets/light/Bpm174_F_Docfly_Synth.ogg',
+        '/assets/music/droplets/light/Bpm174_E_Vintage_Pad.ogg',
+        '/assets/music/droplets/light/Bpm174_E_StreetArp_Synth.ogg',
+        '/assets/music/droplets/light/Bpm174_E_BackgroundNotes_Pad.ogg',
+        '/assets/music/droplets/light/Bpm174_F__TweebHarder_Pad.ogg',
+        '/assets/music/droplets/light/Bpm174_E_HappyArp_Synth.ogg',
+        '/assets/music/droplets/light/Bpm174_E_Notes_Pad.ogg'
     ],
     ORGANIC: [
+        // --- Core Organic Sparkles ---
         '/assets/music/sparkles/231573__keweldog__treesconversion_(1).ogg',
         '/assets/music/sparkles/256441__adeathy__ambience_04_white_(1).ogg',
         '/assets/music/sparkles/256442__adeathy__ambience_03_lightgrey_(1).ogg',
@@ -57,6 +111,7 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/294463__deleted_user_4798915__sfx-robotic-take-me-to-your-leader_(1)_(1).ogg',
         '/assets/music/sparkles/384844__waveplaysfx__ambient-bass-deep-dark-phasing-bassy-swell.ogg',
         '/assets/music/sparkles/388950__waveplaysfx__ambient-bass-deep-soft-bassy-hit-alternate.ogg',
+        '/assets/music/sparkles/394268__waveplaysfx__sfx-sci-fi-space-sound-effect.ogg',
         '/assets/music/sparkles/396351__waveplaysfx__ambient-bass-bassy-liquidy-phasing-sfx.ogg',
         '/assets/music/sparkles/396943__waveplaysfx__ambient-bass-bassy-liquidy-phasing-sfx-3.ogg',
         '/assets/music/sparkles/413583__sergeyionov__cr-deep-glitch-percussion_(1).ogg',
@@ -114,7 +169,55 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/849412__cvltiv8r__magical-impact-with-trippy-trail-fx_(1)_(1).ogg',
         '/assets/music/sparkles/849523__cvltiv8r__alien-craft-ambience-fx_(1).ogg',
         '/assets/music/sparkles/857848__cvltiv8r__space-craft-wind-leaving-atmosphere-fx_(1).ogg',
-        '/assets/music/sparkles/861358__qubodup__vespa-driveby-tunnel_(1).ogg'
+        '/assets/music/sparkles/861358__qubodup__vespa-driveby-tunnel_(1).ogg',
+        // --- Droplets Organic ---
+        '/assets/music/droplets/Freakystones.ogg',
+        '/assets/music/droplets/Sleep.ogg',
+        '/assets/music/droplets/BirdFX.ogg',
+        '/assets/music/droplets/BladeWalker.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-001.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-002.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-003.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-004.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-005.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-006.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-007.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-008.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-009.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-010.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-011.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-012.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-013.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-014.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-015.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-016.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-017.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-018.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-019.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-020.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-021.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-022.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-023.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-024.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-025.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-026.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-027.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-028.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-029.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-030.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-031.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-032.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-033.ogg',
+        '/assets/music/droplets/ambient_common/Bluezone-Dbox-atm-034.ogg',
+        '/assets/music/droplets/dark/Fearsome.ogg',
+        '/assets/music/droplets/dark/Grounding.ogg',
+        '/assets/music/droplets/dark/Gulls.ogg',
+        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg',
+        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
+        '/assets/music/droplets/dark/683627__dneproman__dark-spell-1.ogg',
+        '/assets/music/droplets/dark/683629__dneproman__dark-whispers.ogg',
+        '/assets/music/droplets/dark/683631__dneproman__multiverse-gate.ogg',
+        '/assets/music/droplets/dark/683636__dneproman__urse-of-darkness.ogg'
     ]
 };
 
@@ -182,7 +285,12 @@ export class SparklePlayer {
 
         let samplePool: AudioBuffer[] = [];
         
-        if (genre === 'ambient') {
+        // #ЗАЧЕМ: ПЛАН №13.2. Корректное использование входящей категории.
+        if (category === 'MELODIC') {
+            samplePool = this.melodicBuffers;
+        } else if (category === 'ORGANIC') {
+            samplePool = this.organicBuffers;
+        } else if (genre === 'ambient') {
             samplePool = Math.random() < 0.8 ? this.organicBuffers : this.melodicBuffers;
         } else {
             samplePool = Math.random() < 0.7 ? this.melodicBuffers : this.organicBuffers;

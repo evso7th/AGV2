@@ -1,4 +1,16 @@
+
 # Журнал Проекта "AuraGroove"
+
+---
+
+### ЗАЧЕМ: ПЛАН №13.2 — Sparkle Registry Integrity (V1.7.0)
+**СОБЫТИЕ**: Глубокий аудит и синхронизация плеера текстур с физическим реестром ассетов.
+**СТАТУС**: Завершено.
+**ИТОГ**:
+1. **Registry Restoration**: В `SparklePlayer` добавлено более 120 проверенных путей к сэмплам из папок `sparkles` и `droplets`, включая полную коллекцию Microfreak и Dbox-atm.
+2. **Path Verification**: Все суффиксы `_(1)`, `_(2)` и регистры папок приведены в 100% соответствие с `assets_registry.txt`.
+3. **Logic Synchronization**: В `AmbientBrain` исправлено именование категорий на `MELODIC` и `ORGANIC`. 
+4. **Usage Fix**: Метод `playRandomSparkle` теперь корректно использует параметр `category`, обеспечивая точный выбор тембра по запросу мозга.
 
 ---
 

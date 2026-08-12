@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain V113.1 — "Interface Sync Active".
- * #ЗАЧЕМ: ПЛАН №13.1 — Синхронизация категорий эффектов с реестром менеджера.
+ * @fileOverview Ambient Brain V113.2 — "Sparkle Protocol Alignment".
+ * #ЗАЧЕМ: ПЛАН №13.2 — Синхронизация имен категорий для SparklePlayer.
  */
 
 import type {
@@ -422,7 +423,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
             technique: 'pulse', dynamics: 'p', phrasing: 'detached'
         }));
     }
@@ -435,7 +436,7 @@ export class AmbientBrain {
 
         return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.2, release: 4.5 }
         }));
@@ -487,7 +488,7 @@ export class AmbientBrain {
                 note: this.constrainAccompanimentOctave(rootNote + 12),
                 time: 0,
                 duration: 4.0,
-                weight: 0.85, 
+                weight: 0.35, 
                 technique: 'hit', 
                 dynamics: 'p',
                 phrasing: 'staccato',
@@ -550,8 +551,8 @@ export class AmbientBrain {
         
         // 1. INFREQUENT SPARKLES (8% Probability)
         if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
-            // #ЗАЧЕМ: ПЛАН №13.1. Синхронизация категорий.
-            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'sfx_glitch' : 'sfx_common';
+            // #ЗАЧЕМ: ПЛАН №13.2. Синхронизация имен категорий с SparklePlayer.
+            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle',
                 note: 60,
