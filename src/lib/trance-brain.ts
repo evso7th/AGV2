@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V63.0 — "Synthesis Resurgence & Silence Shield".
- * #ЗАЧЕМ: Ликвидация тишины после интро и внедрение сложных филлов.
+ * @fileOverview Psybient Brain V63.1 — "Ensemble Integrity Fix".
+ * #ЗАЧЕМ: ПЛАН №1410 — Исправление мэппинга роли harmony и активация всех слоев.
  */
 
 import type {
@@ -122,7 +122,7 @@ export class TranceBrain {
 
         if (filteredPool.length > 0) {
             let basePool = filteredPool.filter(ax => ax.role === 'melody');
-            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
+            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('harmony'));
 
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
@@ -130,7 +130,7 @@ export class TranceBrain {
                     this.sessionAnchorId = normalizeStr(firstChoice.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
                     filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('harmony'));
                 }
 
                 const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
@@ -219,7 +219,6 @@ export class TranceBrain {
                 events.push(...this.renderNeuroDrums(epoch, tension));
             }
             
-            // #ЗАЧЕМ: Настоящие пробежки в конце фраз.
             if (epoch % 4 === 3 || tension > 0.85) {
                 events.push(...this.renderComplexNeuroFill(epoch, tension));
             }
@@ -240,7 +239,6 @@ export class TranceBrain {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale, mosaicBar);
             }
             
-            // #ЗАЧЕМ: SHIELD AGAINST SILENCE. Генерируем арпеджио если аксиома молчит.
             if (melodyEvents.length === 0 || this.rng.chance(30)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
@@ -255,6 +253,7 @@ export class TranceBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = null;
             if (role.includes('piano')) target = 'pianoAccompaniment';
+            else if (role.includes('harmony')) target = 'harmony';
             else if (role.includes('accomp')) target = 'accompaniment';
             
             if (target && hints[target] && !usedTargetLayers.has(target)) {
@@ -462,7 +461,7 @@ export class TranceBrain {
         const baseDur = currentTension > 0.8 ? 0.4 : 1.2;
         const numChunks = Math.ceil(e.duration / baseDur); 
         const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < numChunks; i++) {
+        for (let i = 0; i < i < numChunks; i++) {
             rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.95, weight: e.weight * (0.9 + this.rng.next() * 0.2), params: { ...e.params, release: 2.0 } });
         }
         return rippled;

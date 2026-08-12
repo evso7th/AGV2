@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Тёмный Транс (v1.2).
- * #ОБНОВЛЕНО (ПЛАН №906): Сокращено INTRO до 3% для активации TranceBrain.
+ * #ЗАЧЕМ: Тёмный Транс (v1.3 — Ensemble Restoration).
+ * #ЧТО: Активация всех музыкальных слоев в секциях BUILD и PEAK.
  */
 export const DarkTranceBlueprint: MusicBlueprint = {
     id: 'dark_trance',
@@ -21,7 +21,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Initial Spark', duration: { percent: 3 }, // ~4 bars
+                id: 'INTRO', name: 'Initial Spark', duration: { percent: 3 }, 
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
@@ -35,7 +35,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'BUILD', name: 'The Chase', duration: { percent: 37 },
-                layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true },
+                layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
                 },
@@ -47,7 +47,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'PEAK', name: 'Red Line', duration: { percent: 40 },
-                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true },
+                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
                 },

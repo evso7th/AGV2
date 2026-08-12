@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Меланхоличный Транс (v1.2).
- * #ОБНОВЛЕНО (ПЛАН №906): Сокращено INTRO до 4 тактов для мгновенного старта TranceBrain.
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.3 — Ensemble Restoration).
+ * #ЧТО: Активация всех музыкальных слоев в секциях BUILD и PEAK.
  */
 export const MelancholicTranceBlueprint: MusicBlueprint = {
     id: 'melancholic_trance',
@@ -21,13 +21,10 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Ignition', duration: { percent: 3 }, // ~4 bars
+                id: 'INTRO', name: 'Ignition', duration: { percent: 3 }, 
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true },
                 instrumentation: { 
-                    accompaniment: { 
-                        strategy: 'weighted', 
-                        v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }]
-                    },
+                    accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
                 },
                 instrumentRules: { 
@@ -38,7 +35,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'BUILD', name: 'Journey', duration: { percent: 32 },
-                layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true },
+                layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
@@ -51,7 +48,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'PEAK', name: 'Reflection', duration: { percent: 50 },
-                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true },
+                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] }
