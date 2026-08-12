@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Меланхоличный Транс (v1.3 — Ensemble Restoration).
- * #ЧТО: Активация всех музыкальных слоев в секциях BUILD и PEAK.
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.5 — Full Ensemble Restoration).
+ * #ЧТО: ПЛАН №1415. Активация всех слоев (мелодия, гармония, пианино) во всех секциях.
  */
 export const MelancholicTranceBlueprint: MusicBlueprint = {
     id: 'melancholic_trance',
@@ -15,14 +14,14 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
         bpm: { base: 74, range: [70, 78], modifier: 1.0 }, 
         timeSignature: { numerator: 4, denominator: 4 },
         harmonicJourney: [],
-        tensionProfile: { type: 'arc', peakPosition: 0.7, curve: (p, pp) => p < pp ? Math.pow(p / pp, 1.2) : 1 - ((p - pp) / (1 - pp)) }
+        tensionProfile: { type: 'arc', peakPosition: 0.7, curve: (p, pp) => p < pp ? p / pp : 1 - ((p - pp) / (1 - pp)) }
     },
     structure: {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Ignition', duration: { percent: 3 }, 
-                layers: { accompaniment: true, sfx: true, drums: true, bass: true },
+                id: 'INTRO', name: 'Ignition', duration: { percent: 10 }, 
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
@@ -34,7 +33,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'Journey', duration: { percent: 32 },
+                id: 'BUILD', name: 'Journey', duration: { percent: 25 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
@@ -61,7 +60,7 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Fade to Silence', duration: { percent: 15 },
-                layers: { accompaniment: true, sfx: true },
+                layers: { accompaniment: true, sfx: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true, drums: true },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }

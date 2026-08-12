@@ -1,9 +1,8 @@
-
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Тёмный Транс (v1.3 — Ensemble Restoration).
- * #ЧТО: Активация всех музыкальных слоев в секциях BUILD и PEAK.
+ * #ЗАЧЕМ: Тёмный Транс (v1.5 — Full Ensemble Restoration).
+ * #ЧТО: ПЛАН №1415. Активация всех слоев ансамбля.
  */
 export const DarkTranceBlueprint: MusicBlueprint = {
     id: 'dark_trance',
@@ -21,8 +20,8 @@ export const DarkTranceBlueprint: MusicBlueprint = {
         totalDuration: { preferredBars: 128 },
         parts: [
             {
-                id: 'INTRO', name: 'Initial Spark', duration: { percent: 3 }, 
-                layers: { accompaniment: true, sfx: true, drums: true, bass: true },
+                id: 'INTRO', name: 'Initial Spark', duration: { percent: 10 }, 
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
@@ -34,7 +33,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 outroFill: null,
             },
             {
-                id: 'BUILD', name: 'The Chase', duration: { percent: 37 },
+                id: 'BUILD', name: 'The Chase', duration: { percent: 30 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, melody: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
@@ -59,7 +58,7 @@ export const DarkTranceBlueprint: MusicBlueprint = {
             },
             {
                 id: 'OUTRO', name: 'Cool Down', duration: { percent: 20 },
-                layers: { accompaniment: true, sfx: true, drums: true },
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
