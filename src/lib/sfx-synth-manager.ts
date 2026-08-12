@@ -2,108 +2,187 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V12.6 — "Registry Integrity Reclaimed".
- * #ЗАЧЕМ: Полное восстановление путей согласно assets_registry.txt и assets_sfx.txt.
+ * @fileOverview Менеджер SFX V13.0 — "Registry Integrity Vindicated".
+ * #ЗАЧЕМ: Полная синхронизация с файловой системой на основе assets_registry.txt.
+ * Все категории и пути на 100% соответствуют фактическим файлам в /public/assets/music.
+ * Старые, неверные пути и пустые категории удалены. Добавлена категория 'perc'.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
-    dark: [
-        '/assets/music/sfx/706519__alesiadavina__halloween-sound-effect-paranormal-3-vol-003.ogg',
-        '/assets/music/sfx/706521__alesiadavina__creepy-sound-effect-paranormal-5-vol-003.ogg',
-        '/assets/music/sfx/722724__alesiadavina__horror-sound-monster-breath.ogg',
-        '/assets/music/sfx/Agony_Labyrinth.ogg',
-        '/assets/music/sfx/Cave_Breath.ogg',
-        '/assets/music/sfx/Dark_spell_-_1.ogg',
-        '/assets/music/sparkles/677359__saha213131__horrorcinematicdarkhorrorroomtone20_(1).ogg',
-        '/assets/music/droplets/dark/683627__dneproman__dark-spell-1.ogg',
-        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
-        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg'
+    perc: [
+        '/assets/music/perc/110359__vinjatovix__loop-de-percusion-echo-con-la-tapa-del-jabon.ogg',
+        '/assets/music/perc/184082__noisecollector__canpop14percussion.ogg',
+        '/assets/music/perc/187536__waveplaysfx__perc-metallic-percussion.ogg',
+        '/assets/music/perc/195585__waveplaysfx__perc-dark-rave-fx-growl.ogg',
+        '/assets/music/perc/196758__waveplaysfx__perc-custom-tom.ogg',
+        '/assets/music/perc/197149__waveplaysfx__perc-weird-ambient-sound.ogg',
+        '/assets/music/perc/197468__waveplaysfx__perc-metallic-percussion-2.ogg',
+        '/assets/music/perc/201787__waveplaysfx__perc-hi-end-perc.ogg',
+        '/assets/music/perc/221363__waveplaysfx__perc-tom-click.ogg',
+        '/assets/music/perc/221364__waveplaysfx__perc-tom-kick.ogg',
+        '/assets/music/perc/221365__waveplaysfx__perc-perc-thinger.ogg',
+        '/assets/music/perc/222055__waveplaysfx__perc-perc-1.ogg',
+        '/assets/music/perc/222060__waveplaysfx__perc-another-perc.ogg',
+        '/assets/music/perc/222062__waveplaysfx__perc-metallic-robot-perc.ogg',
+        '/assets/music/perc/22783__franciscopadilla__80-mute-triangle.ogg',
+        '/assets/music/perc/233535__waveplaysfx__perc-screech-thinger.ogg',
+        '/assets/music/perc/233539__waveplaysfx__perc-click.ogg',
+        '/assets/music/perc/235415__waveplaysfx__drumloop-120-bpm-edm-perc-loop-003.ogg',
+        '/assets/music/perc/250536__waveplaysfx__perc-perk-3__1_.ogg',
+        '/assets/music/perc/250536__waveplaysfx__perc-perk-3.ogg',
+        '/assets/music/perc/352677__waveplaysfx__perc-metallic-bell-like-hit-sfx.ogg',
+        '/assets/music/perc/376038__waveplaysfx__perc-short-metallic-like-sound-click.ogg',
+        '/assets/music/perc/381826__waveplaysfx__drums-noisy-hat-percussion.ogg',
+        '/assets/music/perc/399934__waveplaysfx__perc-short-clicksnap-perc.ogg',
+        '/assets/music/perc/401937__waveplaysfx__drumloop-120-bpm-edm-tomperc-loop-030.ogg',
+        '/assets/music/perc/42729__decembered__iron_boom.ogg',
+        '/assets/music/perc/442349__toddcircle__clunky-tap.ogg',
+        '/assets/music/perc/492027__crinkem__blow-dart.ogg',
+        '/assets/music/perc/523687__jobot__suction-pop.ogg',
+        '/assets/music/perc/759579__mosounds__pluck-d-bass-perk.ogg',
+        '/assets/music/perc/94691__jconti__apple-crunch.ogg'
     ],
-    laser: [
-        '/assets/music/sfx/laser/01_SFX.ogg',
-        '/assets/music/sfx/laser/34_SFX.ogg',
-        '/assets/music/sfx/laser/41_SFX.ogg',
-        '/assets/music/sfx/laser/825552__akelley6__computer-error-beep.ogg',
-        '/assets/music/sfx/laser/825554__akelley6__doggy-synth.ogg',
-        '/assets/music/sfx/laser/825582__akelley6__lazer-blast.ogg',
-        '/assets/music/sfx/laser/Robot_Confused.ogg',
-        '/assets/music/sfx/laser/645999__johncanyon__moan3_mono.ogg'
+    sfx_other: [
+        '/assets/music/SFX/104354__rutgermuller__metal-pipe-falling-on-concrete-in-basement-2.ogg',
+        '/assets/music/SFX/249496__jasvanroe__metal-hooks-on-metal.ogg',
+        '/assets/music/SFX/265073__altemark__stk.ogg',
+        '/assets/music/SFX/268606__breo2012__hollow-bell.ogg',
+        '/assets/music/SFX/269097__breo2012__insane.ogg',
+        '/assets/music/SFX/384686__waveplaysfx__sfx-grindy-pulse-fx.ogg',
+        '/assets/music/SFX/384695__waveplaysfx__sfx-atmospheric-ambient-fade.ogg',
+        '/assets/music/SFX/384843__waveplaysfx__bass-classic-duueerrr-bass-sound.ogg',
+        '/assets/music/SFX/399933__waveplaysfx__media-short-generic-sound-short-generic.ogg',
+        '/assets/music/SFX/402692__waveplaysfx__sfx-short-bassy-industrial-hit.ogg',
+        '/assets/music/SFX/417401__waveplaysfx__drums-techno-clapsnare.ogg',
+        '/assets/music/SFX/41850__lancrey__sewing_machine.ogg',
+        '/assets/music/SFX/424444__stone__laughingfreqmfxbassf0160bpm.ogg',
+        '/assets/music/SFX/431518__djfroyd__electronic-bass-drum.ogg',
+        '/assets/music/SFX/507757__waveplaysfx__sfx-hit-edm-hit-000.ogg',
+        '/assets/music/SFX/50849__m-red__wavebasesingle.ogg',
+        '/assets/music/SFX/511552__waveplaysfx__loop-bassy-loop-34-time.ogg',
+        '/assets/music/SFX/511617__waveplaysfx__vocal-jabba-the-hutt-laugh.ogg',
+        '/assets/music/SFX/518145__waveplaysfx__media-deep-bass-swell-appgame-sfx.ogg',
+        '/assets/music/SFX/518148__waveplaysfx__media-simple-happy-beep-appgame-sfx-uplifting.ogg',
+        '/assets/music/SFX/518748__waveplaysfx__sfx-short-warb-3.ogg',
+        '/assets/music/SFX/546170__waveplaysfx__eerie-music-box-hits.ogg',
+        '/assets/music/SFX/553744__waveplaysfx__sfx-hit-edm-hit-003.ogg',
+        '/assets/music/SFX/577680__mistakeless__reverb-piano-chord-2.ogg',
+        '/assets/music/SFX/595789__infamouslazure__magic_burst4.ogg',
+        '/assets/music/SFX/632786__jorickhoofd__matchbox-closes.wav',
+        '/assets/music/SFX/645985__doubledog__refrigerator-buzz-20220714.ogg',
+        '/assets/music/SFX/662342__fmaudio__interface-erase-8.ogg'
     ],
-    voice: [
-        '/assets/music/sfx/voice/137943__ionicsmusic__robot-voice-no-data.ogg',
-        '/assets/music/sfx/voice/187919__vasotelvi__deletion-completed.ogg.1296434.wav',
-        '/assets/music/sfx/voice/196890__ionicsmusic__race-robot-finish-line.ogg',
-        '/assets/music/sfx/voice/196890__ionicsmusic__race-robot-finish-line__1_.ogg',
-        '/assets/music/sfx/voice/219567__qubodup__robot-shutdown-sequence-initiated.ogg',
-        '/assets/music/sfx/voice/220372__thehiddenvoice__robotic-voice.ogg',
-        '/assets/music/sfx/voice/234940__esseffe1__bot1.ogg',
-        '/assets/music/sfx/voice/273060__carmsie__helter-skelter.ogg',
-        '/assets/music/sfx/voice/277403__landlucky__game-over-sfx-and-voice.ogg',
-        '/assets/music/sfx/voice/287974__deleted_user_4798915__sfx-robotic-transmission.ogg',
-        '/assets/music/sfx/voice/316288__littlerobotsoundfactory__robot2_05.ogg',
-        '/assets/music/sfx/voice/332848__carmsie__never-let-you-go.ogg',
-        '/assets/music/sfx/voice/332848__carmsie__never-let-you-go__1_.ogg',
-        '/assets/music/sfx/voice/339624__carmsie__know-more.ogg',
-        '/assets/music/sfx/voice/339625__carmsie__just-a-dream.ogg',
-        '/assets/music/sfx/voice/339627__carmsie__disarm-yourself.ogg',
-        '/assets/music/sfx/voice/339628__carmsie__you-cannot-harm-me.ogg',
-        '/assets/music/sfx/voice/339629__carmsie__tin-man-respect.ogg',
-        '/assets/music/sfx/voice/339630__carmsie__theft.ogg',
-        '/assets/music/sfx/voice/339631__carmsie__robot-statements.ogg',
-        '/assets/music/sfx/voice/339631__carmsie__robot-statements__1_.ogg',
-        '/assets/music/sfx/voice/339633__carmsie__meat-with-feelings.ogg',
-        '/assets/music/sfx/voice/342258__mooncubedesign__robot-voice-drop-the-bass.ogg',
-        '/assets/music/sfx/voice/342944__carmsie__evil-is-a-master-of-disguise.ogg',
-        '/assets/music/sfx/voice/342945__carmsie__forever.ogg',
-        '/assets/music/sfx/voice/343094__carmsie__think-about-it.ogg',
-        '/assets/music/sfx/voice/343921__reitanna__robot-sneeze.ogg',
-        '/assets/music/sfx/voice/349317__newagesoup__all-your-base-are-belong-to-us_robot_voice_zarvox.ogg',
-        '/assets/music/sfx/voice/376196__euphrosyyn__futuristic-robotic-voice-sentences.ogg',
-        '/assets/music/sfx/voice/425218__novi__robot-taking-damage.ogg',
-        '/assets/music/sfx/voice/486699__nicknamelarry__scaryvoice-saying-hello-world.ogg',
-        '/assets/music/sfx/voice/497616__vectorspace__robotic-transformer-2.ogg',
-        '/assets/music/sfx/voice/514696__metrostock99__robot-what-is-happening-to-me.ogg',
-        '/assets/music/sfx/voice/518859__sonicwarriorsounds__robotic-countdown-10-to-0.ogg',
-        '/assets/music/sfx/voice/564937__anzbot__initiating-shutdown.ogg',
-        '/assets/music/sfx/voice/674306__theendofacycle__robot-talk-sfx.ogg',
-        '/assets/music/sfx/voice/699850__8bitmyketison__cyber-robot-voice__1_.ogg',
-        '/assets/music/sfx/voice/717306__iceofdoom__the-upload-finally-finished.ogg',
-        '/assets/music/sfx/voice/747684__jeddalo__mighty-morphin-power-rangers-megazord-activated-computer-voice.ogg',
-        '/assets/music/sfx/voice/759879__chungus43a__the-moonbase-doctor-who-cyberman-voice.ogg',
-        '/assets/music/sfx/voice/771944__harrisonlace__robotic-deja-vu-vox.ogg',
-        '/assets/music/sfx/voice/776420__chungus43a__doctor-who-cybus-cyberman-voice-recreated.ogg',
-        '/assets/music/sfx/voice/783026__soundcannon42__robot-voice-analyze-neurons-for-musical-creativity.ogg',
-        '/assets/music/sfx/voice/785805__alien_i_trust__sample-pack-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown.ogg',
-        '/assets/music/sfx/voice/789675__alien_i_trust__synth-shot-1-by-alien-i-trust.ogg',
-        '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
-        '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg',
-        '/assets/music/sfx/voice/Hello_who_would_you_.ogg',
-        '/assets/music/sfx/voice/I_m_afraid_of_nothin.ogg',
-        '/assets/music/sfx/voice/Imagination_rules_th.ogg',
-        '/assets/music/sfx/voice/It_s_better_to_have_.ogg',
-        '/assets/music/sfx/voice/Launch_all_airships_.ogg',
-        '/assets/music/sfx/voice/Money_often_costs_to.ogg',
-        '/assets/music/sfx/voice/Never_look_back.ogg',
-        '/assets/music/sfx/voice/Nothing_is_certain_b.ogg',
-        '/assets/music/sfx/voice/Sitting_in_a_sandpit.ogg',
-        '/assets/music/sfx/voice/Time_is_the_great_he.ogg',
-        '/assets/music/sfx/voice/You_are_pulling_my_l.ogg',
-        '/assets/music/sfx/voice/life_is_good_be_happ.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-chirping-near-the-river-2473.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-in-the-jungle-2434.ogg',
-        '/assets/music/sfx/voice/mixkit-fast-small-sweep-transition-166.ogg',
-        '/assets/music/sfx/voice/mixkit-morning-birds-2472.ogg',
-        '/assets/music/sfx/voice/mixkit-sci-fi-robot-speaking-289.ogg',
-        '/assets/music/sfx/voice/voice_game-over.ogg',
-        '/assets/music/sfx/voice/wazzap_bro_relax.ogg',
-        '/assets/music/sfx/voice/you_are_just_another.ogg',
-        '/assets/music/voices/OGA_CC0/AlertHeavyCasulaties_(1).ogg',
-        '/assets/music/voices/OGA_CC0/AllyDown_(1).ogg',
-        '/assets/music/voices/OGA_CC0/BackupRequested_(1).ogg',
-        '/assets/music/voices/OGA_CC0/GetOverHere_(1).ogg',
-        '/assets/music/voices/OGA_CC0/Initializing_(1).ogg',
-        '/assets/music/voices/OGA_CC0/MissionObjectiveSet_(1).ogg',
-        '/assets/music/voices/OGA_CC0/TargetAcquired_(1).ogg',
-        '/assets/music/voices/pixabay/phatphrogstudio-android-voice-access-granted-477825.mp3'
+    sfx_glitch: [
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864183__mirmaximus__sfx_damage_glitch_1_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864184__mirmaximus__sfx_damage_glitch_2_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864185__mirmaximus__sfx_damage_glitch_3_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864186__mirmaximus__sfx_outage_hit_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864187__mirmaximus__sfx_pc_crash_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864188__mirmaximus__sfx_computer_froze_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864189__mirmaximus__sfx_energyglitch_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864196__mirmaximus__sfx_speaker_inter2_(1).ogg',
+        '/assets/music/SFX/46054__mirmaximus__glitch-city/864197__mirmaximus__sfx_speaker_interference_(1).ogg'
+    ],
+    sfx_common: [
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_air_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_air_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_air_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_door_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_door_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_door_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_door_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_door_05_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wet_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wet_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wet_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_05_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_06_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_hit_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_hit_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_hit_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_items_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_items_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_lock_open_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_construction_site_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_highway_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_water_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_water_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_water_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_05_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_06_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_hit_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_metal_hit_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_05_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_06_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_07_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_08_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_09_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_10_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_11_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_12_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_13_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_14_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_15_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_16_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_17_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_18_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_19_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_20_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_21_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_22_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_23_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_24_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_25_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_26_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_27_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_28_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_29_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_30_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_31_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_32_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_33_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_34_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_35_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_36_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_37_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_stones_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_stones_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_stones_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_switch_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_switch_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_thunder_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_03_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_04_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_hit_01_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_hit_02_(1)_(1).ogg',
+        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_hit_03_(1)_(1).ogg'
     ],
     tube: [
         '/assets/music/tube/102540__sandyrb__tube-pop.ogg',
@@ -119,6 +198,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/tube/421171__akustika__pvc-tube-01.ogg',
         '/assets/music/tube/426431__dersinnsspace__tube-hit-04-high.ogg',
         '/assets/music/tube/426432__dersinnsspace__tube-hit-03-mid.ogg',
+        '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing__1_.ogg',
         '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing.ogg',
         '/assets/music/tube/486220__salvadormiranda__pvc-tubehit-1.ogg',
         '/assets/music/tube/486221__salvadormiranda__pvc-tube-hit-2.ogg',
@@ -129,40 +209,109 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/tube/682838__iainmccurdy__cardboard-tube-pop.ogg',
         '/assets/music/tube/702819__silverillusionist__vacuum-tube-louder-note-d1.ogg',
         '/assets/music/tube/707925__nikasound__glass-tube-popping.ogg',
+        '/assets/music/tube/768053__hewnmarrow__tud_tubeunitdrone_-034v03.wav',
         '/assets/music/tube/812799__music_is_wiggly_air__pop-from-tube-shaped-like-a-candy-cane.ogg',
         '/assets/music/tube/813361__designerschoice__toonpop-blue-snowball-microphone-cu_test-tube-top_nicholas-judy_tdc.ogg'
     ],
-    glitch: [
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864183__mirmaximus__sfx_damage_glitch_1_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864184__mirmaximus__sfx_damage_glitch_2_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864185__mirmaximus__sfx_damage_glitch_3_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864186__mirmaximus__sfx_outage_hit_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864187__mirmaximus__sfx_pc_crash_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864188__mirmaximus__sfx_computer_froze_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864189__mirmaximus__sfx_energyglitch_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864196__mirmaximus__sfx_speaker_inter2_(1).ogg',
-        '/assets/music/SFX/46054__mirmaximus__glitch-city/864197__mirmaximus__sfx_speaker_interference_(1).ogg'
+    voices_oga: [
+        '/assets/music/voices/OGA_CC0/AlertHeavyCasulaties_(1).ogg',
+        '/assets/music/voices/OGA_CC0/AllyDown_(1).ogg',
+        '/assets/music/voices/OGA_CC0/BackupRequested_(1).ogg',
+        '/assets/music/voices/OGA_CC0/GetOverHere_(1).ogg',
+        '/assets/music/voices/OGA_CC0/I_need_backup_(1).ogg',
+        '/assets/music/voices/OGA_CC0/Initializing_(1).ogg',
+        '/assets/music/voices/OGA_CC0/MissionObjectiveSet_(1).ogg',
+        '/assets/music/voices/OGA_CC0/OneMoreDown_(1).ogg',
+        '/assets/music/voices/OGA_CC0/Ouch_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-1_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-2_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-3_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-4_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-5_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-6_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-7_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-8_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-9_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-10_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-11_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase1-12_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-1_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-2_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-3_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-4_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-5_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-6_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-7_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-8_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-9_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-10_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-11_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-12_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-13_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-14_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-15_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/phrase2-16_(1)_(1).ogg',
+        '/assets/music/voices/OGA_CC0/ProjectedLifeSpanLow_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TakingCover_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetAcquired_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetDown_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetFound_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetLost_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetNeutralized_(1).ogg',
+        '/assets/music/voices/OGA_CC0/TargetOutOfSight_(1).ogg',
+        '/assets/music/voices/OGA_CC0/ThatHurt_(1).ogg',
+        '/assets/music/voices/OGA_CC0/WhereAreYou_(1).ogg',
+        '/assets/music/voices/OGA_CC0/WhereDidYouGo_(1).ogg'
     ],
-    common: [
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_hit_03_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_36_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_03_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_switch_01_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_wood_01_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_24_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_12_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_misc_18_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_02_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_02_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_thunder_01_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_footstep_wood_03_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_glass_06_(1)_(1).ogg'
+    voices_pixabay: [
+        '/assets/music/voices/pixabay/alien_i_trust-alien-i-trust-who-defines-life-if-thought-is-life-then-i-am-eternal-289010.mp3',
+        '/assets/music/voices/pixabay/alien_i_trust-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown-289088.mp3',
+        '/assets/music/voices/pixabay/alien_i_trust-monster-bot-vocoder-by-alien-i-trust-125_bpm-275007.mp3',
+        '/assets/music/voices/pixabay/alien_i_trust-sample-pack-link-in-bio-let-the-beat-drop-by-alien-i-trust-289277.mp3',
+        '/assets/music/voices/pixabay/arunangshubanerjee-whispered-oh-no-in-a-funny-voice-comedic-reaction-sfx-366314.mp3',
+        '/assets/music/voices/pixabay/diff_style-robot-friendly-talk-344761.mp3',
+        '/assets/music/voices/pixabay/diff_style-robot-talk-344757.mp3',
+        '/assets/music/voices/pixabay/edr-vocoder-program-b87-test-15917.mp3',
+        '/assets/music/voices/pixabay/fidelfortune-beauty-woman-voice-ancient-chant-mystic-205225.mp3',
+        '/assets/music/voices/pixabay/fidelfortune-woman-voice-very-nice-voice-and-melody-304199.mp3',
+        '/assets/music/voices/pixabay/freesound_community-081089_robot-voice-come-on-let39s-get-it-on-82781.mp3',
+        '/assets/music/voices/pixabay/freesound_community-082569_robot-voice-let39s-get-it-on-82780.mp3',
+        '/assets/music/voices/pixabay/freesound_community-announcements-87424.mp3',
+        '/assets/music/voices/pixabay/freesound_community-classcified-android-88675.mp3',
+        '/assets/music/voices/pixabay/freesound_community-computer-maybe-you-should-die-104679.mp3',
+        '/assets/music/voices/pixabay/freesound_community-cry-of-robot-97907.mp3',
+        '/assets/music/voices/pixabay/freesound_community-cybertron-106425.mp3',
+        '/assets/music/voices/pixabay/freesound_community-dead-robot-01-82175.mp3',
+        '/assets/music/voices/pixabay/freesound_community-female_robot_voice_samples-33469.mp3',
+        '/assets/music/voices/pixabay/freesound_community-furievox-105000.mp3',
+        '/assets/music/voices/pixabay/freesound_community-initiating-shutdown-94634.mp3',
+        '/assets/music/voices/pixabay/freesound_community-keepondoingit-38721.mp3',
+        '/assets/music/voices/pixabay/freesound_community-know-more-103229.mp3',
+        '/assets/music/voices/pixabay/freesound_community-meat-with-feelings-72551.mp3',
+        '/assets/music/voices/pixabay/freesound_community-radiationz-music-106725.mp3',
+        '/assets/music/voices/pixabay/freesound_community-robot-i-have-only-one-function-80403.mp3',
+        '/assets/music/voices/pixabay/freesound_community-robot-statements-31911.mp3',
+        '/assets/music/voices/pixabay/freesound_community-robot-voice-does-not-compute-82799.mp3',
+        '/assets/music/voices/pixabay/freesound_community-robot-voice-drop-the-bass-82798.mp3',
+        '/assets/music/voices/pixabay/freesound_community-robot-voice-drop-the-beat-103181.mp3',
+        '/assets/music/voices/pixabay/freesound_community-russian-voice-fx-77498.mp3',
+        '/assets/music/voices/pixabay/freesound_community-text-scroll-g4-180-openmpt-agogo-39617.mp3',
+        '/assets/music/voices/pixabay/freesound_community-tin-man-respect-103228.mp3',
+        '/assets/music/voices/pixabay/freesound_community-vietnam-robot-flashback-31835.mp3',
+        '/assets/music/voices/pixabay/freesound_community-voz-robot-2-81439.mp3',
+        '/assets/music/voices/pixabay/freesound_community-you-have-been-selected-94638.mp3',
+        '/assets/music/voices/pixabay/freesound_community-youarenumberone-105047.mp3',
+        '/assets/music/voices/pixabay/kuzu420-talking-robot-243649.mp3',
+        '/assets/music/voices/pixabay/phatphrogstudio-android-voice-access-granted-477825.mp3',
+        '/assets/music/voices/pixabay/phatphrogstudio-android-voice-standby-477826.mp3',
+        '/assets/music/voices/pixabay/phatphrogstudio-demon-voice-smell-flesh-no-ai-479322.mp3',
+        '/assets/music/voices/pixabay/phatphrogstudio-lich-demonic-voice-come-closer-502312.mp3',
+        '/assets/music/voices/pixabay/phatphrogstudio-oni-demon-voice-demonic-laughter-477923.mp3',
+        '/assets/music/voices/pixabay/universfield-game-over-deep-male-voice-clip-352695.mp3'
     ],
-    loop: [
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_01_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_ambient_02_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_machine_01_(1)_(1).ogg',
-        '/assets/music/SFX/sfx_100_v2/sfx100v2_loop_water_01_(1)_(1).ogg'
+    voices_other: [
+        '/assets/music/voices/Aspire_to_inspire_Dr__1__(1).ogg',
+        '/assets/music/voices/Stay_strong_Enjoy_th_(1).ogg'
     ],
     vinyl: [
         '/assets/music/vinyl_disk.ogg'
@@ -208,10 +357,14 @@ export class SfxSynthManager {
     private async loadSample(url: string): Promise<AudioBuffer | null> {
         try {
             const response = await fetch(url);
-            if (!response.ok) return null;
+            if (!response.ok) {
+                console.warn(`SFX sample not found: ${url}`);
+                return null;
+            }
             const arrayBuffer = await response.arrayBuffer();
             return await this.context.decodeAudioData(arrayBuffer);
         } catch (error) {
+            console.error(`Error loading SFX sample: ${url}`, error);
             return null;
         }
     }
@@ -247,7 +400,10 @@ export class SfxSynthManager {
             
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
-            if (!samplePool || samplePool.length === 0) return;
+            if (!samplePool || samplePool.length === 0) {
+                console.warn(`No samples found for SFX category: ${category}`);
+                return;
+            }
 
             const buffer = samplePool[Math.floor(Math.random() * samplePool.length)];
             const source = this.context.createBufferSource();
@@ -277,23 +433,35 @@ export class SfxSynthManager {
                 if (rand <= 0) return category.name;
             }
         }
-
+        
         const rand = Math.random();
-        if (genre === 'reggae') return 'tube';
 
-        if (genre === 'psybient') {
-            if (rand < 0.3) return 'glitch';
-            if (rand < 0.6) return 'laser';
-            return 'voice';
+        if (genre === 'reggae') {
+            return rand < 0.7 ? 'tube' : 'perc';
+        }
+
+        if (genre === 'psybient' || genre === 'trance') {
+            if (rand < 0.33) return 'sfx_glitch';
+            if (rand < 0.66) return 'sfx_other';
+            return 'voices_pixabay';
         }
 
         if (genre === 'ambient') {
-            if (mood === 'dark' || mood === 'anxious') return 'dark';
-            if (rand < 0.5) return 'common';
-            return 'voice';
+            if (mood === 'dark' || mood === 'anxious') {
+                 if(rand < 0.6) return 'sfx_other';
+                 if(rand < 0.8) return 'voices_other';
+                 return 'perc';
+            }
+            if (rand < 0.5) return 'sfx_common';
+            return 'voices_oga';
         }
         
-        return 'common';
+        if (genre === 'blues') {
+            if (rand < 0.8) return 'perc';
+            return 'vinyl';
+        }
+
+        return 'sfx_common';
     }
     
     public allNotesOff() {
