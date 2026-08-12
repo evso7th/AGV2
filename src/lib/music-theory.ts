@@ -46,7 +46,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №88): Добавлены динамические группы для Piano/Rhodes и Баса.
+ * #ОБНОВЛЕНО (ПЛАН №1.9.0): Исключены скрипка и флейта из дефолтов из-за лицензий.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -62,6 +62,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     if (!targetHint || targetHint === 'none') return 'none';
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // ─── Safety Guard ───
+    if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
     // ─── Piano Channel Specific ───
     if (part === 'pianoAccompaniment') {

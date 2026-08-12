@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -56,9 +55,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V44.4 — "Narrative Scaling Support".
- * #ЗАЧЕМ: Поддержка эффекта Элвина Ли для всех жанров с Наследием.
- * #ЧТО: ПЛАН №568 — Передача timeScale в ReggaeBrain.
+ * @fileOverview Fractal Music Engine V44.5 — "Safety Ensemble Update".
+ * #ЗАЧЕМ: Полное исключение скрипки/флейты из автоматического ансамбля.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -123,9 +121,6 @@ export class FractalMusicEngine {
     const shuffled = this.random.shuffle(pool);
 
     if (this.config.genre === 'reggae') {
-        // #ЗАЧЕМ: короткое 4-тактовое интро (MistyMorning) — ансамбль собирается по-тактно.
-        // Порядок пар сохранён (как в общей лотерее), но шаг сжат до 1 такта: пары входят
-        // на тактах 0,1,2,3 → весь ансамбль в сборе к 5-му такту (старт MAIN, epoch 4).
         for (let i = 0; i < shuffled.length; i++) {
             this.lotterySchedule.set(shuffled[i], Math.floor(i / 2));
         }
@@ -285,9 +280,10 @@ export class FractalMusicEngine {
                     else defaultInst = 'synth_ambient_pad_lush';
                 }
                 else if (part === 'harmony') {
+                    // #ЗАЧЕМ: Замена скрипки на гитарные аккорды.
                     if (this.config.genre === 'reggae') defaultInst = 'guitarChords';
                     else if (this.config.genre === 'blues') defaultInst = 'guitarChords';
-                    else defaultInst = 'violin';
+                    else defaultInst = 'guitarChords';
                 }
                 else if (part === 'pianoAccompaniment') {
                     defaultInst = 'ep_rhodes_warm';
@@ -314,7 +310,6 @@ export class FractalMusicEngine {
     if (this.config.genre === 'psybient' && this.tranceBrain) {
         result = this.tranceBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre === 'reggae' && this.reggaeBrain) {
-        // #ЗАЧЕМ: ПЛАН №568. Передача timeScale в Регги.
         result = this.reggaeBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre !== 'blues' && this.ambientBrain) {
         result = this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
