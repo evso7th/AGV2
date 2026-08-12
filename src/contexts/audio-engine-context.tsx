@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V62.7 — "Locale Restoration".
- * #ЗАЧЕМ: Синхронизация языка уведомлений с глобальными настройками.
+ * @fileOverview Audio Engine Context V62.8 — "Ensemble Gain Fix".
+ * #ЗАЧЕМ: Подъем уровней усиления сэмплеров для обеспечения слышимости.
  */
 'use client';
 
@@ -41,14 +41,16 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.45,
 };
 
+// #ЗАЧЕМ: Подъем уровней до слышимых значений.
 const SAMPLER_DEFAULTS: Record<string, number> = {
-    master: 0.65, 
-    acoustic: 0.15,
-    electric: 0.15, 
-    piano: 0.6,
-    orchecial: 0.0725, 
+    master: 0.75, 
+    acoustic: 0.55,
+    electric: 0.55, 
+    piano: 0.8,
+    orchecial: 0.5, 
     chords: 1.2,
-    bass: 1.0
+    bass: 1.0,
+    cs80: 0.6
 };
 
 interface AudioEngineContextType {
@@ -151,7 +153,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
-  const authenticationRef = useRef<any>(null);
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const samplersMasterGainRef = useRef<GainNode | null>(null);
@@ -166,7 +167,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 0.65, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0 };
+      const defaults = { master: 0.75, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 };
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
@@ -188,10 +189,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
-  /**
-   * #ЗАЧЕМ: Определение активного языка для системных уведомлений.
-   * #ЧТО: Читает сохраненную настройку или язык браузера.
-   */
   const getLanguage = (): Language => {
     if (typeof window === 'undefined') return 'en';
     const saved = localStorage.getItem('AuraGroove_Language');
@@ -209,7 +206,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 0.65;
+      const m = gains.master ?? 0.75;
       
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);
@@ -303,11 +300,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
-    if (!Array.isArray(events)) {
-        console.warn('[AudioEngine] Skipping bar scheduling: events is not an array.');
-        return;
-    }
-    
+    if (!Array.isArray(events)) return;
     const beatDuration = 60 / tempo;
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
@@ -465,16 +458,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    if (payload.barCount === 0 || scheduleTime < now + 0.05) { scheduleTime = now + 0.15; }
+                    if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
                     
                     const tempo = payload.actualBpm || 75;
                     const bDur = 60 / tempo;
                     payload.events.forEach((e: any) => {
                         const et = Array.isArray(e.type) ? e.type[0] : e.type;
-                        const isKick = typeof et === 'string' && (et.toLowerCase().includes('kick') || et.toLowerCase().includes('drum_kick'));
-                        const isStrongBass = et === 'bass' && Math.abs(e.time % 2) < 0.01; 
-                        
-                        if (isKick || isStrongBass) {
+                        if (et === 'drum_kick_reso' || (et === 'bass' && Math.abs(e.time % 2) < 0.01)) {
                             const hitT = scheduleTime + (e.time * bDur);
                             window.dispatchEvent(new CustomEvent('AG_CORE_PULSE', { detail: { time: hitT } }));
                         }
@@ -542,39 +532,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (!recDestRef.current || isRecording) return; 
         recordedChunksRef.current = []; 
         const mediaRecorder = new MediaRecorder(recDestRef.current.stream); 
-        
-        mediaRecorder.ondataavailable = (e) => { 
-          if (e.data.size > 0) recordedChunksRef.current.push(e.data); 
-        }; 
-        
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; 
         mediaRecorder.onstop = () => { 
-            if (recordedChunksRef.current.length === 0) {
-              console.warn('[AudioEngine] No data recorded. Chunks are empty.');
-              return;
-            }
             const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); 
             const url = URL.createObjectURL(blob); 
             const a = document.createElement('a'); 
             a.href = url; 
             const prefixStr = prefix ? `${prefix}_` : '';
-            const genreStr = settingsRef.current?.genre || 'ambient';
-            const moodStr = settingsRef.current?.mood || 'melancholic';
             const dateStr = new Date().toISOString().split('T')[0];
-            const uidStr = Math.random().toString(36).substring(2, 7);
-            a.download = `${prefixStr}AuraGroove_${genreStr}-${moodStr}_${dateStr}_${uidStr}.webm`; 
+            a.download = `${prefixStr}AuraGroove_${dateStr}.webm`; 
             a.click(); 
         }; 
-        
         mediaRecorder.start(); 
         mediaRecorderRef.current = mediaRecorder; 
         setIsRecordingState(true); 
       }, 
-      stopRecording: () => { 
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { 
-          mediaRecorderRef.current.stop(); 
-          setIsRecordingState(false); 
-        } 
-      },
+      stopRecording: () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); setIsRecordingState(false); } },
       toggleBroadcast: toggleBroadcastCallback, 
       triggerVinyl,
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },

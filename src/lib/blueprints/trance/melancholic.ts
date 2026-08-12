@@ -1,8 +1,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Меланхоличный Транс (v1.5 — Full Ensemble Restoration).
- * #ЧТО: ПЛАН №1415. Активация всех слоев (мелодия, гармония, пианино) во всех секциях.
+ * #ЗАЧЕМ: Меланхоличный Транс (v1.6 — Full Ensemble Activation).
+ * #ЧТО: Активация всех слоев во всех частях сюиты с явным мэппингом инструментов.
  */
 export const MelancholicTranceBlueprint: MusicBlueprint = {
     id: 'melancholic_trance',
@@ -24,7 +24,10 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_intro', density: { min: 0.1, max: 0.3 } },
@@ -37,7 +40,10 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, harmony: true, pianoAccompaniment: true, melody: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_ambient', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.5, max: 0.7 }, kickVolume: 0.9 },
@@ -50,7 +56,9 @@ export const MelancholicTranceBlueprint: MusicBlueprint = {
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_ambient_pad_lush', weight: 1.0 }] },
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', kitName: 'trance_melancholic', density: { min: 0.6, max: 0.8 }, kickVolume: 0.9 },

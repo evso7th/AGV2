@@ -1,8 +1,7 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * #ЗАЧЕМ: Тёмный Транс (v1.5 — Full Ensemble Restoration).
- * #ЧТО: ПЛАН №1415. Активация всех слоев ансамбля.
+ * #ЗАЧЕМ: Тёмный Транс (v1.6 — Full Ensemble Restoration).
  */
 export const DarkTranceBlueprint: MusicBlueprint = {
     id: 'dark_trance',
@@ -24,7 +23,10 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 } },
@@ -36,7 +38,10 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 id: 'BUILD', name: 'The Chase', duration: { percent: 30 },
                 layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, melody: true },
                 instrumentation: {
-                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1 },
@@ -48,7 +53,9 @@ export const DarkTranceBlueprint: MusicBlueprint = {
                 id: 'PEAK', name: 'Red Line', duration: { percent: 40 },
                 layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true },
                 instrumentation: {
-                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] }
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
+                    harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
+                    pianoAccompaniment: { strategy: 'weighted', options: [{ name: 'ep_rhodes_warm', weight: 1.0 }] }
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2 },
