@@ -1,6 +1,6 @@
 /**
- * @fileOverview Navigator Gateway Page V2.0 — "Smart Entrance".
- * #ЗАЧЕМ: Реализация ПЛАНА №1460. Красивый прелоадер для анализа DNA.
+ * @fileOverview Navigator Gateway Page V2.1 — "Scroll Warning Fix".
+ * #ЗАЧЕМ: Устранение предупреждения Next.js об авто-скролле fixed элементов.
  */
 'use client';
 
@@ -35,20 +35,22 @@ export default function NavigatorPage() {
 
   if (isWarmingUp) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 opacity-20 filter blur-3xl">
-          <OrbitalAnimation isPlaying={true} tempo={60} tension={0.3} size="500px" />
-        </div>
-        <div className="relative z-10 flex flex-col items-center gap-6">
-          <div className="w-16 h-16 rounded-full border-2 border-primary/20 flex items-center justify-center animate-pulse">
-            <Dna className="h-8 w-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+      <div className="min-h-screen w-full bg-black">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
+          <div className="absolute inset-0 opacity-20 filter blur-3xl">
+            <OrbitalAnimation isPlaying={true} tempo={60} tension={0.3} size="500px" />
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <h2 className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">Analyzing DNA</h2>
-            <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
+          <div className="relative z-10 flex flex-col items-center gap-6">
+            <div className="w-16 h-16 rounded-full border-2 border-primary/20 flex items-center justify-center animate-pulse">
+              <Dna className="h-8 w-8 text-primary animate-spin" style={{ animationDuration: '3s' }} />
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <h2 className="text-primary font-black uppercase tracking-[0.3em] text-sm animate-pulse">Analyzing DNA</h2>
+              <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                  <span className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce"></span>
+              </div>
             </div>
           </div>
         </div>
