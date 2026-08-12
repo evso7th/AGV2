@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V62.6 — "Stability Shield".
- * #ЗАЧЕМ: Защита от тишины и критических ошибок планирования.
+ * @fileOverview Audio Engine Context V62.7 — "Locale Restoration".
+ * #ЗАЧЕМ: Синхронизация языка уведомлений с глобальными настройками.
  */
 'use client';
 
@@ -189,8 +188,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
+  /**
+   * #ЗАЧЕМ: Определение активного языка для системных уведомлений.
+   * #ЧТО: Читает сохраненную настройку или язык браузера.
+   */
   const getLanguage = (): Language => {
-    return 'en';
+    if (typeof window === 'undefined') return 'en';
+    const saved = localStorage.getItem('AuraGroove_Language');
+    if (saved === 'ru' || saved === 'en') return saved as Language;
+    return navigator.language.startsWith('ru') ? 'ru' : 'en';
   };
 
   const getEffectivePreset = useCallback((presetName: string) => {
@@ -297,7 +303,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
-    // #ЗАЧЕМ: SILENCE SHIELD. Проверяем валидность массива событий перед планированием.
     if (!Array.isArray(events)) {
         console.warn('[AudioEngine] Skipping bar scheduling: events is not an array.');
         return;
@@ -460,7 +465,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    // #ЗАЧЕМ: Расширенный допуск планирования (0.03 -> 0.05) для предотвращения разрывов на мобильных.
                     if (payload.barCount === 0 || scheduleTime < now + 0.05) { scheduleTime = now + 0.15; }
                     
                     const tempo = payload.actualBpm || 75;

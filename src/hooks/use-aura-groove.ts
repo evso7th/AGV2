@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V34.3 — "Forced English Locale".
- * #ЗАЧЕМ: Временное отключение проверки локали по запросу пользователя.
+ * @fileOverview Music Control Hook V34.4 — "Locale Restoration".
+ * #ЗАЧЕМ: Восстановление автоматического определения языка и пользовательских настроек.
  */
 'use client';
 
@@ -195,11 +195,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
 
   /**
-   * #ЗАЧЕМ: Принудительный запуск на английском языке.
-   * #ЧТО: Локальное сохранение и проверка локали временно игнорируются.
+   * #ЗАЧЕМ: Восстановление мультиязычного протокола.
+   * #ЧТО: ПЛАН №1800 — Автоматическое определение локали (Saved > Browser > Default).
    */
   useEffect(() => {
-    setLanguage('en');
+    if (typeof window === 'undefined') return;
+    const savedLang = localStorage.getItem(LANG_KEY) as Language;
+    if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {
+        setLanguage(savedLang);
+    } else {
+        const browserLang = navigator.language.split('-')[0];
+        if (browserLang === 'ru') setLanguage('ru');
+        else setLanguage('en');
+    }
   }, []);
 
   const toggleLanguage = useCallback(() => {
@@ -577,27 +585,17 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
-  /** #ЗАЧЕМ: Реализация ПЛАНА №1458 — "Duration Integrity Refined". */
   useEffect(() => {
     const onTransition = () => {
-        // --- FULL TRACK RECORD LOGIC (FTR) ---
         if (isAlbumModeRef.current) {
-            // #ЗАЧЕМ: ПЛАН №1458. Порядок Стоп-Крану.
-            // 1. Сначала тормозим рекордер (пока поток еще "жив"). Это критично для длительности.
             stopRecording();
-            
-            // 2. Сразу переводим UI в паузу
             setIsPlaying(false);
-            
-            // 3. Гасим звуки
             stopAllSounds();
-            
             setIsAlbumMode(false);
             toast({ title: t('toast_album_exported'), description: "Full Track Record complete." });
             return;
         }
 
-        // --- NORMAL ROUTE LOGIC ---
         if (route.length > 0) {
             const nextIndex = activeRouteIndex + 1;
             if (nextIndex < route.length) { 
@@ -606,7 +604,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
             }
         }
 
-        // --- LOOP LOGIC ---
         setCurrentSeed(Date.now());
     };
     window.addEventListener('AG_SUITE_TRANSITION', onTransition);
