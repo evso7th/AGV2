@@ -1,9 +1,8 @@
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур (Версия V11.0 — "100% Registry Alignment").
- * #ЗАЧЕМ: ПЛАН №1450. Подключение АБСОЛЮТНО ВСЕХ ассетов из реестра assets_list.txt.
- * #ЧТО: Полная ротация для Ambient и Trance. Блюз и Регги остаются стерильными.
+ * @fileOverview Плеер текстур (Версия V12.0 — "Absolute Registry Integration").
+ * #ЗАЧЕМ: Подключение 100% ассетов из реестра для Neuro Space и Ambient.
  */
 const SPARKLE_SAMPLES = {
     // Тональные и синтетические текстуры (Microfreak & Pads)
@@ -98,7 +97,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/572127__kazarin0v__atmosphere-noise_(1).ogg',
         '/assets/music/sparkles/632103__el_boss__robo-voice-and-yell_(1).ogg',
         '/assets/music/sparkles/647909__arc-en-ciel__mystical_short_atmo_(1).ogg',
-        '/assets/music/sparkles/677359__saha213131__horrorcinematicdarkhorrorroomtone20_(1).ogg',
         '/assets/music/sparkles/776959__reathance__reath-ambience-clickets_CC0_(1).ogg',
         '/assets/music/sparkles/799303__cvltiv8r__ambient-drone-df-h-df-g-jh-by-cvltiv8r_(1).ogg',
         '/assets/music/sparkles/799305__cvltiv8r__ambient-drone-234896806485-by-cvltiv8r_(1).ogg',
@@ -119,6 +117,7 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/847621__cvltiv8r__magic-spell-whir-and-boom_(1)_(1).ogg',
         '/assets/music/sparkles/849412__cvltiv8r__magical-impact-with-trippy-trail-fx_(1)_(1).ogg',
         '/assets/music/sparkles/849523__cvltiv8r__alien-craft-ambience-fx_(1).ogg',
+        '/assets/music/sparkles/857848__cvltiv8r__space-craft-wind-leaving-atmosphere-fx_(1).ogg',
         '/assets/music/sparkles/861358__qubodup__vespa-driveby-tunnel_(1).ogg'
     ]
 };
@@ -183,7 +182,6 @@ export class SparklePlayer {
 
     public playRandomSparkle(time: number, genre?: Genre, mood?: Mood, category?: string) {
         if (!this.isInitialized) return;
-        // #ЗАЧЕМ: ПЛАН №1451. Блюз и Регги стерильны от эффектов.
         if (genre === 'blues' || genre === 'reggae') return;
 
         let samplePool: AudioBuffer[] = [];

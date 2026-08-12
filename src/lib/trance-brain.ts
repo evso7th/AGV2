@@ -1,6 +1,6 @@
 /**
- * @fileOverview Psybient Brain V57.0 — "Atmospheric Dilution Active".
- * #ЗАЧЕМ: ПЛАН №1331 — Разрежение атмосферы. Специя, а не блюдо.
+ * @fileOverview Psybient Brain V58.0 — "Neuro Climax & Absolute FX".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1450. Сложные 6-12 hit филлы и полное использование реестра.
  */
 
 import type {
@@ -219,6 +219,11 @@ export class TranceBrain {
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
         if (hints.drums) {
+            // #ЗАЧЕМ: ПЛАН №1450. Удары крэша в начале секций.
+            if (epoch % 8 === 0 && !isIntro) {
+                events.push({ type: 'drum_crash2', note: 49, time: 0, duration: 4.0, weight: 0.35, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
+            }
+
             const heritageDrums = this.renderHeritageDrums(epoch, tension, mosaicBar);
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
@@ -228,11 +233,14 @@ export class TranceBrain {
             }
             events.push(...this.renderPsybientKitchen(epoch, tension));
             
-            if (this.rng.chance(2)) {
+            if (this.rng.chance(5)) {
                 events.push({ type: 'drum_ride_wetter', note: 51, time: 0, duration: 4.0, weight: 0.3, technique: 'hit', dynamics: 'p', phrasing: 'legato' });
             }
 
-            if (epoch % 4 === 3) events.push(...this.renderNeuroFills(epoch, tension));
+            // #ЗАЧЕМ: Реализация ПЛАНА №1450. Сложные 6-12 hit филлы.
+            if (epoch % 4 === 3) {
+                events.push(...this.renderComplexNeuroFill(epoch, tension));
+            }
         }
 
         if (hints.bass) {
@@ -291,6 +299,8 @@ export class TranceBrain {
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
+        events.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
+
         return {
             events, tension, beautyScore: 0.9,
             trackName: this.currentTrackName,
@@ -298,10 +308,43 @@ export class TranceBrain {
             activeAxioms: {
                 melody: this.currentTheme ? this.currentTheme.id : 'Spiral Narrative',
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'Neuro Rolling',
-                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Skilled Neuro'
+                drums: this.currentDrumAxioms.length > 0 ? 'Heritage Sync' : 'Complex Neuro'
             },
-            narrative: `Psybient Spiral: [Atmospheric Balance V1.0]`
+            narrative: `Psybient Spiral: [Climax Protocol V2.0]`
         };
+    }
+
+    private renderComplexNeuroFill(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        const hitCount = 6 + Math.floor(tension * 6.5); // 6 to 12 hits
+        const startTime = 3.0; // Fill in the last beat (4th beat)
+        const duration = 1.0; 
+        
+        const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
+        const instruments = ['drum_snare', ...tomSequence, 'drum_25693__walter_odington__hackney-hat-1', 'drum_kick_reso'];
+        
+        for (let i = 0; i < hitCount; i++) {
+            const timeOffset = (i / hitCount) * duration;
+            const instIdx = calculateMusiNum(epoch + i, 11, this.seed, instruments.length);
+            const inst = instruments[instIdx];
+            const weight = 0.6 + (i / hitCount) * 0.5; // Crescendo
+            const pan = Math.sin(i * 1.5) * 0.8;
+            
+            events.push({
+                type: inst as any,
+                note: 48,
+                time: (startTime + timeOffset) * TICK_TO_BEAT,
+                duration: (1 / hitCount) * 0.8,
+                weight: weight,
+                technique: 'hit',
+                dynamics: weight > 0.9 ? 'f' : 'mf',
+                phrasing: 'staccato',
+                pan: pan
+            });
+        }
+        
+        // Final accented hit on next bar anticipation? No, just finish strong on the last tick.
+        return events;
     }
 
     private renderHeritageDrums(epoch: number, tension: number, mosaicBar: number): FractalEvent[] {
@@ -398,16 +441,14 @@ export class TranceBrain {
             events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         
-        for (let t = 0; t < TICKS_PER_BAR; t += 0.75) {
+        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
             const isStrong = t % 3 === 0;
-            const isOff = t % 1.5 !== 0;
-            const chance = isStrong ? 100 : (isOff ? tension * 40 : 60);
-            if (this.rng.chance(chance)) {
+            if (this.rng.chance(60)) {
                 events.push({ 
                     type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
                     time: t * TICK_TO_BEAT, duration: 0.05, 
-                    weight: isStrong ? 0.6 : 0.3, 
-                    technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: (t % 3 === 0 ? -0.2 : 0.2)
+                    weight: isStrong ? 0.6 : 0.35, 
+                    technique: 'hit', dynamics: 'p', phrasing: 'staccato', pan: 0.2
                 });
             }
         }
@@ -417,7 +458,6 @@ export class TranceBrain {
     private renderNeuroFills(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
-        
         [9, 10, 11].forEach((t, i) => {
             events.push({
                 type: tomSequence[i] as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.6,
@@ -430,16 +470,13 @@ export class TranceBrain {
 
     private renderPsybientKitchen(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: ПЛАН №1331. Разрежение трубок в Psybient.
-        for (let t = 0; t < TICKS_PER_BAR; t += 3.0) { 
-            if (this.rng.chance(10 + tension * 10)) {
-                events.push({
-                    type: 'sfx', note: 60, time: t * TICK_TO_BEAT, duration: 0.4, 
-                    weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
-                    pan: (this.rng.next() * 1.8) - 0.9,
-                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'tube', weight: 1.0 }] } }
-                });
-            }
+        if (this.rng.chance(30 + tension * 20)) {
+            events.push({
+                type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 0.4, 
+                weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'detached', 
+                pan: (this.rng.next() * 1.8) - 0.9,
+                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'tube', weight: 1.0 }] } }
+            });
         }
         return events;
     }
@@ -501,7 +538,7 @@ export class TranceBrain {
                     duration: 0.75, 
                     weight: 0.6 - (i * 0.05), 
                     technique: 'swell', dynamics: 'p', phrasing: 'legato', 
-                    pan: (i % 2 === 0 ? -0.6 : 0.6), 
+                    pan: (i % 2 === 0 ? -0.6 : 0.6) + (this.rng.next() - 0.5) * 0.1, 
                     params: { attack: 0.1, release: 0.4, gainCurve: [1.0, 0.1, 0.9, 0.2, 1.0, 0.3, 1.0] }
                 });
             });
@@ -513,8 +550,8 @@ export class TranceBrain {
         if (epoch < 12) return [];
         const events: FractalEvent[] = [];
         
-        // #ЗАЧЕМ: ПЛАН №1331. Разрежение Sparkles до 7%.
-        if (this.rng.chance(7)) {
+        // #ЗАЧЕМ: ПЛАН №1450. Значительно увеличено присутствие атмосферных событий.
+        if (this.rng.chance(15 + tension * 10)) {
             events.push({ 
                 type: 'sparkle', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, 
                 duration: 6.0, weight: 1.2, technique: 'hit', dynamics: 'mf', 
@@ -522,8 +559,7 @@ export class TranceBrain {
             });
         }
         
-        // #ЗАЧЕМ: ПЛАН №1331. Разрежение SFX до 6%.
-        if (this.rng.chance(6)) {
+        if (this.rng.chance(12 + tension * 8)) {
             events.push({ 
                 type: 'sfx', note: 60, time: this.rng.nextInt(12) * TICK_TO_BEAT, duration: 4.0, 
                 weight: 1.2, technique: 'hit', dynamics: 'mf', phrasing: 'staccato', 
@@ -532,8 +568,10 @@ export class TranceBrain {
                     genre: this.genre, 
                     rules: { 
                         categories: [
-                            { name: 'voice', weight: 0.70 }, 
-                            { name: 'glitch', weight: 0.30 }
+                            { name: 'voice', weight: 0.40 }, 
+                            { name: 'glitch', weight: 0.30 }, 
+                            { name: 'laser', weight: 0.20 }, 
+                            { name: 'common', weight: 0.10 }
                         ] 
                     } 
                 } 
@@ -572,4 +610,3 @@ export class TranceBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }
-
