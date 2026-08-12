@@ -1,7 +1,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (Синхронизация с источниками 100%).
  * #ЗАЧЕМ: Прямая трансляция текстовых исходников в интерфейс инфоцентра.
- * #ЧТО: Содержание GUIDE и DISCLAIMER заменено на текст из файлов .txt.
+ * #ЧТО: Содержание GUIDE и DISCLAIMER заменено на текст из файлов .txt согласно требованию "As Is".
  */
 
 export const GUIDE_RU = `
@@ -21,14 +21,14 @@ AuraGroove — это детерминированный алгоритмиче�
 1. Откройте System Mixer и Эквалайзер.
 2. Настройте их под себя и свою акустическую систему.
 3. Сделайте это ОДИН РАЗ — ваши настройки сохранятся локально на вашем устройстве.
-💡 Совет: Вы можете привязать пресеты System Mixer к конкретным жанрам. Тогда при смене жанра в Очереди ваш идеальный микс будет загружаться автоматически.
+ !>25B: K <>65B5 A2O70BL ?@5A5BK System Mixer A :>=:@5B=K<8 60=@0<8. ">340 ?@8 A<5=5 60=@0 2 G5@548 20H 8450;L=K9 <8:A 1C45B 703@C60BLAO 02B><0B8G5A:8.
 3. Жанры и «Мозги» (Brains)
 Движок специализируется на создании ненавязчивой фоновой музыки для расслабления или концентрации. Каждый жанр управляется отдельным модулем — «Мозгом» (Brain), который диктует свои правила гармонии, ритма и техник исполнения.
-* 🎷 Cafe Blues: Обширная библиотека техник. Выразительные мелодии, ритмические паттерны и способность к живой импровизации.
-* 🎹 Soft Fusion: Глубокие текстуры, атмосферные слои и сложные гармонии.
-* 🎻 Zoology: Стилизация под оркестровое звучание 60-70-х годов XX века, дополненная синтезаторными пэдами в стиле Нейро-Спейс и Софт-Фьюжн. Включает гитары, органы, пианино, скрипки, ударные и SFX-ботов.
-* 🛰️ Нейро Спейс: Транс-амбиентные структуры с выраженной ритмикой.
-* 🌴 Roots Reggae: Понимает законы "Риддима", создает специфический грув (находится в стадии активного развития нишевых вариаций).
+*  0D5-;N7: 1H8@=0O 181;8>B5:0 B5E=8:. K@078B5;L=K5 <5;>488, @8B<8G5A:85 ?0BB5@=K 8 A?>A>1=>ABL : 682>9 8<?@>2870F88.
+*  !>DB-$LN6=: ;C1>:85 B5:ABC@K, 0B<>AD5@=K5 A;>8 8 A;>6=K5 30@<>=88.
+*  >>;>38O: !B8;870F8O ?>4 >@:5AB@>2>5 72CG0=85 60-70-E 3>4>2 XX 25:0, 4>?>;=5==0O A8=B570B>@=K<8 ?M40<8 2 AB8;5 59@>-A?59A 8 !>DB-DLN6=. :;NG05B 38B0@K, >@30=K, ?80=8=>, A:@8?:8, C40@=K5 8 SFX-1>B>2.
+*  59@> !?59A: "@0=A-0<185=B=K5 AB@C:BC@K A 2K@065==>9 @8B<8:>9.
+* A  CB- 5338: >=8<05B 70:>=K "@8448<0", A>7405B A?5F8D8G5A:89 3@C2 (=0E>48BAO 2 AB0488 0:B82=>3> @0728B8O =8H52KE 20@80F89).
 4. Генетическая Система: От Seed до Шедевра
 Каждая сессия — это уникальный организм, проходящий путь от «зерна» до полноценной пьесы.
 1. Генерация Seed: При старте создается уникальное 32-битное число (Seed) — зерно, из которого вырастет музыкальная вселенная сессии.
@@ -37,11 +37,11 @@ AuraGroove — это детерминированный алгоритмиче�
 4. Навигация и Аксиомы: Движок накладывает ДНК на временную сетку (Интро, Кульминация, Кода) и активирует «Аксиомы» — оцифрованные фрагменты человеческого исполнения, которые проходят через фрактальные мутации (инверсия, ретроград, джиттер).
 5. Интерфейс и Управление
 Верхняя панель навигации (Слева направо)
-1. 🏠 Домой: Возврат на стартовый экран.
-2. 📡 Бродкаст: Специальный облегченный режим для слабых устройств.
+1.  ><>9: >72@0B =0 AB0@B>2K9 M:@0=.
+2.  @>4:0AB: !?5F80;L=K9 >1;53G5==K9 @568< 4;O A;01KE CAB@>9AB2.
 3. ⏺️ Запись: Позволяет записать понравившийся фрагмент в формате .webm.
 4. ❤️ Лайк (Нравится): Если вы слышите отличный фрагмент, нажмите эту кнопку. Аксиома этого фрагмента запомнится в облачную библиотеку и улучшит генерацию для всех пользователей.
-5. 🔄 Регенерация: Если музыка не нравится, нажмите кнопку. Система создаст новое семя и новую мутацию в рамках выбранного жанра и настроения.
+5.   535=5@0F8O: A;8 <C7K:0 =5 =@028BAO, =06<8B5 :=>?:C. !8AB5<0 A>740AB =>2>5 A5<O 8 =>2CN <CB0F8N 2 @0<:0E 2K1@0==>3> 60=@0 8 =0AB@>5=8O.
 Формирование Очереди (CURRENT PATH)
 Вы можете собрать свой собственный маршрут музыкального путешествия.
 * Выберите Жанр (Genre) и Настроение (MOOD).
@@ -49,11 +49,11 @@ AuraGroove — это детерминированный алгоритмиче�
 * Очередь можно сохранять на устройство, загружать, перемешивать, добавлять или удалять элементы.
 * ⚠️ Важно: После внесения изменений в очередь нажмите Pause, затем кнопку «Обновление очереди» (вторая слева в нижнем тулбаре), чтобы система приняла новые настройки. Затем нажмите Play.
 Нижний тулбар (Слева направо)
-1. 📊 Анализатор спектра: Визуализация частот.
-2. 🔄 Обновление очереди: Применяет изменения, сделанные в CURRENT PATH.
-3. 🧬 Индикатор Наследия: Переключатель использования генетического пула (masterpieces) для генерации.
-4. ⚙️ Управление голосами (ARP): Настройка лимита активных голосов (подробнее в "Технические настройки").
-5. 🌓 Тема: Переключатель темной и светлой темы интерфейса.
+1.  =0;870B>@ A?5:B@0: 87C0;870F8O G0AB>B.
+2.  1=>2;5=85 >G5@548: @8<5=O5B 87<5=5=8O, A45;0==K5 2 CURRENT PATH.
+3.  =48:0B>@ 0A;548O: 5@5:;NG0B5;L 8A?>;L7>20=8O 35=5B8G5A:>3> ?C;0 (masterpieces) 4;O 35=5@0F88.
+4.  #?@02;5=85 3>;>A0<8 (ARP): 0AB@>9:0 ;8<8B0 0:B82=KE 3>;>A>2 (?>4@>1=55 2 @0745;5 ""5E=8G5A:85 =0AB@>9:8").
+5.  "5<0: 5@5:;NG0B5;L B5<=>9 8 A25B;>9 B5<K 8=B5@D59A0.
 6. ⏳ Таймер сна: Автоматическая остановка воспроизведения (до 30 минут).
 6. Технические рекомендации и Ограничения
 Количество голосов и качество звука (ARP)
@@ -93,14 +93,14 @@ What to do immediately after loading:
 1. Open the System Mixer and Equalizer.
 2. Tweak them to your liking and match your acoustic setup.
 3. Do this ONCE—your settings will be saved locally on your device.
-💡 Pro Tip: You can link System Mixer presets to specific genres. Then, when you switch genres in the Queue, your perfect mix will load automatically.
+ Pro Tip: You can link System Mixer presets to specific genres. Then, when you switch genres in the Queue, your perfect mix will load automatically.
 3. Genres and "Brains"
 The engine specializes in creating unobtrusive background music for relaxation or focus. Each genre is managed by a separate module—a "Brain"—which dictates its own rules for harmony, rhythm, and playing techniques.
-* 🎷 Cafe Blues: An extensive library of techniques. Expressive melodies, rhythmic patterns, and the ability to improvise live.
-* 🎹 Soft Fusion: Deep textures, atmospheric layers, and complex harmonies.
-* 🎻 Zoology: Stylized after the orchestral sound of the 1960s and 70s, complemented by synthesizer pads in the style of Neuro-Space and Soft Fusion. Includes guitars, organs, pianos, violins, drums, and SFX bots.
-* 🛰️ Neuro Space: Trance-ambient structures with pronounced rhythmic elements.
-* 🌴 Roots Reggae: Understands the laws of the "riddim" and creates a specific groove (currently in active development for niche variations).
+*  Cafe Blues: An extensive library of techniques. Expressive melodies, rhythmic patterns, and the ability to improvise live.
+*  Soft Fusion: Deep textures, atmospheric layers, and complex harmonies.
+*  Zoology: Stylized after the orchestral sound of the 1960s and 70s, complemented by synthesizer pads in the style of Neuro-Space and Soft Fusion. Includes guitars, organs, pianos, violins, drums, and SFX bots.
+*  Neuro Space: Trance-ambient structures with pronounced rhythmic elements.
+* A Roots Reggae: Understands the laws of the "riddim" and creates a specific groove (currently in active development for niche variations).
 4. The Genetic System: From Seed to Masterpiece
 Every session is a unique organism that evolves from a "seed" into a full-fledged piece.
 1. Seed Generation: Upon startup, a unique 32-bit number (the Seed) is generated—the grain from which the session's musical universe will grow.
@@ -109,11 +109,11 @@ Every session is a unique organism that evolves from a "seed" into a full-fledge
 4. Navigation and Axioms: The engine maps the DNA onto a timeline (Intro, Climax, Coda) and activates "Axioms"—digitized fragments of human performance that undergo fractal mutations (inversion, retrograde, jitter).
 5. Interface and Controls
 Top Navigation Bar (Left to Right)
-1. 🏠 Home: Return to the start screen.
-2. 📡 Broadcast: A special lightweight mode for low-end devices.
+1.  Home: Return to the start screen.
+2.  Broadcast: A special lightweight mode for low-end devices.
 3. ⏺️ Record: Allows you to record a favorite snippet in .webm format.
 4. ❤️ Like: If you hear a great fragment, hit this button. The axiom of this fragment will be remembered in the cloud library and improve generation for all users.
-5. 🔄 Regenerate: If you don't like the music, press this. The system will create a new seed and a new mutation within the selected genre and mood.
+5.  Regenerate: If you don't like the music, press this. The system will create a new seed and a new mutation within the selected genre and mood.
 Building the Queue (CURRENT PATH)
 You can assemble your own route for a musical journey.
 * Select a Genre and Mood.
@@ -121,11 +121,11 @@ You can assemble your own route for a musical journey.
 * The queue can be saved to your device, loaded, shuffled, or have items added/removed.
 * ⚠️ Important: After making changes to the queue, press Pause, then click the "Queue Refresh" button (second from the left in the bottom toolbar) so the system applies the new settings. Then press Play.
 Bottom Toolbar (Left to Right)
-1. 📊 Spectrum Analyzer: Frequency visualization.
-2. 🔄 Queue Refresh: Applies changes made in the CURRENT PATH.
-3. 🧬 Heritage Indicator: Toggle for using the genetic pool (masterpieces) for generation.
-4. ⚙️ Voice Control (ARP): Adjust the limit of active voices (more details in "Technical Settings").
-5. 🌓 Theme: Toggle between dark and light interface themes.
+1.  Spectrum Analyzer: Frequency visualization.
+2.  Queue Refresh: Applies changes made in the CURRENT PATH.
+3.  Heritage Indicator: Toggle for using the genetic pool (masterpieces) for generation.
+4.  Voice Control (ARP): Adjust the limit of active voices (more details in "Technical Settings").
+5.  Theme: Toggle between dark and light interface themes.
 6. ⏳ Sleep Timer: Auto-stop playback (up to 30 minutes).
 6. Technical Recommendations and Limitations
 Voice Count and Sound Quality (ARP)
@@ -146,12 +146,13 @@ AuraGroove fully respects your privacy:
 * Zero Profiles: No user accounts or activity histories are created.
 * Local Storage: All session data and settings are stored in your browser's localStorage or IndexedDB. Nothing is sent to servers.
 * Offline by Default: The engine can works without the internet. A network connection is only required for first run and optional syncing of the genetic pool (the cloud library of masterpieces). After a brief online connection (about 5 minutes), the app caches the data and can run completely offline.
+Enjoy listening! Let mathematics create the perfect soundtrack for your day.
 </div>
 `;
 
 export const DISCLAIMER_RU = `
 <div class="prose-info text-[12px] leading-relaxed whitespace-pre-wrap font-sans px-2">
-ДИСКЛЕЙМЕР: AuraGroove V3 — Алгоритмический Генеративный Музыкальный Движок
+﻿ДИСКЛЕЙМЕР: AuraGroove V3 — Алгоритмический Генеративный Музыкальный Движок
 1. Что Это Такое (и Чем Не Является)
 AuraGroove — это не генератор музыки на основе нейросетей (как SUNO, Udio или другие LLM-инструменты). Это детерминированный алгоритмический музыкальный движок, который создаёт уникальную, непрерывную фоновую музыку в реальном времени с использованием фрактальной математики, цепей Маркова и генетических алгоритмов.
 * Без промптов и ИИ-генерации: Мы не принимаем и не обрабатываем текстовые запросы для создания музыки. Каждый звук генерируется исключительно из внутреннего состояния движка, без внешнего ввода, кроме начальной конфигурации сессии.
@@ -291,7 +292,7 @@ A. Genetic System
 * Sibling Sovereignty: When selecting a donor track, the engine prioritizes sibling axioms (notes recorded together) from the same source. This ensures stylistic coherence but limits diversity in some cases.
 * Mandatory Mutation: In Composer mode, improvisation (e.g., inversion, retrograde, rhythmic jitter) is always applied to prevent static repetition.
 B. User Interface & Experience
-* No Track Selection: You cannot choose specific songs or artists. The system auto-generates music based on the current seed, Tension Map, and genre settings.
+* No Track Selection: You cannot choose specific songs or artists. The system auto-generated music based on the current seed, Tension Map, and genre settings.
 * Preview Before Share: A 30-second preview is available before sharing via Web Share API, but no full export of the audio file is provided.
 * Offline Mode: The system works offline with locally cached masterpieces, but no cloud synchronization occurs without an internet connection.
 5. Legal & Ethical Safeguards
@@ -306,6 +307,9 @@ For best results:
 * Keep your device plugged in or ensure sufficient battery to avoid power-saving interruptions
 * Adjust the voice limit based on your device's capabilities (start with defaults, tweak if needed)
 * Accept that mobile operating systems are hostile to background audio—this is not an AuraGroove limitation, but a platform reality
+Last Updated: May 2026
+Version: 3.7.0
+Privacy Promise: Zero telemetry. Zero tracking. Zero exceptions.
 </div>
 `;
 
