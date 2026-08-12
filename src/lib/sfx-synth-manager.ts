@@ -1,16 +1,16 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V12.0 — "Absolute Registry Integration".
- * #ЗАЧЕМ: Подключение 100% ассетов из реестра для Neuro Space и Ambient.
+ * @fileOverview Менеджер SFX V12.1 — "Registry Path Restoration".
+ * #ЗАЧЕМ: Исправление 404 ошибок для специфических файлов лазеров и пещер.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
         '/assets/music/sparkles/677359__saha213131__horrorcinematicdarkhorrorroomtone20_(1).ogg',
         '/assets/music/SFX/546170__waveplaysfx__eerie-music-box-hits.ogg',
         '/assets/music/SFX/269097__breo2012__insane.ogg',
-        '/assets/music/sfx/Agony_Labyrinth.ogg',
-        '/assets/music/sfx/Cave_Breath.ogg',
+        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg',
+        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
         '/assets/music/sfx/Dark_spell_-_1.ogg',
         '/assets/music/sfx/706518__alesiadavina__horror-sound-effect-paranormal-2-vol-003.ogg',
         '/assets/music/sfx/706519__alesiadavina__halloween-sound-effect-paranormal-3-vol-003.ogg',
@@ -21,11 +21,9 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/825585__akelley6__quake.ogg'
     ],
     laser: [
-        '/assets/music/sfx/laser/01_SFX.ogg',
-        '/assets/music/sfx/laser/34_SFX.ogg',
-        '/assets/music/sfx/laser/41_SFX.ogg',
-        '/assets/music/sfx/laser/825582__akelley6__lazer-blast.ogg',
-        '/assets/music/sfx/laser/645999__johncanyon__moan3_mono.ogg',
+        '/assets/music/droplets/dark/01_SFX.ogg',
+        '/assets/music/droplets/dark/34_SFX.ogg',
+        '/assets/music/droplets/dark/41_SFX.ogg',
         '/assets/music/sfx/laser/825552__akelley6__computer-error-beep.ogg',
         '/assets/music/sfx/laser/825554__akelley6__doggy-synth.ogg',
         '/assets/music/sfx/laser/Robot_Confused.ogg'
