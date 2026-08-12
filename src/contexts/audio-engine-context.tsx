@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V62.3 — "Forced English Locale".
- * #ЗАЧЕМ: Отключение автоматической проверки локали для системных сообщений.
+ * @fileOverview Audio Engine Context V62.5 — "Piano Presence Correction".
+ * #ЗАЧЕМ: Увеличение базового баланса пианино для Neuro Space.
  */
 'use client';
 
@@ -38,7 +38,7 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45,
   sfx: 0.45,
   harmony: 0.55,
-  pianoAccompaniment: 0.22,
+  pianoAccompaniment: 0.45, // Повышено с 0.22 для лучшей слышимости
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
@@ -188,7 +188,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
-  /** #ЗАЧЕМ: Принудительный возврат 'en' для временной блокировки локалей. */
   const getLanguage = (): Language => {
     return 'en';
   };

@@ -3,9 +3,13 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AuraGroove V2 Security Rules: "IRON PERIMETER" (V6.5)
-     * #ЗАЧЕМ: Защита Наследия и поддержка анонимной телеметрии.
+     * AuraGroove V2 Security Rules: "OPEN FORGE" (V7.0)
+     * #ЗАЧЕМ: Обеспечение записи аксиом для авторизованных операторов.
      */
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
 
     function isAdmin() {
       return request.auth != null && request.auth.uid == 'ER24LvlifBafiYPf5sLRkYW0aUD3';
@@ -13,32 +17,35 @@ service cloud.firestore {
 
     match /heritage_axioms/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
     
     match /masterpieces/{id} {
-      allow read, create: if true;
-      allow update, delete: if isAdmin();
+      allow read: if true;
+      allow create, update, delete: if isAuthenticated();
     }
 
     match /telemetry_daily/{id} {
-      allow read: if isAdmin();
-      allow create, update: if true; // Разрешаем инкремент счетчиков всем
+      allow read: if isAuthenticated();
+      allow create, update: if true;
     }
 
     match /project_documents/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if isAdmin();
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /routes/{id} {
+      allow read, write: if isAuthenticated();
     }
 
     match /{document=**} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
   }
 }
