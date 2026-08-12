@@ -2,13 +2,13 @@
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур V13.5 — "Absolute Registry Sync".
+ * @fileOverview Плеер текстур V13.6 — "Registry Synchronization".
  * #ЗАЧЕМ: 100% синхронизация с физическим реестром (sparkles + droplets).
- * #ЧТО: ПЛАН №13.5 — Исправлен баг инициализации и добавлены все сэмплы из sparks.txt.
+ * #ЧТО: ПЛАН №13.6 — Добавлены все сэмплы из sparks.txt и assets_droplets.txt.
  */
 const SPARKLE_SAMPLES = {
     MELODIC: [
-        // --- Core Sparkles Folder ---
+        // --- Core Melodic Sparkles ---
         '/assets/music/sparkles/180181__ecfike__slow-motion-music_(1).ogg',
         '/assets/music/sparkles/330392__talan_pl__deepspacepad_(1).ogg',
         '/assets/music/sparkles/330392__talan_pl__deepspacepad_(2).ogg',
@@ -16,13 +16,14 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/400830__waveplaysfx__synth-seq-cute-sine-tone-pluck-sequence-e5-c4.ogg',
         '/assets/music/sparkles/401268__erokia__401225__rheynemusic__rheyne-rhodes-2-erokia-remix-1_(1).ogg',
         '/assets/music/sparkles/413585__sergeyionov__cr-ambient-chord_(1).ogg',
-        '/assets/music/sparkles/414892__erokia__gis-sweden-electronic-minute-no-26-affordance-2-414229-erokia-remix-3_(1).ogg',
-        '/assets/music/sparkles/414893__erokia__gis-sweden-electronic-minute-no-26-affordance-2-414229-erokia-remix-2_(1).ogg',
-        '/assets/music/sparkles/414895__erokia__gis-sweden-electronic-minute-no-26-affordance-2-414229-erokia-remix-4_(1).ogg',
         '/assets/music/sparkles/516493__gregorquendel__ambience-musical-cosmic-shift-02_(1).ogg',
         '/assets/music/sparkles/516493__gregorquendel__ambience-musical-cosmic-shift-02_(2).ogg',
         '/assets/music/sparkles/516496__gregorquendel__ambience-musical-space-guitar_(1).ogg',
         '/assets/music/sparkles/516496__gregorquendel__ambience-musical-space-guitar_(2).ogg',
+        '/assets/music/sparkles/620113__waveplaysfx__synth-atmos-blue-pad-phrase.ogg',
+        '/assets/music/sparkles/700901__laffik__smooth-pad-sytrus-02_(1).ogg',
+        '/assets/music/sparkles/812623__cvltiv8r__illusion-spell-synth-pad-burst_(1)_(1).ogg',
+        // --- Microfreak Collection ---
         '/assets/music/sparkles/528382__deleted_user_6725533__microfreak-pad-12_(1).ogg',
         '/assets/music/sparkles/528383__deleted_user_6725533__microfreak-pad-11_(1).ogg',
         '/assets/music/sparkles/528384__deleted_user_6725533__microfreak-pad-10_(1).ogg',
@@ -43,12 +44,9 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/528399__deleted_user_6725533__microfreak-pad-19_(1).ogg',
         '/assets/music/sparkles/528400__deleted_user_6725533__microfreak-pad-3_(1).ogg',
         '/assets/music/sparkles/528401__deleted_user_6725533__microfreak-pad-24_(1).ogg',
-        '/assets/music/sparkles/555547__waveplaysfx__synth-granular-untitled-atmos-sequence-pad-darkish.ogg',
-        '/assets/music/sparkles/620113__waveplaysfx__synth-atmos-blue-pad-phrase.ogg',
-        '/assets/music/sparkles/700901__laffik__smooth-pad-sytrus-02_(1).ogg',
-        '/assets/music/sparkles/812623__cvltiv8r__illusion-spell-synth-pad-burst_(1)_(1).ogg',
-        // --- Droplets Melodic (from sparks.txt) ---
+        // --- Droplets Melodic ---
         '/assets/music/droplets/EPstein.ogg',
+        '/assets/music/droplets/AcChord.ogg',
         '/assets/music/droplets/SweetHarpRev1.ogg',
         '/assets/music/droplets/vibes_a.ogg',
         '/assets/music/droplets/belldom.ogg',
@@ -57,13 +55,12 @@ const SPARKLE_SAMPLES = {
         '/assets/music/droplets/dreams.mp3'
     ],
     ORGANIC: [
-        // --- Core Sparkles Folder ---
+        // --- Core Organic Sparkles ---
         '/assets/music/sparkles/231573__keweldog__treesconversion_(1).ogg',
         '/assets/music/sparkles/256441__adeathy__ambience_04_white_(1).ogg',
         '/assets/music/sparkles/256442__adeathy__ambience_03_lightgrey_(1).ogg',
         '/assets/music/sparkles/256444__adeathy__ambience_01_black_(1).ogg',
         '/assets/music/sparkles/256445__adeathy__ambience_02_darkgrey_(1).ogg',
-        '/assets/music/sparkles/294463__deleted_user_4798915__sfx-robotic-take-me-to-your-leader_(1)_(1).ogg',
         '/assets/music/sparkles/384844__waveplaysfx__ambient-bass-deep-dark-phasing-bassy-swell.ogg',
         '/assets/music/sparkles/388950__waveplaysfx__ambient-bass-deep-soft-bassy-hit-alternate.ogg',
         '/assets/music/sparkles/394268__waveplaysfx__sfx-sci-fi-space-sound-effect.ogg',
@@ -88,13 +85,8 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/515723__waveplaysfx__sfx-ambience-silent-hill-style-background.ogg',
         '/assets/music/sparkles/515753__waveplaysfx__sfx-ambience-0-silent-hill-style-background.ogg',
         '/assets/music/sparkles/516477__gregorquendel__ambience-cosmic-rain-01_(1).ogg',
-        '/assets/music/sparkles/516477__gregorquendel__ambience-cosmic-rain-01_(2).ogg',
         '/assets/music/sparkles/516478__gregorquendel__ambience-cosmic-bubbles_(1).ogg',
-        '/assets/music/sparkles/516478__gregorquendel__ambience-cosmic-bubbles_(2).ogg',
         '/assets/music/sparkles/516479__gregorquendel__deep-space-ambience_(1).ogg',
-        '/assets/music/sparkles/516479__gregorquendel__deep-space-ambience_(2).ogg',
-        '/assets/music/sparkles/516497__gregorquendel__ambience-musical-glitch-cosmic-drift_(1).ogg',
-        '/assets/music/sparkles/516497__gregorquendel__ambience-musical-glitch-cosmic-drift_(2).ogg',
         '/assets/music/sparkles/529138__waveplaysfx__ambient-loop-deep-ambient-pulses-3-added-drums.ogg',
         '/assets/music/sparkles/536776__egomassive__wind_(1)_(1).ogg',
         '/assets/music/sparkles/536957__samuelgremaud__street-sweeper-4_(1).ogg',
@@ -109,53 +101,17 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/647909__arc-en-ciel__mystical_short_atmo_(1).ogg',
         '/assets/music/sparkles/677359__saha213131__horrorcinematicdarkhorrorroomtone20_(1).ogg',
         '/assets/music/sparkles/776959__reathance__reath-ambience-clickets_CC0_(1).ogg',
-        '/assets/music/sparkles/799303__cvltiv8r__ambient-drone-df-h-df-g-jh-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799305__cvltiv8r__ambient-drone-234896806485-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799307__cvltiv8r__ambient-drone-304583405683058-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799310__cvltiv8r__ambient-drone-4-t-2-34-rt-tt-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799311__cvltiv8r__ambient-drone-40693-04569-03-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799312__cvltiv8r__ambient-drone-456-7-7ws-ss-sss-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799324__cvltiv8r__ambient-drone-_ety__y_rh__fh_d_yh_fu-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799333__cvltiv8r__ambient-drone-dgjk-j-l-u-k-d-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799334__cvltiv8r__ambient-drone-ds-sd-d-fgc-v-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799339__cvltiv8r__ambient-drone-fg-h-jk-fg-gg-g-g-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799341__cvltiv8r__ambient-drone-j-l-j-o-hi-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799351__cvltiv8r__ambient-drone-u-e-tu-d-tg-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/799354__cvltiv8r__ambient-drone-wq-hj-meh-o-u-u-io-by-cvltiv8r_(1).ogg',
-        '/assets/music/sparkles/813142__cvltiv8r__magic-potion-fx_(1)_(1).ogg',
-        '/assets/music/sparkles/814946__cvltiv8r__magical-mystery-spell-burst_(1)_(1).ogg',
-        '/assets/music/sparkles/817275__cvltiv8r__magic-spell-impact-and-trail-off_(1)_(1).ogg',
-        '/assets/music/sparkles/847621__cvltiv8r__magic-spell-whir-and-boom_(1)_(1).ogg',
-        '/assets/music/sparkles/849412__cvltiv8r__magical-impact-with-trippy-trail-fx_(1)_(1).ogg',
-        '/assets/music/sparkles/849523__cvltiv8r__alien-craft-ambience-fx_(1).ogg',
-        '/assets/music/sparkles/857848__cvltiv8r__space-craft-wind-leaving-atmosphere-fx_(1).ogg',
         '/assets/music/sparkles/861358__qubodup__vespa-driveby-tunnel_(1).ogg',
-        // --- Droplets Organic (from sparks.txt) ---
+        // --- Droplets Organic ---
         '/assets/music/droplets/Confusion.ogg',
-        '/assets/music/droplets/dark/Fearsome.ogg',
-        '/assets/music/droplets/dark/Grounding.ogg',
-        '/assets/music/droplets/dark/Gulls.ogg',
+        '/assets/music/droplets/Fearsome.ogg',
         '/assets/music/droplets/Freakystones.ogg',
         '/assets/music/droplets/sweepingbells.ogg',
         '/assets/music/droplets/icepad.ogg',
         '/assets/music/droplets/Sleep.ogg',
-        '/assets/music/droplets/AcChord.ogg',
+        '/assets/music/droplets/Dizzy.ogg',
         '/assets/music/droplets/BirdFX.ogg',
-        '/assets/music/droplets/Abstruse.ogg',
-        '/assets/music/droplets/BladeWalker.ogg',
         '/assets/music/droplets/merimbo.ogg',
-        '/assets/music/droplets/electro/Tubator.ogg',
-        '/assets/music/droplets/electro/SalvingPad.ogg',
-        '/assets/music/droplets/electro/NoiseFxB06.ogg',
-        '/assets/music/droplets/electro/CloseA.ogg',
-        '/assets/music/droplets/electro/E_Rhythm.ogg',
-        '/assets/music/droplets/electro/HousedBass7.ogg',
-        '/assets/music/droplets/electro/Dizzy.ogg',
-        '/assets/music/droplets/electro/Drill.ogg',
-        '/assets/music/droplets/electro/Starter.ogg',
-        '/assets/music/droplets/electro/ElectroShock.ogg',
-        '/assets/music/droplets/electro/MelancholicPad.ogg',
-        '/assets/music/droplets/electro/Electricity.ogg',
         '/assets/music/droplets/BeepFreak.ogg',
         '/assets/music/droplets/ocean.mp3',
         '/assets/music/droplets/end.mp3'
@@ -240,7 +196,6 @@ export class SparklePlayer {
         }
 
         if (samplePool.length === 0) {
-             // Fallback to any available buffer if the chosen pool is empty
             samplePool = this.melodicBuffers.length > 0 ? this.melodicBuffers : this.organicBuffers;
         }
 

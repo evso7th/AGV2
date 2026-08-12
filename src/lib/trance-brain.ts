@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Psybient Brain V65.0 — "The Audible Ensemble".
- * #ЗАЧЕМ: Реализация слышимости всех слоев ансамбля через подъем уровней и Sibling Restoration.
+ * @fileOverview Psybient Brain V65.1 — "Atmospheric Rotation Update".
+ * #ЗАЧЕМ: ПЛАН №1430. Разнообразие текстур через ротацию категорий.
  */
 
 import type {
@@ -238,8 +239,15 @@ export class TranceBrain {
     }
 
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12);
-        return [1.5, 4.5, 7.5, 10.5].map(t => ({ type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT, weight: 0.85, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }));
+        [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
+            events.push({
+                type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
+                weight: 0.85, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
+            });
+        });
+        return events;
     }
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
@@ -307,8 +315,16 @@ export class TranceBrain {
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
-        if (epoch % 4 === 0 && this.rng.chance(25)) return [{ type: 'sparkle', note: 60, time: this.rng.next() * 3, duration: 4.0, weight: 0.8, technique: 'hit', dynamics: 'p', params: { category: 'MELODIC' } }];
-        return [];
+        const events: FractalEvent[] = [];
+        if (epoch % 4 === 0 && this.rng.chance(25)) {
+            // #ЗАЧЕМ: ПЛАН №1430. Ротация категорий для разнообразия.
+            const category = this.rng.chance(50) ? 'ORGANIC' : 'MELODIC';
+            events.push({ 
+                type: 'sparkle', note: 60, time: this.rng.next() * 3, duration: 4.0, 
+                weight: 0.8, technique: 'hit', dynamics: 'p', params: { category } 
+            });
+        }
+        return events;
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {

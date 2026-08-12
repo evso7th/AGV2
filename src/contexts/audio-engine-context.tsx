@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V62.8 — "Ensemble Gain Fix".
- * #ЗАЧЕМ: Подъем уровней усиления сэмплеров для обеспечения слышимости.
+ * @fileOverview Audio Engine Context V62.9 — "Background Texture Unlock".
+ * #ЗАЧЕМ: Фоновая дозагрузка полных библиотек Sparkle и SFX.
  */
 'use client';
 
@@ -41,7 +42,6 @@ const VOICE_BALANCE: Record<string, number> = {
   pianoAccompaniment: 0.45,
 };
 
-// #ЗАЧЕМ: Подъем уровней до слышимых значений.
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
     acoustic: 0.55,
@@ -437,7 +437,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               cs80SamplerRef.current?.init(),
               accompanimentManagerV2Ref.current?.init(),
               melodyManagerV2Ref.current?.init(),
-              bassManagerV2Ref.current?.init()
+              bassManagerV2Ref.current?.init(),
+              sparklePlayerRef.current?.init(), // #ЗАЧЕМ: Дозагрузка всей библиотеки текстур.
+              sfxSynthManagerRef.current?.init()  // #ЗАЧЕМ: Дозагрузка всей библиотеки эффектов.
             ]);
             setBackgroundLoadInProgress(false);
             setBackgroundLoadComplete(true);
