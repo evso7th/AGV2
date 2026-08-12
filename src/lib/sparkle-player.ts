@@ -2,8 +2,8 @@
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур V12.5 — "Absolute Registry Sync".
- * #ЗАЧЕМ: 100% покрытие реестра и исправление всех 404 ошибок.
+ * @fileOverview Плеер текстур V12.6 — "Registry Integrity Reclaimed".
+ * #ЗАЧЕМ: 100% восстановление путей согласно assets_registry.txt и sparks.txt.
  */
 const SPARKLE_SAMPLES = {
     MELODIC: [

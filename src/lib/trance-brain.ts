@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Psybient Brain V63.1 — "Ensemble Integrity Fix".
- * #ЗАЧЕМ: ПЛАН №1410 — Исправление мэппинга роли harmony и активация всех слоев.
+ * @fileOverview Psybient Brain V63.2 — "Loop Logic & Resilience Fix".
+ * #ЗАЧЕМ: ПЛАН №1412 — Исправление опечатки в цикле rippleLongNote и стабилизация потока.
  */
 
 import type {
@@ -461,7 +461,7 @@ export class TranceBrain {
         const baseDur = currentTension > 0.8 ? 0.4 : 1.2;
         const numChunks = Math.ceil(e.duration / baseDur); 
         const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < i < numChunks; i++) {
+        for (let i = 0; i < numChunks; i++) {
             rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.95, weight: e.weight * (0.9 + this.rng.next() * 0.2), params: { ...e.params, release: 2.0 } });
         }
         return rippled;
