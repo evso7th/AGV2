@@ -1,22 +1,24 @@
+
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V12.3 — "Second Absolute Registry Purge".
- * #ЗАЧЕМ: Удаление еще 5 проблемных ассетов по требованию пользователя.
+ * @fileOverview Менеджер SFX V12.5 — "Absolute Registry Sync".
+ * #ЗАЧЕМ: 100% покрытие реестра и исправление всех 404 ошибок.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     dark: [
         '/assets/music/sparkles/677359__saha213131__horrorcinematicdarkhorrorroomtone20_(1).ogg',
         '/assets/music/SFX/546170__waveplaysfx__eerie-music-box-hits.ogg',
         '/assets/music/SFX/269097__breo2012__insane.ogg',
-        '/assets/music/sfx/706519__alesiadavina__halloween-sound-effect-paranormal-3-vol-003.ogg',
-        '/assets/music/sfx/706521__alesiadavina__creepy-sound-effect-paranormal-5-vol-003.ogg',
-        '/assets/music/sfx/722724__alesiadavina__horror-sound-monster-breath.ogg',
-        '/assets/music/sfx/770720__richcraftstudios__bat-screech.ogg',
-        '/assets/music/sfx/825553__akelley6__death-stinger.ogg',
-        '/assets/music/sfx/825585__akelley6__quake.ogg'
+        '/assets/music/droplets/dark/683627__dneproman__dark-spell-1.ogg',
+        '/assets/music/droplets/dark/683626__dneproman__cave-breath.ogg',
+        '/assets/music/droplets/dark/683625__dneproman__agony-labyrinth.ogg'
     ],
-    laser: [],
+    laser: [
+        '/assets/music/sparkles/394268__waveplaysfx__sfx-sci-fi-space-sound-effect.ogg',
+        '/assets/music/sparkles/413591__sergeyionov__cr-lasers-reflection_(1).ogg',
+        '/assets/music/sparkles/413584__sergeyionov__cr-atmospheric-alarm_(1).ogg'
+    ],
     voice: [
         '/assets/music/sfx/voice/137943__ionicsmusic__robot-voice-no-data.ogg',
         '/assets/music/sfx/voice/187919__vasotelvi__deletion-completed.ogg.1296434.wav',
@@ -63,29 +65,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/sfx/voice/783026__soundcannon42__robot-voice-analyze-neurons-for-musical-creativity.ogg',
         '/assets/music/sfx/voice/785805__alien_i_trust__sample-pack-link-in-bio-alien-i-trust-i-exist-between-the-known-and-the-unknown.ogg',
         '/assets/music/sfx/voice/789675__alien_i_trust__synth-shot-1-by-alien-i-trust.ogg',
-        '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg',
-        '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg',
-        '/assets/music/sfx/voice/Enjoy_every_moment_F.ogg.824252.wav',
-        '/assets/music/sfx/voice/Hello_who_would_you_.ogg',
-        '/assets/music/sfx/voice/I_m_afraid_of_nothin.ogg',
-        '/assets/music/sfx/voice/Imagination_rules_th.ogg',
-        '/assets/music/sfx/voice/It_s_better_to_have_.ogg',
-        '/assets/music/sfx/voice/Launch_all_airships_.ogg',
-        '/assets/music/sfx/voice/life_is_good_be_happ.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-chirping-near-the-river-2473.ogg',
-        '/assets/music/sfx/voice/mixkit-birds-in-the-jungle-2434.ogg',
-        '/assets/music/sfx/voice/mixkit-fast-small-sweep-transition-166.ogg',
-        '/assets/music/sfx/voice/mixkit-morning-birds-2472.ogg',
-        '/assets/music/sfx/voice/mixkit-sci-fi-robot-speaking-289.ogg',
-        '/assets/music/sfx/voice/Money_often_costs_to.ogg',
-        '/assets/music/sfx/voice/Never_look_back.ogg',
-        '/assets/music/sfx/voice/Nothing_is_certain_b.ogg',
-        '/assets/music/sfx/voice/Sitting_in_a_sandpit.ogg',
-        '/assets/music/sfx/voice/Time_is_the_great_he.ogg',
-        '/assets/music/sfx/voice/voice_game-over.ogg',
-        '/assets/music/sfx/voice/wazzap_bro_relax.ogg',
-        '/assets/music/sfx/voice/you_are_just_another.ogg',
-        '/assets/music/sfx/voice/You_are_pulling_my_l.ogg'
+        '/assets/music/sfx/voice/953__vate__processed-vocoder-voice.ogg'
     ],
     tube: [
         '/assets/music/tube/102540__sandyrb__tube-pop.ogg',
@@ -347,19 +327,14 @@ export class SfxSynthManager {
         if (genre === 'reggae') return 'tube';
 
         if (genre === 'psybient') {
-            if (rand < 0.25) return 'glitch';
-            if (rand < 0.5) return 'laser';
-            if (rand < 0.85) return 'voice';
-            return 'tube';
+            if (rand < 0.3) return 'glitch';
+            if (rand < 0.6) return 'laser';
+            return 'voice';
         }
 
         if (genre === 'ambient') {
-            if (mood === 'dark' || mood === 'anxious') {
-                if (rand < 0.4) return 'dark';
-                return 'voice';
-            }
-            if (rand < 0.4) return 'common';
-            if (rand < 0.7) return 'loop';
+            if (mood === 'dark' || mood === 'anxious') return 'dark';
+            if (rand < 0.5) return 'common';
             return 'voice';
         }
         

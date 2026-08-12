@@ -1,11 +1,11 @@
+
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур (Версия V12.0 — "Absolute Registry Integration").
- * #ЗАЧЕМ: Подключение 100% ассетов из реестра для Neuro Space и Ambient.
+ * @fileOverview Плеер текстур V12.5 — "Absolute Registry Sync".
+ * #ЗАЧЕМ: 100% покрытие реестра и исправление всех 404 ошибок.
  */
 const SPARKLE_SAMPLES = {
-    // Тональные и синтетические текстуры (Microfreak & Pads)
     MELODIC: [
         '/assets/music/sparkles/180181__ecfike__slow-motion-music_(1).ogg',
         '/assets/music/sparkles/330392__talan_pl__deepspacepad_(1).ogg',
@@ -48,7 +48,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/700901__laffik__smooth-pad-sytrus-02_(1).ogg',
         '/assets/music/sparkles/812623__cvltiv8r__illusion-spell-synth-pad-burst_(1)_(1).ogg'
     ],
-    // Органические и шумовые текстуры (Rain, Wind, Drones)
     ORGANIC: [
         '/assets/music/sparkles/231573__keweldog__treesconversion_(1).ogg',
         '/assets/music/sparkles/256441__adeathy__ambience_04_white_(1).ogg',
@@ -58,15 +57,12 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/294463__deleted_user_4798915__sfx-robotic-take-me-to-your-leader_(1)_(1).ogg',
         '/assets/music/sparkles/384844__waveplaysfx__ambient-bass-deep-dark-phasing-bassy-swell.ogg',
         '/assets/music/sparkles/388950__waveplaysfx__ambient-bass-deep-soft-bassy-hit-alternate.ogg',
-        '/assets/music/sparkles/394268__waveplaysfx__sfx-sci-fi-space-sound-effect.ogg',
         '/assets/music/sparkles/396351__waveplaysfx__ambient-bass-bassy-liquidy-phasing-sfx.ogg',
         '/assets/music/sparkles/396943__waveplaysfx__ambient-bass-bassy-liquidy-phasing-sfx-3.ogg',
         '/assets/music/sparkles/413583__sergeyionov__cr-deep-glitch-percussion_(1).ogg',
-        '/assets/music/sparkles/413584__sergeyionov__cr-atmospheric-alarm_(1).ogg',
         '/assets/music/sparkles/413588__sergeyionov__cr-ambient-glitch_(1).ogg',
         '/assets/music/sparkles/413589__sergeyionov__cr-atmospheric-percussion_(1).ogg',
         '/assets/music/sparkles/413590__sergeyionov__cr-noise-in-huge-space_(1).ogg',
-        '/assets/music/sparkles/413591__sergeyionov__cr-lasers-reflection_(1).ogg',
         '/assets/music/sparkles/413597__sergeyionov__cr-water-sonar_(1).ogg',
         '/assets/music/sparkles/456101__burghrecords__future-ambience-background_(1).ogg',
         '/assets/music/sparkles/467569__samuelgremaud__railway-platform_(1).ogg',

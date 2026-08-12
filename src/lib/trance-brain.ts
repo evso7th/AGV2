@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Psybient Brain V62.8 — "Synthesis Resurgence".
- * #ЗАЧЕМ: Исправление жалоб на "мало музыки". Возврат мелодии, гармонии и пианино.
+ * @fileOverview Psybient Brain V63.0 — "Synthesis Resurgence & Silence Shield".
+ * #ЗАЧЕМ: Ликвидация тишины после интро и внедрение сложных филлов.
  */
 
 import type {
@@ -67,9 +68,6 @@ export class TranceBrain {
     private soloistBusyUntilBar: number = -1;
     private spiralTransposition: number = 0;
     private currentMutationType: string = 'none';
-
-    private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
-    private lastHarmonySwitchBar: number = -1;
 
     private readonly MELODY_CEILING = 88;
 
@@ -194,8 +192,7 @@ export class TranceBrain {
         }
 
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: Снято ограничение epoch < 4 для активации аксиом.
-        const isIntro = navInfo.currentPart.id === 'INTRO';
+        const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION');
         
         if (epoch >= this.soloistBusyUntilBar) {
             this.selectNextAxiom(navInfo, dna, epoch);
@@ -212,18 +209,18 @@ export class TranceBrain {
         // 1. DRUMS
         if (hints.drums) {
             if (epoch % 16 === 0 || navInfo.isPartTransition) {
-                events.push({ type: 'drum_crash2', note: 49, time: 0, duration: 4.0, weight: 0.45, technique: 'hit', dynamics: 'f', phrasing: 'legato' });
+                events.push({ type: 'drum_crash2', note: 49, time: 0, duration: 4.0, weight: 0.55, technique: 'hit', dynamics: 'f', phrasing: 'legato' });
             }
 
             const heritageDrums = this.renderHeritageDrums(epoch, tension, mosaicBar);
             if (heritageDrums.length > 0) {
                 events.push(...heritageDrums);
-                events.push(...this.renderNeuroBaseSupport(epoch, tension));
             } else {
                 events.push(...this.renderNeuroDrums(epoch, tension));
             }
             
-            if (epoch % 4 === 3 || tension > 0.82) {
+            // #ЗАЧЕМ: Настоящие пробежки в конце фраз.
+            if (epoch % 4 === 3 || tension > 0.85) {
                 events.push(...this.renderComplexNeuroFill(epoch, tension));
             }
         }
@@ -243,15 +240,12 @@ export class TranceBrain {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, this.currentTimeScale, mosaicBar);
             }
             
-            // #ЗАЧЕМ: Повышен шанс Gap-Filler до 75% для плотности.
-            if (melodyEvents.length < 2 && this.rng.chance(75)) {
-                melodyEvents = this.renderShimmerArp(epoch, resChord, tension);
+            // #ЗАЧЕМ: SHIELD AGAINST SILENCE. Генерируем арпеджио если аксиома молчит.
+            if (melodyEvents.length === 0 || this.rng.chance(30)) {
+                melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
 
-            melodyEvents.forEach(e => { 
-                e.pan = (this.rng.next() * 1.2 - 0.6);
-                e.weight *= 1.25; // #ЗАЧЕМ: Повышена громкость лидов.
-            });
+            melodyEvents.forEach(e => { e.pan = (this.rng.next() * 1.2 - 0.6); });
             events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord, tension)));
             if (this.currentPreferredInstrument) instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
         }
@@ -277,8 +271,7 @@ export class TranceBrain {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, tension)));
         }
 
-        // #ЗАЧЕМ: Повышен шанс пианиста до 60%.
-        if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment') && this.rng.chance(60)) {
+        if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord, tension)));
         }
@@ -286,10 +279,7 @@ export class TranceBrain {
         // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
-        events.forEach(e => {
-            if (!e.params) e.params = {};
-            e.params.tension = tension;
-        });
+        events.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
 
         return {
             events, tension, beautyScore: 0.95,
@@ -298,7 +288,7 @@ export class TranceBrain {
                 melody: this.currentTheme ? this.currentTheme.id : 'Shimmer Arp',
                 ensemble: 'Neuro-Climax'
             },
-            narrative: `Neuro-Synthesis Awakening: [Mood: ${this.mood.toUpperCase()}]`
+            narrative: `Neuro-Synthesis Awakening: [Epoch ${epoch}]`
         };
     }
 
@@ -307,19 +297,16 @@ export class TranceBrain {
         const root = chord.rootNote + 24; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
         
-        // #ЗАЧЕМ: Увеличенная плотность арпеджио.
-        for (let i = 0; i < 8; i++) {
-            if (this.rng.chance(45 + tension * 40)) {
+        for (let i = 0; i < 6; i++) {
+            if (this.rng.chance(50 + tension * 30)) {
                 const deg = scale[calculateMusiNum(epoch + i, 7, this.seed, scale.length)];
                 events.push({
                     type: 'melody',
                     note: root + deg,
                     time: i * 0.75 * TICK_TO_BEAT,
-                    duration: 0.35 * TICK_TO_BEAT,
-                    weight: 0.75,
-                    technique: 'pick',
-                    dynamics: 'p',
-                    phrasing: 'staccato',
+                    duration: 0.5 * TICK_TO_BEAT,
+                    weight: 0.65,
+                    technique: 'pick', dynamics: 'p', phrasing: 'staccato',
                     params: { attack: 0.01, release: 2.0 }
                 });
             }
@@ -329,7 +316,7 @@ export class TranceBrain {
 
     private renderComplexNeuroFill(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const noteCount = 8 + Math.floor(tension * 8); 
+        const noteCount = 8 + Math.floor(tension * 6); 
         const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
         const startBeat = 2.5;
         const totalDuration = 1.5;
@@ -339,7 +326,7 @@ export class TranceBrain {
             const inst = (i % 3 === 0) ? 'drum_snare' : tomSequence[i % 3];
             events.push({
                 type: inst as any, note: 48, time: beatTime, duration: 0.1,
-                weight: 0.95 + (i / noteCount) * 0.4, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
+                weight: 0.9 + (i / noteCount) * 0.3, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
             });
         }
         return events;
@@ -350,23 +337,20 @@ export class TranceBrain {
         const isLight = ['joyful', 'epic', 'enthusiastic', 'dreamy'].includes(this.mood);
         
         if (epoch % 4 === 0) {
-            if (this.rng.chance(25 + tension * 20)) {
+            if (this.rng.chance(30 + tension * 20)) {
                 events.push({ 
                     type: 'sparkle', note: 60, time: this.rng.next() * 3, 
-                    duration: 6.0, weight: 1.15, technique: 'hit', dynamics: 'p', 
+                    duration: 6.0, weight: 1.1, technique: 'hit', dynamics: 'p', 
                     params: { category: isLight ? 'MELODIC' : 'ORGANIC' } 
                 });
             }
             
-            if (this.rng.chance(15 + tension * 10)) {
-                let category = 'common';
-                if (isLight) category = this.rng.chance(70) ? 'laser' : 'voice';
-                else category = this.rng.chance(70) ? 'dark' : 'glitch';
-
+            if (this.rng.chance(20 + tension * 10)) {
+                const cat = isLight ? 'voice' : 'dark';
                 events.push({ 
                     type: 'sfx', note: 60, time: 1.5 + this.rng.next() * 2.0, duration: 4.0, 
-                    weight: 1.15, technique: 'hit', dynamics: 'mf', 
-                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: category, weight: 1.0 }] } } 
+                    weight: 1.1, technique: 'hit', dynamics: 'mf', 
+                    params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: cat, weight: 1.0 }] } } 
                 });
             }
         }
@@ -384,21 +368,8 @@ export class TranceBrain {
         
         if (tension > 0.6) {
             [1.5, 4.5, 7.5, 10.5].forEach(t => {
-                events.push({ 
-                    type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, 
-                    duration: 1.5, weight: 0.5, technique: 'hit', dynamics: 'p', pan: 0.4 
-                });
+                events.push({ type: 'drum_ride_wetter', note: 51, time: t * TICK_TO_BEAT, duration: 1.5, weight: 0.45, technique: 'hit', dynamics: 'p', pan: 0.4 });
             });
-        }
-
-        for (let t = 0; t < TICKS_PER_BAR; t += 1.5) {
-            if (this.rng.chance(70)) {
-                events.push({ 
-                    type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, 
-                    time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.5, 
-                    technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: 0.1
-                });
-            }
         }
         return events;
     }
@@ -414,14 +385,6 @@ export class TranceBrain {
                     duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'mf', phrasing: 'staccato'
                 });
             });
-        });
-        return events;
-    }
-
-    private renderNeuroBaseSupport(epoch: number, tension: number): FractalEvent[] {
-        const events: FractalEvent[] = [];
-        [0, 6].forEach(t => {
-            events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.9, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' });
         });
         return events;
     }
@@ -457,7 +420,7 @@ export class TranceBrain {
         return this.currentTheme.phrase.filter(n => n.t >= offset && n.t < offset + readingWindow).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
             time: (n.t - offset) * TICK_TO_BEAT * timeScale, duration: (n.d * TICK_TO_BEAT * timeScale),
-            weight: 0.95, technique: n.d > 3 ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
+            weight: 0.9, technique: n.d > 3 ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
         }));
     }
 
@@ -465,7 +428,7 @@ export class TranceBrain {
         const offset = (mosaicBar % 4) * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.65,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.6,
             technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
@@ -475,7 +438,7 @@ export class TranceBrain {
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         return intervals.map((interval) => ({
             type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: 0, duration: 4.0, weight: 0.6, technique: 'swell', dynamics: 'p', phrasing: 'legato',
+            time: 0, duration: 4.0, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.5, release: 2.5 }
         }));
     }
@@ -486,15 +449,11 @@ export class TranceBrain {
             const root = chord.rootNote + 12;
             events.push({
                 type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
-                time: 10.5 * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.65,
+                time: 10.5 * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.55,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             });
         }
         return { events, style: 'Neuro Echo' };
-    }
-
-    private renderDerivativeHarmony(currentChord: GhostChord, epoch: number, timbre: 'violin' | 'guitarChords'): FractalEvent[] {
-        return [{ type: 'harmony', note: currentChord.rootNote + 12 + this.spiralTransposition, time: 0, duration: 3.5, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato' }];
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {

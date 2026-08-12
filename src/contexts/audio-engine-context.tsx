@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V62.5 — "Piano Presence Correction".
- * #ЗАЧЕМ: Увеличение базового баланса пианино для Neuro Space.
+ * @fileOverview Audio Engine Context V62.6 — "Stability Shield".
+ * #ЗАЧЕМ: Защита от тишины и критических ошибок планирования.
  */
 'use client';
 
@@ -38,7 +39,7 @@ const VOICE_BALANCE: Record<string, number> = {
   sparkles: 0.45,
   sfx: 0.45,
   harmony: 0.55,
-  pianoAccompaniment: 0.45, // Повышено с 0.22 для лучшей слышимости
+  pianoAccompaniment: 0.45,
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
@@ -296,7 +297,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
-    if (!Array.isArray(events)) return;
+    // #ЗАЧЕМ: SILENCE SHIELD. Проверяем валидность массива событий перед планированием.
+    if (!Array.isArray(events)) {
+        console.warn('[AudioEngine] Skipping bar scheduling: events is not an array.');
+        return;
+    }
+    
     const beatDuration = 60 / tempo;
     if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
@@ -454,7 +460,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     
                     let scheduleTime = nextBarTimeRef.current;
                     const now = ctx.currentTime;
-                    if (payload.barCount === 0 || scheduleTime < now + 0.03) { scheduleTime = now + 0.15; }
+                    // #ЗАЧЕМ: Расширенный допуск планирования (0.03 -> 0.05) для предотвращения разрывов на мобильных.
+                    if (payload.barCount === 0 || scheduleTime < now + 0.05) { scheduleTime = now + 0.15; }
                     
                     const tempo = payload.actualBpm || 75;
                     const bDur = 60 / tempo;
