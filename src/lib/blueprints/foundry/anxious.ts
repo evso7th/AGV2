@@ -1,0 +1,91 @@
+import type { MusicBlueprint } from '@/types/music';
+
+/**
+ * @fileOverview Foundry Anxious Blueprint V1.0.
+ * #ЗАЧЕМ: 100% клон Trance Anxious для Foundry.
+ */
+export const AnxiousFoundryBlueprint: MusicBlueprint = {
+    id: 'anxious_foundry',
+    name: 'Glitch System (Foundry)',
+    description: 'Fast and glitchy industrial trance clone.',
+    mood: 'anxious',
+    musical: {
+        key: { root: 'E', scale: 'locrian', octave: 2 },
+        bpm: { base: 88, range: [86, 92], modifier: 1.0 }, 
+        timeSignature: { numerator: 4, denominator: 4 },
+        harmonicJourney: [],
+        tensionProfile: { type: 'wave', peakPosition: 0.5, curve: (p, pp) => 0.5 + 0.5 * Math.sin(p * Math.PI * 8) }
+    },
+    structure: {
+        totalDuration: { preferredBars: 128 },
+        parts: [
+            {
+                id: 'INTRO_1', name: 'Signal Lost', duration: { percent: 20 }, 
+                layers: { sfx: true, accompaniment: true, drums: true, bass: true },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    accompaniment: { techniques: [{value: 'arpeggio-fast', weight: 1.0}], density: {min: 0.3, max: 0.5} },
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: {min: 0.4, max: 0.6}, kickVolume: 0.8 }, 
+                },
+                bundles: [{ id: 'FO_ANX_INTRO1', name: 'Static', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'roll', duration: 1, parameters: {} },
+            },
+            {
+                id: 'BUILD', name: 'System Alert', duration: { percent: 30 }, 
+                layers: { bass: true, sfx: true, drums: true, accompaniment: true, harmony: true, pianoAccompaniment: true, melody: true },
+                instrumentation: {
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_anxious', density: { min: 0.7, max: 0.9 }, kickVolume: 1.0 },
+                    bass: { techniques: [{value: 'glissando', weight: 0.7}, {value: 'pulse', weight: 0.3}]},
+                },
+                bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Alert', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
+            },
+            {
+                id: 'PEAK', name: 'Red Alert', duration: { percent: 30 },
+                layers: { bass: true, melody: true, sfx: true, drums: true, accompaniment: true, harmony: true, pianoAccompaniment: true },
+                instrumentation: {
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
+                    melody: { strategy: 'weighted', v2Options: [{ name: 'theremin', weight: 1.0 }] }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_anxious', density: { min: 0.8, max: 1.0 }, kickVolume: 1.1 },
+                },
+                bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Chaos', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'density_pause', duration: 2, parameters: { soloLayer: 'sfx' } },
+            },
+            {
+                id: 'OUTRO', name: 'Corruption', duration: { percent: 20 }, 
+                layers: { sfx: true, drums: true, accompaniment: true },
+                instrumentation: { 
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    }
+                },
+                instrumentRules: { 
+                    drums: { pattern: 'composer', kitName: 'trance_intro', density: { min: 0.3, max: 0.5 }},
+                },
+                bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Decay', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            }
+        ]
+    },
+    mutations: {}, ambientEvents: [], continuity: {}, rendering: {}
+};

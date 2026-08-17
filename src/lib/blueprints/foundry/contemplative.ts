@@ -1,0 +1,60 @@
+import type { MusicBlueprint } from '@/types/music';
+
+/**
+ * @fileOverview Foundry Contemplative Blueprint V1.0.
+ * #ЗАЧЕМ: 100% клон Trance Contemplative для Foundry.
+ */
+export const ContemplativeFoundryBlueprint: MusicBlueprint = {
+    id: 'contemplative_foundry',
+    name: 'Focus Flow (Foundry)',
+    description: 'Deep work industrial trance clone.',
+    mood: 'contemplative',
+    musical: {
+        key: { root: 'D', scale: 'ionian', octave: 3 },
+        bpm: { base: 78, range: [76, 82], modifier: 1.0 },
+        timeSignature: { numerator: 4, denominator: 4 },
+        harmonicJourney: [],
+        tensionProfile: { type: 'plateau', peakPosition: 0.2, curve: (p, pp) => p < pp ? p / pp : (p < 0.9 ? 1.0 : 1 - ((p - 0.9) / 0.1)) }
+    },
+    structure: {
+        totalDuration: { preferredBars: 128 },
+        parts: [
+            {
+                id: 'INTRO', name: 'Focus', duration: { percent: 25 },
+                layers: { accompaniment: true, sfx: true, bass: true, drums: true },
+                instrumentation: {
+                    accompaniment: { 
+                        strategy: 'weighted', 
+                        v2Options: [{ name: 'synth', weight: 0.5 }, { name: 'synth_ambient_pad_lush', weight: 0.5 }]
+                    },
+                    bass: { strategy: 'weighted', v2Options: [{ name: 'bass_jazz_warm', weight: 1.0 }] }
+                },
+                instrumentRules: {
+                    drums: { pattern: 'ambient_beat', density: { min: 0.2, max: 0.4 }, useSnare: false, usePerc: true, useGhostHat: true },
+                    bass: { techniques: [{ value: 'pulse', weight: 1.0 }] },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [{ id: 'FO_CONT_INTRO', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'filter_sweep', duration: 2, parameters: {} },
+            },
+            {
+                id: 'MAIN', name: 'Deep Work', duration: { percent: 50 },
+                layers: { bass: true, accompaniment: true, drums: true, sfx: true },
+                instrumentRules: {
+                    drums: { pattern: 'composer', density: { min: 0.5, max: 0.7 }, useSnare: false, useGhostHat: true },
+                    accompaniment: { techniques: [{ value: 'arpeggio-fast', weight: 1.0 }] },
+                    melody: { source: 'harmony_top_note' }
+                },
+                bundles: [{ id: 'MAIN_BUNDLE_1', name: 'Flow', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: { type: 'density_pause', duration: 4, parameters: { soloLayer: 'accompaniment'} },
+            },
+            {
+                id: 'OUTRO', name: 'Fade', duration: { percent: 25 },
+                layers: { accompaniment: true, sfx: true },
+                bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Fade', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
+                outroFill: null,
+            }
+        ]
+    },
+    mutations: {}, ambientEvents: [], continuity: {}, rendering: {}
+};

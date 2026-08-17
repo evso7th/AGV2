@@ -1,4 +1,3 @@
-
 import type { MusicBlueprint, Genre, Mood } from '@/types/music';
 
 // --- Static Imports for All Blueprints ---
@@ -11,6 +10,7 @@ import { EnthusiasticAmbientBlueprint } from './ambient/enthusiastic';
 import { NeutralAmbientBlueprint } from './ambient/neutral';
 import { EpicAmbientBlueprint } from './ambient/epic';
 import { AnxiousAmbientBlueprint } from './ambient/anxious';
+
 import { MelancholicTranceBlueprint } from './trance/melancholic';
 import { DarkTranceBlueprint } from './trance/dark';
 import { AnxiousTranceBlueprint } from './trance/anxious';
@@ -20,6 +20,7 @@ import { EpicTranceBlueprint } from './trance/epic';
 import { EnthusiasticTranceBlueprint } from './trance/enthusiastic';
 import { DreamyTranceBlueprint } from './trance/dreamy';
 import { ContemplativeTranceBlueprint } from './trance/contemplative';
+
 import { DarkBluesBlueprint } from './blues/dark';
 import { EnthusiasticBluesBlueprint } from './blues/enthusiastic';
 import { JoyfulBluesBlueprint } from './blues/joyful';
@@ -30,11 +31,24 @@ import { EpicBluesBlueprint } from './blues/epic';
 import { AnxiousBluesBlueprint } from './blues/anxious';
 import { ContemplativeBluesBlueprint } from './blues/contemplative';
 import { WinterBluesBlueprint } from './blues/winter';
+
 import { MelancholicReggaeBlueprint } from './reggae/melancholic';
 import { DreamyReggaeBlueprint } from './reggae/dreamy';
 import { CalmReggaeBlueprint } from './reggae/calm';
 import { JoyfulReggaeBlueprint } from './reggae/joyful';
-import { MelancholicFoundryBlueprint } from './foundry/melancholic';
+
+// --- Foundry Blueprints ---
+import { 
+    MelancholicFoundryBlueprint, 
+    DarkFoundryBlueprint, 
+    AnxiousFoundryBlueprint,
+    JoyfulFoundryBlueprint,
+    CalmFoundryBlueprint,
+    EpicFoundryBlueprint,
+    EnthusiasticFoundryBlueprint,
+    DreamyFoundryBlueprint,
+    ContemplativeFoundryBlueprint
+} from './foundry';
 
 // --- Bridge Blueprints ---
 import { DarkBridgeBlueprint } from './bridges/dark';
@@ -88,14 +102,14 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
     },
     foundry: {
         melancholic: MelancholicFoundryBlueprint,
-        dark: MelancholicFoundryBlueprint,
-        calm: MelancholicFoundryBlueprint,
-        dreamy: MelancholicFoundryBlueprint,
-        joyful: MelancholicFoundryBlueprint,
-        enthusiastic: MelancholicFoundryBlueprint,
-        contemplative: MelancholicFoundryBlueprint,
-        epic: MelancholicFoundryBlueprint,
-        anxious: MelancholicFoundryBlueprint,
+        dark: DarkFoundryBlueprint,
+        anxious: AnxiousFoundryBlueprint,
+        joyful: JoyfulFoundryBlueprint,
+        calm: CalmFoundryBlueprint,
+        epic: EpicFoundryBlueprint,
+        enthusiastic: EnthusiasticFoundryBlueprint,
+        dreamy: DreamyFoundryBlueprint,
+        contemplative: ContemplativeFoundryBlueprint,
     },
     progressive: {}, rock: {}, house: {}, rnb: {}, ballad: {}, celtic: {},
 };
