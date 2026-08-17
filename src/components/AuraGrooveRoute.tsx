@@ -1,6 +1,6 @@
+
 /**
- * @fileOverview UI AuraGroove V17.0.2 — "HUD Layout Polish".
- * #ЗАЧЕМ: Исправление перекрытия прогресс-бара рамкой тулбара на мобильных.
+ * @fileOverview UI AuraGroove V17.0.3 — "Foundry Genre Integration".
  */
 'use client';
 
@@ -62,7 +62,7 @@ import {
 // DND Kit Utilities
 import { CSS } from '@dnd-kit/utilities';
 
-const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae'];
+const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'foundry'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
 
 const MIXER_CHANNELS = [
@@ -169,7 +169,7 @@ function PresetManager({
                                     </SelectTrigger>
                                     <SelectContent className="bg-card">
                                         <SelectItem value="none" className="text-[10px] uppercase font-black">---</SelectItem>
-                                        {['ambient', 'psybient', 'blues', 'reggae'].map(g => (
+                                        {['ambient', 'psybient', 'blues', 'reggae', 'foundry'].map(g => (
                                             <SelectItem key={g} value={g} className="text-[10px] uppercase font-black">{t(`g_${g}` as any)}</SelectItem>
                                         ))}
                                     </SelectContent>

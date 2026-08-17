@@ -34,6 +34,7 @@ import { MelancholicReggaeBlueprint } from './reggae/melancholic';
 import { DreamyReggaeBlueprint } from './reggae/dreamy';
 import { CalmReggaeBlueprint } from './reggae/calm';
 import { JoyfulReggaeBlueprint } from './reggae/joyful';
+import { MelancholicFoundryBlueprint } from './foundry/melancholic';
 
 // --- Bridge Blueprints ---
 import { DarkBridgeBlueprint } from './bridges/dark';
@@ -79,12 +80,22 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         dreamy: DreamyReggaeBlueprint,
         calm: CalmReggaeBlueprint,
         joyful: JoyfulReggaeBlueprint,
-        // Остальные настроения → ближайший по характеру (пока нет своих БП)
         dark: MelancholicReggaeBlueprint,
         enthusiastic: JoyfulReggaeBlueprint,
         contemplative: CalmReggaeBlueprint,
         epic: JoyfulReggaeBlueprint,
         anxious: MelancholicReggaeBlueprint,
+    },
+    foundry: {
+        melancholic: MelancholicFoundryBlueprint,
+        dark: MelancholicFoundryBlueprint,
+        calm: MelancholicFoundryBlueprint,
+        dreamy: MelancholicFoundryBlueprint,
+        joyful: MelancholicFoundryBlueprint,
+        enthusiastic: MelancholicFoundryBlueprint,
+        contemplative: MelancholicFoundryBlueprint,
+        epic: MelancholicFoundryBlueprint,
+        anxious: MelancholicFoundryBlueprint,
     },
     progressive: {}, rock: {}, house: {}, rnb: {}, ballad: {}, celtic: {},
 };
@@ -95,26 +106,16 @@ export const BRIDGE_LIBRARY: Partial<Record<Mood, MusicBlueprint>> = {
     anxious: AnxiousBridgeBlueprint,
 };
 
-/**
- * #ЗАЧЕМ: Возвращает БП моста для конкретного настроения.
- */
 export function getBridgeBlueprint(mood: Mood): MusicBlueprint {
     return BRIDGE_LIBRARY[mood] || WinterBridgeBlueprint;
 }
 
 export function getBlueprint(genre: Genre, mood: Mood): MusicBlueprint {
-    console.log(`%c[Mapping] Requesting: ${genre}/${mood}`, 'color: #00FF7F; font-weight: bold;');
-    
     const genreBlueprints = BLUEPRINT_LIBRARY[genre];
     if (genreBlueprints && genreBlueprints[mood]) {
-        const bp = genreBlueprints[mood]!;
-        console.log(`%c[Mapping] Success: ${bp.name} (${bp.id})`, 'color: #32CD32;');
-        return bp;
+        return genreBlueprints[mood]!;
     }
-    
-    console.warn(`[Mapping] Fallback triggered for ${genre}/${mood}. Using Ambient.`);
     const fallbackBlueprint = BLUEPRINT_LIBRARY['ambient']?.[mood];
     if (fallbackBlueprint) return fallbackBlueprint;
-    
     return MelancholicAmbientBlueprint;
 }

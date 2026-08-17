@@ -1,7 +1,6 @@
 
 /**
- * @file AuraGroove Music Worker V6.1.2 — "Bar Count Reset Fix".
- * #ЗАЧЕМ: Гарантированный сброс barCount при любой инициализации.
+ * @file AuraGroove Music Worker V6.2 — "Foundry Integration".
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -10,14 +9,6 @@ import { getBlueprint } from '@/lib/blueprints';
 import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
-
-const getTimestamp = () => {
-    const now = new Date();
-    const h = String(now.getHours()).padStart(2, '0');
-    const m = String(now.getMinutes()).padStart(2, '0');
-    const s = String(now.getSeconds()).padStart(2, '0');
-    return `[${h}:${m}:${s}]`;
-};
 
 function generateTrueSeed(): number {
     const array = new Uint32Array(1);
@@ -35,8 +26,6 @@ const Scheduler = {
     playedTrackHistory: [] as string[],
     awaitingDirective: false,
     awaitingSince: 0,
-    
-    // BPM Control
     bpmLocked: false,
 
     settings: {
@@ -89,7 +78,7 @@ const Scheduler = {
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                return genres.includes(uiGenre) && (moods.length === 0 || moods.includes(uiMood));
+                return (genres.includes(uiGenre) || (uiGenre === 'foundry' && (genres.includes('trance') || genres.includes('foundry')))) && (moods.length === 0 || moods.includes(uiMood));
             });
 
             if (matchingAxioms.length > 0) {
@@ -127,7 +116,7 @@ const Scheduler = {
 
     initializeEngine(settings: WorkerSettings) {
         this.awaitingDirective = false;
-        this.barCount = 0; // #ЗАЧЕМ: ПЛАН №1283. Принудительный сброс счетчика при любой инициализации.
+        this.barCount = 0;
         const blueprint = getBlueprint(settings.genre, settings.mood);
         const seed = settings.seed || generateTrueSeed();
         
@@ -279,7 +268,6 @@ const Scheduler = {
 };
 
 self.onmessage = (event: MessageEvent) => {
-    if (event.data?.type === 'shortCuts') return;
     if (!event.data || !event.data.command) return;
     const { command, data } = event.data;
     try {

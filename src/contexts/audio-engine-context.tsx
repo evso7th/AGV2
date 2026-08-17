@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V62.9 — "Background Texture Unlock".
- * #ЗАЧЕМ: Фоновая дозагрузка полных библиотек Sparkle и SFX.
+ * @fileOverview Audio Engine Context V63.0 — "Foundry Hardware Clone".
+ * #ЗАЧЕМ: Добавление изолированной драм-машины для Foundry.
  */
 'use client';
 
@@ -143,6 +143,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
+  const foundryDrumMachineRef = useRef<DrumMachine | null>(null); // #ЗАЧЕМ: Изолированная машина
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -231,6 +232,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     globalAllNotesOff();
     [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
     drumMachineRef.current?.stop(); 
+    foundryDrumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
@@ -302,7 +304,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     const beatDuration = 60 / tempo;
-    if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
+    
+    // #ЗАЧЕМ: Выбор драм-машины по жанру.
+    const isFoundry = settingsRef.current?.genre === 'foundry';
+    if (isFoundry && foundryDrumMachineRef.current) foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
+    else if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
+    
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
     if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
@@ -402,6 +409,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             }
         });
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
+        foundryDrumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
@@ -421,6 +429,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         await Promise.all([
           drumMachineRef.current.init(true),
+          foundryDrumMachineRef.current.init(true),
           blackGuitarSamplerRef.current.init(true),
           harmonyManagerRef.current.init(true),
           pianoAccompanimentManagerRef.current.init(),
@@ -438,8 +447,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               accompanimentManagerV2Ref.current?.init(),
               melodyManagerV2Ref.current?.init(),
               bassManagerV2Ref.current?.init(),
-              sparklePlayerRef.current?.init(), // #ЗАЧЕМ: Дозагрузка всей библиотеки текстур.
-              sfxSynthManagerRef.current?.init()  // #ЗАЧЕМ: Дозагрузка всей библиотеки эффектов.
+              sparklePlayerRef.current?.init(), 
+              sfxSynthManagerRef.current?.init()  
             ]);
             setBackgroundLoadInProgress(false);
             setBackgroundLoadComplete(true);
