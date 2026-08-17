@@ -66,19 +66,25 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
     
-    // --- NEW KICKS (PLAN №1290) ---
+    // --- NEW KICKS (PLAN №1290 + FOUNDRY) ---
     'drum_edm_kick': '/assets/drums/381825__waveplaysfx__kick-edm-kick.wav',
     'drum_prog_house_kick': '/assets/drums/385874__waveplaysfx__kick-prog-house-kick.wav',
     'drum_deep_tech_kick': '/assets/drums/386966__waveplaysfx__kick-deep-tech-kick.wav',
     'drum_standard_tech_kick': '/assets/drums/515519__waveplaysfx__kick-standard-tech-kick.wav',
-    'drum_quality_kick': '/assets/drums/671087__logicogonist__kick-quality-1.wav'
+    'drum_quality_kick': '/assets/drums/671087__logicogonist__kick-quality-1.wav',
+    
+    // --- FOUNDRY EXCLUSIVE KICKS (PLAN №1960) ---
+    'drum_foundry_pd_27': '/assets/drums/kick/494431__akustika__pd-kick-27.ogg',
+    'drum_foundry_standard': '/assets/drums/kick/515519__waveplaysfx__kick-standard-tech-kick.ogg',
+    'drum_foundry_quality': '/assets/drums/kick/671087__logicogonist__kick-quality-1.ogg'
 };
 
 const BLUES_KIT_CORE = [
     'drum_kick_reso', 'kick_drum6', 'snare', 'snare_ghost_note', 
     '25693__walter_odington__hackney-hat-1', 'closed_hi_hat_ghost', 
     'open_hh_bottom2', 'ride_wetter', 'ride', 'crash2',
-    'perc-001', 'perc-005'
+    'perc-001', 'perc-005',
+    'drum_foundry_pd_27', 'drum_foundry_standard', 'drum_foundry_quality'
 ];
 
 type Sampler = {
@@ -121,6 +127,7 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
             try {
                 gainNode.disconnect();
                 panner.disconnect();
+                source.disconnect();
             } catch(e) {}
         };
     };
@@ -138,7 +145,6 @@ export class DrumMachine {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Gain Staging. Снижено с 0.85 до 0.65 для предотвращения клиппинга на мастере.
         this.preamp.gain.value = 0.65;
         this.preamp.connect(destination);
     }
@@ -185,7 +191,7 @@ export class DrumMachine {
 
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) {
-                if (sampleName.includes('kick')) sampleName = 'drum_kick_reso';
+                if (sampleName.includes('kick')) sampleName = 'drum_foundry_quality';
                 else if (sampleName.includes('snare')) sampleName = 'drum_snare';
                 else if (sampleName.includes('hat')) sampleName = 'drum_25693__walter_odington__hackney-hat-1';
                 else continue;

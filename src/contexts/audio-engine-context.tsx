@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V64.0 — "Foundry Hardware Isolation".
- * #ЗАЧЕМ: ПЛАН №1950 — Полная изоляция Литейной. Отдельная драм-машина и усиление.
+ * @fileOverview Audio Engine Context V64.1 — "Foundry Hardware Integration".
+ * #ЗАЧЕМ: ПЛАН №1960 — Синхронизация микшера и драм-машины Литейной.
  */
 'use client';
 
@@ -85,6 +84,8 @@ interface AudioEngineContextType {
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
+  calculateMasterFade: (target: number, duration: number) => void;
+  calculateMasterFade: (target: number, duration: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
@@ -233,7 +234,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
       );
 
-      // #ЗАЧЕМ: Усиление Литейной
       if (foundryDrumsGainNodeRef.current) {
           foundryDrumsGainNodeRef.current.gain.setTargetAtTime(1.15, now, 0.1); 
       }
@@ -304,6 +304,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
+    
+    // #ЗАЧЕМ: ПЛАН №1960. Связка микшера с изолированной драм-машиной Литейной.
+    if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
+        const now = audioContextRef.current.currentTime;
+        foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
+        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 1.15, now, 0.015);
+    }
   }, [setCalibrationGain]);
 
   const setVoiceLimit = useCallback((limit: number) => {
@@ -314,8 +321,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
-    const beatDuration = 60 / tempo;
     
+    // #ЗАЧЕМ: ПЛАН №1960. Роутинг на изолированную драм-машину в режиме Литейной.
     const isFoundry = settingsRef.current?.genre === 'foundry';
     if (isFoundry && foundryDrumMachineRef.current) {
         foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
@@ -334,7 +341,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo); 
     }
     if (sparklePlayerRef.current) { 
-        events.filter(e => e.type === 'sparkle').forEach(s => sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * beatDuration), s.params?.genre, s.params?.mood, s.params?.category)); 
+        events.filter(e => e.type === 'sparkle').forEach(s => sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * (60/tempo)), s.params?.genre, s.params?.mood, s.params?.category)); 
     }
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
@@ -416,7 +423,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
 
-        // #ЗАЧЕМ: Изолированное усиление для Литейной
         if (!foundryDrumsGainNodeRef.current) {
             foundryDrumsGainNodeRef.current = context.createGain();
             foundryDrumsGainNodeRef.current.gain.value = 1.15;

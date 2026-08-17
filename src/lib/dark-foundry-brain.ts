@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Dark Foundry Brain V2.0 — "Absolute Isolation".
- * #ЗАЧЕМ: ПЛАН №1950. 100% восстановление трансовой энергии с блюзовой логикой наследия.
+ * @fileOverview Dark Foundry Brain V2.1 — "Heavy Rhythm Alignment".
+ * #ЗАЧЕМ: ПЛАН №1960. Интеграция кастомных киков и ритмической структуры Транса.
  */
 
 import type {
@@ -147,7 +146,6 @@ export class DarkFoundryBrain {
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     
-                    // #ЗАЧЕМ: Принудительная нормализация времени для Литейной (t=0).
                     let rawPhrase = decompressCompactPhrase(selected.phrase);
                     if (rawPhrase.length > 0) {
                         const minT = Math.min(...rawPhrase.map(n => n.t));
@@ -167,6 +165,7 @@ export class DarkFoundryBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        const kit = DRUM_KITS.foundry[this.mood as any] || DRUM_KITS.foundry.melancholic;
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
@@ -185,8 +184,8 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. NEURO DRUMS (Hard 4/4)
-        if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension));
+        // 1. NEURO DRUMS (Using Foundry Kit)
+        if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension, kit));
 
         // 2. BASS (Rolling 1/16)
         if (hints.bass) {
@@ -230,14 +229,28 @@ export class DarkFoundryBrain {
         };
     }
 
-    private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
+    private renderNeuroDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
+        // #ЗАЧЕМ: ПЛАН №1960. Рандомизация кика из пула Литейной.
+        const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
+        const snareSample = kit.snare[0] || 'drum_snare';
+        const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
+
         // Hard 4/4 Kick
-        [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         // Off-beat Hats
-        [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: 'drum_hat', note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+        [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         // Industrial Snare
-        [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
+        [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
+        
+        // #ЗАЧЕМ: Добавление амбиентной перкуссии из кита
+        [1, 5, 7, 11].forEach(t => {
+            if (this.rng.chance(30 + tension * 20)) {
+                const percSample = kit.perc[this.rng.nextInt(kit.perc.length)];
+                events.push({ type: percSample as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached' });
+            }
+        });
+
         return events;
     }
 
@@ -320,4 +333,3 @@ export class DarkFoundryBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
-
