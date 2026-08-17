@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Dark Foundry Brain V1.0 — "Absolute Isolation".
- * #ЗАЧЕМ: 100% клон TranceBrain для жанра Foundry.
+ * @fileOverview Dark Foundry Brain V2.0 — "Absolute Isolation".
+ * #ЗАЧЕМ: ПЛАН №1950. 100% восстановление трансовой энергии с блюзовой логикой наследия.
  */
 
 import type {
@@ -146,7 +146,15 @@ export class DarkFoundryBrain {
 
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
+                    
+                    // #ЗАЧЕМ: Принудительная нормализация времени для Литейной (t=0).
+                    let rawPhrase = decompressCompactPhrase(selected.phrase);
+                    if (rawPhrase.length > 0) {
+                        const minT = Math.min(...rawPhrase.map(n => n.t));
+                        if (minT > 0) rawPhrase.forEach(n => n.t -= minT);
+                    }
+
+                    this.currentTheme = { phrase: mergeIdenticalNotes(rawPhrase), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + axiomBars;
                     return selected.nativeBpm || undefined;
                 }
@@ -177,10 +185,10 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. DRUMS
+        // 1. NEURO DRUMS (Hard 4/4)
         if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension));
 
-        // 2. BASS
+        // 2. BASS (Rolling 1/16)
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
@@ -188,7 +196,7 @@ export class DarkFoundryBrain {
             events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, tension)));
         }
 
-        // 3. SYNTHESIS
+        // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -224,7 +232,11 @@ export class DarkFoundryBrain {
 
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        // Hard 4/4 Kick
+        [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        // Off-beat Hats
+        [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: 'drum_hat', note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
+        // Industrial Snare
         [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         return events;
     }
@@ -297,14 +309,15 @@ export class DarkFoundryBrain {
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {
-        if (e.duration < 3.0) return [e]; 
+        if (e.duration < 2.0) return [e]; 
         const rippled: FractalEvent[] = [];
-        const numChunks = Math.ceil(e.duration / 1.5); 
+        const numChunks = Math.ceil(e.duration / 0.8); 
         const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < numChunks; i++) rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.95, weight: e.weight * 0.9 });
+        for (let i = 0; i < numChunks; i++) rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.9, weight: e.weight * 0.85 });
         return rippled;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
+

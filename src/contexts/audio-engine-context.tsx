@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V63.0 — "Foundry Hardware Clone".
- * #ЗАЧЕМ: Добавление изолированной драм-машины для Foundry.
+ * @fileOverview Audio Engine Context V64.0 — "Foundry Hardware Isolation".
+ * #ЗАЧЕМ: ПЛАН №1950 — Полная изоляция Литейной. Отдельная драм-машина и усиление.
  */
 'use client';
 
@@ -28,6 +28,7 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
+import { FOUNDRY_PRESETS } from '@/lib/foundry-presets';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 import { TRANSLATIONS, type Language } from '@/lib/translations';
 
@@ -143,7 +144,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
-  const foundryDrumMachineRef = useRef<DrumMachine | null>(null); // #ЗАЧЕМ: Изолированная машина
+  const foundryDrumMachineRef = useRef<DrumMachine | null>(null); 
+  const foundryDrumsGainNodeRef = useRef<GainNode | null>(null);
+
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
   const bassManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -155,6 +158,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
   const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
+  
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const samplersMasterGainRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
@@ -198,7 +202,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   };
 
   const getEffectivePreset = useCallback((presetName: string) => {
-      const base = (V2_PRESETS as any)[presetName] || (BASS_PRESETS as any)[presetName];
+      const isFoundry = settingsRef.current?.genre === 'foundry';
+      const registry = isFoundry ? FOUNDRY_PRESETS : V2_PRESETS;
+      const base = (registry as any)[presetName] || (BASS_PRESETS as any)[presetName];
       if (!base) return null;
       const override = timbreOverridesRef.current[presetName];
       return override ? { ...base, ...override } : base;
@@ -226,6 +232,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
           SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
       );
+
+      // #ЗАЧЕМ: Усиление Литейной
+      if (foundryDrumsGainNodeRef.current) {
+          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(1.15, now, 0.1); 
+      }
   }, []);
 
   const stopAllSounds = useCallback(() => {
@@ -305,10 +316,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!Array.isArray(events)) return;
     const beatDuration = 60 / tempo;
     
-    // #ЗАЧЕМ: Выбор драм-машины по жанру.
     const isFoundry = settingsRef.current?.genre === 'foundry';
-    if (isFoundry && foundryDrumMachineRef.current) foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
-    else if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
+    if (isFoundry && foundryDrumMachineRef.current) {
+        foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
+    } else if (drumMachineRef.current) {
+        drumMachineRef.current.schedule(events, barStartTime, tempo);
+    }
     
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
@@ -402,14 +415,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             recDestRef.current = recDest;
             broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
         }
+
+        // #ЗАЧЕМ: Изолированное усиление для Литейной
+        if (!foundryDrumsGainNodeRef.current) {
+            foundryDrumsGainNodeRef.current = context.createGain();
+            foundryDrumsGainNodeRef.current.gain.value = 1.15;
+            foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
+        }
+
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
             if (!gainNodesRef.current[p]) { 
                 gainNodesRef.current[p] = context.createGain(); 
                 gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!); 
             }
         });
+
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
-        foundryDrumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
+        foundryDrumMachineRef.current = new DrumMachine(context, foundryDrumsGainNodeRef.current!);
+
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
