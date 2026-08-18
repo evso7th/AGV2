@@ -1,6 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.0.3 — "Foundry Genre Integration".
+ * @fileOverview UI AuraGroove V17.0.4 — "Foundry Genre Integration".
+ * #ЗАЧЕМ: Добавление Foundry в список жанров.
  */
 'use client';
 
@@ -63,7 +64,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'foundry'];
-const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful'];
+const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'dark', 'anxious', 'enthusiastic', 'epic', 'contemplative'];
 
 const MIXER_CHANNELS = [
     { key: 'master', label: 'MST' },
@@ -990,7 +991,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                         
                         <div className="flex-grow overflow-hidden mt-4">
-                            <ScrollArea className="h-full px-6 sm:px-10 pb-8">
+                            <ScrollArea className="h-full px-4 sm:px-10 pb-8">
                                 <TabsContent value="guide" className="m-0 focus-visible:ring-0">
                                     <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                                 </TabsContent>

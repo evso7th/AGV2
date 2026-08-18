@@ -1,6 +1,8 @@
+
 /**
- * @fileOverview Dark Foundry Brain V2.1 — "Heavy Rhythm Alignment".
- * #ЗАЧЕМ: ПЛАН №1960. Интеграция кастомных киков и ритмической структуры Транса.
+ * @fileOverview Dark Foundry Brain V3.0 — "Industrial Memory Hybrid".
+ * #ЗАЧЕМ: Гибридный мозг: Ритмическое ядро Транса + Логика Наследия Блюза.
+ * #ЧТО: 16-шаговая сетка, Rolling Bass, Mosaic Index навигация, нормализация тиков.
  */
 
 import type {
@@ -111,7 +113,7 @@ export class DarkFoundryBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry');
+                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
             });
 
         if (filteredPool.length > 0) {
@@ -184,10 +186,10 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. NEURO DRUMS (Using Foundry Kit)
-        if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension, kit));
+        // 1. NEURO DRUMS (Hard 4/4 Core)
+        if (hints.drums) events.push(...this.renderFoundryDrums(epoch, tension, kit));
 
-        // 2. BASS (Rolling 1/16)
+        // 2. BASS (Rolling / Off-beat Pulse)
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
@@ -225,13 +227,12 @@ export class DarkFoundryBrain {
         return {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Mirror' }
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' }
         };
     }
 
-    private renderNeuroDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
+    private renderFoundryDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
-        // #ЗАЧЕМ: ПЛАН №1960. Рандомизация кика из пула Литейной.
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
@@ -243,14 +244,6 @@ export class DarkFoundryBrain {
         // Industrial Snare
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
-        // #ЗАЧЕМ: Добавление амбиентной перкуссии из кита
-        [1, 5, 7, 11].forEach(t => {
-            if (this.rng.chance(30 + tension * 20)) {
-                const percSample = kit.perc[this.rng.nextInt(kit.perc.length)];
-                events.push({ type: percSample as any, note: 48, time: t * TICK_TO_BEAT, duration: 0.2, weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'detached' });
-            }
-        });
-
         return events;
     }
 
@@ -310,6 +303,15 @@ export class DarkFoundryBrain {
         const root = chord.rootNote + 12;
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
+    }
+
+    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+        const events: FractalEvent[] = [];
+        if (melodyEvents.length > 0) {
+            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.5, technique: 'hit' }); });
+            return { events, style: 'Shadow Support' };
+        }
+        return { events: [], style: 'none' };
     }
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {

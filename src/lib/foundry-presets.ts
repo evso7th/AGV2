@@ -1,7 +1,7 @@
 
 /**
  * @fileOverview Foundry Presets Library V1.0 — "Absolute Isolation".
- * #ЗАЧЕМ: 100% клон V2_PRESETS для безопасных экспериментов в Foundry.
+ * #ЗАЧЕМ: Копия V2_PRESETS для безопасных экспериментов в Foundry.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -99,7 +99,7 @@ export const FOUNDRY_PRESETS = {
     calibrationTrimDb: 3.13
   },
 
-  ep_rhodes: {
+  ep_rhodes_warm: {
     type: 'synth',
     name: 'Warm Rhodes',
     volume: 0.68,

@@ -1,7 +1,8 @@
+
 /**
- * @fileOverview Dummy file to prevent routing conflicts.
- * #ЗАЧЕМ: Устранение 404 ошибки из-за двойного экспорта страниц в корне.
+ * @fileOverview Conflict Resolution Dummy.
+ * #ЗАЧЕМ: Устранение ошибки 404 путем нейтрализации дублирующей страницы.
  */
-export default function DummyPage() {
+export default function GhostPage() {
   return null;
 }

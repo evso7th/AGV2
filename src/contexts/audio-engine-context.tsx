@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Audio Engine Context V64.1 — "Foundry Hardware Integration".
- * #ЗАЧЕМ: ПЛАН №1960 — Синхронизация микшера и драм-машины Литейной.
+ * @fileOverview Audio Engine Context V65.0 — "Foundry Isolation Finalized".
+ * #ЗАЧЕМ: Полная изоляция аудио-пути для Литейной и исправление импортов.
  */
 'use client';
 
@@ -36,8 +37,8 @@ const VOICE_BALANCE: Record<string, number> = {
   melody: 0.15,
   accompaniment: 0.15,
   drums: 0.65,
-  sparkles: 0.45,
-  sfx: 0.45,
+  sparkles: 0.65,
+  sfx: 0.65,
   harmony: 0.3,
   pianoAccompaniment: 0.3,
 };
@@ -303,7 +304,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
     }
     
-    // #ЗАЧЕМ: ПЛАН №1960. Связка микшера с изолированной драм-машиной Литейной.
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
@@ -320,7 +320,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     
-    // #ЗАЧЕМ: ПЛАН №1960. Роутинг на изолированную драм-машину в режиме Литейной.
     const isFoundry = settingsRef.current?.genre === 'foundry';
     if (isFoundry && foundryDrumMachineRef.current) {
         foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
