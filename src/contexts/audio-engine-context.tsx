@@ -32,14 +32,14 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 import { TRANSLATIONS, type Language } from '@/lib/translations';
 
 const VOICE_BALANCE: Record<string, number> = {
-  bass: 0.35,
-  melody: 0.45,
-  accompaniment: 0.55,
+  bass: 0.5,
+  melody: 0.15,
+  accompaniment: 0.15,
   drums: 0.65,
   sparkles: 0.45,
   sfx: 0.45,
-  harmony: 0.55,
-  pianoAccompaniment: 0.45,
+  harmony: 0.3,
+  pianoAccompaniment: 0.3,
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
@@ -84,8 +84,6 @@ interface AudioEngineContextType {
   voiceLimit: number;
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
-  calculateMasterFade: (target: number, duration: number) => void;
-  calculateMasterFade: (target: number, duration: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
