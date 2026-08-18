@@ -1,7 +1,8 @@
+
 /**
  * @fileOverview Drum Arsenal Protocol V2.5.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №1960): Добавлен жанр Foundry с кастомными киками и трансовой основой.
+ * #ОБНОВЛЕНО (ПЛАН №1970): Разрешено использование райдов во всех настроениях Foundry.
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -36,14 +37,14 @@ const ALL_PERC: InstrumentType[] = [
 export const DRUM_KITS: DrumKitLibrary = {
     foundry: {
         melancholic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        dark: { kick: FOUNDRY_KICKS, snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ALL_PERC },
-        anxious: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: ALL_HIHATS, ride: [], crash: ['drum_crash2'], perc: ALL_PERC },
+        dark: { kick: FOUNDRY_KICKS, snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: ALL_RIDES, crash: [], perc: ALL_PERC },
+        anxious: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         joyful: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         calm: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
         epic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         enthusiastic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         dreamy: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
-        contemplative: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: [], crash: [], perc: ALL_PERC }
+        contemplative: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC }
     },
 
     ambient: {

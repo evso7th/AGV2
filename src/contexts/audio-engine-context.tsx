@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Audio Engine Context V65.0 — "Foundry Isolation Finalized".
- * #ЗАЧЕМ: Полная изоляция аудио-пути для Литейной и исправление импортов.
+ * @fileOverview Audio Engine Context V65.1 — "Foundry Volume Correction".
+ * #ЗАЧЕМ: Снижение системной громкости Foundry-ударных в 4 раза (1.15 -> 0.2875).
  */
 'use client';
 
@@ -86,6 +86,7 @@ interface AudioEngineContextType {
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
+  calculateMasterFadeOut: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -234,7 +235,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       );
 
       if (foundryDrumsGainNodeRef.current) {
-          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(1.15, now, 0.1); 
+          // #ЗАЧЕМ: Уменьшение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
+          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.2875, now, 0.1); 
       }
   }, []);
 
@@ -307,7 +309,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
-        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 1.15, now, 0.015);
+        // #ЗАЧЕМ: Уменьшение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
+        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.2875, now, 0.015);
     }
   }, [setCalibrationGain]);
 
@@ -422,7 +425,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!foundryDrumsGainNodeRef.current) {
             foundryDrumsGainNodeRef.current = context.createGain();
-            foundryDrumsGainNodeRef.current.gain.value = 1.15;
+            // #ЗАЧЕМ: Снижение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
+            foundryDrumsGainNodeRef.current.gain.value = 0.2875;
             foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
         }
 
@@ -565,6 +569,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
       calculateMasterFade: () => {},
+      calculateMasterFadeOut: () => {},
       startRecording: (prefix?: string) => { 
         if (!recDestRef.current || isRecording) return; 
         recordedChunksRef.current = []; 

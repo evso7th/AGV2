@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview Dark Foundry Brain V3.0 — "Industrial Memory Hybrid".
- * #ЗАЧЕМ: Гибридный мозг: Ритмическое ядро Транса + Логика Наследия Блюза.
- * #ЧТО: 16-шаговая сетка, Rolling Bass, Mosaic Index навигация, нормализация тиков.
+ * @fileOverview Dark Foundry Brain V3.1 — "Shimmer Hardware Link".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1970. Внедрение Райдов в ритмическую сетку Foundry.
  */
 
 import type {
@@ -236,6 +235,7 @@ export class DarkFoundryBrain {
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
+        const rideSample = kit.ride[0] || 'drum_ride_wetter';
 
         // Hard 4/4 Kick
         [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
@@ -244,6 +244,19 @@ export class DarkFoundryBrain {
         // Industrial Snare
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
+        // #ЗАЧЕМ: ПЛАН №1970. Внедрение Райдов при tension > 0.5.
+        if (tension > 0.5 || this.rng.chance(15)) {
+            [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
+                if (this.rng.chance(35 + tension * 40)) {
+                    events.push({ 
+                        type: rideSample as any, note: 51, time: t * TICK_TO_BEAT, 
+                        duration: 0.4, weight: 0.25 + (tension * 0.15), 
+                        technique: 'hit', dynamics: 'p', phrasing: 'detached', pan: 0.35 
+                    });
+                }
+            });
+        }
+
         return events;
     }
 
