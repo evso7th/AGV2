@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * @fileOverview Foundry Dark Blueprint V1.1 — "Atmospheric Hardening".
- * #ЗАЧЕМ: ПЛАН №1985. Активация правил для SFX и Sparkles в Литейной.
+ * @fileOverview Foundry Dark Blueprint V1.2 — "Sparkle Saturation".
+ * #ЗАЧЕМ: ПЛАН №1986. Троекратное увеличение плотности текстур.
  */
 export const DarkFoundryBlueprint: MusicBlueprint = {
     id: 'dark_foundry',
@@ -33,7 +33,7 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 } },
                     sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 1.0 }] },
-                    sparkles: { density: { min: 0.1, max: 0.2 } }
+                    sparkles: { density: { min: 0.4, max: 0.6 } }
                 },
                 bundles: [{ id: 'FO_DARK_INTRO1', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -50,7 +50,7 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1 },
                     sfx: { eventProbability: 0.4, categories: [{ name: 'dark', weight: 0.8 }, { name: 'voice', weight: 0.2 }] },
-                    sparkles: { density: { min: 0.3, max: 0.5 } }
+                    sparkles: { density: { min: 0.6, max: 0.8 } }
                 },
                 bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
@@ -66,7 +66,7 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2 },
                     sfx: { eventProbability: 0.5, categories: [{ name: 'dark', weight: 0.5 }, { name: 'voice', weight: 0.5 }] },
-                    sparkles: { density: { min: 0.6, max: 0.8 } }
+                    sparkles: { density: { min: 0.8, max: 1.0 } }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,

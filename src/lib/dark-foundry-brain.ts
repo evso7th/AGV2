@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Dark Foundry Brain V3.5 — "Atmospheric Hardware Link".
- * #ЗАЧЕМ: Реализация ПЛАНА №1985. Внедрение эффектов через прямую адресацию категорий.
+ * @fileOverview Dark Foundry Brain V3.6 — "High Density Sparkle Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1986. Троекратное увеличение плотности текстур.
  */
 
 import type {
@@ -341,8 +341,8 @@ export class DarkFoundryBrain {
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // SFX: Бросаем кубик на срабатывание (12% шанс)
-        if (this.rng.chance(12)) {
+        // 1. SFX: Бросаем кубик на срабатывание (15% шанс)
+        if (this.rng.chance(15)) {
             events.push({
                 type: 'sfx',
                 note: 60,
@@ -356,31 +356,36 @@ export class DarkFoundryBrain {
                     mood: this.mood, 
                     genre: this.genre,
                     rules: {
-                        // Явное указание категорий для менеджера, чтобы не трогать его код
                         categories: [
-                            { name: 'dark', weight: 0.6 }, // Алиас для sfx_glitch
-                            { name: 'voice', weight: 0.4 } // Алиас для voices_pixabay
+                            { name: 'dark', weight: 0.6 }, 
+                            { name: 'voice', weight: 0.4 } 
                         ]
                     }
                 }
             });
         }
 
-        // Sparkles: Бросаем кубик на срабатывание (15% шанс)
-        if (this.rng.chance(15)) {
-            events.push({
-                type: 'sparkle',
-                note: 60,
-                time: this.rng.next() * 3,
-                duration: 4.0,
-                weight: 0.8,
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: { 
-                    category: this.rng.chance(50) ? 'ORGANIC' : 'MELODIC' 
-                }
-            });
+        // 2. Sparkles: ПЛАН №1986 — "High Density Shimmer"
+        // Вероятность: 45% + бонус от Tension
+        const sparkleChance = 45 + (tension * 30);
+        if (this.rng.chance(sparkleChance)) {
+            // Количество: 1-3 в зависимости от напряжения
+            const count = tension > 0.6 ? this.rng.nextInt(3) + 1 : 1;
+            for (let i = 0; i < count; i++) {
+                events.push({
+                    type: 'sparkle',
+                    note: 64 + (this.rng.nextInt(12)), 
+                    time: this.rng.next() * 3.8, 
+                    duration: 4.0,
+                    weight: 0.7 + (this.rng.next() * 0.2),
+                    technique: 'hit',
+                    dynamics: 'p',
+                    phrasing: 'legato',
+                    params: { 
+                        category: this.rng.chance(40) ? 'ORGANIC' : 'MELODIC' 
+                    }
+                });
+            }
         }
 
         return events;
