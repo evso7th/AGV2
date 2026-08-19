@@ -1,7 +1,7 @@
 /**
- * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.4
- * #ЗАЧЕМ: ПЛАН №2110. Усиление "железа" (райды и крэши) в сбивках.
- * #ЧТО: Веса тарелок подняты до 1.50, добавлен маркер isFill для подавления лимитов DrumMachine.
+ * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.5
+ * #ЗАЧЕМ: ПЛАН №2111 — Ride Exit Protocol.
+ * #ЧТО: Гарантированный удар в райд на выходе из каждой сбивки (тик 11.5).
  */
 
 import type { FractalEvent, Technique } from '@/types/music';
@@ -32,37 +32,32 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
     straight: [
         { id: 'S_CYMBAL_SMASH', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 },
-            { t: 0, d: 1, type: 'drum_ride_wetter', v: 1.50 }, // Акцент на первую долю
+            { t: 0, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 3, d: 3, type: 'drum_kick_reso', v: 1.20 },
             { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
-            { t: 6, d: 1, type: 'drum_ride_wetter', v: 1.30 },
-            { t: 7.5, d: 1, type: 'drum_ride_wetter', v: 1.40 },
-            { t: 9, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
+            { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.90 } // Мощный крэш в конце
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
         ]},
         { id: 'S_EPIC_ROLL_CRASH', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 },
             { t: 3, d: 3, type: 'drum_kick_reso', v: 1.20 },
             { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
-            { t: 6.75, d: 1, type: 'drum_snare', v: 1.10 },
             { t: 7.5, d: 1, type: 'drum_snare', v: 1.20 },
             { t: 8.25, d: 1, type: 'drum_Sonor_Classix_High_Tom', v: 1.30 },
             { t: 9, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
-            { t: 9.75, d: 1, type: 'drum_Sonor_Classix_Low_Tom', v: 1.35 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.95 }
+            { t: 11.5, d: 2, type: 'drum_crash2', v: 1.00 },
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
         ]},
         { id: 'S_MACHINE_GUN_GHOST', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
             { t: 3, d: 3, type: 'drum_snare', v: 1.20 },
-            { t: 3, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 6, d: 0.75, type: 'drum_snare', v: 1.25 },
-            { t: 7.5, d: 0.75, type: 'drum_snare', v: 1.20 },
             { t: 9, d: 0.75, type: 'drum_snare', v: 1.30 },
-            { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.40 },
             { t: 10.5, d: 0.75, type: 'drum_snare', v: 1.35 },
-            { t: 11.25, d: 0.75, type: 'drum_kick_reso', v: 1.40 }
+            { t: 11.25, d: 0.75, type: 'drum_kick_reso', v: 1.40 },
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
         ]}
     ],
     shuffle: [
@@ -71,12 +66,9 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 0, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 3, d: 1, type: 'drum_ride_wetter', v: 1.30 },
             { t: 6, d: 2, type: 'drum_snare_off', v: 1.30 },
-            { t: 6, d: 1, type: 'drum_ride_wetter', v: 1.50 },
-            { t: 8, d: 2, type: 'drum_snare_ghost_note', v: 0.70 },
             { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.25 },
-            { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.40 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 1.00 }
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
         ]},
         { id: 'T_BLUES_STORM_FULL', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.40 },
@@ -86,7 +78,7 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 8, d: 2, type: 'drum_Sonor_Classix_Low_Tom', v: 1.30 },
             { t: 9, d: 1.5, type: 'drum_snare', v: 1.35 },
             { t: 10.5, d: 1.5, type: 'drum_kick_reso', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.85 }
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
         ]}
     ]
 };
