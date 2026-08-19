@@ -89,8 +89,8 @@ export const TRANSLATIONS = {
     g_psybient: { ru: "Neuro Space", en: "Neuro Space" },
     g_blues: { ru: "Cafe's Blues", en: "Cafe's Blues" },
     g_reggae: { ru: "Root Reggey", en: "Root Reggey" },
-    g_foundry: { ru: "Литейная", en: "Foundry" },
-    g_random: { ru: "⚡ СЮРПРИЗ", en: "⚡ SURPRISE" },
+    g_foundry: { ru: "Dark Trance", en: "Dark Trance" },
+    g_random: { ru: "⚡ SURPRISE", en: "⚡ SURPRISE" },
     
     // Moods (UI Display)
     m_melancholic: { ru: "Меланхолия", en: "Melancholic" },
