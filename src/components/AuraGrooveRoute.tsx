@@ -23,6 +23,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { ScrollArea as ScrollAreaUI, ScrollBar as ScrollBarUI } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { 
   Select, 
@@ -64,7 +66,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'foundry'];
-const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'dark', 'anxious', 'enthusiastic', 'epic', 'contemplative'];
+const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'dark'];
 
 const MIXER_CHANNELS = [
     { key: 'master', label: 'MST' },
@@ -751,14 +753,14 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollArea className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollArea></DialogContent>
+                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
                     </div>
                 </div>
 
                 <div className="flex-grow overflow-hidden flex flex-col p-3 pt-1 gap-2">
                     <div className="flex items-center justify-between px-1 shrink-0"><Label className="text-[10px] font-black uppercase opacity-50">{t('label_current_path')}</Label><Badge variant="outline" className="text-[9px] font-mono opacity-50">{props.route.length} {t('label_steps')}</Badge></div>
-                    <ScrollArea className="flex-grow pr-3">
+                    <ScrollAreaUI className="flex-grow pr-3">
                         <DndContext 
                             sensors={sensors}
                             collisionDetection={closestCenter}
@@ -801,7 +803,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 </div>
                             </SortableContext>
                         </DndContext>
-                    </ScrollArea>
+                    </ScrollAreaUI>
                 </div>
 
                 <footer className={cn("mx-[2px] mb-[2px] p-3 backdrop-blur-md flex flex-col shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-all border rounded-xl shadow-2xl", isDarkTheme ? 'bg-neutral-950/90 border-neutral-800' : 'bg-white/95 border-gray-200')}>
@@ -991,7 +993,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                         
                         <div className="flex-grow overflow-hidden mt-4">
-                            <ScrollArea className="h-full px-4 sm:px-10 pb-8">
+                            <ScrollAreaUI className="h-full px-4 sm:px-10 pb-8">
                                 <TabsContent value="guide" className="m-0 focus-visible:ring-0">
                                     <div dangerouslySetInnerHTML={{ __html: props.language === 'ru' ? GUIDE_RU : GUIDE_EN }} />
                                 </TabsContent>
@@ -1001,7 +1003,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 <TabsContent value="credits" className="m-0 focus-visible:ring-0">
                                     <div dangerouslySetInnerHTML={{ __html: CREDITS_HTML }} />
                                 </TabsContent>
-                            </ScrollArea>
+                            </ScrollAreaUI>
                         </div>
                     </Tabs>
                     

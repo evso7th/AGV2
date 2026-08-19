@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Universal Translation Dictionary for AuraGroove.
  * #ЗАЧЕМ: Централизованное управление мультиязычностью (RU/EN).
@@ -88,6 +89,7 @@ export const TRANSLATIONS = {
     g_psybient: { ru: "Neuro Space", en: "Neuro Space" },
     g_blues: { ru: "Cafe's Blues", en: "Cafe's Blues" },
     g_reggae: { ru: "Root Reggey", en: "Root Reggey" },
+    g_foundry: { ru: "Литейная", en: "Foundry" },
     g_random: { ru: "⚡ СЮРПРИЗ", en: "⚡ SURPRISE" },
     
     // Moods (UI Display)
@@ -95,5 +97,6 @@ export const TRANSLATIONS = {
     m_dreamy: { ru: "Мечтательность", en: "Dreamy" },
     m_calm: { ru: "Спокойствие", en: "Calm" },
     m_joyful: { ru: "Радость", en: "Joyful" },
+    m_dark: { ru: "Темное", en: "Dark" },
     m_random: { ru: "⚡ ЛЮБОЕ", en: "⚡ ANY" }
 };
