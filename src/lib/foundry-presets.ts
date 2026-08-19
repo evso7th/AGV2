@@ -1,35 +1,38 @@
 
 /**
- * @fileOverview Foundry Presets Library V1.1 — "The Gritty B3 Update".
- * #ЗАЧЕМ: ПЛАН №2010. Металлизация органов: добавление драйва и подавление "завываний".
+ * @fileOverview Foundry Presets Library V1.2 — "The Industrial Wall Update".
+ * #ЗАЧЕМ: ПЛАН №2020. Металлизация пэдов: добавление драйва, резонанса и "стеновых" пил.
  */
 
 export const FOUNDRY_PRESETS = {
   synth: { 
     type: 'synth',
+    name: 'Industrial Grid Pad',
     volume: 0.65,
     osc: [
-      { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
-      { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
+      { type: 'sawtooth', detune: -12, octave: 0, gain: 0.5 }, // Сильный детюн для ширины
+      { type: 'sawtooth', detune: +12, octave: 0, gain: 0.5 },
+      { type: 'square', detune: 0, octave: -1, gain: 0.4 }    // Прямоугольный саб для "грязи"
     ],
-    noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.2 },
-    lpf: { cutoff: 950, q: 0.8 }, 
+    noise: { on: true, gain: 0.025 }, // Больше шума для индустриального веса
+    adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, // Ускоренная атака для "стены звука"
+    lpf: { cutoff: 1200, q: 2.5 }, // Высокий резонанс для металлического лязга
+    drive: { type: 'soft', amount: 0.35 }, // Добавлен кранч
     reverbMix: 0
   },
 
   synth_ambient_pad_lush: {
     type: 'synth',
-    name: 'Velvet Lush Pad',
-    volume: 0.6,
+    name: 'Wall of Steel Pad',
+    volume: 0.62,
     osc: [
-      { type: 'sine', detune: -4, octave: 0, gain: 0.6 },
-      { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
+      { type: 'sawtooth', detune: -6, octave: 0, gain: 0.6 },
+      { type: 'sawtooth', detune: +6, octave: 0, gain: 0.6 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 1.8 },
-    lpf: { cutoff: 650, q: 0.7 }, 
+    adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
+    lpf: { cutoff: 850, q: 1.5 }, 
+    drive: { type: 'soft', amount: 0.22 }, // Легкая сатурация для плотности
     reverbMix: 0
   },
 
@@ -37,14 +40,11 @@ export const FOUNDRY_PRESETS = {
     type: 'organ',
     name: 'Industrial B3 (Dirty)',
     volume: 0.45,
-    // #ЗАЧЕМ: Роковая конфигурация (Jon Lord style) - больше средних и нижних гармоник
     drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
-    lpf: 2400, // Больше "песка" и пробиваемости
+    lpf: 2400,
     reverbMix: 0,
-    // #ЗАЧЕМ: Добавление "грязи"
     drive: { type: 'soft', amount: 0.45 },
-    // #ЗАЧЕМ: Подавление завываний (pitchDepth снижен до минимума)
     leslie: { rate: 5.8, pitchDepth: 0.00005, ampDepth: 0.06, driftPct: 0.12, driftRate: 0.2 },
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.08 }
   },
@@ -57,7 +57,6 @@ export const FOUNDRY_PRESETS = {
     lpf: 1800,
     adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
     reverbMix: 0,
-    // #ЗАЧЕМ: Легкий кранч для характера
     drive: { type: 'soft', amount: 0.22 },
     leslie: { rate: 5.2, pitchDepth: 0.00005, ampDepth: 0.04, driftPct: 0.15, driftRate: 0.15 },
     humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.06 }
