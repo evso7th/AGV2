@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Dark Foundry Brain V3.6 — "High Density Sparkle Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1986. Троекратное увеличение плотности текстур.
+ * @fileOverview Dark Foundry Brain V3.7 — "Machine Presence Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1995. Удаление "Ripple" (вздохов) и подъем весов слоев.
  */
 
 import type {
@@ -185,15 +184,15 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. NEURO DRUMS (Hard 4/4 Core)
+        // 1. NEURO DRUMS
         if (hints.drums) events.push(...this.renderFoundryDrums(epoch, tension, kit));
 
-        // 2. BASS (Rolling / Off-beat Pulse)
+        // 2. BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderRollingBass(epoch, resChord, tension);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...b); // NO RIPPLE
         }
 
         // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
@@ -205,7 +204,7 @@ export class DarkFoundryBrain {
             if (melodyEvents.length === 0 || this.rng.chance(15)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
-            events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...melodyEvents); // NO RIPPLE
         }
 
         const usedTargetLayers = new Set<string>();
@@ -214,16 +213,21 @@ export class DarkFoundryBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 const renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                events.push(...renders.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+                events.push(...renders); // NO RIPPLE
                 usedTargetLayers.add(target);
             }
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...this.renderSidechainedPad(epoch, resChord, tension)); // NO RIPPLE
         }
 
-        // 4. ATMOSPHERIC EVENTS (SFX & Sparkles)
+        if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
+            const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+            if (p.events.length > 0) events.push(...p.events); // NO RIPPLE
+        }
+
+        // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -240,11 +244,8 @@ export class DarkFoundryBrain {
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
         const rideSample = kit.ride[0] || 'drum_ride_wetter';
 
-        // Hard 4/4 Kick
         [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
-        // Off-beat Hats
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
-        // Industrial Snare
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
         if (tension > 0.5 || this.rng.chance(15)) {
@@ -258,7 +259,6 @@ export class DarkFoundryBrain {
                 }
             });
         }
-
         return events;
     }
 
@@ -268,7 +268,7 @@ export class DarkFoundryBrain {
         [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
-                weight: 0.85, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
+                weight: 0.95, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
             });
         });
         return events;
@@ -280,7 +280,7 @@ export class DarkFoundryBrain {
         const offset = localBar * TICKS_PER_BAR;
         return this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }
 
@@ -300,7 +300,7 @@ export class DarkFoundryBrain {
             return {
                 type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
                 time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
-                weight: isGold ? 0.95 : 0.4, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
+                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
             };
         });
     }
@@ -310,20 +310,20 @@ export class DarkFoundryBrain {
         const offset = localBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12;
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
-        return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
+        return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
-            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.5, technique: 'hit' }); });
+            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.7, technique: 'hit' }); });
             return { events, style: 'Shadow Support' };
         }
         return { events: [], style: 'none' };
@@ -334,70 +334,31 @@ export class DarkFoundryBrain {
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
         return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40)).map(t => ({
             type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
-            time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
+            time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
     }
 
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        
-        // 1. SFX: Бросаем кубик на срабатывание (15% шанс)
         if (this.rng.chance(15)) {
             events.push({
-                type: 'sfx',
-                note: 60,
-                time: this.rng.next() * 3,
-                duration: 4.0,
-                weight: 0.7,
-                technique: 'hit',
-                dynamics: 'p',
-                phrasing: 'legato',
-                params: { 
-                    mood: this.mood, 
-                    genre: this.genre,
-                    rules: {
-                        categories: [
-                            { name: 'dark', weight: 0.6 }, 
-                            { name: 'voice', weight: 0.4 } 
-                        ]
-                    }
-                }
+                type: 'sfx', note: 60, time: this.rng.next() * 3, duration: 4.0, weight: 0.7, technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } }
             });
         }
-
-        // 2. Sparkles: ПЛАН №1986 — "High Density Shimmer"
-        // Вероятность: 45% + бонус от Tension
         const sparkleChance = 45 + (tension * 30);
         if (this.rng.chance(sparkleChance)) {
-            // Количество: 1-3 в зависимости от напряжения
             const count = tension > 0.6 ? this.rng.nextInt(3) + 1 : 1;
             for (let i = 0; i < count; i++) {
                 events.push({
-                    type: 'sparkle',
-                    note: 64 + (this.rng.nextInt(12)), 
-                    time: this.rng.next() * 3.8, 
-                    duration: 4.0,
-                    weight: 0.7 + (this.rng.next() * 0.2),
-                    technique: 'hit',
-                    dynamics: 'p',
-                    phrasing: 'legato',
-                    params: { 
-                        category: this.rng.chance(40) ? 'ORGANIC' : 'MELODIC' 
-                    }
+                    type: 'sparkle', note: 64 + (this.rng.nextInt(12)), 
+                    time: this.rng.next() * 3.8, duration: 4.0,
+                    weight: 0.8 + (this.rng.next() * 0.15), technique: 'hit', dynamics: 'p', phrasing: 'legato',
+                    params: { category: this.rng.chance(40) ? 'ORGANIC' : 'MELODIC' }
                 });
             }
         }
-
         return events;
-    }
-
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {
-        if (e.duration < 2.0) return [e]; 
-        const rippled: FractalEvent[] = [];
-        const numChunks = Math.ceil(e.duration / 0.8); 
-        const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < numChunks; i++) rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.9, weight: e.weight * 0.85 });
-        return rippled;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }

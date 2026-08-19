@@ -1,7 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V2.3 — "Texture Prominence Update".
- * #ЗАЧЕМ: Увеличение громкости Sparkles и SFX до 0.65 по умолчанию.
- * #ЧТО: Новые сэмплы требуют более высокого уровня в миксе для создания атмосферы.
+ * @fileOverview Master Mix Registry V2.4 — "Foundry Presence Update".
+ * #ЗАЧЕМ: ПЛАН №1995. Радикальное усиление музыкальных слоев в Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -13,13 +12,20 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     harmony: 0.0625,    
     pianoAccompaniment: 0.43,
     drums: 0.75,         
-    sparkles: 0.65,      // Повышено с 0.12
-    sfx: 0.65            // Повышено с 0.12
+    sparkles: 0.65,      
+    sfx: 0.65            
 };
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { ...UNIVERSAL_IMPERIAL_MIX },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
+    foundry: {
+        ...UNIVERSAL_IMPERIAL_MIX,
+        accompaniment: 0.30,      // Повышено в 3 раза (с 0.10)
+        melody: 0.65,             // Повышено для пробиваемости
+        harmony: 0.45,            // Повышено для плотности
+        pianoAccompaniment: 0.75  // Повышено для слышимости Rhodes/Piano
+    },
     blues: {
         bass: 0.68,
         melody: 0.50,
@@ -27,8 +33,8 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         harmony: 0.0875,
         pianoAccompaniment: 0.32,
         drums: 0.50,
-        sparkles: 0.65, // Повышено для консистентности
-        sfx: 0.65       // Повышено для консистентности
+        sparkles: 0.65, 
+        sfx: 0.65       
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
