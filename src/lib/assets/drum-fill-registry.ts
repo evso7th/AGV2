@@ -1,11 +1,12 @@
 
 /**
- * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.0
+ * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.1
  * #ЗАЧЕМ: Декларативное управление сбивками без изменения "Золотой Базы" Мозгов.
- * #ИНСТРУКЦИЯ: Параметры срабатывания и сами паттерны редактируются ниже.
+ * #ИСПРАВЛЕНО: Конвертация тиков в доли (beats) для устранения пауз.
  */
 
-import type { FractalEvent, Technique, Dynamics, Phrasing } from '@/types/music';
+import type { FractalEvent, Technique } from '@/types/music';
+import { TICK_TO_BEAT } from '../music-theory';
 
 // ──────────────────────────────────────────────────────────────
 // ⚙️ ДЕКЛАРАТИВНАЯ КОНФИГУРАЦИЯ (Редактировать здесь)
@@ -16,7 +17,7 @@ export const FILL_CONFIG = {
     tensionThreshold: 0.88,     // Принудительная сбивка при высоком напряжении
     historyLimit: 5,            // Не повторять сбивку в течение 5 тактов
     excludedGenres: ['ambient'], // Жанры-исключения
-    defaultVelocity: 0.95       // Базовая мощь сбивки
+    defaultVelocity: 1.10       // Мощь сбивки (согласовано с силой Kick/Snare)
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -32,8 +33,8 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
     // --- ДЛЯ ТРАНСА, РОКА, ХАУСА (4/4) ---
     straight: [
         { id: 'S_SN_ROLL', events: [
-            { t: 9, d: 1, type: 'drum_snare', v: 0.7 }, { t: 9.75, d: 1, type: 'drum_snare', v: 0.8 },
-            { t: 10.5, d: 1, type: 'drum_snare', v: 0.9 }, { t: 11.25, d: 1, type: 'drum_snare', v: 1.0 }
+            { t: 9, d: 1, type: 'drum_snare', v: 0.8 }, { t: 9.75, d: 1, type: 'drum_snare', v: 0.9 },
+            { t: 10.5, d: 1, type: 'drum_snare', v: 1.0 }, { t: 11.25, d: 1, type: 'drum_snare', v: 1.1 }
         ]},
         { id: 'S_TOM_RUN', events: [
             { t: 6, d: 1.5, type: 'drum_Sonor_Classix_High_Tom' }, { t: 7.5, d: 1.5, type: 'drum_Sonor_Classix_Mid_Tom' },
@@ -155,8 +156,8 @@ export class ShadowDrummer {
         const fillEvents: FractalEvent[] = picked.events.map(fe => ({
             type: fe.type,
             note: 36, // Нота игнорируется менеджером, важен тип
-            time: fe.t,
-            duration: fe.d,
+            time: fe.t * TICK_TO_BEAT, // ВАЖНО: Конвертация тиков (0..12) в доли (0..4)
+            duration: fe.d * TICK_TO_BEAT,
             weight: fe.v || FILL_CONFIG.defaultVelocity,
             technique: fe.tech || 'hit',
             dynamics: 'mf',
