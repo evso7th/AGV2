@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Foundry Presets Library V1.0 — "Absolute Isolation".
- * #ЗАЧЕМ: Копия V2_PRESETS для безопасных экспериментов в Foundry.
+ * @fileOverview Foundry Presets Library V1.1 — "The Gritty B3 Update".
+ * #ЗАЧЕМ: ПЛАН №2010. Металлизация органов: добавление драйва и подавление "завываний".
  */
 
 export const FOUNDRY_PRESETS = {
@@ -35,26 +35,32 @@ export const FOUNDRY_PRESETS = {
 
   organ: {
     type: 'organ',
-    name: 'Clean Organ',
-    volume: 0.4,
-    drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0],
+    name: 'Industrial B3 (Dirty)',
+    volume: 0.45,
+    // #ЗАЧЕМ: Роковая конфигурация (Jon Lord style) - больше средних и нижних гармоник
+    drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
-    lpf: 1800,
+    lpf: 2400, // Больше "песка" и пробиваемости
     reverbMix: 0,
-    leslie: { rate: 5.5, pitchDepth: 0.0002, ampDepth: 0.03, driftPct: 0.18, driftRate: 0.2 },
-    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
+    // #ЗАЧЕМ: Добавление "грязи"
+    drive: { type: 'soft', amount: 0.45 },
+    // #ЗАЧЕМ: Подавление завываний (pitchDepth снижен до минимума)
+    leslie: { rate: 5.8, pitchDepth: 0.00005, ampDepth: 0.06, driftPct: 0.12, driftRate: 0.2 },
+    humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.08 }
   },
 
   organ_soft_jazz: {
     type: 'organ',
-    name: 'Clean Jazz Organ',
-    volume: 0.4,
-    drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0],
-    lpf: 1400,
+    name: 'Gritty Jazz B3',
+    volume: 0.42,
+    drawbars: [8, 0, 8, 4, 2, 0, 0, 0, 0],
+    lpf: 1800,
     adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
     reverbMix: 0,
-    leslie: { rate: 5.0, pitchDepth: 0.0002, ampDepth: 0.025, driftPct: 0.18, driftRate: 0.17 },
-    humanize: { detuneCents: 2.5, levelPct: 0.05, brightnessPct: 0.06 }
+    // #ЗАЧЕМ: Легкий кранч для характера
+    drive: { type: 'soft', amount: 0.22 },
+    leslie: { rate: 5.2, pitchDepth: 0.00005, ampDepth: 0.04, driftPct: 0.15, driftRate: 0.15 },
+    humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.06 }
   },
 
   guitar_clean: {
