@@ -1,12 +1,13 @@
 
 /**
- * @file AuraGroove Music Worker V6.2 — "Foundry Integration".
+ * @file AuraGroove Music Worker V6.3 — "Shadow Drummer Integration".
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
 import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/fractal';
 import { getBlueprint } from '@/lib/blueprints';
 import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
+import { ShadowDrummer } from '@/lib/assets/drum-fill-registry';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -245,10 +246,20 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
+        // #ЗАЧЕМ: Протокол "Теневого Барабанщика" (Декоратор выходного потока).
+        // #ЧТО: ПЛАН №2100 — Хирургическая подмена событий ударных без изменения Brain-файлов.
+        const decoratedEvents = ShadowDrummer.decorate(
+            payload.events,
+            this.barCount,
+            payload.tension,
+            this.settings.genre,
+            fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
+        );
+
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
-                events: payload.events,
+                events: decoratedEvents,
                 instrumentHints: payload.instrumentHints || {},
                 barDuration: this.barDuration,
                 barCount: this.barCount,
