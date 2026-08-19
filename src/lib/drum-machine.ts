@@ -189,6 +189,7 @@ export class DrumMachine {
                 else sampleName = 'drum_perc-001';
             }
 
+            // #ЗАЧЕМ: ПЛАН №2110. Проверка наличия сэмпла с префиксом и без.
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) {
                 if (sampleName.includes('kick')) sampleName = 'drum_foundry_quality';
@@ -201,8 +202,15 @@ export class DrumMachine {
             if (!isFinite(absoluteTime)) continue;
             
             let velocity = event.weight;
-            if (sampleName.startsWith('perc-')) velocity *= 0.8;
-            else if (sampleName.includes('ride')) velocity *= 0.7;
+            
+            // #ЗАЧЕМ: ПЛАН №2110. Исключение подавления для сбивок ("Shadow Iron Protocol").
+            const isFill = event.params?.isFill === true;
+            if (sampleName.startsWith('perc-')) {
+                velocity *= isFill ? 1.0 : 0.8;
+            } else if (sampleName.includes('ride') || sampleName.includes('crash')) {
+                // В обычном режиме райд тихий (0.7), в сбивке — мощный (1.2).
+                velocity *= isFill ? 1.2 : 0.7;
+            }
             
             const pan = event.pan || 0;
             this.sampler.triggerAttack(sampleName, absoluteTime, velocity, pan);

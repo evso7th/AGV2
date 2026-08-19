@@ -1,27 +1,26 @@
-
 /**
- * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.3
- * #ЗАЧЕМ: Устранение пауз и просадок громкости в сбивках.
- * #ЧТО: ПЛАН №2106 — Все паттерны теперь начинаются с t:0 (Full-Bar). Velocity поднят до 1.25-1.40.
+ * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.4
+ * #ЗАЧЕМ: ПЛАН №2110. Усиление "железа" (райды и крэши) в сбивках.
+ * #ЧТО: Веса тарелок подняты до 1.50, добавлен маркер isFill для подавления лимитов DrumMachine.
  */
 
 import type { FractalEvent, Technique } from '@/types/music';
 import { TICK_TO_BEAT } from '../music-theory';
 
 // ──────────────────────────────────────────────────────────────
-// ⚙️ ДЕКЛАРАТИВНАЯ КОНФИГУРАЦИЯ (Корректируйте здесь)
+// ⚙️ ДЕКЛАРАТИВНАЯ КОНФИГУРАЦИЯ
 // ──────────────────────────────────────────────────────────────
 
 export const FILL_CONFIG = {
-    triggerEveryNBars: 8,       // Сбивка каждый 8-й такт
-    tensionThreshold: 0.88,     // Принудительная сбивка при высоком напряжении
-    historyLimit: 5,            // Глубина памяти уникальности
-    excludedGenres: ['ambient'], // Жанры без сбивок
-    defaultVelocity: 1.25       // БАЗОВАЯ МОЩЬ (соответствует основному ритму)
+    triggerEveryNBars: 8,       
+    tensionThreshold: 0.88,     
+    historyLimit: 5,            
+    excludedGenres: ['ambient'], 
+    defaultVelocity: 1.25       
 };
 
 // ──────────────────────────────────────────────────────────────
-// 🥁 РЕЕСТР ПОЛНОТАКТОВЫХ ПАТТЕРНОВ (1 такт = 12 тиков)
+// 🥁 РЕЕСТР ПОЛНОТАКТОВЫХ ПАТТЕРНОВ
 // ──────────────────────────────────────────────────────────────
 
 type FillPattern = {
@@ -30,10 +29,20 @@ type FillPattern = {
 };
 
 export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } = {
-    // --- STRAIGHT (Trance, Rock, House) ---
     straight: [
+        { id: 'S_CYMBAL_SMASH', events: [
+            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 },
+            { t: 0, d: 1, type: 'drum_ride_wetter', v: 1.50 }, // Акцент на первую долю
+            { t: 3, d: 3, type: 'drum_kick_reso', v: 1.20 },
+            { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
+            { t: 6, d: 1, type: 'drum_ride_wetter', v: 1.30 },
+            { t: 7.5, d: 1, type: 'drum_ride_wetter', v: 1.40 },
+            { t: 9, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
+            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
+            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.90 } // Мощный крэш в конце
+        ]},
         { id: 'S_EPIC_ROLL_CRASH', events: [
-            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 }, // Мощный старт вместо паузы
+            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 },
             { t: 3, d: 3, type: 'drum_kick_reso', v: 1.20 },
             { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
             { t: 6.75, d: 1, type: 'drum_snare', v: 1.10 },
@@ -42,32 +51,33 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 9, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
             { t: 9.75, d: 1, type: 'drum_Sonor_Classix_Low_Tom', v: 1.35 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.75 }
+            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.95 }
         ]},
         { id: 'S_MACHINE_GUN_GHOST', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
             { t: 3, d: 3, type: 'drum_snare', v: 1.20 },
+            { t: 3, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 6, d: 0.75, type: 'drum_snare', v: 1.25 },
-            { t: 6.75, d: 0.75, type: 'drum_snare_ghost_note', v: 0.60 },
             { t: 7.5, d: 0.75, type: 'drum_snare', v: 1.20 },
-            { t: 8.25, d: 0.75, type: 'drum_snare_ghost_note', v: 0.60 },
             { t: 9, d: 0.75, type: 'drum_snare', v: 1.30 },
+            { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.40 },
             { t: 10.5, d: 0.75, type: 'drum_snare', v: 1.35 },
             { t: 11.25, d: 0.75, type: 'drum_kick_reso', v: 1.40 }
-        ]},
-        { id: 'S_TOM_WAVE_FULL', events: [
-            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
-            { t: 3, d: 1.5, type: 'drum_Sonor_Classix_High_Tom', v: 1.15 },
-            { t: 4.5, d: 1.5, type: 'drum_Sonor_Classix_High_Tom', v: 1.15 },
-            { t: 6, d: 1.5, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.20 },
-            { t: 7.5, d: 1.5, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.25 },
-            { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.30 },
-            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 0.85 }
         ]}
     ],
-    // --- SHUFFLE (Blues, Reggae) ---
     shuffle: [
+        { id: 'T_DUB_CYMBAL_ROLL', events: [
+            { t: 0, d: 6, type: 'drum_kick_reso', v: 1.40 },
+            { t: 0, d: 1, type: 'drum_ride_wetter', v: 1.50 },
+            { t: 3, d: 1, type: 'drum_ride_wetter', v: 1.30 },
+            { t: 6, d: 2, type: 'drum_snare_off', v: 1.30 },
+            { t: 6, d: 1, type: 'drum_ride_wetter', v: 1.50 },
+            { t: 8, d: 2, type: 'drum_snare_ghost_note', v: 0.70 },
+            { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.25 },
+            { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.40 },
+            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
+            { t: 11.5, d: 2, type: 'drum_crash2', v: 1.00 }
+        ]},
         { id: 'T_BLUES_STORM_FULL', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.40 },
             { t: 3, d: 3, type: 'drum_snare', v: 1.20 },
@@ -76,20 +86,13 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 8, d: 2, type: 'drum_Sonor_Classix_Low_Tom', v: 1.30 },
             { t: 9, d: 1.5, type: 'drum_snare', v: 1.35 },
             { t: 10.5, d: 1.5, type: 'drum_kick_reso', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.70 }
-        ]},
-        { id: 'T_DUB_DENSITY_FULL', events: [
-            { t: 0, d: 6, type: 'drum_kick_reso', v: 1.40 },
-            { t: 6, d: 2, type: 'drum_snare_off', v: 1.30 },
-            { t: 8, d: 2, type: 'drum_snare_ghost_note', v: 0.70 },
-            { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.25 },
-            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 }
+            { t: 11.5, d: 2, type: 'drum_crash2', v: 0.85 }
         ]}
     ]
 };
 
 // ──────────────────────────────────────────────────────────────
-// 🕵️ ТЕНЕВОЙ ДИРИЖЕР (The Interceptor)
+// 🕵️ ТЕНЕВОЙ ДИРИЖЕР
 // ──────────────────────────────────────────────────────────────
 
 export class ShadowDrummer {
@@ -120,13 +123,11 @@ export class ShadowDrummer {
         this.history.push(picked.id);
         if (this.history.length > FILL_CONFIG.historyLimit) this.history.shift();
 
-        // Удаляем ВСЕ старые ударные в этом такте
         const nonDrumEvents = events.filter(e => {
             const type = Array.isArray(e.type) ? e.type[0] : e.type;
             return !type.startsWith('drum') && !type.startsWith('perc');
         });
 
-        // Вклеиваем сбивку, которая ТЕПЕРЬ ВСЕГДА НАЧИНАЕТСЯ С ПЕРВОЙ ДОЛИ
         const fillEvents: FractalEvent[] = picked.events.map(fe => ({
             type: fe.type,
             note: 36, 
