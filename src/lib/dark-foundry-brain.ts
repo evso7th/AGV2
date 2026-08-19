@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V3.8 — "Harmony & Power Update".
- * #ЗАЧЕМ: ПЛАН №1990. Внедрение генеративной гармонии и усиление весов.
+ * @fileOverview Dark Foundry Brain V3.9 — "Harmony Taming Update".
+ * #ЗАЧЕМ: ПЛАН №1991. Разрежение генеративной гармонии и снижение весов.
  */
 
 import type {
@@ -325,27 +325,35 @@ export class DarkFoundryBrain {
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1991. Разреженная гармония для Foundry.
+     * #ЧТО: Сетка только на 2 и 4 доли, снижение веса и вероятности.
+     */
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12;
         const isMinor = chord.chordType === 'minor';
         const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
-        // Индустриальная сетка: офф-биты для "кача"
-        const grid = [1.5, 4.5, 7.5, 10.5]; 
         
+        // #ЗАЧЕМ: ПЛАН №1991. Сетка стала реже (только 2 и 4 доли).
+        const grid = [4.5, 10.5]; 
+        
+        // Дополнительный вероятностный гейт для "воздуха"
+        const gate = 40 + tension * 40; 
+
         grid.forEach(t => {
-            if (this.rng.chance(65 + tension * 35)) {
+            if (this.rng.chance(gate)) {
                 intervals.forEach(interval => {
                     events.push({
                         type: 'harmony',
                         note: this.constrainAccompanimentOctave(root + interval),
                         time: t * TICK_TO_BEAT,
                         duration: 0.25 * TICK_TO_BEAT,
-                        weight: 0.88,
+                        weight: 0.65, // Снижено с 0.88
                         technique: 'hit',
                         dynamics: 'mf',
                         phrasing: 'staccato',
-                        chordName: isMinor ? 'Am' : 'A' // chordName triggers chordsampler
+                        chordName: isMinor ? 'Am' : 'A'
                     });
                 });
             }
