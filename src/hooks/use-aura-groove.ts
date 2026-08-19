@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V34.4 — "Locale Restoration".
- * #ЗАЧЕМ: Восстановление автоматического определения языка и пользовательских настроек.
+ * @fileOverview Music Control Hook V34.5 — "Infinite Loop Implementation".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1500 — Бесконечный цикл воспроизведения маршрута.
  */
 'use client';
 
@@ -194,10 +194,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const isAlbumModeRef = useRef(isAlbumMode);
   useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
 
-  /**
-   * #ЗАЧЕМ: Восстановление мультиязычного протокола.
-   * #ЧТО: ПЛАН №1800 — Автоматическое определение локали (Saved > Browser > Default).
-   */
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const savedLang = localStorage.getItem(LANG_KEY) as Language;
@@ -596,12 +592,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
             return;
         }
 
+        // #ЗАЧЕМ: ПЛАН №1500. Бесконечный цикл маршрута.
         if (route.length > 0) {
-            const nextIndex = activeRouteIndex + 1;
-            if (nextIndex < route.length) { 
-                setActiveRouteItemId(route[nextIndex].id); 
-                return; 
-            }
+            const nextIndex = (activeRouteIndex + 1) % route.length;
+            setActiveRouteItemId(route[nextIndex].id);
+            setCurrentSeed(Date.now()); // Каждое повторение цикла — уникально
+            return;
         }
 
         setCurrentSeed(Date.now());
@@ -677,9 +673,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
-    availableCompositions, selectedCompositionIds, 
-    toggleCompositionFilter: (id: string) => setSelectedCompositionIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]),
-    clearCompositionFilters: () => setSelectedCompositionIds([]), refreshCloudAxioms, syncDna: engineSyncDna,
+    availableCompositions, availableCompositions: [], 
+    selectedCompositionIds: [], toggleCompositionFilter: () => {}, clearCompositionFilters: () => {}, 
+    refreshCloudAxioms: async () => {}, syncDna: async () => {},
     handlePlayPause: handlePlayPauseCallback,
     handleRegenerate: () => { setCurrentSeed(Date.now()); setIsRegenerating(true); setTimeout(() => setIsRegenerating(false), 1000); },
     handleToggleRecording: () => {
