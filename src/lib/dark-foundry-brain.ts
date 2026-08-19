@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V3.7 — "Machine Presence Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1995. Удаление "Ripple" (вздохов) и подъем весов слоев.
+ * @fileOverview Dark Foundry Brain V3.8 — "Harmony & Power Update".
+ * #ЗАЧЕМ: ПЛАН №1990. Внедрение генеративной гармонии и усиление весов.
  */
 
 import type {
@@ -192,7 +192,7 @@ export class DarkFoundryBrain {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderRollingBass(epoch, resChord, tension);
-            events.push(...b); // NO RIPPLE
+            events.push(...b); 
         }
 
         // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
@@ -204,7 +204,7 @@ export class DarkFoundryBrain {
             if (melodyEvents.length === 0 || this.rng.chance(15)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
-            events.push(...melodyEvents); // NO RIPPLE
+            events.push(...melodyEvents); 
         }
 
         const usedTargetLayers = new Set<string>();
@@ -213,18 +213,23 @@ export class DarkFoundryBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 const renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                events.push(...renders); // NO RIPPLE
+                events.push(...renders); 
                 usedTargetLayers.add(target);
             }
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension)); // NO RIPPLE
+            events.push(...this.renderSidechainedPad(epoch, resChord, tension)); 
+        }
+
+        if (hints.harmony && !usedTargetLayers.has('harmony')) {
+            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
+            usedTargetLayers.add('harmony');
         }
 
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            if (p.events.length > 0) events.push(...p.events); // NO RIPPLE
+            if (p.events.length > 0) events.push(...p.events); 
         }
 
         // 4. ATMOSPHERIC
@@ -320,10 +325,38 @@ export class DarkFoundryBrain {
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
+    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        const root = chord.rootNote + 12;
+        const isMinor = chord.chordType === 'minor';
+        const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
+        const events: FractalEvent[] = [];
+        // Индустриальная сетка: офф-биты для "кача"
+        const grid = [1.5, 4.5, 7.5, 10.5]; 
+        
+        grid.forEach(t => {
+            if (this.rng.chance(65 + tension * 35)) {
+                intervals.forEach(interval => {
+                    events.push({
+                        type: 'harmony',
+                        note: this.constrainAccompanimentOctave(root + interval),
+                        time: t * TICK_TO_BEAT,
+                        duration: 0.25 * TICK_TO_BEAT,
+                        weight: 0.88,
+                        technique: 'hit',
+                        dynamics: 'mf',
+                        phrasing: 'staccato',
+                        chordName: isMinor ? 'Am' : 'A' // chordName triggers chordsampler
+                    });
+                });
+            }
+        });
+        return events;
+    }
+
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
-            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.7, technique: 'hit' }); });
+            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.75, technique: 'hit' }); });
             return { events, style: 'Shadow Support' };
         }
         return { events: [], style: 'none' };

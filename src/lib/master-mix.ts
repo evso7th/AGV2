@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V2.4 — "Foundry Presence Update".
- * #ЗАЧЕМ: ПЛАН №1995. Радикальное усиление музыкальных слоев в Foundry.
+ * @fileOverview Master Mix Registry V2.5 — "Harmony Presence Update".
+ * #ЗАЧЕМ: ПЛАН №1990. Радикальное усиление слоя гармонии в Foundry.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -21,10 +21,10 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.30,      // Повышено в 3 раза (с 0.10)
-        melody: 0.65,             // Повышено для пробиваемости
-        harmony: 0.45,            // Повышено для плотности
-        pianoAccompaniment: 0.75  // Повышено для слышимости Rhodes/Piano
+        accompaniment: 0.55,      // Усилено для плотности
+        melody: 0.65,             // Сохранено для пробиваемости
+        harmony: 0.85,            // ПИКОВОЕ УСИЛЕНИЕ (с 0.45)
+        pianoAccompaniment: 0.75  // Высокий уровень для Rhodes
     },
     blues: {
         bass: 0.68,
