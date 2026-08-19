@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Dark Foundry Brain V3.1 — "Shimmer Hardware Link".
- * #ЗАЧЕМ: Реализация ПЛАНА №1970. Внедрение Райдов в ритмическую сетку Foundry.
+ * @fileOverview Dark Foundry Brain V3.5 — "Atmospheric Hardware Link".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1985. Внедрение эффектов через прямую адресацию категорий.
  */
 
 import type {
@@ -223,6 +223,9 @@ export class DarkFoundryBrain {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, tension)));
         }
 
+        // 4. ATMOSPHERIC EVENTS (SFX & Sparkles)
+        events.push(...this.renderAtmosphericEvents(epoch, tension));
+
         return {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
@@ -244,7 +247,6 @@ export class DarkFoundryBrain {
         // Industrial Snare
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
-        // #ЗАЧЕМ: ПЛАН №1970. Внедрение Райдов при tension > 0.5.
         if (tension > 0.5 || this.rng.chance(15)) {
             [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
                 if (this.rng.chance(35 + tension * 40)) {
@@ -334,6 +336,54 @@ export class DarkFoundryBrain {
             type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
             time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
+    }
+
+    private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
+        const events: FractalEvent[] = [];
+        
+        // SFX: Бросаем кубик на срабатывание (12% шанс)
+        if (this.rng.chance(12)) {
+            events.push({
+                type: 'sfx',
+                note: 60,
+                time: this.rng.next() * 3,
+                duration: 4.0,
+                weight: 0.7,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { 
+                    mood: this.mood, 
+                    genre: this.genre,
+                    rules: {
+                        // Явное указание категорий для менеджера, чтобы не трогать его код
+                        categories: [
+                            { name: 'dark', weight: 0.6 }, // Алиас для sfx_glitch
+                            { name: 'voice', weight: 0.4 } // Алиас для voices_pixabay
+                        ]
+                    }
+                }
+            });
+        }
+
+        // Sparkles: Бросаем кубик на срабатывание (15% шанс)
+        if (this.rng.chance(15)) {
+            events.push({
+                type: 'sparkle',
+                note: 60,
+                time: this.rng.next() * 3,
+                duration: 4.0,
+                weight: 0.8,
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { 
+                    category: this.rng.chance(50) ? 'ORGANIC' : 'MELODIC' 
+                }
+            });
+        }
+
+        return events;
     }
 
     private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {

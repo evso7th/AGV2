@@ -1,8 +1,9 @@
+
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * @fileOverview Foundry Dark Blueprint V1.0.
- * #ЗАЧЕМ: 100% клон Trance Dark для Foundry.
+ * @fileOverview Foundry Dark Blueprint V1.1 — "Atmospheric Hardening".
+ * #ЗАЧЕМ: ПЛАН №1985. Активация правил для SFX и Sparkles в Литейной.
  */
 export const DarkFoundryBlueprint: MusicBlueprint = {
     id: 'dark_foundry',
@@ -21,7 +22,7 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
         parts: [
             {
                 id: 'INTRO', name: 'Initial Spark', duration: { percent: 10 }, 
-                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 instrumentation: { 
                     accompaniment: { strategy: 'weighted', v2Options: [{ name: 'synth_cave_pad', weight: 1.0 }] },
                     bass: { strategy: 'weighted', v2Options: [{ name: 'bass_house', weight: 1.0 }] },
@@ -31,13 +32,15 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 } },
+                    sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 1.0 }] },
+                    sparkles: { density: { min: 0.1, max: 0.2 } }
                 },
                 bundles: [{ id: 'FO_DARK_INTRO1', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'BUILD', name: 'The Chase', duration: { percent: 30 },
-                layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, melody: true },
+                layers: { bass: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, melody: true, sparkles: true },
                 instrumentation: {
                     bass: { strategy: 'weighted', v2Options: [{ name: 'resonantGliss', weight: 1.0 }] },
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_shineOn', weight: 1.0 }] },
@@ -46,13 +49,15 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1 },
+                    sfx: { eventProbability: 0.4, categories: [{ name: 'dark', weight: 0.8 }, { name: 'voice', weight: 0.2 }] },
+                    sparkles: { density: { min: 0.3, max: 0.5 } }
                 },
                 bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
             },
             {
                 id: 'PEAK', name: 'Red Line', duration: { percent: 40 },
-                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true },
+                layers: { bass: true, melody: true, accompaniment: true, drums: true, sfx: true, pianoAccompaniment: true, harmony: true, sparkles: true },
                 instrumentation: {
                     melody: { strategy: 'weighted', v2Options: [{ name: 'guitar_muffLead', weight: 1.0 }] },
                     harmony: { strategy: 'weighted', options: [{ name: 'guitarChords', weight: 1.0 }] },
@@ -60,13 +65,15 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 },
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2 },
+                    sfx: { eventProbability: 0.5, categories: [{ name: 'dark', weight: 0.5 }, { name: 'voice', weight: 0.5 }] },
+                    sparkles: { density: { min: 0.6, max: 0.8 } }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             },
             {
                 id: 'OUTRO', name: 'Cool Down', duration: { percent: 20 },
-                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true },
+                layers: { accompaniment: true, sfx: true, drums: true, bass: true, melody: true, harmony: true, pianoAccompaniment: true, sparkles: true },
                 bundles: [{ id: 'OUTRO_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
             }
