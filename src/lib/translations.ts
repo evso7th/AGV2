@@ -20,7 +20,7 @@ export const TRANSLATIONS = {
     // Selectors
     label_genre: { ru: "выберите жанр ↓", en: "choose genre ↓" },
     label_mood: { ru: "выберите настроение ↓", en: "choose mood ↓" },
-    btn_add_to_route: { ru: "в маршрут", en: "to route" },
+    btn_add_to_route: { ru: "в плейлист", en: "to playlist" },
     
     // Route List
     label_current_path: { ru: "Текущий путь", en: "Current Path" },
@@ -33,7 +33,7 @@ export const TRANSLATIONS = {
     dialog_capture_name: { ru: "Название...", en: "Name..." },
     btn_capture_save: { ru: "Запомнить путь", en: "Store Journey" },
     
-    // Preset Manager Specific (Mixer/EQ)
+    // Preset Manager Specific (Mixer)
     btn_preset_save: { ru: "1. ЗАПОМНИТЬ", en: "1. CAPTURE" },
     btn_preset_update: { ru: "2. ОБНОВИТЬ", en: "2. UPDATE" },
     
