@@ -18,8 +18,8 @@ export const TRANSLATIONS = {
     btn_pause: { ru: "Пауза", en: "Pause" },
     
     // Selectors
-    label_genre: { ru: "Жанр", en: "Genre" },
-    label_mood: { ru: "Настроение", en: "Mood" },
+    label_genre: { ru: "выберите жанр", en: "choose genre" },
+    label_mood: { ru: "выберите настроение", en: "choose mood" },
     btn_add_to_route: { ru: "в маршрут", en: "to route" },
     
     // Route List
