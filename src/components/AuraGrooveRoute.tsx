@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.0.4 — "Foundry Genre Integration".
- * #ЗАЧЕМ: Добавление Foundry в список жанров.
+ * @fileOverview UI AuraGroove V17.0.5 — "Interface Clean-up".
+ * #ЗАЧЕМ: Удаление копирайта из футера по запросу пользователя.
  */
 'use client';
 
@@ -807,11 +807,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
 
                 <footer className={cn("mx-[2px] mb-[2px] p-3 backdrop-blur-md flex flex-col shrink-0 absolute bottom-0 left-0 right-0 z-40 transition-all border rounded-xl shadow-2xl", isDarkTheme ? 'bg-neutral-950/90 border-neutral-800' : 'bg-white/95 border-gray-200')}>
-                    <div className="text-center mb-2.5 opacity-30 pointer-events-none select-none">
-                        <span className="text-[7px] font-black uppercase tracking-[0.2em]">
-                            © 2026 Eugene Somov · AuraGroove - Infinite Take Orchestra
-                        </span>
-                    </div>
                     <div className="flex items-center justify-between w-full">
                         <div className="flex gap-1">
                             <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
