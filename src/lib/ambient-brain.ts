@@ -1,7 +1,7 @@
-
 /**
- * @fileOverview Ambient Brain V114.1 — "Respiration & Stability Fix".
- * #ЗАЧЕМ: Исправление ReferenceError, вызывавшего остановку Воркера.
+ * @fileOverview Ambient Brain V114.2 — "Probability Distribution Fix".
+ * #ЗАЧЕМ: Исправление математической ошибки в триггерах атмосферных событий.
+ * #ЧТО: ПЛАН №1435 — Переход на прямой расчет вероятностей через random.next().
  */
 
 import type {
@@ -308,7 +308,7 @@ export class AmbientBrain {
         }
 
         // 2. Melody
-        let m: FractalEvent[] = []; // #ЗАЧЕМ: ПЛАН №1283. Переменная вынесена для доступности пианисту.
+        let m: FractalEvent[] = []; 
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 m = this.renderHeritageMelody(epoch, resChord, tension);
@@ -395,6 +395,7 @@ export class AmbientBrain {
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
         
         if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
         else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
 
         return barNotes.map(n => {
@@ -423,7 +424,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
             technique: 'pulse', dynamics: 'p', phrasing: 'detached'
         }));
     }
@@ -534,7 +535,7 @@ export class AmbientBrain {
     private renderSonicLandscape(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kit = DRUM_KITS.ambient[this.mood as any] || DRUM_KITS.ambient.melancholic;
-        const hitCount = 2 + calculateMusiNum(epoch, 3, this.seed, 2);
+        const hitCount = 2 + this.random.nextInt(4);
         for (let i = 0; i < hitCount; i++) {
             const perc = kit.perc[calculateMusiNum(epoch + i, 11, this.seed, kit.perc.length)];
             events.push({
@@ -545,13 +546,16 @@ export class AmbientBrain {
         return events;
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1435. Исправление триггеров атмосферных событий.
+     * #ЧТО: Переход на прямой расчет через this.random.next() для 16% и 14% вероятностей.
+     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const seedVal = this.seed + epoch;
         
-        // 1. INFREQUENT SPARKLES (16% Probability - High Density)
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 16) {
-            const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
+        // 1. SPARKLES (16% Probability)
+        if (this.random.next() < 0.16) {
+            const category = this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle',
                 note: 60,
@@ -565,8 +569,8 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INFREQUENT SFX (14% Probability - High Density)
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 14) {
+        // 2. SFX (14% Probability)
+        if (this.random.next() < 0.14) {
             events.push({
                 type: 'sfx',
                 note: 60,
