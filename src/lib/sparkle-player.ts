@@ -1,8 +1,8 @@
 import type { Genre, Mood } from '@/types/music';
 
 /**
- * @fileOverview Плеер текстур V14.0 — "Ambient Content Filter".
- * #ЗАЧЕМ: Улучшение Ambient согласно ПЛАНУ №1332.
+ * @fileOverview Плеер текстур V14.1 — "Delicate Atmosphere Update".
+ * #ЗАЧЕМ: Снижение системной громкости в 2 раза (0.45 -> 0.225).
  * #ЧТО: Отбор сэмплов по ключевым словам (ambient, water, etc.) и интеграция папки sparkles/ambient.
  */
 const SPARKLE_SAMPLES = {
@@ -75,7 +75,7 @@ export class SparklePlayer {
         this.audioContext = audioContext;
         this.gainNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.45; 
+        this.preamp.gain.value = 0.225; // Снижено в 2 раза с 0.45
         this.preamp.connect(this.gainNode);
         this.gainNode.connect(destination);
     }

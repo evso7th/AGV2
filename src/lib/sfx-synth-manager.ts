@@ -1,8 +1,8 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V14.0 — "Ambient Dark Logic".
- * #ЗАЧЕМ: Улучшение Ambient согласно ПЛАНУ №1332.
+ * @fileOverview Менеджер SFX V14.1 — "Delicate Atmosphere Update".
+ * #ЗАЧЕМ: Снижение системной громкости в 2 раза (0.65 -> 0.325).
  * #ЧТО: Перенастройка логики для темных настроений (глитчи и пэды).
  */
 const SFX_SAMPLES: Record<string, string[]> = {
@@ -195,7 +195,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/tube/341499__the_yura__kick-plastic-tube.ogg',
         '/assets/music/tube/421171__akustika__pvc-tube-01.ogg',
         '/assets/music/tube/426431__dersinnsspace__tube-hit-04-high.ogg',
-        '/assets/music/tube/426432__dersinnsspace__tube-hit-03-mid.ogg',
+        '/assets/music/tube/426432__dersinnsspace__tube-hit-03-mid',
         '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing__1_.ogg',
         '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing.ogg',
         '/assets/music/tube/486220__salvadormiranda__pvc-tubehit-1.ogg',
@@ -327,7 +327,7 @@ export class SfxSynthManager {
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
-        this.preamp.gain.value = 0.65;
+        this.preamp.gain.value = 0.325; // Снижено в 2 раза с 0.65
         this.preamp.connect(destination);
     }
 
