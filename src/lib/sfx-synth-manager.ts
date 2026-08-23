@@ -1,9 +1,9 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 
 /**
- * @fileOverview Менеджер SFX V13.1 — "Interface Aliasing Map".
- * #ЗАЧЕМ: ПЛАН №13.1 — Стыковка интерфейсов через карту алиасов.
- * #ЧТО: Добавлена поддержка общих имен категорий (dark, voice) для совместимости с Brains.
+ * @fileOverview Менеджер SFX V14.0 — "Ambient Dark Logic".
+ * #ЗАЧЕМ: Улучшение Ambient согласно ПЛАНУ №1332.
+ * #ЧТО: Перенастройка логики для темных настроений (глитчи и пэды).
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     perc: [
@@ -399,7 +399,6 @@ export class SfxSynthManager {
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
             if (!samplePool || samplePool.length === 0) {
-                console.warn(`No samples found for SFX category: ${category}`);
                 return;
             }
 
@@ -423,7 +422,6 @@ export class SfxSynthManager {
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: SfxRule): string {
-        // #ЗАЧЕМ: ПЛАН №13.1. Карта алиасов для стыковки интерфейсов.
         const aliases: Record<string, string> = {
             'dark': 'sfx_glitch',
             'voice': 'voices_pixabay',
@@ -449,16 +447,15 @@ export class SfxSynthManager {
             return rand < 0.7 ? 'tube' : 'perc';
         }
 
-        if (genre === 'psybient' || genre === 'trance') {
-            if (rand < 0.33) return 'sfx_glitch';
-            if (rand < 0.66) return 'sfx_other';
-            return 'voices_pixabay';
+        if (genre === 'foundry') {
+            return rand < 0.6 ? 'sfx_glitch' : 'sfx_other';
         }
 
         if (genre === 'ambient') {
-            if (mood === 'dark' || mood === 'anxious') {
-                 if(rand < 0.6) return 'sfx_other';
-                 if(rand < 0.8) return 'voices_other';
+            // #ЗАЧЕМ: Реализация ПЛАНА №1332. Глитчи и пэды для темного настроения.
+            if (mood === 'dark' || mood === 'anxious' || mood === 'gloomy' || mood === 'melancholic') {
+                 if(rand < 0.45) return 'sfx_glitch';
+                 if(rand < 0.75) return 'sfx_other';
                  return 'perc';
             }
             if (rand < 0.5) return 'sfx_common';
