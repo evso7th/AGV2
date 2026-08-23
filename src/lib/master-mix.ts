@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V2.6 — "Harmony Taming Update".
- * #ЗАЧЕМ: ПЛАН №1991. Усмирение громкости гармонии и аккомпанемента в Foundry.
+ * @fileOverview Master Mix Registry V2.7 — "Harmony Presence Update".
+ * #ЗАЧЕМ: ПЛАН №1150. Повышение слышимости слоя гармонии.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,7 +9,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.21,        
     accompaniment: 0.10, 
-    harmony: 0.0625,    
+    harmony: 0.18,       // Усилено с 0.0625 для уверенного присутствия
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.65,      
@@ -21,10 +21,10 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.25,      // Снижено с 0.55 для чистоты
-        melody: 0.45,             // Сбалансировано
-        harmony: 0.32,            // СНИЖЕНО с 0.85 (Taming)
-        pianoAccompaniment: 0.55  // Чуть тише
+        accompaniment: 0.25,      
+        melody: 0.45,             
+        harmony: 0.32,            
+        pianoAccompaniment: 0.55  
     },
     blues: {
         bass: 0.68,

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V114.2 — "Probability Distribution Fix".
- * #ЗАЧЕМ: Исправление математической ошибки в триггерах атмосферных событий.
- * #ЧТО: ПЛАН №1435 — Переход на прямой расчет вероятностей через random.next().
+ * @fileOverview Ambient Brain V115.0 — "Musicality Expansion Update".
+ * #ЗАЧЕМ: Оживление слоев Piano и Harmony.
+ * #ЧТО: Увеличение плотности пианиста и стабилизация триггеров гармонии.
  */
 
 import type {
@@ -416,28 +416,29 @@ export class AmbientBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
-        const mosaicBar = this.getMosaicIndex(epoch, this.currentBassTheme.startBar, totalBars, tension);
+        const totalBars = Math.ceil(this.currentAxiomMaxTickBass / TICKS_PER_BAR);
+        const startEpoch = this.currentBassTheme.startBar;
+        const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
+            time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
             technique: 'pulse', dynamics: 'p', phrasing: 'detached'
         }));
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number): FractalEvent[] {
-        const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
+        const totalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
 
         return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.2, release: 4.5 }
         }));
@@ -461,25 +462,48 @@ export class AmbientBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: Оживление пианиста (ПЛАН №1150).
+     * #ЧТО: Вероятность увеличена до 60%, играет 1-3 ноты в такт.
+     */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents?: FractalEvent[]): { events: FractalEvent[], style: string } {
-        if (this.random.next() > 0.3) return { events: [], style: 'none' };
+        // Увеличенная вероятность срабатывания (60%)
+        if (this.random.next() > 0.6) return { events: [], style: 'none' };
+        
         const root = chord.rootNote + 24;
+        const ticks = [1.5, 4.5, 7.5, 10.5];
+        
+        // Рандомизация количества нот (от 1 до 3)
+        const count = 1 + this.random.nextInt(3);
+        const shuffledTicks = [...ticks].sort(() => this.random.next() - 0.5).slice(0, count);
+
         return {
             style: 'Ambient Echoes',
-            events: [{
-                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
-                time: [1.5, 4.5, 7.5, 10.5][this.random.nextInt(4)] * TICK_TO_BEAT,
-                duration: 0.5, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
-            }]
+            events: shuffledTicks.map(t => ({
+                type: 'pianoAccompaniment', 
+                note: this.constrainAccompanimentOctave(root + (this.random.next() < 0.4 ? 0 : (chord.chordType === 'minor' ? 3 : 4))),
+                time: t * TICK_TO_BEAT,
+                duration: 0.8, 
+                weight: 0.58, 
+                technique: 'hit', 
+                dynamics: 'p', 
+                phrasing: 'staccato',
+                params: { attack: 0.01, release: 2.5 }
+            }))
         };
     }
 
+    /**
+     * #ЗАЧЕМ: Стабилизация триггеров гармонии.
+     * #ЧТО: Базовая вероятность 30% + зависимость от Tension.
+     */
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const canPlayGuitar = (epoch % 2 === 0);
-        const guitarProbability = tension; 
         
-        if (canPlayGuitar && this.random.next() < guitarProbability) {
+        // Базовая доступность 30% + бонус от напряжения (до 70%)
+        const guitarProbability = 0.3 + (tension * 0.4); 
+        
+        if (this.random.next() < guitarProbability) {
             const rootNote = chord.rootNote;
             const rootName = NOTE_NAMES[rootNote % 12] || 'C';
             const chordName = rootName + (chord.chordType === 'minor' ? 'm' : '');
@@ -489,7 +513,7 @@ export class AmbientBrain {
                 note: this.constrainAccompanimentOctave(rootNote + 12),
                 time: 0,
                 duration: 4.0,
-                weight: 0.35, 
+                weight: 0.45, 
                 technique: 'hit', 
                 dynamics: 'p',
                 phrasing: 'staccato',
