@@ -36,8 +36,8 @@ export const TRANSLATIONS = {
     // Onboarding Tips
     tips_title: { ru: "Как собрать плейлист", en: "Playlist Setup Guide" },
     tips_content: { 
-        ru: "Тапом или кликом выберите жанр, выберите настроение, нажмите на кнопку <span class='font-black text-[10px] tracking-tight'>+В ПЛЕЙЛИСТ</span>. Позиция появится в плейлисте. Добавьте таким же образом другие жанры и настроения в плейлист, нажмите Плей. Собранный вами плейлист автоматически сохранится и будет активным при следующем запуске.", 
-        en: "Tap or click to select a genre and mood, then press <span class='font-black text-[10px] tracking-tight'>+TO PLAYLIST</span>. The item will appear in your list. Add more combinations the same way, then press Play. Your playlist is saved automatically and will be active next time." 
+        ru: "Тапом или кликом выберите жанр, выберите настроение, нажмите на кнопку <span class='font-black text-[10px] tracking-tight'>+В ПЛЕЙЛИСТ</span>. Позиция появится в плейлисте. Добавьте таким же образом другие жанры и настроения в плейлист, нажмите кнопку <span class='font-black text-[10px] tracking-tight'>ИГРАТЬ</span> в правом верхнем углу. Собранный вами плейлист автоматически сохранится и будет активным при следующем запуске.", 
+        en: "Tap or click to select a genre and mood, then press <span class='font-black text-[10px] tracking-tight'>+TO PLAYLIST</span>. The item will appear in your list. Add more combinations the same way, then press the <span class='font-black text-[10px] tracking-tight'>PLAY</span> button in the top right corner. Your playlist is saved automatically and will be active next time." 
     },
     tips_dont_show: { ru: "больше не показывать", en: "don't show again" },
     

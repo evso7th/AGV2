@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview Ambient Brain V113.4 — "Stability Hotfix".
- * #ЗАЧЕМ: Исправление ReferenceError (usedTargetLayers -> usedLayers), блокировавшего игру.
- * #ЧТО: ПЛАН №1334. Восстановление стабильности воркера при сохранении плотности эффектов.
+ * @fileOverview Ambient Brain V113.5 — "Atmospheric Fine-Tuning".
+ * #ЗАЧЕМ: Уточнение вероятностей эффектов (Sparkles: 11%, SFX: 10%).
  */
 
 import type {
@@ -549,8 +549,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        // 1. INFREQUENT SPARKLES (16% Probability - doubled)
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 16) {
+        // 1. INFREQUENT SPARKLES (11% Probability - Fine-tuned)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 11) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle',
@@ -565,8 +565,8 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INFREQUENT SFX (14% Probability - doubled)
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 14) {
+        // 2. INFREQUENT SFX (10% Probability - Fine-tuned)
+        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 10) {
             events.push({
                 type: 'sfx',
                 note: 60,
