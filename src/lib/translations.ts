@@ -23,7 +23,7 @@ export const TRANSLATIONS = {
     btn_add_to_route: { ru: "в плейлист", en: "to playlist" },
     
     // Route List
-    label_current_path: { ru: "Текущий путь", en: "Current Path" },
+    label_current_path: { ru: "Плейлист", en: "Playlist" },
     label_steps: { ru: "шагов", en: "steps" },
     empty_route_title: { ru: "Маршрут пуст", en: "No journey yet" },
     empty_route_desc: { ru: "Выберите жанр и настроение, затем нажмите + Добавить в маршрут", en: "Pick a genre and mood then tap + Add to Route" },
