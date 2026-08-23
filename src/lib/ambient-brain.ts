@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V113.5 — "Atmospheric Fine-Tuning".
- * #ЗАЧЕМ: Уточнение вероятностей эффектов (Sparkles: 11%, SFX: 10%).
+ * @fileOverview Ambient Brain V114.0 — "Atmospheric Saturation Update".
+ * #ЗАЧЕМ: ПЛАН №1435. Повышение плотности эффектов (Sparkles: 16%, SFX: 14%).
  */
 
 import type {
@@ -101,7 +101,7 @@ export class AmbientBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -350,7 +350,7 @@ export class AmbientBrain {
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
-            const p = this.renderVirtuosoPiano(epoch, resChord, tension);
+            const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) {
                 const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
                 events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
@@ -549,8 +549,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        // 1. INFREQUENT SPARKLES (11% Probability - Fine-tuned)
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 11) {
+        // 1. INFREQUENT SPARKLES (16% Probability - High Density)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 16) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle',
@@ -565,8 +565,8 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INFREQUENT SFX (10% Probability - Fine-tuned)
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 10) {
+        // 2. INFREQUENT SFX (14% Probability - High Density)
+        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 14) {
             events.push({
                 type: 'sfx',
                 note: 60,
