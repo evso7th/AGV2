@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.1.0 — "Onboarding Tips Integration".
- * #ЗАЧЕМ: Реализация системы подсказок при пустом плейлисте.
+ * @fileOverview UI AuraGroove V17.1.1 — "Onboarding Tips Styling Update".
+ * #ЗАЧЕМ: Стилизация упоминания кнопки в подсказках согласно ПЛАНУ №1505.
  */
 'use client';
 
@@ -766,11 +766,11 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Plus className="h-4 w-4 mr-1" /> {t('btn_add_to_route')}
                     </Button>
                     <div className="flex gap-1">
-                        <Dialog open={isSaveRouteOpen} onOpenChange={isSaveRouteOpen}>
+                        <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader><div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
-                        <Dialog open={isLoadRouteOpen} onOpenChange={isLoadRouteOpen}>
+                        <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
@@ -1042,7 +1042,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     
                     <div className="py-6">
                         <p className="text-xs font-bold leading-relaxed text-center opacity-90">
-                            {t('tips_content')}
+                            <span dangerouslySetInnerHTML={{ __html: t('tips_content') }} />
                         </p>
                     </div>
 
