@@ -1,7 +1,7 @@
-
 /**
- * @fileOverview Ambient Brain V113.2 — "Sparkle Protocol Alignment".
- * #ЗАЧЕМ: ПЛАН №13.2 — Синхронизация имен категорий для SparklePlayer.
+ * @fileOverview Ambient Brain V113.3 — "Density Expansion Update".
+ * #ЗАЧЕМ: Увеличение вероятности эффектов в 2 раза согласно запросу пользователя.
+ * #ЧТО: Sparkles (8% -> 16%), SFX (7% -> 14%). Разрешено одновременное звучание.
  */
 
 import type {
@@ -332,7 +332,7 @@ export class AmbientBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedLayers.has(target)) {
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
@@ -436,7 +436,7 @@ export class AmbientBrain {
 
         return rawBarNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
-            time: n.t * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { attack: 1.2, release: 4.5 }
         }));
@@ -498,7 +498,7 @@ export class AmbientBrain {
             });
         }
 
-        if (calculateMusiNum(epoch + 7, 13, this.seed, 100) < 10) {
+        if (calculateMusiNum(epoch + 7, 13, this.seed, 10) < 10) {
             events.push({
                 type: 'harmony',
                 note: this.constrainAccompanimentOctave(chord.rootNote + 24),
@@ -549,9 +549,8 @@ export class AmbientBrain {
         const events: FractalEvent[] = [];
         const seedVal = this.seed + epoch;
         
-        // 1. INFREQUENT SPARKLES (8% Probability)
-        if (calculateMusiNum(seedVal, 13, 0, 100) < 8) {
-            // #ЗАЧЕМ: ПЛАН №13.2. Синхронизация имен категорий с SparklePlayer.
+        // 1. INFREQUENT SPARKLES (16% Probability - doubled)
+        if (calculateMusiNum(seedVal, 13, 0, 100) < 16) {
             const category = calculateMusiNum(seedVal, 7, 0, 2) === 0 ? 'ORGANIC' : 'MELODIC';
             events.push({
                 type: 'sparkle',
@@ -566,8 +565,8 @@ export class AmbientBrain {
             });
         }
 
-        // 2. INFREQUENT SFX (7% Probability)
-        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 7) {
+        // 2. INFREQUENT SFX (14% Probability - doubled)
+        if (calculateMusiNum(seedVal + 7, 17, 0, 100) < 14) {
             events.push({
                 type: 'sfx',
                 note: 60,
