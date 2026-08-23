@@ -34,7 +34,7 @@ export const TRANSLATIONS = {
     btn_capture_save: { ru: "Запомнить путь", en: "Store Journey" },
     
     // Onboarding Tips
-    tips_title: { ru: "Как собрать плейлист", en: "Playlist Setup Guide" },
+    tips_title: { ru: "КАК ЗАПУСТИТЬ МУЗЫКУ", en: "HOW TO START MUSIC" },
     tips_content: { 
         ru: "Тапом или кликом выберите жанр, выберите настроение, нажмите на кнопку <span class='font-black text-[10px] tracking-tight'>+В ПЛЕЙЛИСТ</span>. Позиция появится в плейлисте. Добавьте таким же образом другие жанры и настроения в плейлист, нажмите кнопку <span class='font-black text-[10px] tracking-tight'>ИГРАТЬ</span> в правом верхнем углу. Собранный вами плейлист автоматически сохранится и будет активным при следующем запуске.", 
         en: "Tap or click to select a genre and mood, then press <span class='font-black text-[10px] tracking-tight'>+TO PLAYLIST</span>. The item will appear in your list. Add more combinations the same way, then press the <span class='font-black text-[10px] tracking-tight'>PLAY</span> button in the top right corner. Your playlist is saved automatically and will be active next time." 
