@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V113.3 — "Density Expansion Update".
- * #ЗАЧЕМ: Увеличение вероятности эффектов в 2 раза согласно запросу пользователя.
- * #ЧТО: Sparkles (8% -> 16%), SFX (7% -> 14%). Разрешено одновременное звучание.
+ * @fileOverview Ambient Brain V113.4 — "Stability Hotfix".
+ * #ЗАЧЕМ: Исправление ReferenceError (usedTargetLayers -> usedLayers), блокировавшего игру.
+ * #ЧТО: ПЛАН №1334. Восстановление стабильности воркера при сохранении плотности эффектов.
  */
 
 import type {
@@ -332,7 +332,7 @@ export class AmbientBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedTargetLayers.has(target)) {
+            if (target && hints[target] && !usedLayers.has(target)) {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
