@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Ambient Brain V114.0 — "Atmospheric Saturation Update".
- * #ЗАЧЕМ: ПЛАН №1435. Повышение плотности эффектов (Sparkles: 16%, SFX: 14%).
+ * @fileOverview Ambient Brain V114.1 — "Respiration & Stability Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError, вызывавшего остановку Воркера.
  */
 
 import type {
@@ -280,8 +280,8 @@ export class AmbientBrain {
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 60) this.currentMutationType = 'none';
-            else if (roll < 80) this.currentMutationType = 'inversion';
+            if (roll < 40) this.currentMutationType = 'none';
+            else if (roll < 70) this.currentMutationType = 'inversion';
             else this.currentMutationType = 'jitter';
         }
 
@@ -308,8 +308,8 @@ export class AmbientBrain {
         }
 
         // 2. Melody
+        let m: FractalEvent[] = []; // #ЗАЧЕМ: ПЛАН №1283. Переменная вынесена для доступности пианисту.
         if (hints.melody) {
-            let m: FractalEvent[] = [];
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 m = this.renderHeritageMelody(epoch, resChord, tension);
                 if (m.length > 0) {
@@ -350,7 +350,7 @@ export class AmbientBrain {
         }
 
         if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
-            const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
+            const p = this.renderVirtuosoPiano(epoch, resChord, tension, m);
             if (p.events.length > 0) {
                 const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
                 events.push(...antiPedalPiano.flatMap(e => this.rippleLongNote(e, resChord, 0.8)));
