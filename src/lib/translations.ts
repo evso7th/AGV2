@@ -33,6 +33,14 @@ export const TRANSLATIONS = {
     dialog_capture_name: { ru: "Название...", en: "Name..." },
     btn_capture_save: { ru: "Запомнить путь", en: "Store Journey" },
     
+    // Onboarding Tips
+    tips_title: { ru: "Как собрать плейлист", en: "Playlist Setup Guide" },
+    tips_content: { 
+        ru: "Тапом или кликом выберите жанр, выберите настроение, нажмите на кнопку +в плейлист. Позиция появится в плейлисте. Добавьте таким же образом другие жанры и настроения в плейлист, нажмите Плей. Собранный вами плейлист автоматически сохранится и будет активным при следующем запуске.", 
+        en: "Tap or click to select a genre and mood, then press +to playlist. The item will appear in your list. Add more combinations the same way, then press Play. Your playlist is saved automatically and will be active next time." 
+    },
+    tips_dont_show: { ru: "больше не показывать", en: "don't show again" },
+    
     // Preset Manager Specific (Mixer)
     btn_preset_save: { ru: "1. ЗАПОМНИТЬ", en: "1. CAPTURE" },
     btn_preset_update: { ru: "2. ОБНОВИТЬ", en: "2. UPDATE" },

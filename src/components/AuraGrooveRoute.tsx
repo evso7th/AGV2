@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.0.5 — "Interface Clean-up".
- * #ЗАЧЕМ: Удаление копирайта из футера по запросу пользователя.
+ * @fileOverview UI AuraGroove V17.1.0 — "Onboarding Tips Integration".
+ * #ЗАЧЕМ: Реализация системы подсказок при пустом плейлисте.
  */
 'use client';
 
@@ -312,6 +312,25 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
     const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     
+    // --- ONBOARDING TIPS STATE ---
+    const [isTipsOpen, setIsTipsOpen] = useState(false);
+    const [hideTipsPermanently, setHideTipsPermanently] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const hidden = localStorage.getItem('AG_HideStartTips') === 'true';
+        if (!hidden && props.route.length === 0) {
+            setIsTipsOpen(true);
+        }
+    }, [props.route.length]);
+
+    const closeTips = () => {
+        setIsTipsOpen(false);
+        if (hideTipsPermanently) {
+            localStorage.setItem('AG_HideStartTips', 'true');
+        }
+    };
+
     // --- SMART STOP LOGIC (PLAN №1456) ---
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
     const [longPressActive, setLongPressActive] = useState(false);
@@ -747,11 +766,11 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Plus className="h-4 w-4 mr-1" /> {t('btn_add_to_route')}
                     </Button>
                     <div className="flex gap-1">
-                        <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
+                        <Dialog open={isSaveRouteOpen} onOpenChange={isSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader><div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
-                        <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
+                        <Dialog open={isLoadRouteOpen} onOpenChange={isLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
@@ -814,7 +833,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
 
                         <div className="flex gap-1 items-center">
-                            <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
+                            <Dialog open={isCapacityDialogOpen} onOpenChange={isCapacityDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10">
                                         <Layers className="h-4 w-4" />
@@ -858,7 +877,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                             </Button>
 
-                            <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
+                            <Dialog open={isTimerDialogOpen} onOpenChange={isTimerDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")}>
                                         <Timer className="h-5 w-5" />
@@ -1006,6 +1025,49 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v0.4.12</span>
                         <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">{t('btn_close')}</Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* --- ONBOARDING TIPS DIALOG --- */}
+            <Dialog open={isTipsOpen} onOpenChange={setIsTipsOpen}>
+                <DialogContent className="sm:max-w-md bg-neutral-950/80 backdrop-blur-xl border-primary/30 shadow-2xl p-6">
+                    <DialogHeader>
+                        <div className="mx-auto bg-primary/20 h-12 w-12 rounded-full flex items-center justify-center text-primary mb-4">
+                            <Sparkles className="h-6 w-6 animate-pulse" />
+                        </div>
+                        <DialogTitle className="font-black uppercase text-primary text-center tracking-tight">
+                            {t('tips_title')}
+                        </DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="py-6">
+                        <p className="text-xs font-bold leading-relaxed text-center opacity-90">
+                            {t('tips_content')}
+                        </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col gap-4 sm:flex-col items-center">
+                        <div className="flex items-center space-x-2 self-start sm:self-center">
+                            <Checkbox 
+                                id="dont-show-tips" 
+                                checked={hideTipsPermanently} 
+                                onCheckedChange={(checked) => setHideTipsPermanently(checked === true)}
+                                className="border-primary/40 data-[state=checked]:bg-primary"
+                            />
+                            <Label 
+                                htmlFor="dont-show-tips" 
+                                className="text-[10px] font-black uppercase opacity-60 cursor-pointer"
+                            >
+                                {t('tips_dont_show')}
+                            </Label>
+                        </div>
+                        <Button 
+                            onClick={closeTips}
+                            className="w-full font-black uppercase tracking-widest h-11 shadow-lg bg-primary hover:bg-primary/90"
+                        >
+                            {t('btn_close')}
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
