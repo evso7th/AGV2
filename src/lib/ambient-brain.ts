@@ -1,7 +1,7 @@
 /**
- * @fileOverview Ambient Brain V115.0 — "Musicality Expansion Update".
- * #ЗАЧЕМ: Оживление слоев Piano и Harmony.
- * #ЧТО: Увеличение плотности пианиста и стабилизация триггеров гармонии.
+ * @fileOverview Ambient Brain V116.0 — "Total Mutation Protocol".
+ * #ЗАЧЕМ: ПЛАН №1290. Устранение повторов через мутацию всего ансамбля.
+ * #ЧТО: Применение инверсии, ретрограда и джиттера к басу и пэдам. Разблокирован retrograde.
  */
 
 import type {
@@ -280,8 +280,9 @@ export class AmbientBrain {
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 40) this.currentMutationType = 'none';
-            else if (roll < 70) this.currentMutationType = 'inversion';
+            if (roll < 25) this.currentMutationType = 'none';
+            else if (roll < 50) this.currentMutationType = 'inversion';
+            else if (roll < 75) this.currentMutationType = 'retrograde';
             else this.currentMutationType = 'jitter';
         }
 
@@ -332,7 +333,7 @@ export class AmbientBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedLayers.has(target)) {
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
@@ -423,6 +424,10 @@ export class AmbientBrain {
         const rawBarNotes = this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
         let barNotes = rawBarNotes.map(n => ({ ...n, t: n.t - offset }));
 
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+        else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
+
         return barNotes.map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85,
@@ -435,8 +440,13 @@ export class AmbientBrain {
         const mosaicBar = this.getMosaicIndex(epoch, epoch - (epoch % totalBars), totalBars, tension);
         const offset = mosaicBar * TICKS_PER_BAR;
         const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
+        
+        let barNotes = [...rawBarNotes];
+        if (this.currentMutationType === 'inversion') barNotes = invertPhrase(barNotes);
+        else if (this.currentMutationType === 'retrograde') barNotes = retrogradePhrase(barNotes);
+        else if (this.currentMutationType === 'jitter') barNotes = applyRhythmicJitter(barNotes, this.seed + epoch);
 
-        return rawBarNotes.map(n => ({
+        return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
             time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
@@ -588,7 +598,7 @@ export class AmbientBrain {
                 weight: 0.7,
                 technique: 'hit',
                 dynamics: 'p',
-                phrasing: 'legato',
+                phrasing: 'legate',
                 params: { category, genre: this.genre }
             });
         }
