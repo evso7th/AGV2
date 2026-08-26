@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V65.1 — "Foundry Volume Correction".
- * #ЗАЧЕМ: Снижение системной громкости Foundry-ударных в 4 раза (1.15 -> 0.2875).
+ * @fileOverview Audio Engine Context V65.2 — "Drum Presence Calibration".
+ * #ЗАЧЕМ: Смягчение Foundry-изоляции (0.2875 -> 0.57) для лучшей слышимости ритма.
  */
 'use client';
 
@@ -235,8 +234,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       );
 
       if (foundryDrumsGainNodeRef.current) {
-          // #ЗАЧЕМ: Уменьшение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
-          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.2875, now, 0.1); 
+          // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
+          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.57, now, 0.1); 
       }
   }, []);
 
@@ -309,8 +308,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
-        // #ЗАЧЕМ: Уменьшение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
-        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.2875, now, 0.015);
+        // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
+        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.57, now, 0.015);
     }
   }, [setCalibrationGain]);
 
@@ -425,8 +424,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!foundryDrumsGainNodeRef.current) {
             foundryDrumsGainNodeRef.current = context.createGain();
-            // #ЗАЧЕМ: Снижение системной громкости Foundry в 4 раза (1.15 -> 0.2875)
-            foundryDrumsGainNodeRef.current.gain.value = 0.2875;
+            // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
+            foundryDrumsGainNodeRef.current.gain.value = 0.57;
             foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
         }
 

@@ -145,7 +145,8 @@ export class DrumMachine {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.65;
+        // #ЗАЧЕМ: Поднятие энергетического фундамента (0.65 -> 0.95).
+        this.preamp.gain.value = 0.95;
         this.preamp.connect(destination);
     }
 
@@ -189,7 +190,6 @@ export class DrumMachine {
                 else sampleName = 'drum_perc-001';
             }
 
-            // #ЗАЧЕМ: ПЛАН №2110. Проверка наличия сэмпла с префиксом и без.
             if (!this.sampler.buffers.has(sampleName)) sampleName = sampleName.replace('drum_', '');
             if (!this.sampler.buffers.has(sampleName)) {
                 if (sampleName.includes('kick')) sampleName = 'drum_foundry_quality';
@@ -203,13 +203,12 @@ export class DrumMachine {
             
             let velocity = event.weight;
             
-            // #ЗАЧЕМ: ПЛАН №2110. Исключение подавления для сбивок ("Shadow Iron Protocol").
             const isFill = event.params?.isFill === true;
             if (sampleName.startsWith('perc-')) {
                 velocity *= isFill ? 1.0 : 0.8;
             } else if (sampleName.includes('ride') || sampleName.includes('crash')) {
-                // В обычном режиме райд тихий (0.7), в сбивке — мощный (1.2).
-                velocity *= isFill ? 1.2 : 0.7;
+                // #ЗАЧЕМ: Ликвидация провала тарелок. Выравнивание базового режима со сбивками.
+                velocity *= isFill ? 1.2 : 1.0;
             }
             
             const pan = event.pan || 0;
