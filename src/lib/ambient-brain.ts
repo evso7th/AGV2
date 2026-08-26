@@ -1,7 +1,6 @@
 /**
- * @fileOverview Ambient Brain V116.0 — "Total Mutation Protocol".
- * #ЗАЧЕМ: ПЛАН №1290. Устранение повторов через мутацию всего ансамбля.
- * #ЧТО: Применение инверсии, ретрограда и джиттера к басу и пэдам. Разблокирован retrograde.
+ * @fileOverview Ambient Brain V116.1 — "Reference Integrity Fix".
+ * #ЗАЧЕМ: Исправление опечатки usedTargetLayers -> usedLayers, вызывавшей падение Воркера.
  */
 
 import type {
@@ -155,7 +154,6 @@ export class AmbientBrain {
     private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
         if (events.length === 0) return events;
 
-        // Определяем основную ноту такта
         const primary = events.find(e => e.time === 0) || events[0];
         const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
 
@@ -167,23 +165,19 @@ export class AmbientBrain {
         }
         this.heldNotesState.set(part, state);
 
-        // КРИЗИС 3-ГО ТАКТА
         if (state.barCount >= 3) {
-            state.barCount = 0; // Сброс счетчика
+            state.barCount = 0; 
             const strategy = this.random.nextInt(3);
 
             if (strategy === 0) {
-                // Стратегия "Вздох": Слой замолкает
                 return []; 
             } else if (strategy === 1) {
-                // Стратегия "Гармонический прыжок": Уход в квинту
                 return events.map(e => ({ 
                     ...e, 
                     note: e.note + 7, 
                     params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
                 }));
             } else {
-                // Стратегия "Турбулентность": Усиленное дробление
                 return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
             }
         }
@@ -333,7 +327,7 @@ export class AmbientBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedTargetLayers.has(target)) {
+            if (target && hints[target] && !usedLayers.has(target)) {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
@@ -472,18 +466,12 @@ export class AmbientBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: Оживление пианиста (ПЛАН №1150).
-     * #ЧТО: Вероятность увеличена до 60%, играет 1-3 ноты в такт.
-     */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents?: FractalEvent[]): { events: FractalEvent[], style: string } {
-        // Увеличенная вероятность срабатывания (60%)
         if (this.random.next() > 0.6) return { events: [], style: 'none' };
         
         const root = chord.rootNote + 24;
         const ticks = [1.5, 4.5, 7.5, 10.5];
         
-        // Рандомизация количества нот (от 1 до 3)
         const count = 1 + this.random.nextInt(3);
         const shuffledTicks = [...ticks].sort(() => this.random.next() - 0.5).slice(0, count);
 
@@ -497,20 +485,15 @@ export class AmbientBrain {
                 weight: 0.58, 
                 technique: 'hit', 
                 dynamics: 'p', 
-                phrasing: 'staccato',
+                p: 'staccato',
                 params: { attack: 0.01, release: 2.5 }
             }))
         };
     }
 
-    /**
-     * #ЗАЧЕМ: Стабилизация триггеров гармонии.
-     * #ЧТО: Базовая вероятность 30% + зависимость от Tension.
-     */
     private renderDerivativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // Базовая доступность 30% + бонус от напряжения (до 70%)
         const guitarProbability = 0.3 + (tension * 0.4); 
         
         if (this.random.next() < guitarProbability) {
@@ -580,14 +563,9 @@ export class AmbientBrain {
         return events;
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1435. Исправление триггеров атмосферных событий.
-     * #ЧТО: Переход на прямой расчет через this.random.next() для 16% и 14% вероятностей.
-     */
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         
-        // 1. SPARKLES (16% Probability)
         if (this.random.next() < 0.16) {
             const category = this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC';
             events.push({
@@ -598,12 +576,11 @@ export class AmbientBrain {
                 weight: 0.7,
                 technique: 'hit',
                 dynamics: 'p',
-                phrasing: 'legate',
+                phrasing: 'legato',
                 params: { category, genre: this.genre }
             });
         }
 
-        // 2. SFX (14% Probability)
         if (this.random.next() < 0.14) {
             events.push({
                 type: 'sfx',
