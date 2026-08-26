@@ -1,7 +1,9 @@
 /**
- * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.5
- * #ЗАЧЕМ: ПЛАН №2111 — Ride Exit Protocol.
- * #ЧТО: Гарантированный удар в райд на выходе из каждой сбивки (тик 11.5).
+ * @fileOverview Drum Fill Registry & Shadow Drummer Engine V1.6
+ * #ЗАЧЕМ: ПЛАН №2115 — "Ensemble Pulse" Protocol.
+ * #ЧТО: 1. Добавление "Pickup" ударов за такт до сбивки.
+ *       2. Добавление "Landing Crash" в такте после сбивки.
+ *       3. Обновление паттернов: больше томов и малого барабана для плотности.
  */
 
 import type { FractalEvent, Technique } from '@/types/music';
@@ -37,27 +39,25 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
             { t: 9, d: 1, type: 'drum_ride_wetter', v: 1.50 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } 
         ]},
-        { id: 'S_EPIC_ROLL_CRASH', events: [
-            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.35 },
-            { t: 3, d: 3, type: 'drum_kick_reso', v: 1.20 },
-            { t: 6, d: 1, type: 'drum_snare', v: 1.25 },
-            { t: 7.5, d: 1, type: 'drum_snare', v: 1.20 },
-            { t: 8.25, d: 1, type: 'drum_Sonor_Classix_High_Tom', v: 1.30 },
-            { t: 9, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
-            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_crash2', v: 1.00 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
+        { id: 'S_EPIC_LADDER', events: [ // "Лестница" по томам
+            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
+            { t: 3, d: 3, type: 'drum_snare', v: 1.10 },
+            { t: 6, d: 1.5, type: 'drum_Sonor_Classix_High_Tom', v: 1.25 },
+            { t: 7.5, d: 1.5, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
+            { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.35 },
+            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.45 }
         ]},
         { id: 'S_MACHINE_GUN_GHOST', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
             { t: 3, d: 3, type: 'drum_snare', v: 1.20 },
             { t: 6, d: 0.75, type: 'drum_snare', v: 1.25 },
-            { t: 9, d: 0.75, type: 'drum_snare', v: 1.30 },
-            { t: 10.5, d: 0.75, type: 'drum_snare', v: 1.35 },
-            { t: 11.25, d: 0.75, type: 'drum_kick_reso', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
+            { t: 6.75, d: 0.75, type: 'drum_snare_ghost_note', v: 0.4 },
+            { t: 7.5, d: 0.75, type: 'drum_snare', v: 1.30 },
+            { t: 8.25, d: 0.75, type: 'drum_snare_ghost_note', v: 0.4 },
+            { t: 9, d: 0.75, type: 'drum_snare', v: 1.35 },
+            { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.50 }
         ]}
     ],
     shuffle: [
@@ -68,7 +68,15 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 6, d: 2, type: 'drum_snare_off', v: 1.30 },
             { t: 9, d: 1.5, type: 'drum_Sonor_Classix_Low_Tom', v: 1.25 },
             { t: 10.5, d: 1.5, type: 'drum_snare', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 }
+        ]},
+        { id: 'T_LADDER_SHUFFLE', events: [ // Триольная лестница
+            { t: 0, d: 3, type: 'drum_kick_reso', v: 1.30 },
+            { t: 3, d: 3, type: 'drum_snare', v: 1.15 },
+            { t: 6, d: 1, type: 'drum_Sonor_Classix_High_Tom', v: 1.25 },
+            { t: 8, d: 1, type: 'drum_Sonor_Classix_Mid_Tom', v: 1.30 },
+            { t: 9, d: 1, type: 'drum_Sonor_Classix_Low_Tom', v: 1.35 },
+            { t: 11, d: 1, type: 'drum_snare', v: 1.50 }
         ]},
         { id: 'T_BLUES_STORM_FULL', events: [
             { t: 0, d: 3, type: 'drum_kick_reso', v: 1.40 },
@@ -78,7 +86,7 @@ export const FILL_PATTERNS: { straight: FillPattern[], shuffle: FillPattern[] } 
             { t: 8, d: 2, type: 'drum_Sonor_Classix_Low_Tom', v: 1.30 },
             { t: 9, d: 1.5, type: 'drum_snare', v: 1.35 },
             { t: 10.5, d: 1.5, type: 'drum_kick_reso', v: 1.40 },
-            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 } // Exit Ride
+            { t: 11.5, d: 2, type: 'drum_ride_wetter', v: 1.50 }
         ]}
     ]
 };
@@ -101,6 +109,40 @@ export class ShadowDrummer {
 
         const isTimeForFill = (barCount + 1) % FILL_CONFIG.triggerEveryNBars === 0;
         const isExtremeTension = tension >= FILL_CONFIG.tensionThreshold;
+        
+        // --- 1. PICKUP LOGIC (Bar BEFORE Fill) ---
+        // #ЗАЧЕМ: Устранение паузы перед сбивкой.
+        const isPreFill = (barCount + 2) % FILL_CONFIG.triggerEveryNBars === 0;
+        if (isPreFill) {
+            const pickup: FractalEvent = {
+                type: 'drum_snare',
+                note: 38,
+                time: 11 * TICK_TO_BEAT, // На последней триоли
+                duration: 0.1,
+                weight: 1.1,
+                technique: 'hit',
+                dynamics: 'mf',
+                phrasing: 'staccato'
+            };
+            return [...events, pickup];
+        }
+
+        // --- 2. LANDING LOGIC (Bar AFTER Fill) ---
+        // #ЗАЧЕМ: Акцент "приземления" после сбивки.
+        const isPostFill = barCount % FILL_CONFIG.triggerEveryNBars === 0 && barCount > 0;
+        if (isPostFill) {
+            const landing: FractalEvent = {
+                type: 'drum_crash2',
+                note: 49,
+                time: 0,
+                duration: 1.5,
+                weight: 1.1,
+                technique: 'hit',
+                dynamics: 'f',
+                phrasing: 'staccato'
+            };
+            return [...events, landing];
+        }
 
         if (!isTimeForFill && !isExtremeTension) return events;
 
