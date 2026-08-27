@@ -1,7 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.5.0 — "Maintenance Logic Fix".
- * #ЗАЧЕМ: 1. Исправление логической блокировки при Resync.
- *       2. Объединение Maintenance Mode в одну функциональную кнопку.
+ * @fileOverview Offline Sync Center V1.6.0 — "DNA Visibility Update".
+ * #ЗАЧЕМ: Добавление индикации загрузки Аксиом и Мастерписов из Firestore.
  */
 'use client';
 
@@ -11,9 +10,10 @@ import {
   Check, 
   AlertCircle, 
   RefreshCw, 
-  Trash2,
+  RotateCcw,
   Zap,
-  RotateCcw
+  Dna,
+  Heart
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -28,6 +28,7 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import { vault } from '@/lib/audio-cache';
+import { loadDnaCache } from '@/lib/dna-cache';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +38,12 @@ export function OfflineSyncCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [totalFiles, setTotalFiles] = useState(0);
   const [cachedCount, setCachedCount] = useState(0);
+  
+  // DNA State
+  const [axiomsCount, setAxiomsCount] = useState(0);
+  const [masterpiecesCount, setMasterpiecesCount] = useState(0);
+  const [lastDnaSync, setLastDnaSync] = useState<number | null>(null);
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'syncing' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -45,6 +52,7 @@ export function OfflineSyncCenter() {
 
   const refreshStats = useCallback(async () => {
     try {
+      // 1. Audio Assets Stats
       await vault.init();
       const count = await vault.getCachedCount();
       setCachedCount(count);
@@ -56,6 +64,13 @@ export function OfflineSyncCenter() {
             setTotalFiles(manifest.length);
         }
       }
+
+      // 2. DNA Stats (Axioms & Masterpieces)
+      const dna = await loadDnaCache();
+      setAxiomsCount(dna.axioms?.length || 0);
+      setMasterpiecesCount(dna.masterpieces?.length || 0);
+      setLastDnaSync(dna.syncedAt);
+
     } catch (e: any) {
       console.warn('[SyncCenter] Stats refresh failed');
     }
@@ -84,7 +99,9 @@ export function OfflineSyncCenter() {
           try {
             await vault.fetch(url);
             count++;
-            if (count % 15 === 0) setCachedCount(count);
+            if (count % 20 === 0) {
+                setCachedCount(count);
+            }
           } catch (err) {
             console.warn(`[Sync] Skip: ${url}`);
           }
@@ -92,8 +109,14 @@ export function OfflineSyncCenter() {
       }
       
       setCachedCount(count);
+      
+      // Refresh DNA counts at the end of sync as well
+      const dna = await loadDnaCache();
+      setAxiomsCount(dna.axioms?.length || 0);
+      setMasterpiecesCount(dna.masterpieces?.length || 0);
+
       setStatus('complete');
-      toast({ title: "DNA Synced", description: "All atoms are now local." });
+      toast({ title: "System Synchronized", description: "All assets and DNA records are now local." });
     } catch (e: any) {
       setStatus('error');
       setErrorMessage(e.message || "Network Error");
@@ -104,18 +127,12 @@ export function OfflineSyncCenter() {
   }, [isSyncing, toast]);
 
   const handleResync = useCallback(async () => {
-    // 1. Очистка базы
     setStatus('scanning');
     try {
-        toast({ title: "HARD RESET", description: "Purging local vault..." });
+        toast({ title: "HARD RESET", description: "Purging local vaults..." });
         await vault.clear();
         setCachedCount(0);
-        
-        // 2. Важно: сбрасываем флаг, чтобы startSync не "отфутболил" вызов
         setIsSyncing(false); 
-        
-        // 3. Запуск чистой синхронизации
-        // Используем setTimeout чтобы стейт успел обновиться
         setTimeout(() => startSync(), 100);
     } catch (e: any) {
         toast({ variant: "destructive", title: "Reset Error", description: e.message });
@@ -136,7 +153,7 @@ export function OfflineSyncCenter() {
       <Button 
         variant="ghost" 
         size="icon" 
-        onClick={() => setIsOpen(true)}
+        onClick={() => { setIsOpen(true); refreshStats(); }}
         className={cn("h-8 w-8 relative transition-all", isSyncing && "text-primary scale-110")}
       >
         {isSyncing ? (
@@ -155,14 +172,17 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Atomic Asset Synchronization v1.5
+              Asset & DNA Synchronization Unit v1.6
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-8 space-y-8">
+          <div className="py-6 space-y-8">
+            {/* AUDIO ATOMS SECTION */}
             <div className="space-y-3">
               <div className="flex justify-between items-end">
-                <Label className="text-[10px] font-black uppercase text-primary/70">Local Integrity</Label>
+                <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5">
+                   <Zap className="h-3 w-3" /> Audio Atoms (Samples)
+                </Label>
                 <span className="text-xs font-mono font-black text-primary">
                     {totalFiles > 0 ? Math.round((cachedCount / totalFiles) * 100) : 0}%
                 </span>
@@ -170,8 +190,40 @@ export function OfflineSyncCenter() {
               <Progress value={totalFiles > 0 ? (cachedCount / totalFiles) * 100 : 0} className="h-1.5 bg-white/5" />
               <div className="flex justify-between items-center text-[9px] font-mono opacity-40 uppercase">
                  <span>Atoms: {cachedCount} / {totalFiles || '---'}</span>
-                 {isSyncing && <span className="animate-pulse text-primary font-black">Writing...</span>}
+                 {isSyncing && <span className="animate-pulse text-primary font-black">Downloading...</span>}
               </div>
+            </div>
+
+            {/* HERITAGE DNA SECTION */}
+            <div className="space-y-4 pt-2">
+                <div className="flex items-center gap-2 mb-2">
+                   <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5">
+                      <Dna className="h-3.5 w-3.5" /> Heritage DNA (Intelligence)
+                   </Label>
+                   <Badge variant="outline" className="text-[8px] font-black uppercase text-green-500 border-green-500/20">Synced</Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
+                        <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
+                            <Dna className="h-3 w-3" /> Axioms
+                        </div>
+                        <div className="text-xl font-black font-mono text-primary">{axiomsCount}</div>
+                        <div className="text-[7px] uppercase font-bold opacity-30">Musical Phrases</div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
+                        <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
+                            <Heart className="h-3 w-3" /> Masterpieces
+                        </div>
+                        <div className="text-xl font-black font-mono text-primary">{masterpiecesCount}</div>
+                        <div className="text-[7px] uppercase font-bold opacity-30">Genetic Pool</div>
+                    </div>
+                </div>
+                {lastDnaSync && (
+                    <p className="text-[8px] font-mono opacity-30 uppercase text-center">
+                        Last Intel Sync: {new Date(lastDnaSync).toLocaleString()}
+                    </p>
+                )}
             </div>
 
             {status === 'error' && (
@@ -181,13 +233,13 @@ export function OfflineSyncCenter() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 pt-2">
               <Button 
                 onClick={startSync} 
                 disabled={isSyncing || (isComplete && totalFiles > 0)}
                 className="font-black uppercase text-[10px] h-12 shadow-xl tracking-widest"
               >
-                {isSyncing ? "Syncing..." : isComplete ? "Up to Date" : "Sync Now"}
+                {isSyncing ? "Syncing..." : isComplete ? "Up to Date" : "Sync Atoms"}
               </Button>
               <Button 
                 variant="outline" 
@@ -198,7 +250,6 @@ export function OfflineSyncCenter() {
               </Button>
             </div>
 
-            {/* DANGER ZONE: UNIFIED MAINTENANCE BUTTON */}
             <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
                 <Button 
                     variant="ghost" 
@@ -208,10 +259,10 @@ export function OfflineSyncCenter() {
                     className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-12 border border-destructive/30 transition-all shadow-lg"
                 >
                     <RotateCcw className="h-4 w-4" /> 
-                    Maintenance: Full Resync
+                    Maintenance: Wipe & Resync
                 </Button>
                 <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60 font-bold">
-                    Wipes all local data and re-downloads everything. Use for repair.
+                    Clears all atoms and DNA. Use if the orchestra sounds broken.
                 </p>
             </div>
           </div>
