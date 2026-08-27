@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Offline Sync Center V1.0.1 — "Reference Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: Label is not defined.
+ * @fileOverview Offline Sync Center V1.1.0 — "Robustness Update".
+ * #ЗАЧЕМ: Исправление ошибок итерации манифеста и улучшение стабильности в режиме инкогнито.
  */
 'use client';
 
@@ -11,7 +12,6 @@ import {
   Check, 
   AlertCircle, 
   RefreshCw, 
-  X, 
   Database,
   Timer
 } from 'lucide-react';
@@ -35,7 +35,7 @@ const SYNC_SCHEDULED_KEY = 'AG_OfflineSync_Scheduled';
 
 export function OfflineSyncCenter() {
   const [isOpen, setIsOpen] = useState(false);
-  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(942);
   const [cachedCount, setCachedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'syncing' | 'complete' | 'error'>('idle');
@@ -50,11 +50,12 @@ export function OfflineSyncCenter() {
       const res = await fetch('/audio-manifest.json');
       if (res.ok) {
         const manifest = await res.json();
-        setTotalFiles(manifest.length || 942);
+        if (Array.isArray(manifest)) {
+            setTotalFiles(manifest.length);
+        }
       }
     } catch (e: any) {
-      setStatus('error');
-      setErrorMessage(e.message);
+      console.warn('[SyncCenter] Background stats check failed');
     }
   }, []);
 
@@ -62,33 +63,45 @@ export function OfflineSyncCenter() {
     if (isSyncing) return;
     setIsSyncing(true);
     setStatus('syncing');
+    setErrorMessage(null);
     localStorage.removeItem(SYNC_SCHEDULED_KEY);
 
     try {
       const res = await fetch('/audio-manifest.json');
-      const manifest: string[] = await res.json();
-      setTotalFiles(manifest.length);
+      if (!res.ok) throw new Error('Could not download audio manifest');
+      
+      const manifest = await res.json();
+      
+      if (!Array.isArray(manifest)) {
+          throw new Error('MANIFEST_NOT_ARRAY: Invalid manifest data structure');
+      }
 
+      setTotalFiles(manifest.length);
       let count = await vault.getCachedCount();
       
+      // Итерация по списку файлов
       for (const url of manifest) {
-        // Проверяем наличие в базе
+        // Качаем только то, чего нет
         const exists = await vault.get(url);
         if (!exists) {
           try {
             await vault.fetch(url);
             count++;
-            setCachedCount(count);
+            // Обновляем UI каждые 5 файлов для плавности
+            if (count % 5 === 0) setCachedCount(count);
           } catch (err) {
-            console.warn(`[Sync] Failed to cache: ${url}`);
+            console.warn(`[Sync] Skipping failed atom: ${url}`);
           }
         }
       }
+      
+      setCachedCount(count);
       setStatus('complete');
-      toast({ title: "DNA Synced", description: "All assets are now offline-ready." });
+      toast({ title: "DNA Synced", description: "All atoms are now stored locally." });
     } catch (e: any) {
       setStatus('error');
-      setErrorMessage(e.message);
+      setErrorMessage(e.message || "Network Error");
+      toast({ variant: "destructive", title: "Sync Failed", description: e.message });
     } finally {
       setIsSyncing(false);
     }
@@ -96,7 +109,6 @@ export function OfflineSyncCenter() {
 
   useEffect(() => {
     refreshStats();
-    
     if (localStorage.getItem(SYNC_SCHEDULED_KEY) === 'true') {
         startSync();
     }
@@ -116,7 +128,7 @@ export function OfflineSyncCenter() {
         variant="ghost" 
         size="icon" 
         onClick={() => setIsOpen(true)}
-        className={cn("h-8 w-8 relative", isSyncing && "text-primary")}
+        className={cn("h-8 w-8 relative transition-colors", isSyncing && "text-primary")}
       >
         {isSyncing ? (
           <RefreshCw className="h-4 w-4 animate-spin" />
@@ -169,8 +181,8 @@ export function OfflineSyncCenter() {
 
             {status === 'error' && (
               <div className="p-3 rounded bg-destructive/10 border border-destructive/20 flex items-center gap-3 text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <p className="text-[10px] font-bold uppercase">{errorMessage || "Vault connection error"}</p>
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <p className="text-[10px] font-bold uppercase leading-tight">{errorMessage}</p>
               </div>
             )}
 

@@ -1,7 +1,7 @@
+
 /**
- * @fileOverview Audio Asset Vault V2.0 — "IDB Performance Shield".
- * #ЗАЧЕМ: Использование библиотеки idb для надежного хранения 116МБ ассетов.
- * #ЧТО: Реализация ПЛАНА №2210.
+ * @fileOverview Audio Asset Vault V2.1 — "Robustness Update".
+ * #ЗАЧЕМ: Улучшенная поддержка режима Инкогнито и предотвращение ошибок итерации.
  */
 
 import { openDB, type IDBPDatabase } from 'idb';
@@ -12,9 +12,10 @@ const DB_VERSION = 1;
 
 class AudioVault {
   private db: IDBPDatabase | null = null;
+  private isBlocked = false;
 
   public async init() {
-    if (this.db) return;
+    if (this.db || this.isBlocked) return;
     try {
       this.db = await openDB(DB_NAME, DB_VERSION, {
         upgrade(db) {
@@ -24,7 +25,8 @@ class AudioVault {
         },
       });
     } catch (e) {
-      console.warn('[Vault] Database initialization failed (check Incognito mode)', e);
+      this.isBlocked = true;
+      console.warn('[Vault] Storage restricted (Incognito mode?). Offline caching disabled.');
     }
   }
 
@@ -34,23 +36,24 @@ class AudioVault {
   public async fetch(url: string): Promise<ArrayBuffer> {
     await this.init();
     
-    // 1. Пытаемся взять из кэша
-    if (this.db) {
+    // 1. Пытаемся взять из кэша (если не заблокировано)
+    if (this.db && !this.isBlocked) {
       try {
         const cached = await this.db.get(STORE_NAME, url);
         if (cached) return cached;
       } catch (e) {}
     }
 
-    // 2. Если нет в кэше — качаем из сети
+    // 2. Если нет в кэше или база недоступна — качаем из сети
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status} fetching ${url}`);
     
     const buffer = await response.arrayBuffer();
     
-    // 3. Сохраняем в фонe для будущего (non-blocking copy)
-    if (this.db) {
+    // 3. Сохраняем в фоне (если база доступна)
+    if (this.db && !this.isBlocked) {
       try {
+        // Используем копию буфера, так как оригинал будет "поглощен" Web Audio API
         await this.db.put(STORE_NAME, buffer.slice(0), url);
       } catch (e) {}
     }
@@ -60,7 +63,7 @@ class AudioVault {
 
   public async getCachedCount(): Promise<number> {
     await this.init();
-    if (!this.db) return 0;
+    if (!this.db || this.isBlocked) return 0;
     try {
         return await this.db.count(STORE_NAME);
     } catch (e) {
@@ -70,9 +73,10 @@ class AudioVault {
 
   public async get(url: string): Promise<ArrayBuffer | null> {
     await this.init();
-    if (!this.db) return null;
+    if (!this.db || this.isBlocked) return null;
     try {
-        return (await this.db.get(STORE_NAME, url)) || null;
+        const data = await this.db.get(STORE_NAME, url);
+        return data || null;
     } catch (e) {
         return null;
     }
@@ -80,10 +84,12 @@ class AudioVault {
 
   public async clear(): Promise<void> {
     await this.init();
-    if (this.db) {
-        const tx = this.db.transaction(STORE_NAME, 'readwrite');
-        await tx.objectStore(STORE_NAME).clear();
-        await tx.done;
+    if (this.db && !this.isBlocked) {
+        try {
+            const tx = this.db.transaction(STORE_NAME, 'readwrite');
+            await tx.objectStore(STORE_NAME).clear();
+            await tx.done;
+        } catch (e) {}
     }
   }
 }
