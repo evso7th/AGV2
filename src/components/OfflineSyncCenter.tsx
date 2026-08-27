@@ -1,30 +1,46 @@
 /**
- * @fileOverview Offline Sync Center V1.0 — "DNA Synchronization UI".
- * #ЗАЧЕМ: ПЛАН №2210. Независимый UI для управления оффлайн-кэшем.
- * #ЧТО: Прогресс-бар, выбор режима (сейчас/потом), диагностика базы.
+ * @fileOverview Offline Sync Center V1.0.1 — "Reference Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError: Label is not defined.
  */
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DownloadCloud, CloudLightning, Check, AlertCircle, RefreshCw, X, Database } from 'lucide-react';
+import { 
+  DownloadCloud, 
+  CloudLightning, 
+  Check, 
+  AlertCircle, 
+  RefreshCw, 
+  X, 
+  Database,
+  Timer
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from '@/components/ui/dialog';
 import { vault } from '@/lib/audio-cache';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const SYNC_SCHEDULED_KEY = 'AG_OfflineSync_Scheduled';
 
 export function OfflineSyncCenter() {
   const [isOpen, setIsOpen] = useState(false);
-  const [totalFiles, setTotalBars] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
   const [cachedCount, setCachedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'syncing' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Проверка текущего состояния кэша
   const refreshStats = useCallback(async () => {
     try {
       await vault.init();
@@ -34,7 +50,7 @@ export function OfflineSyncCenter() {
       const res = await fetch('/audio-manifest.json');
       if (res.ok) {
         const manifest = await res.json();
-        setTotalBars(manifest.length || 942);
+        setTotalFiles(manifest.length || 942);
       }
     } catch (e: any) {
       setStatus('error');
@@ -42,16 +58,7 @@ export function OfflineSyncCenter() {
     }
   }, []);
 
-  useEffect(() => {
-    refreshStats();
-    
-    // Авто-старт, если запланировано
-    if (localStorage.getItem(SYNC_SCHEDULED_KEY) === 'true') {
-        startSync();
-    }
-  }, [refreshStats]);
-
-  const startSync = async () => {
+  const startSync = useCallback(async () => {
     if (isSyncing) return;
     setIsSyncing(true);
     setStatus('syncing');
@@ -60,13 +67,12 @@ export function OfflineSyncCenter() {
     try {
       const res = await fetch('/audio-manifest.json');
       const manifest: string[] = await res.json();
-      setTotalBars(manifest.length);
+      setTotalFiles(manifest.length);
 
       let count = await vault.getCachedCount();
       
       for (const url of manifest) {
-        if (!isSyncing && status !== 'syncing') break; // Возможность отмены (будущее)
-        
+        // Проверяем наличие в базе
         const exists = await vault.get(url);
         if (!exists) {
           try {
@@ -86,7 +92,15 @@ export function OfflineSyncCenter() {
     } finally {
       setIsSyncing(false);
     }
-  };
+  }, [isSyncing, toast]);
+
+  useEffect(() => {
+    refreshStats();
+    
+    if (localStorage.getItem(SYNC_SCHEDULED_KEY) === 'true') {
+        startSync();
+    }
+  }, [refreshStats, startSync]);
 
   const scheduleForNextRun = () => {
     localStorage.setItem(SYNC_SCHEDULED_KEY, 'true');
@@ -98,7 +112,6 @@ export function OfflineSyncCenter() {
 
   return (
     <>
-      {/* Кнопка-индикатор в Навигаторе */}
       <Button 
         variant="ghost" 
         size="icon" 
@@ -120,7 +133,6 @@ export function OfflineSyncCenter() {
         )}
       </Button>
 
-      {/* Глобальный индикатор прогресса (всегда виден во время работы) */}
       {isSyncing && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-black/60 backdrop-blur-md border-b border-primary/20 p-2 flex flex-col items-center gap-1 animate-in slide-in-from-top duration-500">
            <div className="flex items-center gap-2">
@@ -132,7 +144,6 @@ export function OfflineSyncCenter() {
         </div>
       )}
 
-      {/* Диалог управления */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
           <DialogHeader>
@@ -148,7 +159,7 @@ export function OfflineSyncCenter() {
             <div className="space-y-2">
               <div className="flex justify-between items-end">
                 <Label className="text-[10px] font-black uppercase opacity-60">Local Integrity</Label>
-                <span className="text-xs font-mono font-bold">{Math.round((cachedCount / (totalFiles || 1)) * 100)}%</span>
+                <span className="text-xs font-mono font-bold text-primary">{Math.round((cachedCount / (totalFiles || 1)) * 100)}%</span>
               </div>
               <Progress value={(cachedCount / (totalFiles || 1)) * 100} className="h-2 bg-muted" />
               <p className="text-[9px] text-muted-foreground uppercase text-right">
@@ -191,13 +202,4 @@ export function OfflineSyncCenter() {
       </Dialog>
     </>
   );
-}
-
-// Utility function used in components
-function cn(...inputs: any[]) {
-    return inputs.filter(Boolean).join(' ');
-}
-
-function Timer({ className }: { className?: string }) {
-    return <RefreshCw className={className} />;
 }
