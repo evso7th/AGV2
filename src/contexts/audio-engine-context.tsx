@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V66.0 — "DNA Logging Restoration".
- * #ЗАЧЕМ: Возврат информативного лога загрузки ДНК в консоль.
+ * @fileOverview Audio Engine Context V66.1 — "DNA Sync Hardening".
+ * #ЗАЧЕМ: Гарантированная синхронизация DNA в кэш.
  */
 'use client';
 
@@ -371,15 +371,25 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
+      // #ЗАЧЕМ: ПЛАН №2270 — Гарантированное получение данных из Firestore.
       const [axSnap, mpSnap] = await Promise.all([
         getDocs(query(collection(db, 'heritage_axioms'))),
         getDocs(query(collection(db, 'masterpieces'))),
       ]);
+      
       const rawAxioms = axSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-      applyAxiomsToEngine(rawAxioms, rawMasterpieces);
-      saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
-    } catch (e) {}
+      
+      if (rawAxioms.length > 0) {
+          console.log(`%c[Firestore] Fetched ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces.`, 'color: #4ade80;');
+          applyAxiomsToEngine(rawAxioms, rawMasterpieces);
+          saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
+      } else {
+          console.warn('[Firestore] Received empty DNA pool.');
+      }
+    } catch (e: any) {
+        console.error('[Firestore] DNA Sync Error:', e);
+    }
   }, [db, applyAxiomsToEngine]);
 
   const loadDnaFromCache = useCallback(async (): Promise<boolean> => {
@@ -394,8 +404,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const syncDna = useCallback(async () => {
     const l = getLanguage();
     await refreshCloudAxioms();
-    toast({ title: TRANSLATIONS.toast_dna_synced[l], description: TRANSLATIONS.toast_dna_synced_desc[l] });
-  }, [refreshCloudAxioms, toast]);
+    // Лог уже выводится в refreshCloudAxioms
+  }, [refreshCloudAxioms]);
 
   const initialize = useCallback(async () => {
     if (isInitialized || initializationInFlightRef.current) return true;

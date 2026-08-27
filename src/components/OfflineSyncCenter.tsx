@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.6.0 — "DNA Visibility Update".
- * #ЗАЧЕМ: Добавление индикации загрузки Аксиом и Мастерписов из Firestore.
+ * @fileOverview Offline Sync Center V1.7.0 — "Full Sync Integration".
+ * #ЗАЧЕМ: Интеграция принудительной синхронизации DNA из Firestore.
  */
 'use client';
 
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { vault } from '@/lib/audio-cache';
 import { loadDnaCache } from '@/lib/dna-cache';
+import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +50,7 @@ export function OfflineSyncCenter() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { toast } = useToast();
+  const { syncDna } = useAudioEngine();
 
   const refreshStats = useCallback(async () => {
     try {
@@ -84,6 +86,11 @@ export function OfflineSyncCenter() {
     localStorage.removeItem(SYNC_SCHEDULED_KEY);
 
     try {
+      // 1. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ DNA (Firestore -> Local Cache)
+      // #ЗАЧЕМ: Гарантируем, что интеллект скачивается вместе с атомами.
+      await syncDna();
+
+      // 2. СИНХРОНИЗАЦИЯ ATOMS (Samples)
       const res = await fetch('/audio-manifest.json');
       if (!res.ok) throw new Error('Manifest unavailable');
       
@@ -110,13 +117,11 @@ export function OfflineSyncCenter() {
       
       setCachedCount(count);
       
-      // Refresh DNA counts at the end of sync as well
-      const dna = await loadDnaCache();
-      setAxiomsCount(dna.axioms?.length || 0);
-      setMasterpiecesCount(dna.masterpieces?.length || 0);
+      // Финальное обновление стат
+      await refreshStats();
 
       setStatus('complete');
-      toast({ title: "System Synchronized", description: "All assets and DNA records are now local." });
+      toast({ title: "System Synchronized", description: "All atoms and DNA records are now local." });
     } catch (e: any) {
       setStatus('error');
       setErrorMessage(e.message || "Network Error");
@@ -124,7 +129,7 @@ export function OfflineSyncCenter() {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, toast]);
+  }, [isSyncing, toast, syncDna, refreshStats]);
 
   const handleResync = useCallback(async () => {
     setStatus('scanning');
@@ -146,7 +151,7 @@ export function OfflineSyncCenter() {
     }
   }, [refreshStats, startSync]);
 
-  const isComplete = totalFiles > 0 && cachedCount >= totalFiles;
+  const isComplete = totalFiles > 0 && cachedCount >= totalFiles && axiomsCount > 0;
 
   return (
     <>
@@ -172,7 +177,7 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Asset & DNA Synchronization Unit v1.6
+              Asset & DNA Synchronization Unit v1.7
             </DialogDescription>
           </DialogHeader>
 
@@ -190,7 +195,7 @@ export function OfflineSyncCenter() {
               <Progress value={totalFiles > 0 ? (cachedCount / totalFiles) * 100 : 0} className="h-1.5 bg-white/5" />
               <div className="flex justify-between items-center text-[9px] font-mono opacity-40 uppercase">
                  <span>Atoms: {cachedCount} / {totalFiles || '---'}</span>
-                 {isSyncing && <span className="animate-pulse text-primary font-black">Downloading...</span>}
+                 {isSyncing && <span className="animate-pulse text-primary font-black">Syncing...</span>}
               </div>
             </div>
 
@@ -200,7 +205,9 @@ export function OfflineSyncCenter() {
                    <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5">
                       <Dna className="h-3.5 w-3.5" /> Heritage DNA (Intelligence)
                    </Label>
-                   <Badge variant="outline" className="text-[8px] font-black uppercase text-green-500 border-green-500/20">Synced</Badge>
+                   <Badge variant="outline" className={cn("text-[8px] font-black uppercase", axiomsCount > 0 ? "text-green-500 border-green-500/20" : "text-amber-500 border-amber-500/20")}>
+                      {axiomsCount > 0 ? "Ready" : "Needed"}
+                   </Badge>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -236,10 +243,10 @@ export function OfflineSyncCenter() {
             <div className="grid grid-cols-2 gap-4 pt-2">
               <Button 
                 onClick={startSync} 
-                disabled={isSyncing || (isComplete && totalFiles > 0)}
+                disabled={isSyncing}
                 className="font-black uppercase text-[10px] h-12 shadow-xl tracking-widest"
               >
-                {isSyncing ? "Syncing..." : isComplete ? "Up to Date" : "Sync Atoms"}
+                {isSyncing ? "Working..." : isComplete ? "Full Refresh" : "Sync All"}
               </Button>
               <Button 
                 variant="outline" 
