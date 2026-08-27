@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V3.9 — "Harmony Taming Update".
- * #ЗАЧЕМ: ПЛАН №1991. Разрежение генеративной гармонии и снижение весов.
+ * @fileOverview Dark Foundry Brain V4.0 — "Global Mutation Sync".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1440. Включение транспозиции, ретрограда, фазового сдвига и защитных алгоритмов.
  */
 
 import type {
@@ -63,6 +63,7 @@ export class DarkFoundryBrain {
     private currentNativeRoot: number | null = null;
     private soloistBusyUntilBar: number = -1;
     private currentMutationType: string = 'none';
+    private microTransposition: number = 0;
 
     private readonly MELODY_CEILING = 88;
 
@@ -123,7 +124,6 @@ export class DarkFoundryBrain {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
-                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
                 }
 
                 const baseBars = Math.max(4, ...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
@@ -145,14 +145,7 @@ export class DarkFoundryBrain {
 
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
-                    
-                    let rawPhrase = decompressCompactPhrase(selected.phrase);
-                    if (rawPhrase.length > 0) {
-                        const minT = Math.min(...rawPhrase.map(n => n.t));
-                        if (minT > 0) rawPhrase.forEach(n => n.t -= minT);
-                    }
-
-                    this.currentTheme = { phrase: mergeIdenticalNotes(rawPhrase), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
+                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
                     this.soloistBusyUntilBar = epoch + axiomBars;
                     return selected.nativeBpm || undefined;
                 }
@@ -163,15 +156,51 @@ export class DarkFoundryBrain {
         return undefined;
     }
 
+    /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
+    private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
+        let notes = [...phrase];
+        if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
+        else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
+        else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
+        else if (this.currentMutationType === 'phase_shift') {
+            notes = notes.map(n => ({ ...n, t: n.t + 1.5 }));
+        }
+
+        if (this.currentMutationType === 'density_guard' && tension < 0.4) {
+            notes = notes.filter((_, i) => i % 2 === 0);
+        }
+
+        if (this.currentMutationType === 'velocity_curve') {
+            const total = notes.length;
+            notes = notes.map((n, i) => {
+                const p = i / (total || 1);
+                return {
+                    ...n,
+                    params: {
+                        ...n.params,
+                        attack: 0.05 + (1 - p) * 0.4, 
+                        release: 0.1 + p * 1.5        
+                    },
+                    phrasing: p < 0.5 ? 'legato' : 'staccato'
+                };
+            });
+        }
+        return notes;
+    }
+
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
         const kit = DRUM_KITS.foundry[this.mood as any] || DRUM_KITS.foundry.melancholic;
 
         if (epoch % 4 === 0) {
-            const roll = calculateMusiNum(epoch, 17, this.seed, 100);
-            if (roll < 40) this.currentMutationType = 'none';
-            else if (roll < 70) this.currentMutationType = 'inversion';
-            else this.currentMutationType = 'jitter';
+            const roll = calculateMusiNum(epoch, 29, this.seed, 100);
+            if (roll < 20) this.currentMutationType = 'none';
+            else if (roll < 35) { this.currentMutationType = 'transpose'; this.microTransposition = [-2, 2, 5, -5][this.rng.nextInt(4)]; }
+            else if (roll < 50) this.currentMutationType = 'inversion';
+            else if (roll < 65) this.currentMutationType = 'retrograde';
+            else if (roll < 75) this.currentMutationType = 'phase_shift';
+            else if (roll < 85) this.currentMutationType = 'density_guard';
+            else this.currentMutationType = 'velocity_curve';
         }
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
@@ -238,7 +267,9 @@ export class DarkFoundryBrain {
         return {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' }
+            mutationType: this.currentMutationType,
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' },
+            narrative: `Foundry Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
 
@@ -269,7 +300,7 @@ export class DarkFoundryBrain {
 
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const root = this.constrainBassOctave(chord.rootNote - 12);
+        const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
         [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
@@ -281,10 +312,13 @@ export class DarkFoundryBrain {
 
     private renderHeritageBass(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentBassTheme) return [];
-        const localBar = mosaicBar % this.phraseBarCount(this.currentBassTheme.phrase);
+        let phrase = this.currentBassTheme.phrase;
+        phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
+
+        const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
-        return this.currentBassTheme.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+            type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
             time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }
@@ -292,9 +326,7 @@ export class DarkFoundryBrain {
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         let phrase = this.currentTheme.phrase;
-        if (this.currentMutationType === 'inversion') phrase = invertPhrase(phrase);
-        else if (this.currentMutationType === 'retrograde') phrase = retrogradePhrase(phrase);
-        else if (this.currentMutationType === 'jitter') phrase = applyRhythmicJitter(phrase, this.seed + epoch);
+        phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
 
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
@@ -303,42 +335,37 @@ export class DarkFoundryBrain {
             const relT = n.t - offset;
             const isGold = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
             return {
-                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0), this.MELODY_CEILING),
+                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
                 time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
-                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', phrasing: 'legato'
+                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', 
+                phrasing: n.phrasing || 'legato',
+                params: { attack: n.params?.attack, release: n.params?.release }
             };
         });
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
-        const localBar = mosaicBar % this.phraseBarCount(phrase);
+        let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
+        const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0)),
+        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
             time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12;
+        const root = chord.rootNote + 12 + this.microTransposition;
         const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1991. Разреженная гармония для Foundry.
-     * #ЧТО: Сетка только на 2 и 4 доли, снижение веса и вероятности.
-     */
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 12;
+        const root = chord.rootNote + 12 + this.microTransposition;
         const isMinor = chord.chordType === 'minor';
         const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
-        
-        // #ЗАЧЕМ: ПЛАН №1991. Сетка стала реже (только 2 и 4 доли).
         const grid = [4.5, 10.5]; 
-        
-        // Дополнительный вероятностный гейт для "воздуха"
         const gate = 40 + tension * 40; 
 
         grid.forEach(t => {
@@ -349,7 +376,7 @@ export class DarkFoundryBrain {
                         note: this.constrainAccompanimentOctave(root + interval),
                         time: t * TICK_TO_BEAT,
                         duration: 0.25 * TICK_TO_BEAT,
-                        weight: 0.65, // Снижено с 0.88
+                        weight: 0.65, 
                         technique: 'hit',
                         dynamics: 'mf',
                         phrasing: 'staccato',
@@ -371,7 +398,7 @@ export class DarkFoundryBrain {
     }
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote + 24; 
+        const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
         return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40)).map(t => ({
             type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
