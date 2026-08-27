@@ -11,7 +11,7 @@ const withPWA = require('next-pwa')({
       options: {
         cacheName: 'google-fonts-webfonts',
         expiration: {
-          maxEntries: 4,
+          maxEntries: 10,
           maxAgeSeconds: 365 * 24 * 60 * 60,
         },
       },
@@ -22,7 +22,7 @@ const withPWA = require('next-pwa')({
       options: {
         cacheName: 'audio-assets',
         expiration: {
-          maxEntries: 1000,
+          maxEntries: 2000, // Увеличено с 1000 для поддержки всех 1128 файлов
           maxAgeSeconds: 60 * 24 * 60 * 60, // 60 days
         },
         cacheableResponse: {
