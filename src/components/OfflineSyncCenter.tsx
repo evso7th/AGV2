@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Offline Sync Center V1.1.0 — "Robustness Update".
- * #ЗАЧЕМ: Исправление ошибок итерации манифеста и улучшение стабильности в режиме инкогнито.
+ * @fileOverview Offline Sync Center V1.2.0 — "Full Resync Integration".
+ * #ЗАЧЕМ: Реализация функции принудительной пересинхронизации для устранения расхождений.
  */
 'use client';
 
@@ -13,7 +13,8 @@ import {
   AlertCircle, 
   RefreshCw, 
   Database,
-  Timer
+  Timer,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -35,7 +36,7 @@ const SYNC_SCHEDULED_KEY = 'AG_OfflineSync_Scheduled';
 
 export function OfflineSyncCenter() {
   const [isOpen, setIsOpen] = useState(false);
-  const [totalFiles, setTotalFiles] = useState(942);
+  const [totalFiles, setTotalFiles] = useState(1091);
   const [cachedCount, setCachedCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'syncing' | 'complete' | 'error'>('idle');
@@ -79,15 +80,12 @@ export function OfflineSyncCenter() {
       setTotalFiles(manifest.length);
       let count = await vault.getCachedCount();
       
-      // Итерация по списку файлов
       for (const url of manifest) {
-        // Качаем только то, чего нет
         const exists = await vault.get(url);
         if (!exists) {
           try {
             await vault.fetch(url);
             count++;
-            // Обновляем UI каждые 5 файлов для плавности
             if (count % 5 === 0) setCachedCount(count);
           } catch (err) {
             console.warn(`[Sync] Skipping failed atom: ${url}`);
@@ -106,6 +104,22 @@ export function OfflineSyncCenter() {
       setIsSyncing(false);
     }
   }, [isSyncing, toast]);
+
+  const handleResync = useCallback(async () => {
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    setStatus('scanning');
+    try {
+        await vault.clear();
+        setCachedCount(0);
+        // Start fresh sync
+        await startSync();
+    } catch (e: any) {
+        toast({ variant: "destructive", title: "Resync Error", description: e.message });
+        setIsSyncing(false);
+    }
+  }, [isSyncing, startSync, toast]);
 
   useEffect(() => {
     refreshStats();
@@ -192,7 +206,11 @@ export function OfflineSyncCenter() {
                 disabled={isSyncing || isComplete}
                 className="font-black uppercase text-[10px] h-12 shadow-lg"
               >
-                <CloudLightning className="h-4 w-4 mr-2" /> Sync Now
+                {isComplete ? (
+                    <><Check className="h-4 w-4 mr-2" /> Up to Date</>
+                ) : (
+                    <><CloudLightning className="h-4 w-4 mr-2" /> Sync Now</>
+                )}
               </Button>
               <Button 
                 variant="outline" 
@@ -203,6 +221,19 @@ export function OfflineSyncCenter() {
                 <Timer className="h-4 w-4 mr-2" /> Next Launch
               </Button>
             </div>
+
+            {(isComplete || cachedCount > 0) && !isSyncing && (
+                <div className="flex justify-center pt-2">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleResync}
+                        className="text-[9px] font-black uppercase opacity-30 hover:opacity-100 hover:text-destructive gap-1.5 h-6 transition-all"
+                    >
+                        <RotateCcw className="h-3 w-3" /> Reset & Force Resync
+                    </Button>
+                </div>
+            )}
           </div>
 
           <DialogFooter className="border-t border-white/5 pt-4">
