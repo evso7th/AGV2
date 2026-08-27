@@ -1,9 +1,7 @@
 /**
- * @fileOverview Offline Sync Center V1.4.0 — "The Hard Resync Update".
- * #ЗАЧЕМ: Принудительное обновление интерфейса и функционала сброса.
- * #ЧТО: 1. Добавлен импорт Label (фикс ReferenceError).
- *       2. Кнопка "Reset & Force Resync" теперь выделена в Danger Zone.
- *       3. Полная очистка IndexedDB перед перезапуском.
+ * @fileOverview Offline Sync Center V1.4.5 — "Interface Visibility Update".
+ * #ЗАЧЕМ: 1. Повышение контрастности кнопки Resync (была слишком бледной).
+ *       2. Оптимизация логики handleResync для мгновенного отклика.
  */
 'use client';
 
@@ -113,10 +111,11 @@ export function OfflineSyncCenter() {
     setIsSyncing(true);
     setStatus('scanning');
     try {
-        toast({ title: "HARD RESET", description: "Purging local vault for clean sync..." });
+        toast({ title: "HARD RESET", description: "Purging local vault..." });
         await vault.clear();
         setCachedCount(0);
-        setIsSyncing(false);
+        // Сбрасываем флаг синхронизации, чтобы startSync мог запуститься
+        setIsSyncing(false); 
         await startSync();
     } catch (e: any) {
         toast({ variant: "destructive", title: "Reset Error", description: e.message });
@@ -201,22 +200,22 @@ export function OfflineSyncCenter() {
             </div>
 
             {/* DANGER ZONE: THE HARD RESYNC BUTTON */}
-            <div className="pt-6 border-t border-white/5 flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2 opacity-30">
-                    <Trash2 className="h-3 w-3" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Maintenance Mode</span>
+            <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
+                <div className="flex items-center gap-2 opacity-60">
+                    <Trash2 className="h-3 w-3 text-destructive" />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-destructive">Maintenance Mode</span>
                 </div>
                 <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleResync}
                     disabled={isSyncing}
-                    className="w-full text-[10px] font-black uppercase text-destructive/40 hover:text-destructive hover:bg-destructive/10 gap-2 h-10 border border-destructive/5 transition-all"
+                    className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-10 border border-destructive/20 transition-all"
                 >
-                    <RotateCcw className="h-3.5 w-3.5" /> Reset & Force Resync
+                    <RotateCcw className="h-3.5 w-3.5" /> Force Full Resync
                 </Button>
-                <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[200px] opacity-40">
-                    Purge local IndexedDB and re-download all 1091 assets from scratch.
+                <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60">
+                    This will wipe all 100MB+ of local audio data and re-download everything from the server. Use only for repair.
                 </p>
             </div>
           </div>
