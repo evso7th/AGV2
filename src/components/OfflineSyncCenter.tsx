@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.7.0 — "Full Sync Integration".
- * #ЗАЧЕМ: Интеграция принудительной синхронизации DNA из Firestore.
+ * @fileOverview Offline Sync Center V1.7.1 — "Visual Consistency Fix".
+ * #ЗАЧЕМ: Замена зеленой галочки на иконку базы данных основного цвета (ПЛАН №2275).
  */
 'use client';
 
@@ -13,7 +13,8 @@ import {
   RotateCcw,
   Zap,
   Dna,
-  Heart
+  Heart,
+  Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -87,7 +88,6 @@ export function OfflineSyncCenter() {
 
     try {
       // 1. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ DNA (Firestore -> Local Cache)
-      // #ЗАЧЕМ: Гарантируем, что интеллект скачивается вместе с атомами.
       await syncDna();
 
       // 2. СИНХРОНИЗАЦИЯ ATOMS (Samples)
@@ -159,12 +159,12 @@ export function OfflineSyncCenter() {
         variant="ghost" 
         size="icon" 
         onClick={() => { setIsOpen(true); refreshStats(); }}
-        className={cn("h-8 w-8 relative transition-all", isSyncing && "text-primary scale-110")}
+        className={cn("h-8 w-8 relative transition-all", (isSyncing || isComplete) && "text-primary")}
       >
         {isSyncing ? (
           <RefreshCw className="h-4 w-4 animate-spin" />
         ) : isComplete ? (
-          <Check className="h-4 w-4 text-green-500" />
+          <Database className="h-4 w-4" />
         ) : (
           <CloudLightning className="h-4 w-4" />
         )}
