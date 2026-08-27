@@ -1,13 +1,12 @@
 /**
- * @fileOverview Offline Sync Center V1.7.1 — "Visual Consistency Fix".
- * #ЗАЧЕМ: Замена зеленой галочки на иконку базы данных основного цвета (ПЛАН №2275).
+ * @fileOverview Offline Sync Center V1.8 — "Accordion Concentration".
+ * #ЗАЧЕМ: Группировка DNA и Maintenance в аккордеон для фокусировки на Atoms (ПЛАН №2310).
  */
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CloudLightning, 
-  Check, 
   AlertCircle, 
   RefreshCw, 
   RotateCcw,
@@ -25,9 +24,14 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogDescription, 
-  DialogFooter 
+  DialogDescription
 } from '@/components/ui/dialog';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { vault } from '@/lib/audio-cache';
 import { loadDnaCache } from '@/lib/dna-cache';
 import { useAudioEngine } from '@/contexts/audio-engine-context';
@@ -177,12 +181,12 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Asset & DNA Synchronization Unit v1.7
+              Asset & DNA Synchronization Unit v1.8
             </DialogDescription>
           </DialogHeader>
 
-          <div className="py-6 space-y-8">
-            {/* AUDIO ATOMS SECTION */}
+          <div className="py-6 space-y-6">
+            {/* AUDIO ATOMS SECTION (Always Visible) */}
             <div className="space-y-3">
               <div className="flex justify-between items-end">
                 <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5">
@@ -199,39 +203,62 @@ export function OfflineSyncCenter() {
               </div>
             </div>
 
-            {/* HERITAGE DNA SECTION */}
-            <div className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 mb-2">
-                   <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5">
-                      <Dna className="h-3.5 w-3.5" /> Heritage DNA (Intelligence)
-                   </Label>
-                   <Badge variant="outline" className={cn("text-[8px] font-black uppercase", axiomsCount > 0 ? "text-green-500 border-green-500/20" : "text-amber-500 border-amber-500/20")}>
-                      {axiomsCount > 0 ? "Ready" : "Needed"}
-                   </Badge>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
-                        <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
-                            <Dna className="h-3 w-3" /> Axioms
+            {/* COLLAPSIBLE DNA & MAINTENANCE */}
+            <Accordion type="single" collapsible className="w-full border-none">
+              <AccordionItem value="dna-intel" className="border-none">
+                <AccordionTrigger className="hover:no-underline py-2 border-none">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5 cursor-pointer">
+                        <Dna className="h-3.5 w-3.5" /> Heritage DNA & Maintenance
+                    </Label>
+                    <Badge variant="outline" className={cn("text-[8px] font-black uppercase", axiomsCount > 0 ? "text-green-500 border-green-500/20" : "text-amber-500 border-amber-500/20")}>
+                        {axiomsCount > 0 ? "Ready" : "Needed"}
+                    </Badge>
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4 pb-0 space-y-6">
+                    {/* DNA STATS */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
+                            <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
+                                <Dna className="h-3.5 w-3.5" /> Axioms
+                            </div>
+                            <div className="text-xl font-black font-mono text-primary">{axiomsCount}</div>
+                            <div className="text-[7px] uppercase font-bold opacity-30">Musical Phrases</div>
                         </div>
-                        <div className="text-xl font-black font-mono text-primary">{axiomsCount}</div>
-                        <div className="text-[7px] uppercase font-bold opacity-30">Musical Phrases</div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
-                        <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
-                            <Heart className="h-3 w-3" /> Masterpieces
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
+                            <div className="text-[8px] font-black uppercase opacity-40 flex items-center gap-1">
+                                <Heart className="h-3.5 w-3.5" /> Masterpieces
+                            </div>
+                            <div className="text-xl font-black font-mono text-primary">{masterpiecesCount}</div>
+                            <div className="text-[7px] uppercase font-bold opacity-30">Genetic Pool</div>
                         </div>
-                        <div className="text-xl font-black font-mono text-primary">{masterpiecesCount}</div>
-                        <div className="text-[7px] uppercase font-bold opacity-30">Genetic Pool</div>
                     </div>
-                </div>
-                {lastDnaSync && (
-                    <p className="text-[8px] font-mono opacity-30 uppercase text-center">
-                        Last Intel Sync: {new Date(lastDnaSync).toLocaleString()}
-                    </p>
-                )}
-            </div>
+                    {lastDnaSync && (
+                        <p className="text-[8px] font-mono opacity-30 uppercase text-center">
+                            Last Intel Sync: {new Date(lastDnaSync).toLocaleString()}
+                        </p>
+                    )}
+
+                    {/* MAINTENANCE BUTTON (Moved inside accordion) */}
+                    <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={(e) => { e.stopPropagation(); handleResync(); }}
+                            disabled={isSyncing}
+                            className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-12 border border-destructive/30 transition-all shadow-lg"
+                        >
+                            <RotateCcw className="h-4 w-4" /> 
+                            Maintenance: Wipe & Resync
+                        </Button>
+                        <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60 font-bold">
+                            Clears all atoms and DNA. Use if the orchestra sounds broken.
+                        </p>
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
 
             {status === 'error' && (
               <div className="p-3 rounded bg-destructive/10 border border-destructive/20 flex items-center gap-3 text-destructive">
@@ -240,6 +267,7 @@ export function OfflineSyncCenter() {
               </div>
             )}
 
+            {/* ACTION BUTTONS (Always Visible) */}
             <div className="grid grid-cols-2 gap-4 pt-2">
               <Button 
                 onClick={startSync} 
@@ -255,22 +283,6 @@ export function OfflineSyncCenter() {
               >
                 Close
               </Button>
-            </div>
-
-            <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
-                <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleResync}
-                    disabled={isSyncing}
-                    className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-12 border border-destructive/30 transition-all shadow-lg"
-                >
-                    <RotateCcw className="h-4 w-4" /> 
-                    Maintenance: Wipe & Resync
-                </Button>
-                <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60 font-bold">
-                    Clears all atoms and DNA. Use if the orchestra sounds broken.
-                </p>
             </div>
           </div>
         </DialogContent>
