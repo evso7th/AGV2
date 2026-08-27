@@ -1,6 +1,5 @@
-
 /**
- * @file AuraGroove Music Worker V6.3 — "Shadow Drummer Integration".
+ * @file AuraGroove Music Worker V6.4 — "Clean DNA Logging".
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -246,14 +245,22 @@ const Scheduler = {
             return this.barDuration * 1000;
         }
 
-        // #ЗАЧЕМ: Протокол "Теневого Барабанщика" (Декоратор выходного потока).
-        // #ЧТО: ПЛАН №2100 — Хирургическая подмена событий ударных без изменения Brain-файлов.
         const decoratedEvents = ShadowDrummer.decorate(
             payload.events,
             this.barCount,
             payload.tension,
             this.settings.genre,
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
+        );
+
+        // #ЗАЧЕМ: Возврат классического информативного лога о DNA.
+        const trackLabel = payload.trackName || 'Generative';
+        const sectionLabel = payload.navInfo?.currentPart.name || 'MAIN';
+        const tVal = payload.tension.toFixed(2);
+        
+        console.log(
+            `%c[Bar ${this.barCount}] [${sectionLabel}] [DNA: ${trackLabel}] T:${tVal}`,
+            'color: #c084fc; font-weight: bold;'
         );
 
         self.postMessage({ 

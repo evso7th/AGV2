@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V65.2 — "Drum Presence Calibration".
- * #ЗАЧЕМ: Смягчение Foundry-изоляции (0.2875 -> 0.57) для лучшей слышимости ритма.
+ * @fileOverview Audio Engine Context V66.0 — "DNA Logging Restoration".
+ * #ЗАЧЕМ: Возврат информативного лога загрузки ДНК в консоль.
  */
 'use client';
 
@@ -85,6 +85,7 @@ interface AudioEngineContextType {
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
+  calculateMasterFadeOut: (target: number, duration: number) => void;
   calculateMasterFadeOut: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
@@ -234,7 +235,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       );
 
       if (foundryDrumsGainNodeRef.current) {
-          // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
           foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.57, now, 0.1); 
       }
   }, []);
@@ -308,7 +308,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
         const now = audioContextRef.current.currentTime;
         foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
-        // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
         foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.57, now, 0.015);
     }
   }, [setCalibrationGain]);
@@ -345,8 +344,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
 
-  const applyAxiomsToEngine = useCallback((rawAxioms: any[]) => {
+  const applyAxiomsToEngine = useCallback((rawAxioms: any[], rawMasterpieces?: any[]) => {
     workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
+    
+    // #ЗАЧЕМ: Профессиональный лог загрузки ДНК.
+    if (rawAxioms.length > 0) {
+        console.log(`%c[DNA] ${rawAxioms.length} axioms and ${rawMasterpieces?.length || 0} masterpieces loaded from local vault.`, 'color: #c084fc; font-weight: bold;');
+    }
+
     const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
     rawAxioms.forEach(data => {
         const compId = data.compositionId;
@@ -372,7 +377,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       ]);
       const rawAxioms = axSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
-      applyAxiomsToEngine(rawAxioms);
+      applyAxiomsToEngine(rawAxioms, rawMasterpieces);
       saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
     } catch (e) {}
   }, [db, applyAxiomsToEngine]);
@@ -380,7 +385,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const loadDnaFromCache = useCallback(async (): Promise<boolean> => {
     const cache = await loadDnaCache();
     if (cache.axioms && cache.axioms.length > 0) {
-      applyAxiomsToEngine(cache.axioms);
+      applyAxiomsToEngine(cache.axioms, cache.masterpieces || []);
       return true;
     }
     return false;
@@ -424,7 +429,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
         if (!foundryDrumsGainNodeRef.current) {
             foundryDrumsGainNodeRef.current = context.createGain();
-            // #ЗАЧЕМ: Калибровка баланса Foundry (Смягчение изоляции 0.2875 -> 0.57).
             foundryDrumsGainNodeRef.current.gain.value = 0.57;
             foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
         }
