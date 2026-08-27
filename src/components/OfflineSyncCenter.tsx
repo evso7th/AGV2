@@ -1,20 +1,19 @@
-
 /**
- * @fileOverview Offline Sync Center V1.2.0 — "Full Resync Integration".
- * #ЗАЧЕМ: Реализация функции принудительной пересинхронизации для устранения расхождений.
+ * @fileOverview Offline Sync Center V1.2.5 — "Manual Resync Deployment".
+ * #ЗАЧЕМ: Добавление кнопки глубокой очистки и повторной синхронизации.
  */
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-  DownloadCloud, 
   CloudLightning, 
   Check, 
   AlertCircle, 
   RefreshCw, 
   Database,
   Timer,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -29,7 +28,7 @@ import {
   DialogFooter 
 } from '@/components/ui/dialog';
 import { vault } from '@/lib/audio-cache';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 const SYNC_SCHEDULED_KEY = 'AG_OfflineSync_Scheduled';
@@ -41,6 +40,8 @@ export function OfflineSyncCenter() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'scanning' | 'syncing' | 'complete' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { toast } = useToast();
 
   const refreshStats = useCallback(async () => {
     try {
@@ -74,7 +75,7 @@ export function OfflineSyncCenter() {
       const manifest = await res.json();
       
       if (!Array.isArray(manifest)) {
-          throw new Error('MANIFEST_NOT_ARRAY: Invalid manifest data structure');
+          throw new Error('MANIFEST_ERROR: Audio manifest must be an array.');
       }
 
       setTotalFiles(manifest.length);
@@ -86,16 +87,17 @@ export function OfflineSyncCenter() {
           try {
             await vault.fetch(url);
             count++;
+            // Обновляем UI каждые 5 файлов для производительности
             if (count % 5 === 0) setCachedCount(count);
           } catch (err) {
-            console.warn(`[Sync] Skipping failed atom: ${url}`);
+            console.warn(`[Sync] Skipping missing atom: ${url}`);
           }
         }
       }
       
       setCachedCount(count);
       setStatus('complete');
-      toast({ title: "DNA Synced", description: "All atoms are now stored locally." });
+      toast({ title: "DNA Synced", description: "Offline storage is up to date." });
     } catch (e: any) {
       setStatus('error');
       setErrorMessage(e.message || "Network Error");
@@ -105,15 +107,18 @@ export function OfflineSyncCenter() {
     }
   }, [isSyncing, toast]);
 
+  // #ЗАЧЕМ: Глубокая очистка и перезапуск.
   const handleResync = useCallback(async () => {
     if (isSyncing) return;
     
     setIsSyncing(true);
     setStatus('scanning');
     try {
+        toast({ title: "Purging Cache...", description: "Cleaning local storage for a fresh start." });
         await vault.clear();
         setCachedCount(0);
-        // Start fresh sync
+        setIsSyncing(false);
+        // Запускаем синхронизацию заново
         await startSync();
     } catch (e: any) {
         toast({ variant: "destructive", title: "Resync Error", description: e.message });
@@ -131,7 +136,7 @@ export function OfflineSyncCenter() {
   const scheduleForNextRun = () => {
     localStorage.setItem(SYNC_SCHEDULED_KEY, 'true');
     setIsOpen(false);
-    toast({ title: "Sync Scheduled", description: "DNA will sync on next launch." });
+    toast({ title: "Sync Scheduled", description: "DNA will synchronize on the next application launch." });
   };
 
   const isComplete = totalFiles > 0 && cachedCount >= totalFiles;
@@ -149,7 +154,7 @@ export function OfflineSyncCenter() {
         ) : isComplete ? (
           <Check className="h-4 w-4 text-green-500" />
         ) : (
-          <DownloadCloud className="h-4 w-4" />
+          <CloudLightning className="h-4 w-4" />
         )}
         {isSyncing && (
           <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -159,11 +164,12 @@ export function OfflineSyncCenter() {
         )}
       </Button>
 
-      {isSyncing && (
+      {/* Липкая панель прогресса при закрытом диалоге */}
+      {isSyncing && !isOpen && (
         <div className="fixed top-0 left-0 right-0 z-[100] bg-black/60 backdrop-blur-md border-b border-primary/20 p-2 flex flex-col items-center gap-1 animate-in slide-in-from-top duration-500">
            <div className="flex items-center gap-2">
               <CloudLightning className="h-3 w-3 text-primary animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Идет синхронизация ДНК</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">DNA Sync in Progress</span>
               <span className="text-[9px] font-mono opacity-50">{cachedCount} / {totalFiles}</span>
            </div>
            <Progress value={(cachedCount / (totalFiles || 1)) * 100} className="h-1 w-full max-w-md bg-white/5" />
@@ -171,7 +177,7 @@ export function OfflineSyncCenter() {
       )}
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md bg-card border-primary/20 shadow-2xl">
+        <DialogContent className="sm:max-w-md bg-neutral-950/90 backdrop-blur-xl border-primary/20 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="font-black uppercase text-primary flex items-center gap-2">
               <Database className="h-5 w-5" /> Offline Storage
@@ -206,7 +212,9 @@ export function OfflineSyncCenter() {
                 disabled={isSyncing || isComplete}
                 className="font-black uppercase text-[10px] h-12 shadow-lg"
               >
-                {isComplete ? (
+                {isSyncing ? (
+                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Syncing...</>
+                ) : isComplete ? (
                     <><Check className="h-4 w-4 mr-2" /> Up to Date</>
                 ) : (
                     <><CloudLightning className="h-4 w-4 mr-2" /> Sync Now</>
@@ -216,29 +224,32 @@ export function OfflineSyncCenter() {
                 variant="outline" 
                 onClick={scheduleForNextRun}
                 disabled={isSyncing || isComplete}
-                className="font-black uppercase text-[10px] h-12"
+                className="font-black uppercase text-[10px] h-12 border-white/10"
               >
                 <Timer className="h-4 w-4 mr-2" /> Next Launch
               </Button>
             </div>
 
-            {(isComplete || cachedCount > 0) && !isSyncing && (
-                <div className="flex justify-center pt-2">
+            {/* #ЗАЧЕМ: Кнопка ПРИНУДИТЕЛЬНОГО РЕСИНКА. Теперь видна всегда, если есть данные. */}
+            {!isSyncing && cachedCount > 0 && (
+                <div className="flex flex-col items-center pt-2 gap-2">
+                    <div className="w-full h-px bg-white/5" />
                     <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={handleResync}
-                        className="text-[9px] font-black uppercase opacity-30 hover:opacity-100 hover:text-destructive gap-1.5 h-6 transition-all"
+                        className="text-[9px] font-black uppercase opacity-30 hover:opacity-100 hover:text-destructive gap-1.5 h-8 transition-all"
                     >
                         <RotateCcw className="h-3 w-3" /> Reset & Force Resync
                     </Button>
+                    <p className="text-[8px] text-muted-foreground uppercase text-center opacity-40">Use this to clear cache and download latest manifest</p>
                 </div>
             )}
           </div>
 
           <DialogFooter className="border-t border-white/5 pt-4">
             <p className="text-[9px] text-muted-foreground leading-relaxed italic text-center w-full">
-              Caching assets ensures 100% stable playback even on poor connections and during Broadcast mode.
+              Caching assets ensures 100% stable playback even on poor connections.
             </p>
           </DialogFooter>
         </DialogContent>
