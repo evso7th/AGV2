@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview UI AuraGroove V17.1.1 — "Onboarding Tips Styling Update".
- * #ЗАЧЕМ: Стилизация упоминания кнопки в подсказках согласно ПЛАНУ №1505.
+ * @fileOverview UI AuraGroove V17.1.5 — "Offline Integration".
+ * #ЗАЧЕМ: Интеграция OfflineSyncCenter в хедер навигатора.
  */
 'use client';
 
@@ -40,6 +39,7 @@ import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
 import { AuraVisualizer } from "./aura-visualizer";
+import { OfflineSyncCenter } from "./OfflineSyncCenter";
 
 // DND Kit Core
 import {
@@ -651,6 +651,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
+                            <OfflineSyncCenter />
                             <button 
                                 onClick={() => setIsInfoOpen(true)} 
                                 className="h-8 w-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-full transition-colors"
@@ -1073,3 +1074,4 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
+

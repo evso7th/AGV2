@@ -1,7 +1,6 @@
 /**
- * @fileOverview Audio Asset Vault (Independent Module).
- * #ЗАЧЕМ: Автономное хранилище ассетов в IndexedDB для обеспечения оффлайн-режима.
- * #ЧТО: Изолированный менеджер БД с логикой "Proxy Fetch".
+ * @fileOverview Audio Asset Vault V1.1 — "Diagnostic & Stats".
+ * #ЗАЧЕМ: Добавлены методы для подсчета кэшированных файлов и управления синхронизацией.
  */
 
 const DB_NAME = 'AuraGroove_AssetCache';
@@ -12,27 +11,31 @@ export interface SyncStatus {
   total: number;
   cached: number;
   isSyncing: boolean;
+  error: string | null;
 }
 
 class AudioVault {
   private db: IDBDatabase | null = null;
 
-  /** Инициализация БД */
   public async init(): Promise<void> {
     if (this.db) return;
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME);
-        }
-      };
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve();
-      };
-      request.onerror = () => reject(request.error);
+      try {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME);
+          }
+        };
+        request.onsuccess = () => {
+          this.db = request.result;
+          resolve();
+        };
+        request.onerror = () => reject(new Error("Database access denied (possibly Incognito mode)"));
+      } catch (e) {
+        reject(e);
+      }
     });
   }
 
@@ -42,27 +45,19 @@ class AudioVault {
   public async fetch(url: string): Promise<ArrayBuffer> {
     await this.init();
     
-    // 1. Пытаемся достать из базы
     const cached = await this.get(url);
-    if (cached) {
-      console.log(`[Vault] Hit: ${url}`);
-      return cached;
-    }
+    if (cached) return cached;
 
-    // 2. Если нет - качаем
-    console.log(`[Vault] Miss, fetching: ${url}`);
     const response = await fetch(url);
     if (!response.ok) throw new Error(`Fetch failed for ${url}`);
     
     const buffer = await response.arrayBuffer();
-    
-    // 3. Сохраняем в фоне (не блокируем выполнение)
+    // Сохраняем клон буфера, так как оригинал будет поглощен Web Audio API
     this.put(url, buffer.slice(0)); 
     
     return buffer;
   }
 
-  /** Получить файл из IndexedDB */
   public async get(url: string): Promise<ArrayBuffer | null> {
     if (!this.db) await this.init();
     return new Promise((resolve) => {
@@ -74,7 +69,6 @@ class AudioVault {
     });
   }
 
-  /** Сохранить файл в IndexedDB */
   public async put(url: string, data: ArrayBuffer): Promise<void> {
     if (!this.db) await this.init();
     return new Promise((resolve) => {
@@ -85,13 +79,18 @@ class AudioVault {
     });
   }
 
-  /** Проверить наличие файла */
-  public async has(url: string): Promise<boolean> {
-    const data = await this.get(url);
-    return data !== null;
+  /** #ЗАЧЕМ: Проверка прогресса заполнения кэша. */
+  public async getCachedCount(): Promise<number> {
+    if (!this.db) await this.init();
+    return new Promise((resolve) => {
+      const transaction = this.db!.transaction(STORE_NAME, 'readonly');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.count();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(0);
+    });
   }
 
-  /** Очистить всё хранилище */
   public async clear(): Promise<void> {
     if (!this.db) await this.init();
     return new Promise((resolve) => {
