@@ -1,30 +1,21 @@
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "Personal digital live-music generator",
-  "start_url": "/",
+  "description": "Infinite Take Orchestra - Algorithmic Generative Music Engine",
+  "start_url": "/home",
   "display": "standalone",
-  "background_color": "#0f0f0f",
-  "theme_color": "#a855f7",
-  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#8b5cf6",
   "icons": [
     {
       "src": "/assets/icons/icon_192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/assets/icons/maskable-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
+      "type": "image/png"
     },
     {
       "src": "/assets/icons/icon_512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
       "src": "/assets/icons/maskable-icon-512.png",
@@ -38,15 +29,12 @@
       "src": "/assets/icons/screenshot-desktop.png",
       "sizes": "1280x720",
       "type": "image/png",
-      "form_factor": "wide",
-      "label": "AuraGroove Desktop Interface"
+      "form_factor": "wide"
     },
     {
       "src": "/assets/icons/screenshot-mobile.png",
       "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "AuraGroove Mobile Player"
+      "type": "image/png"
     }
   ]
 }

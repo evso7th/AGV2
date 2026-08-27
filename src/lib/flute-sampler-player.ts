@@ -1,4 +1,5 @@
 import type { Note } from "@/types/music";
+import { vault } from './audio-cache';
 
 type VelocitySample = {
     velocity: number;
@@ -10,8 +11,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты V4.3 — "Active Sources Fix".
- * #ЧТО: ПЛАН №859 — Добавлена декларация и управление activeSources для предотвращения TypeError в stopAll.
+ * #ЗАЧЕМ: Сэмплер флейты V4.4 — "Vault Integration".
+ * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -59,10 +60,8 @@ export class FluteSamplerPlayer {
                 
                 return samples.map(async (sample) => {
                     try {
-                        const response = await fetch(sample.file);
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                        const arrayBuffer = await vault.fetch(sample.file);
+                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                         loadedBuffers.get(midi)!.push({ velocity: sample.velocity, buffer: audioBuffer });
                     } catch (error) {}
                 });

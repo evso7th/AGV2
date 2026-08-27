@@ -1,4 +1,5 @@
 import type { Note } from "@/types/music";
+import { vault } from './audio-cache';
 
 type VelocitySample = {
     velocity: number;
@@ -10,8 +11,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.4 — "Volume Correction".
- * #ЧТО: Громкость снижена в 4 раза (0.29 -> 0.0725) для деликатного присутствия.
+ * #ЗАЧЕМ: Сэмплер скрипки V4.5 — "Vault Integration".
+ * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -56,10 +57,8 @@ export class ViolinSamplerPlayer {
                 
                 return samples.map(async (sample) => {
                     try {
-                        const response = await fetch(sample.file);
-                        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                        const arrayBuffer = await response.arrayBuffer();
-                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                        const arrayBuffer = await vault.fetch(sample.file);
+                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                         loadedBuffers.get(midi)!.push({ velocity: sample.velocity, buffer: audioBuffer });
                     } catch (error) {}
                 });

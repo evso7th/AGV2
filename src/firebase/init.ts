@@ -1,22 +1,37 @@
-
 'use client';
 
 import { firebaseConfig } from './config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
 
 /**
- * #ЗАЧЕМ: Изолированная инициализация Firebase для предотвращения ChunkLoadError.
- * #ЧТО: Этот файл является единственным источником правды для SDK, не имеющим зависимостей от других файлов Firebase.
+ * #ЗАЧЕМ: Изолированная инициализация Firebase.
+ * #ЧТО: ПЛАН №2205 — Включена оффлайн-персистентность для Firestore.
  */
 export function initializeFirebase() {
+  let firebaseApp: FirebaseApp;
+  
   if (!getApps().length) {
-    // Прямая инициализация с использованием конфига для избежания ошибок при сборке
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+    firebaseApp = initializeApp(firebaseConfig);
+  } else {
+    firebaseApp = getApp();
   }
-  return getSdks(getApp());
+
+  const firestore = getFirestore(firebaseApp);
+
+  // Включаем оффлайн-персистентность для Наследия (Firestore)
+  if (typeof window !== 'undefined') {
+    enableMultiTabIndexedDbPersistence(firestore).catch((err) => {
+      if (err.code === 'failed-precondition') {
+        console.warn('[Firebase] Offline persistence limited: multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        console.warn('[Firebase] Browser does not support offline persistence');
+      }
+    });
+  }
+
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

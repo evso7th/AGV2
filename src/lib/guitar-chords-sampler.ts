@@ -1,11 +1,12 @@
 import type { Note as NoteEvent } from "@/types/music";
 import { ACOUSTIC_GUITAR_CHORD_SAMPLES } from "./samples";
+import { vault } from './audio-cache';
 
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.4 — "Lazy Load Optimized".
- * #ЧТО: ПЛАН №889 — Исправлена логика дозагрузки в фоновом режиме.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.5 — "Vault Integration".
+ * #ЧТО: ПЛАН №2220 — Подключение оффлайн-кэша.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -35,10 +36,6 @@ export class GuitarChordsSampler {
         }
     }
 
-    /**
-     * #ЗАЧЕМ: Поэтапная инициализация.
-     * #ЧТО: Теперь корректно разрешает дозагрузку после минимального старта.
-     */
     async init(minimal = false) {
         if (this.isFullyInitialized) return;
         if (minimal && this.isInitialized) return;
@@ -76,10 +73,8 @@ export class GuitarChordsSampler {
         for (const url of urls) {
             if (this.loadedUrls.has(url)) continue;
             try {
-                const response = await fetch(url);
-                if (!response.ok) continue;
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                 bufferList.push(audioBuffer);
                 this.loadedUrls.add(url);
             } catch (e) {
@@ -111,8 +106,6 @@ export class GuitarChordsSampler {
                 const t0 = startTime + note.time;
                 source.start(t0);
 
-                // #ЗАЧЕМ: кэп 5 c + плавный фейд — после 5 c в неочищенных сэмплах мусор.
-                // Чистые сэмплы короче 5 c играются целиком (фейд не навешиваем).
                 const CAP = 5.0, FADE = 0.6;
                 if (buffer.duration > CAP) {
                     const vel = Math.max(note.velocity ?? 0.7, 0.0001);

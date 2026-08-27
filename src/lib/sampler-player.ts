@@ -1,4 +1,5 @@
 import type { Note } from "@/types/music";
+import { vault } from './audio-cache';
 
 type SamplerInstrument = {
     buffers: Map<number, AudioBuffer>; 
@@ -6,7 +7,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Универсальный сэмплер V4.2 — "Calibration Support".
+ * #ЗАЧЕМ: Универсальный сэмплер V4.3 — "Vault Integration".
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -59,10 +60,8 @@ export class SamplerPlayer {
                 maxMidi = Math.max(maxMidi, midi);
 
                 try {
-                    const response = await fetch(url);
-                    if (!response.ok) return;
-                    const arrayBuffer = await response.arrayBuffer();
-                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    const arrayBuffer = await vault.fetch(url);
+                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                     loadedBuffers.set(midi, audioBuffer);
                 } catch (error) {}
             });
@@ -116,8 +115,8 @@ export class SamplerPlayer {
 
             source.onended = () => {
                 this.activeSources.delete(source);
-                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e) {}
+                try { source.disconnect(); } catch(e) {}
             };
         });
     }

@@ -2,10 +2,11 @@ import type { Note, Technique } from "@/types/music";
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { dbToGain } from './guitar-loudness';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Dark Telecaster V5.3 — "Silent Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Сэмплер Dark Telecaster V5.4 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -128,9 +129,8 @@ export class DarkTelecasterSampler {
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
             const loadSample = async (url: string) => {
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
             };
             
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {

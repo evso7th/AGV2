@@ -42,6 +42,7 @@
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
     "firebase": "^11.9.1",
+    "idb": "^8.0.3",
     "lucide-react": "^0.475.0",
     "next": "^14.2.35",
     "next-pwa": "^5.6.0",
@@ -53,7 +54,8 @@
     "recharts": "^2.15.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
-    "tone": "15.0.4"
+    "tone": "15.0.4",
+    "workbox-window": "^7.4.1"
   },
   "devDependencies": {
     "@types/node": "^20",

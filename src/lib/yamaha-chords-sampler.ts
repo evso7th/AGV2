@@ -1,9 +1,10 @@
 import type { Note as NoteEvent } from "@/types/music";
 import { YAMAHA_CHORD_SAMPLES } from "./assets/yamaha-chord-samples";
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Yamaha Chords Sampler V1.1 — "Deterministic Gain Fix".
- * #ЗАЧЕМ: Добавлен метод setPreampGain для исправления TypeError в AudioEngine.
+ * @fileOverview Yamaha Chords Sampler V1.2 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 export class YamahaChordsSampler {
     private audioContext: AudioContext;
@@ -26,7 +27,6 @@ export class YamahaChordsSampler {
         this.output.connect(destination);
     }
 
-    /** #ЗАЧЕМ: Калибровка системного усиления. */
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
             const now = this.audioContext.currentTime;
@@ -63,10 +63,8 @@ export class YamahaChordsSampler {
         
         for (const url of urls) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) continue;
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                 bufferList.push(audioBuffer);
             } catch (e) {}
         }

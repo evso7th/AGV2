@@ -1,9 +1,9 @@
 import type { Genre, Mood } from '@/types/music';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Плеер текстур V14.1 — "Delicate Atmosphere Update".
- * #ЗАЧЕМ: Снижение системной громкости в 2 раза (0.45 -> 0.225).
- * #ЧТО: Отбор сэмплов по ключевым словам (ambient, water, etc.) и интеграция папки sparkles/ambient.
+ * @fileOverview Плеер текстур V14.2 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 const SPARKLE_SAMPLES = {
     MELODIC: [
@@ -22,7 +22,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/620113__waveplaysfx__synth-atmos-blue-pad-phrase.ogg'
     ],
     ORGANIC: [
-        // Из папки sparkles/ambient (природные и атмосферные)
         '/assets/music/sparkles/ambient/freesound_community-ambiance_brook_calm-20028.mp3',
         '/assets/music/sparkles/ambient/freesound_community-backyard-nature-14737.mp3',
         '/assets/music/sparkles/ambient/freesound_community-badlands-wind-slow-open-barren-landscape-near-stream-alberta-100315-18027.mp3',
@@ -32,10 +31,9 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/ambient/freesound_community-waves-14877.mp3',
         '/assets/music/sparkles/ambient/freesound_community-rain-light-6704.mp3',
         '/assets/music/sparkles/ambient/freesound_community-wind-2-6196.mp3',
-        '/assets/music/sparkles/ambient/freesound_community-morning-breeze-and-birds-35105.mp3',
+        '/assets/music/sparkles/ambient/freesound_morning-breeze-and-birds-35105.mp3',
         '/assets/music/sparkles/ambient/freesound_community-droplets-in-a-cave-6785.mp3',
         '/assets/music/sparkles/ambient/freesound_community-leaves-rustling-14633.mp3',
-        // По ключевым словам из основного реестра
         '/assets/music/sparkles/256441__adeathy__ambience_04_white_(1).ogg',
         '/assets/music/sparkles/256442__adeathy__ambience_03_lightgrey_(1).ogg',
         '/assets/music/sparkles/256444__adeathy__ambience_01_black_(1).ogg',
@@ -82,7 +80,7 @@ export class SparklePlayer {
 
     async init(limitPerCategory: number = -1) {
         if (this.isFullyInitialized) return;
-        if (limitPerCategory > 0 && this.isInitialized) return;
+        if (limitPerCategory > 0 && this.isReady) return;
 
         try {
             const categories = Object.keys(SPARKLE_SAMPLES) as (keyof typeof SPARKLE_SAMPLES)[];
@@ -110,10 +108,8 @@ export class SparklePlayer {
     
     private async loadSample(url: string): Promise<AudioBuffer | null> {
         try {
-            const response = await fetch(url);
-            if (!response.ok) return null;
-            const arrayBuffer = await response.arrayBuffer();
-            return await this.audioContext.decodeAudioData(arrayBuffer);
+            const arrayBuffer = await vault.fetch(url);
+            return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
         } catch (error) {
             return null;
         }

@@ -1,103 +1,90 @@
 /**
- * @fileOverview Audio Asset Vault V1.1 — "Diagnostic & Stats".
- * #ЗАЧЕМ: Добавлены методы для подсчета кэшированных файлов и управления синхронизацией.
+ * @fileOverview Audio Asset Vault V2.0 — "IDB Performance Shield".
+ * #ЗАЧЕМ: Использование библиотеки idb для надежного хранения 116МБ ассетов.
+ * #ЧТО: Реализация ПЛАНА №2210.
  */
+
+import { openDB, type IDBPDatabase } from 'idb';
 
 const DB_NAME = 'AuraGroove_AssetCache';
 const STORE_NAME = 'audio_files';
 const DB_VERSION = 1;
 
-export interface SyncStatus {
-  total: number;
-  cached: number;
-  isSyncing: boolean;
-  error: string | null;
-}
-
 class AudioVault {
-  private db: IDBDatabase | null = null;
+  private db: IDBPDatabase | null = null;
 
-  public async init(): Promise<void> {
+  public async init() {
     if (this.db) return;
-    return new Promise((resolve, reject) => {
-      try {
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-        request.onupgradeneeded = () => {
-          const db = request.result;
+    try {
+      this.db = await openDB(DB_NAME, DB_VERSION, {
+        upgrade(db) {
           if (!db.objectStoreNames.contains(STORE_NAME)) {
             db.createObjectStore(STORE_NAME);
           }
-        };
-        request.onsuccess = () => {
-          this.db = request.result;
-          resolve();
-        };
-        request.onerror = () => reject(new Error("Database access denied (possibly Incognito mode)"));
-      } catch (e) {
-        reject(e);
-      }
-    });
+        },
+      });
+    } catch (e) {
+      console.warn('[Vault] Database initialization failed (check Incognito mode)', e);
+    }
   }
 
   /**
-   * Умный Fetch: сначала ищет в БД, если нет - качает и сохраняет.
+   * Умный Fetch Прокси: БД -> Сеть -> БД.
    */
   public async fetch(url: string): Promise<ArrayBuffer> {
     await this.init();
     
-    const cached = await this.get(url);
-    if (cached) return cached;
+    // 1. Пытаемся взять из кэша
+    if (this.db) {
+      try {
+        const cached = await this.db.get(STORE_NAME, url);
+        if (cached) return cached;
+      } catch (e) {}
+    }
 
+    // 2. Если нет в кэше — качаем из сети
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Fetch failed for ${url}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status} fetching ${url}`);
     
     const buffer = await response.arrayBuffer();
-    // Сохраняем клон буфера, так как оригинал будет поглощен Web Audio API
-    this.put(url, buffer.slice(0)); 
     
+    // 3. Сохраняем в фонe для будущего (non-blocking copy)
+    if (this.db) {
+      try {
+        await this.db.put(STORE_NAME, buffer.slice(0), url);
+      } catch (e) {}
+    }
+
     return buffer;
   }
 
-  public async get(url: string): Promise<ArrayBuffer | null> {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const transaction = this.db!.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.get(url);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
-  }
-
-  public async put(url: string, data: ArrayBuffer): Promise<void> {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const transaction = this.db!.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      store.put(data, url);
-      transaction.oncomplete = () => resolve();
-    });
-  }
-
-  /** #ЗАЧЕМ: Проверка прогресса заполнения кэша. */
   public async getCachedCount(): Promise<number> {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const transaction = this.db!.transaction(STORE_NAME, 'readonly');
-      const store = transaction.objectStore(STORE_NAME);
-      const request = store.count();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => resolve(0);
-    });
+    await this.init();
+    if (!this.db) return 0;
+    try {
+        return await this.db.count(STORE_NAME);
+    } catch (e) {
+        return 0;
+    }
+  }
+
+  public async get(url: string): Promise<ArrayBuffer | null> {
+    await this.init();
+    if (!this.db) return null;
+    try {
+        return (await this.db.get(STORE_NAME, url)) || null;
+    } catch (e) {
+        return null;
+    }
   }
 
   public async clear(): Promise<void> {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const transaction = this.db!.transaction(STORE_NAME, 'readwrite');
-      transaction.objectStore(STORE_NAME).clear();
-      transaction.oncomplete = () => resolve();
-    });
+    await this.init();
+    if (this.db) {
+        const tx = this.db.transaction(STORE_NAME, 'readwrite');
+        await tx.objectStore(STORE_NAME).clear();
+        await tx.done;
+    }
   }
 }
 

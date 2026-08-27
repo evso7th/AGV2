@@ -2,10 +2,11 @@ import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { dbToGain } from './guitar-loudness';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.1 — "Silent Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Сэмплер Telecaster V5.2 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 
 function makeWarmthCurve() {
@@ -107,12 +108,15 @@ export class TelecasterGuitarSampler {
         this.isLoading = true;
         try {
             const loadedBuffers = new Map<number, AudioBuffer>();
+            const loadSample = async (url: string) => {
+                const arrayBuffer = await vault.fetch(url);
+                return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+            };
+            
             const notePromises = Object.entries(sampleMap).map(async ([key, url]) => {
                 const midi = this.keyToMidi(key);
                 if (midi) {
-                    const response = await fetch(url);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const buffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                    const buffer = await loadSample(url);
                     loadedBuffers.set(midi, buffer);
                 }
             });

@@ -2,10 +2,11 @@ import type { Note, Technique } from "@/types/music";
 import { GUITAR_PATTERNS } from './assets/guitar-patterns';
 import { BLUES_GUITAR_VOICINGS } from './assets/guitar-voicings';
 import { dbToGain } from './guitar-loudness';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.2 — "Silent Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Сэмплер Black Acoustic V5.3 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 
 function makeAcousticWarmthCurve() {
@@ -109,7 +110,6 @@ export class BlackGuitarSampler {
         this.bodyFilter.type = 'peaking';
         this.bodyFilter.frequency.value = 220;
         this.bodyFilter.Q.value = 1.2;
-        // #ЗАЧЕМ: "Протокол Чистого Неба 2.0". Снижение резонансного гула.
         this.bodyFilter.gain.value = 1.0; 
 
         this.saturation = this.audioContext.createWaveShaper();
@@ -145,10 +145,8 @@ export class BlackGuitarSampler {
 
         try {
             const loadSample = async (url: string) => {
-                const response = await fetch(url);
-                if (!response.ok) return null;
-                const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
             };
 
             const loadPromises: Promise<void>[] = [];

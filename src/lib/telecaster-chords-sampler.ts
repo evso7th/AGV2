@@ -1,10 +1,11 @@
 import type { Note as NoteEvent } from "@/types/music";
 import { TELECASTER_CHORD_SAMPLES } from "./assets/telecaster-chord-samples";
 import { dbToGain } from './guitar-loudness';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Telecaster Chords Sampler V3.1 — "Deterministic Gain Fix".
- * #ЗАЧЕМ: Добавлен метод setPreampGain для исправления TypeError в AudioEngine.
+ * @fileOverview Telecaster Chords Sampler V3.2 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -27,7 +28,6 @@ export class TelecasterChordsSampler {
         this.output.connect(destination);
     }
 
-    /** #ЗАЧЕМ: Калибровка системного усиления. */
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
             const now = this.audioContext.currentTime;
@@ -64,14 +64,10 @@ export class TelecasterChordsSampler {
         
         for (const url of urls) {
             try {
-                const response = await fetch(url);
-                if (!response.ok) continue;
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
                 bufferList.push(audioBuffer);
-            } catch (e) {
-                // console.warn(`[TelecasterSampler] Failed to load: ${url}`);
-            }
+            } catch (e) {}
         }
     }
     

@@ -1,9 +1,9 @@
 import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Менеджер SFX V14.1 — "Delicate Atmosphere Update".
- * #ЗАЧЕМ: Снижение системной громкости в 2 раза (0.65 -> 0.325).
- * #ЧТО: Перенастройка логики для темных настроений (глитчи и пэды).
+ * @fileOverview Менеджер SFX V14.2 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     perc: [
@@ -354,13 +354,8 @@ export class SfxSynthManager {
     
     private async loadSample(url: string): Promise<AudioBuffer | null> {
         try {
-            const response = await fetch(url);
-            if (!response.ok) {
-                console.warn(`SFX sample not found: ${url}`);
-                return null;
-            }
-            const arrayBuffer = await response.arrayBuffer();
-            return await this.context.decodeAudioData(arrayBuffer);
+            const arrayBuffer = await vault.fetch(url);
+            return await this.context.decodeAudioData(arrayBuffer.slice(0));
         } catch (error) {
             console.error(`Error loading SFX sample: ${url}`, error);
             return null;
@@ -452,7 +447,6 @@ export class SfxSynthManager {
         }
 
         if (genre === 'ambient') {
-            // #ЗАЧЕМ: Реализация ПЛАНА №1332. Глитчи и пэды для темного настроения.
             if (mood === 'dark' || mood === 'anxious' || mood === 'gloomy' || mood === 'melancholic') {
                  if(rand < 0.45) return 'sfx_glitch';
                  if(rand < 0.75) return 'sfx_other';

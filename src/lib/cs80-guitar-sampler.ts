@@ -1,9 +1,10 @@
 import type { Note } from "@/types/music";
 import { dbToGain } from './guitar-loudness';
+import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Yamaha CS-80 V4.6 — "Silent Protocol".
- * #ЗАЧЕМ: ПЛАН №1282 — Отключение логов перед деплоем.
+ * @fileOverview Сэмплер Yamaha CS-80 V4.7 — "Vault Integration".
+ * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -59,10 +60,8 @@ export class CS80GuitarSampler {
         
         try {
             const loadSample = async (url: string) => {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Fetch failed: ${url}`);
-                const arrayBuffer = await response.arrayBuffer();
-                return await this.audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
             };
 
             const loadPromises: Promise<void>[] = [];

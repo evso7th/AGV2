@@ -1,4 +1,5 @@
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
+import { vault } from './audio-cache';
 
 const DRUM_SAMPLES: Record<string, string> = {
     '25677__walter_odington__alex-hat': '/assets/drums/25677__walter_odington__alex-hat.ogg',
@@ -66,14 +67,12 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
     
-    // --- NEW KICKS (PLAN №1290 + FOUNDRY) ---
     'drum_edm_kick': '/assets/drums/381825__waveplaysfx__kick-edm-kick.wav',
     'drum_prog_house_kick': '/assets/drums/385874__waveplaysfx__kick-prog-house-kick.wav',
     'drum_deep_tech_kick': '/assets/drums/386966__waveplaysfx__kick-deep-tech-kick.wav',
     'drum_standard_tech_kick': '/assets/drums/515519__waveplaysfx__kick-standard-tech-kick.wav',
     'drum_quality_kick': '/assets/drums/671087__logicogonist__kick-quality-1.wav',
     
-    // --- FOUNDRY EXCLUSIVE KICKS (PLAN №1960) ---
     'drum_foundry_pd_27': '/assets/drums/kick/494431__akustika__pd-kick-27.ogg',
     'drum_foundry_standard': '/assets/drums/kick/515519__waveplaysfx__kick-standard-tech-kick.ogg',
     'drum_foundry_quality': '/assets/drums/kick/671087__logicogonist__kick-quality-1.ogg'
@@ -100,10 +99,8 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         const promises = Object.entries(samples).map(async ([note, url]) => {
             if (buffers.has(note)) return;
             try {
-                const response = await fetch(url);
-                if (!response.ok) return;
-                const arrayBuffer = await response.arrayBuffer();
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const arrayBuffer = await vault.fetch(url);
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
                 buffers.set(note, audioBuffer);
             } catch (error) {}
         });
@@ -145,7 +142,6 @@ export class DrumMachine {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.preamp = this.audioContext.createGain();
-        // #ЗАЧЕМ: Поднятие энергетического фундамента (0.65 -> 0.95).
         this.preamp.gain.value = 0.95;
         this.preamp.connect(destination);
     }
@@ -207,7 +203,6 @@ export class DrumMachine {
             if (sampleName.startsWith('perc-')) {
                 velocity *= isFill ? 1.0 : 0.8;
             } else if (sampleName.includes('ride') || sampleName.includes('crash')) {
-                // #ЗАЧЕМ: Ликвидация провала тарелок. Выравнивание базового режима со сбивками.
                 velocity *= isFill ? 1.2 : 1.0;
             }
             
