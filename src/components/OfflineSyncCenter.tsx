@@ -1,7 +1,7 @@
 /**
- * @fileOverview Offline Sync Center V1.4.5 — "Interface Visibility Update".
- * #ЗАЧЕМ: 1. Повышение контрастности кнопки Resync (была слишком бледной).
- *       2. Оптимизация логики handleResync для мгновенного отклика.
+ * @fileOverview Offline Sync Center V1.5.0 — "Maintenance Logic Fix".
+ * #ЗАЧЕМ: 1. Исправление логической блокировки при Resync.
+ *       2. Объединение Maintenance Mode в одну функциональную кнопку.
  */
 'use client';
 
@@ -11,11 +11,9 @@ import {
   Check, 
   AlertCircle, 
   RefreshCw, 
-  Database,
-  Timer,
-  RotateCcw,
   Trash2,
-  Zap
+  Zap,
+  RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -59,7 +57,7 @@ export function OfflineSyncCenter() {
         }
       }
     } catch (e: any) {
-      console.warn('[SyncCenter] Background stats check failed');
+      console.warn('[SyncCenter] Stats refresh failed');
     }
   }, []);
 
@@ -72,10 +70,10 @@ export function OfflineSyncCenter() {
 
     try {
       const res = await fetch('/audio-manifest.json');
-      if (!res.ok) throw new Error('Could not download audio manifest');
+      if (!res.ok) throw new Error('Manifest unavailable');
       
       const manifest = await res.json();
-      if (!Array.isArray(manifest)) throw new Error('Invalid manifest format');
+      if (!Array.isArray(manifest)) throw new Error('Invalid manifest');
 
       setTotalFiles(manifest.length);
       let count = await vault.getCachedCount();
@@ -86,7 +84,7 @@ export function OfflineSyncCenter() {
           try {
             await vault.fetch(url);
             count++;
-            if (count % 10 === 0) setCachedCount(count);
+            if (count % 15 === 0) setCachedCount(count);
           } catch (err) {
             console.warn(`[Sync] Skip: ${url}`);
           }
@@ -106,22 +104,23 @@ export function OfflineSyncCenter() {
   }, [isSyncing, toast]);
 
   const handleResync = useCallback(async () => {
-    if (isSyncing) return;
-    
-    setIsSyncing(true);
+    // 1. Очистка базы
     setStatus('scanning');
     try {
         toast({ title: "HARD RESET", description: "Purging local vault..." });
         await vault.clear();
         setCachedCount(0);
-        // Сбрасываем флаг синхронизации, чтобы startSync мог запуститься
+        
+        // 2. Важно: сбрасываем флаг, чтобы startSync не "отфутболил" вызов
         setIsSyncing(false); 
-        await startSync();
+        
+        // 3. Запуск чистой синхронизации
+        // Используем setTimeout чтобы стейт успел обновиться
+        setTimeout(() => startSync(), 100);
     } catch (e: any) {
         toast({ variant: "destructive", title: "Reset Error", description: e.message });
-        setIsSyncing(false);
     }
-  }, [isSyncing, startSync, toast]);
+  }, [startSync, toast]);
 
   useEffect(() => {
     refreshStats();
@@ -156,7 +155,7 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Atomic Asset Synchronization v1.4
+              Atomic Asset Synchronization v1.5
             </DialogDescription>
           </DialogHeader>
 
@@ -171,7 +170,7 @@ export function OfflineSyncCenter() {
               <Progress value={totalFiles > 0 ? (cachedCount / totalFiles) * 100 : 0} className="h-1.5 bg-white/5" />
               <div className="flex justify-between items-center text-[9px] font-mono opacity-40 uppercase">
                  <span>Atoms: {cachedCount} / {totalFiles || '---'}</span>
-                 {isSyncing && <span className="animate-pulse text-primary">Writing to disk...</span>}
+                 {isSyncing && <span className="animate-pulse text-primary font-black">Writing...</span>}
               </div>
             </div>
 
@@ -188,7 +187,7 @@ export function OfflineSyncCenter() {
                 disabled={isSyncing || (isComplete && totalFiles > 0)}
                 className="font-black uppercase text-[10px] h-12 shadow-xl tracking-widest"
               >
-                {isSyncing ? "Syncing..." : isComplete ? "Synchronized" : "Sync Now"}
+                {isSyncing ? "Syncing..." : isComplete ? "Up to Date" : "Sync Now"}
               </Button>
               <Button 
                 variant="outline" 
@@ -199,23 +198,20 @@ export function OfflineSyncCenter() {
               </Button>
             </div>
 
-            {/* DANGER ZONE: THE HARD RESYNC BUTTON */}
+            {/* DANGER ZONE: UNIFIED MAINTENANCE BUTTON */}
             <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
-                <div className="flex items-center gap-2 opacity-60">
-                    <Trash2 className="h-3 w-3 text-destructive" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-destructive">Maintenance Mode</span>
-                </div>
                 <Button 
                     variant="ghost" 
                     size="sm" 
                     onClick={handleResync}
                     disabled={isSyncing}
-                    className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-10 border border-destructive/20 transition-all"
+                    className="w-full text-[10px] font-black uppercase text-destructive hover:text-white hover:bg-destructive/40 gap-2 h-12 border border-destructive/30 transition-all shadow-lg"
                 >
-                    <RotateCcw className="h-3.5 w-3.5" /> Force Full Resync
+                    <RotateCcw className="h-4 w-4" /> 
+                    Maintenance: Full Resync
                 </Button>
-                <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60">
-                    This will wipe all 100MB+ of local audio data and re-download everything from the server. Use only for repair.
+                <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60 font-bold">
+                    Wipes all local data and re-downloads everything. Use for repair.
                 </p>
             </div>
           </div>
