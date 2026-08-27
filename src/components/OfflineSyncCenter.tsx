@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.2.5 — "Manual Resync Deployment".
- * #ЗАЧЕМ: Добавление кнопки глубокой очистки и повторной синхронизации.
+ * @fileOverview Offline Sync Center V1.3.0 — "Hard Resync Interface".
+ * #ЗАЧЕМ: Добавление функционала полной очистки кэша и принудительного перезапуска.
  */
 'use client';
 
@@ -107,7 +107,10 @@ export function OfflineSyncCenter() {
     }
   }, [isSyncing, toast]);
 
-  // #ЗАЧЕМ: Глубокая очистка и перезапуск.
+  /**
+   * #ЗАЧЕМ: Глубокая очистка и перезапуск.
+   * Полное удаление всех ассетов из IndexedDB и повторный старт по актуальному манифесту.
+   */
   const handleResync = useCallback(async () => {
     if (isSyncing) return;
     
@@ -230,9 +233,9 @@ export function OfflineSyncCenter() {
               </Button>
             </div>
 
-            {/* #ЗАЧЕМ: Кнопка ПРИНУДИТЕЛЬНОГО РЕСИНКА. Теперь видна всегда, если есть данные. */}
-            {!isSyncing && cachedCount > 0 && (
-                <div className="flex flex-col items-center pt-2 gap-2">
+            {/* #ЗАЧЕМ: Секция ПРИНУДИТЕЛЬНОГО РЕСИНКА. */}
+            {!isSyncing && (cachedCount > 0 || isComplete) && (
+                <div className="flex flex-col items-center pt-2 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
                     <div className="w-full h-px bg-white/5" />
                     <Button 
                         variant="ghost" 
@@ -242,7 +245,7 @@ export function OfflineSyncCenter() {
                     >
                         <RotateCcw className="h-3 w-3" /> Reset & Force Resync
                     </Button>
-                    <p className="text-[8px] text-muted-foreground uppercase text-center opacity-40">Use this to clear cache and download latest manifest</p>
+                    <p className="text-[8px] text-muted-foreground uppercase text-center opacity-40">Purge local database and re-download all assets</p>
                 </div>
             )}
           </div>
