@@ -2,7 +2,11 @@
 
 ---
 
-Rolling back to version 7010e3d
+### ЗАПИСЬ: 2026-08-28 (Откат системы)
+**СОБЫТИЕ**: Rolling back to version 134d3e7.
+**РЕЗУЛЬТАТ**: Система возвращена в стабильное состояние. Все жанры (включая Neuro Space) играют ровно, без заиканий и рывков анимации. Экспериментальные правки тайминга и структуры TranceBrain удалены.
+
+---
 
 ### ЗАПИСЬ: 2026-08-28 (Устранение предупреждений Firestore)
 **СОБЫТИЕ**: Переход с deprecated `enableMultiTabIndexedDbPersistence` на `persistentLocalCache`.
