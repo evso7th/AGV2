@@ -3,11 +3,17 @@
 import { firebaseConfig } from './config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore, enableMultiTabIndexedDbPersistence } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  initializeFirestore, 
+  persistentLocalCache, 
+  persistentMultipleTabManager 
+} from 'firebase/firestore';
 
 /**
  * #ЗАЧЕМ: Изолированная инициализация Firebase.
- * #ЧТО: ПЛАН №2205 — Включена оффлайн-персистентность для Firestore.
+ * #ЧТО: ПЛАН №2205 — Включена оффлайн-персистентность для Firestore через современный API.
+ *       Устраняет предупреждения о депрекации enableMultiTabIndexedDbPersistence.
  */
 export function initializeFirebase() {
   let firebaseApp: FirebaseApp;
@@ -18,17 +24,15 @@ export function initializeFirebase() {
     firebaseApp = getApp();
   }
 
-  const firestore = getFirestore(firebaseApp);
-
-  // Включаем оффлайн-персистентность для Наследия (Firestore)
+  // Современный способ инициализации кэша Firestore
   if (typeof window !== 'undefined') {
-    enableMultiTabIndexedDbPersistence(firestore).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        console.warn('[Firebase] Offline persistence limited: multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        console.warn('[Firebase] Browser does not support offline persistence');
-      }
-    });
+    try {
+      initializeFirestore(firebaseApp, {
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      });
+    } catch (e) {
+      // Игнорируем ошибку, если Firestore уже инициализирован с настройками
+    }
   }
 
   return getSdks(firebaseApp);
