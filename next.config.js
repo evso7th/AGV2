@@ -17,16 +17,38 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      urlPattern: /\/audio-manifest\.json$/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'manifest-cache',
+        expiration: {
+          maxEntries: 1,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+        },
+      },
+    },
+    {
       urlPattern: /\.(?:ogg|mp3|wav|m4a)$/i,
       handler: 'CacheFirst',
       options: {
         cacheName: 'audio-assets',
         expiration: {
-          maxEntries: 2000, // Увеличено с 1000 для поддержки всех 1128 файлов
+          maxEntries: 2000, 
           maxAgeSeconds: 60 * 24 * 60 * 60, // 60 days
         },
         cacheableResponse: {
           statuses: [0, 200],
+        },
+      },
+    },
+    {
+      urlPattern: /\.(?:json)$/i,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'static-json-assets',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 24 * 60 * 60,
         },
       },
     }

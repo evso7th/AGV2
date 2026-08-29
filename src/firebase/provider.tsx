@@ -54,6 +54,7 @@ export const FirebaseContext = createContext<FirebaseContextState | undefined>(u
 
 /**
  * FirebaseProvider manages and provides Firebase services and user authentication state.
+ * #ЗАЧЕМ: Реализация ПЛАНА №2305 — Offline Bypass для Auth Gate.
  */
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
@@ -76,17 +77,35 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
 
+    // #ЗАЧЕМ: ПЛАН №2305. Офлайн-байпас. 
+    // Если за 2.5с Auth не ответил (нет сети), принудительно снимаем флаг загрузки,
+    // чтобы приложение могло запуститься в офлайн-режиме.
+    const authTimeout = setTimeout(() => {
+        setUserAuthState(prev => {
+            if (prev.isUserLoading) {
+                console.warn("[Auth] Cold start timeout - proceeding in offline mode.");
+                return { ...prev, isUserLoading: false };
+            }
+            return prev;
+        });
+    }, 2500);
+
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => { // Auth state determined
+        clearTimeout(authTimeout);
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
+        clearTimeout(authTimeout);
         console.error("FirebaseProvider: onAuthStateChanged error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
-    return () => unsubscribe(); // Cleanup
+    return () => {
+        unsubscribe();
+        clearTimeout(authTimeout);
+    };
   }, [auth]); // Depends on the auth instance
 
   // Memoize the context value
