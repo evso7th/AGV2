@@ -73,6 +73,13 @@
   inset: -100%; 
   filter: blur(50px);
   overflow: visible;
+  /* #ЗАЧЕМ: Медленное вращение всей туманности целиком */
+  animation: global-rotate 180s linear infinite;
+}
+
+@keyframes global-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
 .container[data-mobile="true"] .soft {
