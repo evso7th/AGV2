@@ -31,7 +31,6 @@ const SPARKLE_SAMPLES = {
         '/assets/music/sparkles/ambient/freesound_community-waves-14877.mp3',
         '/assets/music/sparkles/ambient/freesound_community-rain-light-6704.mp3',
         '/assets/music/sparkles/ambient/freesound_community-wind-2-6196.mp3',
-        '/assets/music/sparkles/ambient/freesound_morning-breeze-and-birds-35105.mp3',
         '/assets/music/sparkles/ambient/freesound_community-droplets-in-a-cave-6785.mp3',
         '/assets/music/sparkles/ambient/freesound_community-leaves-rustling-14633.mp3',
         '/assets/music/sparkles/256441__adeathy__ambience_04_white_(1).ogg',
@@ -80,7 +79,7 @@ export class SparklePlayer {
 
     async init(limitPerCategory: number = -1) {
         if (this.isFullyInitialized) return;
-        if (limitPerCategory > 0 && this.isReady) return;
+        if (limitPerCategory > 0 && this.isInitialized) return;
 
         try {
             const categories = Object.keys(SPARKLE_SAMPLES) as (keyof typeof SPARKLE_SAMPLES)[];
