@@ -1,6 +1,7 @@
 /**
- * @fileOverview Psybient Brain V66.0 — "Universal Mutation Matrix".
- * #ЗАЧЕМ: Реализация ПЛАНА №1440. Включение транспозиции, ретрограда и новых алгоритмов.
+ * @fileOverview Psybient Brain V67.0 — "Foundry Twin Protocol".
+ * #ЗАЧЕМ: ПЛАН №1510. Полная переработка мозга Neuro Space по образу и подобию Foundry.
+ * #ЧТО: Удаление rippleLongNote, стабилизация стейта, унификация планирования.
  */
 
 import type {
@@ -112,7 +113,7 @@ export class TranceBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('rock') || axGenres.includes('blues');
+                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
             });
 
         if (filteredPool.length > 0) {
@@ -156,13 +157,15 @@ export class TranceBrain {
         return undefined;
     }
 
-    /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
         let notes = [...phrase];
         if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
-        
+        else if (this.currentMutationType === 'phase_shift') {
+            notes = notes.map(n => ({ ...n, t: n.t + 1.5 }));
+        }
+
         if (this.currentMutationType === 'density_guard' && tension < 0.4) {
             notes = notes.filter((_, i) => i % 2 === 0);
         }
@@ -187,6 +190,7 @@ export class TranceBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        const kit = DRUM_KITS.trance[this.mood as any] || DRUM_KITS.trance.melancholic;
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 23, this.seed, 100);
@@ -203,13 +207,12 @@ export class TranceBrain {
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
         const events: FractalEvent[] = [];
-        const instrumentOverrides: Partial<InstrumentHints> = {};
 
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. DRUMS
+        // 1. NEURO DRUMS
         if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension));
 
         // 2. BASS
@@ -217,7 +220,7 @@ export class TranceBrain {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
                 : this.renderRollingBass(epoch, resChord, tension);
-            events.push(...b.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...b); 
         }
 
         // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
@@ -229,7 +232,7 @@ export class TranceBrain {
             if (melodyEvents.length === 0 || this.rng.chance(15)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
-            events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...melodyEvents); 
         }
 
         const usedTargetLayers = new Set<string>();
@@ -238,18 +241,18 @@ export class TranceBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 const renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                events.push(...renders.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+                events.push(...renders); 
                 usedTargetLayers.add(target);
             }
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension).flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            events.push(...this.renderSidechainedPad(epoch, resChord, tension)); 
         }
 
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            if (p.events.length > 0) events.push(...p.events.flatMap(e => this.rippleLongNote(e, resChord, tension)));
+            if (p.events.length > 0) events.push(...p.events); 
         }
 
         // 4. ATMOSPHERIC
@@ -259,16 +262,17 @@ export class TranceBrain {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Restored Sibling' },
-            narrative: `Trance Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Sync' },
+            narrative: `Neuro Space Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
 
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
-        const kit = DRUM_KITS.trance.melancholic;
         const events: FractalEvent[] = [];
-        [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        const kickSample = 'drum_kick_drum6';
+        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
+        [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: 'drum_open_hh_top2', note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         return events;
     }
 
@@ -362,15 +366,6 @@ export class TranceBrain {
             });
         }
         return events;
-    }
-
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, currentTension: number = 0.5): FractalEvent[] {
-        if (e.duration < 3.0) return [e]; 
-        const rippled: FractalEvent[] = [];
-        const numChunks = Math.ceil(e.duration / 1.5); 
-        const chunkDur = e.duration / numChunks;
-        for (let i = 0; i < numChunks; i++) rippled.push({ ...e, time: e.time + (i * chunkDur), duration: chunkDur * 0.95, weight: e.weight * 0.9 });
-        return rippled;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
