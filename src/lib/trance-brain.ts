@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V67.0 — "Foundry Twin Protocol".
- * #ЗАЧЕМ: ПЛАН №1510. Полная переработка мозга Neuro Space по образу и подобию Foundry.
- * #ЧТО: Удаление rippleLongNote, стабилизация стейта, унификация планирования.
+ * @fileOverview Psybient Brain V67.2 — "Selective Golden Note Protocol".
+ * #ЗАЧЕМ: ПЛАН №1520. Внедрение селективного квантования быстрых пассажей (1/16 и менее).
+ * #ЧТО: Быстрые ноты на опорных тиках (0,3,6,9) становятся "Золотыми", остальные — "Призраками".
  */
 
 import type {
@@ -190,7 +190,6 @@ export class TranceBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
-        const kit = DRUM_KITS.trance[this.mood as any] || DRUM_KITS.trance.melancholic;
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 23, this.seed, 100);
@@ -301,6 +300,10 @@ export class TranceBrain {
         }));
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1520 — Селективная "Золотая нота".
+     * #ЧТО: Квантование весов быстрых пассажей по сетке 0,3,6,9.
+     */
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         let phrase = this.currentTheme.phrase;
@@ -309,13 +312,39 @@ export class TranceBrain {
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         const goldenTicks = [0, 3, 6, 9];
+
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const relT = n.t - offset;
-            const isGold = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+            const isFast = n.d <= 0.75; // 1/16 или меньше
+            const isOnAnchor = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+            
+            let weight = 0.85;
+            let tech: Technique = n.tech === 'vb' ? 'vb' : 'pick';
+            let dur = n.d * TICK_TO_BEAT;
+
+            if (isFast) {
+                if (isOnAnchor) {
+                    // GOLDEN NOTE: Опорный импульс
+                    weight = 0.95;
+                    tech = 'vb';
+                    dur *= 1.5; // "Широкое дыхание"
+                } else {
+                    // GHOST NOTE: Ритмическое мерцание
+                    weight = 0.2;
+                }
+            } else if (isOnAnchor) {
+                // Медленные опорные ноты тоже чуть ярче
+                weight = 0.92;
+            }
+
             return {
-                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
-                time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
-                weight: isGold ? 0.95 : 0.4, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', 
+                type: 'melody', 
+                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
+                time: relT * TICK_TO_BEAT, 
+                duration: dur,
+                weight: weight, 
+                technique: tech, 
+                dynamics: 'mf', 
                 phrasing: n.phrasing || 'legato',
                 params: { attack: n.params?.attack, release: n.params?.release }
             };
