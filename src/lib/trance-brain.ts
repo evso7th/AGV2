@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V67.2 — "Selective Golden Note Protocol".
- * #ЗАЧЕМ: ПЛАН №1520. Внедрение селективного квантования быстрых пассажей (1/16 и менее).
- * #ЧТО: Быстрые ноты на опорных тиках (0,3,6,9) становятся "Золотыми", остальные — "Призраками".
+ * @fileOverview Psybient Brain V67.5 — "Full Golden Note Sync".
+ * #ЗАЧЕМ: ПЛАН №1525. Применение селективного квантования к аккомпанементу.
+ * #ЧТО: Теперь и мелодия, и аккомпанемент выделяют опорные тики (0,3,6,9), создавая эффект "Slow-Motion".
  */
 
 import type {
@@ -300,10 +300,6 @@ export class TranceBrain {
         }));
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1520 — Селективная "Золотая нота".
-     * #ЧТО: Квантование весов быстрых пассажей по сетке 0,3,6,9.
-     */
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
         if (!this.currentTheme) return [];
         let phrase = this.currentTheme.phrase;
@@ -315,7 +311,7 @@ export class TranceBrain {
 
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const relT = n.t - offset;
-            const isFast = n.d <= 0.75; // 1/16 или меньше
+            const isFast = n.d <= 0.75; // 1/16 or smaller
             const isOnAnchor = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
             
             let weight = 0.85;
@@ -324,16 +320,11 @@ export class TranceBrain {
 
             if (isFast) {
                 if (isOnAnchor) {
-                    // GOLDEN NOTE: Опорный импульс
-                    weight = 0.95;
-                    tech = 'vb';
-                    dur *= 1.5; // "Широкое дыхание"
+                    weight = 0.95; tech = 'vb'; dur *= 1.5; 
                 } else {
-                    // GHOST NOTE: Ритмическое мерцание
                     weight = 0.2;
                 }
             } else if (isOnAnchor) {
-                // Медленные опорные ноты тоже чуть ярче
                 weight = 0.92;
             }
 
@@ -351,14 +342,49 @@ export class TranceBrain {
         });
     }
 
+    /**
+     * #ЗАЧЕМ: ПЛАН №1525 — Расширенный протокол Golden Note для аккомпанемента.
+     * #ЧТО: Селективное квантование ритмических слоев.
+     */
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.5, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
+        const goldenTicks = [0, 3, 6, 9];
+
+        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+            const relT = n.t - offset;
+            const isFast = n.d <= 0.75;
+            const isOnAnchor = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+
+            let weight = 0.55; 
+            let dur = n.d * TICK_TO_BEAT;
+            let tech: Technique = n.tech || 'swell';
+
+            if (isFast) {
+                if (isOnAnchor) {
+                    // GOLDEN ACCOMPANIMENT
+                    weight = 0.82; 
+                    dur *= 1.2;
+                } else {
+                    // GHOST ACCOMPANIMENT
+                    weight = 0.15;
+                }
+            } else if (isOnAnchor) {
+                weight = 0.75;
+            }
+
+            return {
+                type, 
+                note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
+                time: relT * TICK_TO_BEAT, 
+                duration: dur, 
+                weight: weight, 
+                technique: tech, 
+                dynamics: 'p', 
+                phrasing: 'legato'
+            };
+        });
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
