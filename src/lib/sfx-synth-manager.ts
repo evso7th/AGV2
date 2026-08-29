@@ -2,8 +2,8 @@ import type { FractalEvent, Mood, Genre, SfxRule } from '@/types/fractal';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Менеджер SFX V14.2 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Менеджер SFX V14.3 — "Asset Path Correction".
+ * #ЗАЧЕМ: Исправление отсутствующего расширения .ogg для tube-hit-03-mid.
  */
 const SFX_SAMPLES: Record<string, string[]> = {
     perc: [
@@ -195,7 +195,7 @@ const SFX_SAMPLES: Record<string, string[]> = {
         '/assets/music/tube/341499__the_yura__kick-plastic-tube.ogg',
         '/assets/music/tube/421171__akustika__pvc-tube-01.ogg',
         '/assets/music/tube/426431__dersinnsspace__tube-hit-04-high.ogg',
-        '/assets/music/tube/426432__dersinnsspace__tube-hit-03-mid',
+        '/assets/music/tube/426432__dersinnsspace__tube-hit-03-mid.ogg',
         '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing__1_.ogg',
         '/assets/music/tube/426436__dersinnsspace__tube-hit-05-midringing.ogg',
         '/assets/music/tube/486220__salvadormiranda__pvc-tubehit-1.ogg',
