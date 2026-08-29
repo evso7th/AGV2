@@ -1,6 +1,6 @@
 /**
  * @fileOverview UI AuraGroove V17.1.5 — "Offline Integration".
- * #ЗАЧЕМ: Интеграция OfflineSyncCenter в хедер навигатора.
+ * #ЗАЧЕМ: Интеграция OfflineSyncCenter в нижний тулбар навигатора.
  */
 'use client';
 
@@ -651,7 +651,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </div>
                         </div>
                         <div className="flex items-center gap-1">
-                            <OfflineSyncCenter />
                             <button 
                                 onClick={() => setIsInfoOpen(true)} 
                                 className="h-8 w-8 flex items-center justify-center text-primary hover:bg-primary/10 rounded-full transition-colors"
@@ -769,11 +768,17 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex gap-1">
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader><div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
+                            <DialogContent className="bg-card border-primary/20">
+                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader>
+                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Store your current sequence to the library.</DialogDescription>
+                                <div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
-                            <DialogContent className="bg-card border-primary/20"><DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader><ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
+                            <DialogContent className="bg-card border-primary/20">
+                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader>
+                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Select and load a previously stored journey.</DialogDescription>
+                                <ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
                     </div>
                 </div>
@@ -830,11 +835,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     <div className="flex items-center justify-between w-full">
                         <div className="flex gap-1">
                             <Button variant="outline" size="icon" onClick={() => setIsSpectrumOpen(true)} style={outlineStyle} className="h-10 w-10"><Activity className="h-5 w-5" /></Button>
+                            <OfflineSyncCenter />
                             <Button variant="outline" size="icon" onClick={props.refreshRoute} style={outlineStyle} className="h-10 w-10" title={t('btn_refresh_queue' as any)}><RefreshCw className="h-5 w-5 text-primary" /></Button>
                         </div>
 
                         <div className="flex gap-1 items-center">
-                            <Dialog open={isCapacityDialogOpen} onOpenChange={isCapacityDialogOpen}>
+                            <Dialog open={isCapacityDialogOpen} onOpenChange={setIsCapacityDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10">
                                         <Layers className="h-4 w-4" />
@@ -878,7 +884,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 {isDarkTheme ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                             </Button>
 
-                            <Dialog open={isTimerDialogOpen} onOpenChange={isTimerDialogOpen}>
+                            <Dialog open={isTimerDialogOpen} onOpenChange={setIsTimerDialogOpen}>
                                 <DialogTrigger asChild>
                                     <Button variant="outline" size="icon" style={!props.timerSettings.isActive ? outlineStyle : undefined} className={cn("h-10 w-10", props.timerSettings.isActive && "border-destructive text-destructive")}>
                                         <Timer className="h-5 w-5" />
@@ -929,6 +935,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
                 >
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
+                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Adjust gain levels for each individual instrument channel.</DialogDescription>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
@@ -966,6 +973,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
                 >
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
+                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Spectral shaping for the final output signal.</DialogDescription>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
@@ -984,6 +992,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
                     <DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader>
+                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Real-time frequency distribution analyzer.</DialogDescription>
                     <div className="h-64">
                         <SpectrumAnalyzer info={props.isPlaying ? `[DNA: ${props.currentTrackName.replace(/_/g, ' ')}] ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
                     </div>
@@ -996,6 +1005,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <DialogTitle className="font-black uppercase text-primary flex items-center gap-2 pr-8">
                             <CircleHelp className="h-5 w-5" /> {t('dialog_info_title')}
                         </DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Project overview, user guide and legal disclaimers.</DialogDescription>
                     </DialogHeader>
                     
                     <Tabs defaultValue="guide" className="flex-grow flex flex-col overflow-hidden">
@@ -1074,4 +1084,3 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         </div>
     );
 }
-

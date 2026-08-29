@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.8 — "Accordion Concentration".
- * #ЗАЧЕМ: Группировка DNA и Maintenance в аккордеон для фокусировки на Atoms (ПЛАН №2310).
+ * @fileOverview Offline Sync Center V1.9 — "Toolbar Integration".
+ * #ЗАЧЕМ: Обновление стиля кнопки для соответствия тулбару навигатора (h-10, outline).
  */
 'use client';
 
@@ -160,10 +160,10 @@ export function OfflineSyncCenter() {
   return (
     <>
       <Button 
-        variant="ghost" 
+        variant="outline" 
         size="icon" 
         onClick={() => { setIsOpen(true); refreshStats(); }}
-        className={cn("h-8 w-8 relative transition-all", (isSyncing || isComplete) && "text-primary")}
+        className={cn("h-10 w-10 relative transition-all", (isSyncing || isComplete) && "text-primary border-primary/20")}
       >
         {isSyncing ? (
           <RefreshCw className="h-4 w-4 animate-spin" />
@@ -181,7 +181,7 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Asset & DNA Synchronization Unit v1.8
+              Asset & DNA Synchronization Unit v1.9
             </DialogDescription>
           </DialogHeader>
 
