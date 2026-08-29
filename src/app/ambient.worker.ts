@@ -253,16 +253,6 @@ const Scheduler = {
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
 
-        // #ЗАЧЕМ: Возврат классического информативного лога о DNA.
-        const trackLabel = payload.trackName || 'Generative';
-        const sectionLabel = payload.navInfo?.currentPart.name || 'MAIN';
-        const tVal = payload.tension.toFixed(2);
-        
-        console.log(
-            `%c[Bar ${this.barCount}] [${sectionLabel}] [DNA: ${trackLabel}] T:${tVal}`,
-            'color: #c084fc; font-weight: bold;'
-        );
-
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
