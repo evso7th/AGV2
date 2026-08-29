@@ -20,18 +20,19 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V17.1 — "Mobile Performance Shield".
- * #ЗАЧЕМ: ПЛАН №1480. Полное исключение режима Ether на мобильных (заменяется на Orbital).
+ * @fileOverview Aura Visualizer V17.2 — "Default Mode Update".
+ * #ЗАЧЕМ: ПЛАН №1485. Установка Nebula как основного режима по умолчанию.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const isMobile = useIsMobile();
-    const [mode, setMode] = useState<ViewMode>('orbital');
+    const [mode, setMode] = useState<ViewMode>('nebula');
     const [feedback, setFeedback] = useState<string | null>(null);
 
     // Initial load and auto-fallback for mobile
     useEffect(() => {
         const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-        let initialMode: ViewMode = (['orbital', 'ether', 'nebula'].includes(saved)) ? saved : 'ether';
+        // #ЗАЧЕМ: ПЛАН №1485. Теперь дефолт — nebula.
+        let initialMode: ViewMode = (['orbital', 'ether', 'nebula'].includes(saved)) ? saved : 'nebula';
 
         if (isMobile && initialMode === 'ether') {
             initialMode = 'orbital';
