@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V67.5 — "Full Golden Note Sync".
- * #ЗАЧЕМ: ПЛАН №1525. Применение селективного квантования к аккомпанементу.
- * #ЧТО: Теперь и мелодия, и аккомпанемент выделяют опорные тики (0,3,6,9), создавая эффект "Slow-Motion".
+ * @fileOverview Psybient Brain V68.0 — "The Ghost Pianist & Harmony Sync".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1550. Добавление генеративной гармонии и призрачного пианиста.
+ * #ЧТО: Внедрены методы renderGenerativeHarmony и renderVirtuosoPiano для заполнения пустот в Heritage.
  */
 
 import type {
@@ -28,7 +28,8 @@ import {
     TICK_TO_BEAT,
     invertPhrase,
     retrogradePhrase,
-    applyRhythmicJitter
+    applyRhythmicJitter,
+    safeSemitoneToDegree
 } from './music-theory';
 import { DRUM_KITS } from './assets/drum-kits';
 
@@ -249,9 +250,16 @@ export class TranceBrain {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension)); 
         }
 
+        // #ЗАЧЕМ: Генерация гармонии и призрачного пианиста при отсутствии Heritage данных.
+        if (hints.harmony && !usedTargetLayers.has('harmony')) {
+            events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
+            usedTargetLayers.add('harmony');
+        }
+
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) events.push(...p.events); 
+            usedTargetLayers.add('pianoAccompaniment');
         }
 
         // 4. ATMOSPHERIC
@@ -342,10 +350,6 @@ export class TranceBrain {
         });
     }
 
-    /**
-     * #ЗАЧЕМ: ПЛАН №1525 — Расширенный протокол Golden Note для аккомпанемента.
-     * #ЧТО: Селективное квантование ритмических слоев.
-     */
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
@@ -363,11 +367,9 @@ export class TranceBrain {
 
             if (isFast) {
                 if (isOnAnchor) {
-                    // GOLDEN ACCOMPANIMENT
                     weight = 0.82; 
                     dur *= 1.2;
                 } else {
-                    // GHOST ACCOMPANIMENT
                     weight = 0.15;
                 }
             } else if (isOnAnchor) {
@@ -393,13 +395,58 @@ export class TranceBrain {
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
-    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+    /** #ЗАЧЕМ: Пульсирующая генеративная гармония для транса. */
+    private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
+        if (this.rng.next() > (0.2 + tension * 0.3)) return []; 
+        const root = chord.rootNote + 12 + this.microTransposition;
+        const isMinor = chord.chordType === 'minor';
+        const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
-        if (melodyEvents.length > 0) {
-            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.5, technique: 'hit' }); });
-            return { events, style: 'Shadow Support' };
+        
+        [4.5, 10.5].forEach(t => {
+            intervals.forEach(interval => {
+                events.push({
+                    type: 'harmony',
+                    note: this.constrainAccompanimentOctave(root + interval),
+                    time: t * TICK_TO_BEAT,
+                    duration: 0.5 * TICK_TO_BEAT,
+                    weight: 0.4 + tension * 0.2,
+                    technique: 'hit',
+                    dynamics: 'p',
+                    phrasing: 'staccato'
+                });
+            });
+        });
+        return events;
+    }
+
+    /** #ЗАЧЕМ: Призрачный пианист — редкие виртуозные проигрыши. */
+    private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
+        if (this.rng.next() > 0.25) return { events: [], style: 'none' };
+        
+        const events: FractalEvent[] = [];
+        const root = chord.rootNote + 24 + this.microTransposition;
+        const scale = chord.chordType === 'minor' ? [0, 2, 3, 5, 7, 8, 10, 12] : [0, 2, 4, 5, 7, 9, 11, 12];
+        
+        const count = 4 + this.rng.nextInt(5); 
+        const offset = this.rng.next() * 2; 
+        
+        for (let i = 0; i < count; i++) {
+            const deg = scale[this.rng.nextInt(scale.length)];
+            events.push({
+                type: 'pianoAccompaniment',
+                note: this.constrainAccompanimentOctave(root + deg),
+                time: (offset + i * 0.75) * TICK_TO_BEAT, 
+                duration: 0.3,
+                weight: 0.5 + (this.rng.next() * 0.2),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'staccato',
+                params: { attack: 0.01, release: 1.5 }
+            });
         }
-        return { events: [], style: 'none' };
+
+        return { events, style: 'Ghostly Passage' };
     }
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
