@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V73.0 — "Melodic Density Boost".
- * #ЗАЧЕМ: Повышение частоты использования мелодии и арпеджио.
- * #ЧТО: Сокращение пауз солиста, увеличение шанса наслоения Shimmer Arp.
+ * @fileOverview Psybient Brain V74.0 — "Harmony Presence Update".
+ * #ЗАЧЕМ: Повышение частоты использования мелодии и активация слоя гармонии.
+ * #ЧТО: Сокращение пауз солиста, внедрение циклической гармонии (раз в 2-3 такта, 1-3 удара).
  */
 
 import type {
@@ -149,7 +149,6 @@ export class TranceBrain {
 
         const isSoloistFree = epoch >= this.soloistBusyUntilBar;
         if (isSoloistFree && this.soloistRestingUntilBar <= epoch) {
-            // #ЗАЧЕМ: ПЛАН №1802. Снижение вероятности отдыха с 8% до 2% для более частых мелодий.
             if (this.rng.next() < 0.02 || tension < 0.05) this.soloistRestingUntilBar = epoch + 1; 
         }
         const isSoloistResting = epoch < this.soloistRestingUntilBar;
@@ -181,7 +180,6 @@ export class TranceBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            // #ЗАЧЕМ: ПЛАН №1802. Повышение шанса наслоения арпеджио до 35%.
             if (melodyEvents.length === 0 || this.rng.chance(35)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
@@ -293,6 +291,9 @@ export class TranceBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
@@ -335,7 +336,7 @@ export class TranceBrain {
         const offset = localBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICKS_PER_BAR * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }
 
@@ -376,7 +377,7 @@ export class TranceBrain {
             const isOnAnchor = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
             let weight = 0.55; 
             let dur = n.d * TICK_TO_BEAT;
-            let tech: Technique = n.tech || 'swell';
+            let tech: Technique = (n.tech as any) || 'swell';
             if (isFast) {
                 if (isOnAnchor) { weight = 0.82; dur *= 1.2; } 
                 else { weight = 0.15; }
@@ -392,14 +393,34 @@ export class TranceBrain {
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
-        if (this.rng.next() > (0.2 + tension * 0.3)) return []; 
+        // #ЗАЧЕМ: ПЛАН №1188. Гармония раз в 2-3 такта. 1, 2 или 3 удара.
+        const barInCycle = epoch % 3; 
+        if (barInCycle !== 0 && !this.rng.chance(20)) return []; 
+
         const root = chord.rootNote + 12 + this.microTransposition;
         const isMinor = chord.chordType === 'minor';
         const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
         const events: FractalEvent[] = [];
-        [4.5, 10.5].forEach(t => {
+        
+        // Рандомизируем количество ударов: 1, 2 или 3
+        const count = this.rng.nextInt(3) + 1;
+        const grid = [1.5, 4.5, 7.5, 10.5];
+        // Просто берем первые N элементов из перемешанной сетки
+        const shuffledGrid = [...grid].sort(() => this.rng.next() - 0.5);
+        const selectedTimes = shuffledGrid.slice(0, count).sort((a, b) => a - b);
+
+        selectedTimes.forEach(t => {
             intervals.forEach(interval => {
-                events.push({ type: 'harmony', note: this.constrainAccompanimentOctave(root + interval), time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.4 + tension * 0.2, technique: 'hit', dynamics: 'p', phrasing: 'staccato' });
+                events.push({ 
+                    type: 'harmony', 
+                    note: this.constrainAccompanimentOctave(root + interval), 
+                    time: t * TICK_TO_BEAT, 
+                    duration: 0.5 * TICK_TO_BEAT, 
+                    weight: 0.65 + tension * 0.2, // Повысил громкость для пробиваемости
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato' 
+                });
             });
         });
         return events;
@@ -422,7 +443,6 @@ export class TranceBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
-        // #ЗАЧЕМ: ПЛАН №1802. Повышение базовой плотности арпеджио до 55.
         const gate = (55 + tension * 35) * (tension < 0.4 ? 0.5 : 1.0);
         return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(gate)).map(t => ({ type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)], time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'staccato' }));
     }
