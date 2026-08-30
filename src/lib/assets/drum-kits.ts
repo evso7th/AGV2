@@ -1,8 +1,8 @@
 
 /**
- * @fileOverview Drum Arsenal Protocol V2.5.
+ * @fileOverview Drum Arsenal Protocol V2.6.
  * #ЗАЧЕМ: Этот файл — центральный "Арсенал Барабанщика".
- * #ОБНОВЛЕНО (ПЛАН №1970): Разрешено использование райдов во всех настроениях Foundry.
+ * #ОБНОВЛЕНО (ПЛАН №2100): Жанр Trance теперь является полным алиасом Foundry для 100% унификации.
  */
 
 import type { DrumKit, DrumKitLibrary, InstrumentType } from '@/types/fractal';
@@ -19,7 +19,7 @@ const FOUNDRY_KICKS: InstrumentType[] = [
 const TRANCE_SNARES: InstrumentType[] = ['drum_snare'];
 const TRANCE_HATS: InstrumentType[] = ['drum_open_hh_top2'];
 
-const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_ghost_note', 'drum_snarepress', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
+const ALL_SNARES: InstrumentType[] = ['drum_snare', 'drum_snare_off', 'drum_snare_ghost_note', 'drum_snarepress', 'drum_brush2', 'drum_brush3', 'drum_brush4'];
 const ALL_HIHATS: InstrumentType[] = [
     'drum_25693__walter_odington__hackney-hat-1',
     'drum_closed_hi_hat_ghost',
@@ -34,43 +34,47 @@ const ALL_PERC: InstrumentType[] = [
     'perc-011', 'perc-012', 'perc-013', 'perc-014', 'perc-015'
 ];
 
+const FOUNDRY_CONFIG = {
+    melancholic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
+    dark: { kick: FOUNDRY_KICKS, snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: ALL_RIDES, crash: [], perc: ALL_PERC },
+    anxious: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
+    joyful: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
+    calm: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
+    epic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
+    enthusiastic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
+    dreamy: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
+    contemplative: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC }
+};
+
 export const DRUM_KITS: DrumKitLibrary = {
-    foundry: {
-        melancholic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        dark: { kick: FOUNDRY_KICKS, snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: ALL_RIDES, crash: [], perc: ALL_PERC },
-        anxious: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        joyful: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        calm: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
-        epic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        enthusiastic: { kick: FOUNDRY_KICKS, snare: TRANCE_SNARES, hihat: TRANCE_HATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
-        dreamy: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC },
-        contemplative: { kick: FOUNDRY_KICKS, snare: [], hihat: TRANCE_HATS, ride: ALL_RIDES, crash: [], perc: ALL_PERC }
-    },
+    foundry: FOUNDRY_CONFIG,
+    // #ЗАЧЕМ: ПЛАН №2100. Прямое наследование для Trance (psybient).
+    trance: FOUNDRY_CONFIG,
 
     ambient: {
         melancholic: {
-            kick: ['drum_kick_soft', 'drum_kick_reso', 'drum_deep_tech_kick', 'drum_quality_kick'],
+            kick: ['drum_kick_soft', 'drum_kick_reso', 'drum_foundry_standard', 'drum_foundry_quality'],
             snare: ['drum_snare_ghost_note'],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ALL_PERC
         },
         intro: {
-            kick: ['drum_kick_soft', 'drum_quality_kick'],
+            kick: ['drum_kick_soft', 'drum_foundry_quality'],
             snare: [],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ['perc-003', 'perc-005']
         },
         calm: {
-            kick: ['drum_kick_soft', 'drum_deep_tech_kick'],
+            kick: ['drum_kick_soft', 'drum_foundry_standard'],
             snare: ['drum_brush1'],
             hihat: ['drum_closed_hi_hat_ghost'],
             ride: ['drum_ride_wetter'],
             perc: ALL_PERC
         },
         dark: {
-            kick: ['drum_kick_reso', 'drum_deep_tech_kick'],
+            kick: ['drum_kick_reso', 'drum_foundry_standard'],
             snare: ['drum_snare_off'],
             hihat: [],
             ride: ['drum_a-ride1'],
@@ -83,19 +87,6 @@ export const DRUM_KITS: DrumKitLibrary = {
         melancholic: { kick: ['drum_kick_reso'], snare: ['drum_snare_ghost_note'], hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         blues_epic: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: ALL_RIDES, crash: ['drum_crash2'], perc: ALL_PERC },
         blues_dark: { kick: ['drum_kick_reso'], snare: ['drum_snare_off'], hihat: ['drum_closed_hi_hat_ghost'], ride: ['drum_a-ride1'], crash: [], perc: ALL_PERC }
-    },
-
-    trance: {
-        melancholic: { 
-            kick: ['drum_kick_drum6', 'drum_edm_kick', 'drum_prog_house_kick', 'drum_standard_tech_kick'], 
-            snare: ['drum_snare'], 
-            hihat: ['drum_open_hh_top2'], 
-            ride: [], 
-            crash: ['drum_crash2'], 
-            perc: ALL_PERC 
-        },
-        intro: { kick: ['drum_kick_soft', 'drum_standard_tech_kick'], snare: [], hihat: ['drum_closed_hi_hat_ghost'], ride: [], crash: [], perc: ['perc-003'] },
-        anxious: { kick: ALL_KICKS, snare: ALL_SNARES, hihat: ALL_HIHATS, ride: [], crash: ['drum_crash2'], perc: ALL_PERC }
     },
 
     reggae: {

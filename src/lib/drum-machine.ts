@@ -1,5 +1,11 @@
+
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 import { vault } from './audio-cache';
+
+/**
+ * @fileOverview Drum Machine V7.0 — "Asset Parity Sync".
+ * #ЗАЧЕМ: Унификация путей к сэмплам. Переход на .ogg для всех киков.
+ */
 
 const DRUM_SAMPLES: Record<string, string> = {
     '25677__walter_odington__alex-hat': '/assets/drums/25677__walter_odington__alex-hat.ogg',
@@ -67,11 +73,12 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
     
-    'drum_edm_kick': '/assets/drums/381825__waveplaysfx__kick-edm-kick.wav',
-    'drum_prog_house_kick': '/assets/drums/385874__waveplaysfx__kick-prog-house-kick.wav',
-    'drum_deep_tech_kick': '/assets/drums/386966__waveplaysfx__kick-deep-tech-kick.wav',
-    'drum_standard_tech_kick': '/assets/drums/515519__waveplaysfx__kick-standard-tech-kick.wav',
-    'drum_quality_kick': '/assets/drums/671087__logicogonist__kick-quality-1.wav',
+    // #ЗАЧЕМ: ПЛАН №2100. Унификация — все тех-кики переведены на .ogg из папки /kick/
+    'drum_edm_kick': '/assets/drums/kick/381825__waveplaysfx__kick-edm-kick.ogg',
+    'drum_prog_house_kick': '/assets/drums/kick/385874__waveplaysfx__kick-prog-house-kick.ogg',
+    'drum_deep_tech_kick': '/assets/drums/kick/386966__waveplaysfx__kick-deep-tech-kick.ogg',
+    'drum_standard_tech_kick': '/assets/drums/kick/515519__waveplaysfx__kick-standard-tech-kick.ogg',
+    'drum_quality_kick': '/assets/drums/kick/671087__logicogonist__kick-quality-1.ogg',
     
     'drum_foundry_pd_27': '/assets/drums/kick/494431__akustika__pd-kick-27.ogg',
     'drum_foundry_standard': '/assets/drums/kick/515519__waveplaysfx__kick-standard-tech-kick.ogg',
