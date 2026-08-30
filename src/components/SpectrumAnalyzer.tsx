@@ -8,8 +8,8 @@ interface SpectrumAnalyzerProps {
 }
 
 /**
- * #ЗАЧЕМ: Высокопроизводительный спектроанализатор с информационной панелью.
- * #ЧТО: ПЛАН №1320 — Добавлен вывод информации о текущем треке в оверлее.
+ * @fileOverview Spectrum Analyzer V1.1 — "30 FPS Update".
+ * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты отрисовки до 30 FPS для всех жанров.
  */
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
     const { analyser, isPlaying } = useAudioEngine();
@@ -25,9 +25,18 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
 
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
+        
+        let lastTime = 0;
+        const interval = 1000 / 30; // 30 FPS target
 
-        const draw = () => {
+        const draw = (currentTime: number) => {
             requestRef.current = requestAnimationFrame(draw);
+
+            // --- 30 FPS THROTTLE ---
+            const delta = currentTime - lastTime;
+            if (delta < interval) return;
+            lastTime = currentTime - (delta % interval);
+
             analyser.getByteFrequencyData(dataArray);
 
             const width = canvas.width;
@@ -66,7 +75,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
             }
         };
 
-        draw();
+        requestRef.current = requestAnimationFrame(draw);
 
         return () => {
             if (requestRef.current) cancelAnimationFrame(requestRef.current);
@@ -75,7 +84,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 rounded-lg p-4 border border-primary/10 relative overflow-hidden">
-            {/* #ЗАЧЕМ: Информационная панель текущего трека */}
+            {/* Информационная панель текущего трека */}
             {info && isPlaying && (
                 <div className="absolute top-4 left-4 z-50 pointer-events-none">
                     <p className="text-[10px] font-black uppercase tracking-widest text-primary/90 bg-black/60 px-2.5 py-1.5 rounded-md border border-primary/20 backdrop-blur-md shadow-xl">

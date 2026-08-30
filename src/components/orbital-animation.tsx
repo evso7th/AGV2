@@ -16,8 +16,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V8.2 — "Strict Pulse Sync".
- * #ЗАЧЕМ: ПЛАН №1470. Удаление автономных циклов. Пульс только по событию.
+ * @fileOverview Orbital Animation V8.3 — "30 FPS Update".
+ * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты обновления до 30 FPS для всех жанров.
  */
 export function OrbitalAnimation({ 
     isPlaying = false, 
@@ -32,6 +32,7 @@ export function OrbitalAnimation({
   const isMobile = useIsMobile();
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const lastPulseTimeRef = useRef<number>(0);
 
   // 1. Определение базового тона (Hue) по жанру
   const hue = useMemo(() => {
@@ -65,17 +66,22 @@ export function OrbitalAnimation({
       } as React.CSSProperties;
   }, [hue, saturation, lightness, tension, size, isMobile]);
 
-  // --- UNIFIED PULSE LISTENER (NO MOBILE BYPASS) ---
+  // --- UNIFIED PULSE LISTENER ---
   useEffect(() => {
     const onPulse = (e: any) => {
         if (!isPlaying) return;
         
+        // --- 30 FPS THROTTLE ---
+        const now = Date.now();
+        if (now - lastPulseTimeRef.current < 33) return;
+        lastPulseTimeRef.current = now;
+
         const hitTime = e.detail.time;
         const audioContext = analyser?.context;
         if (!audioContext) return;
 
-        const now = audioContext.currentTime;
-        const delay = (hitTime - now) * 1000;
+        const audioNow = audioContext.currentTime;
+        const delay = (hitTime - audioNow) * 1000;
         
         if (delay > -50) {
             const t = setTimeout(() => {

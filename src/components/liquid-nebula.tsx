@@ -17,30 +17,34 @@ interface LiquidNebulaProps {
 }
 
 /**
- * @fileOverview Liquid Nebula V6.2 — "Mobile Performance Shield".
- * #ЗАЧЕМ: ПЛАН №1475. Агрессивное снижение нагрузки на мобильный GPU.
- * #ЧТО: Отключение лишних слоев и тяжелых анимаций для мобильных.
+ * @fileOverview Liquid Nebula V6.3 — "30 FPS Update".
+ * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты обновления до 30 FPS для всех жанров.
  */
 export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, className, isReference = false }: LiquidNebulaProps) {
   const { analyser } = useAudioEngine();
   const isMobile = useIsMobile();
   const [isPulsing, setIsPulsing] = useState(false);
   const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+  const lastPulseTimeRef = useRef<number>(0);
 
   // 1. Музыкальная пульсация (Event Listener)
   useEffect(() => {
     const onPulse = (e: any) => {
         if (!isPlaying) return;
         
+        // --- 30 FPS THROTTLE ---
+        const now = Date.now();
+        if (now - lastPulseTimeRef.current < 33) return;
+        lastPulseTimeRef.current = now;
+
         const hitTime = e.detail.time;
         const audioContext = analyser?.context;
         if (!audioContext) return;
 
-        const now = audioContext.currentTime;
-        const delay = (hitTime - now) * 1000;
+        const audioNow = audioContext.currentTime;
+        const delay = (hitTime - audioNow) * 1000;
         
         if (delay > -50) {
-            // #ЗАЧЕМ: ПЛАН №1476. Гарантированная очистка предыдущих пульсов для плавности.
             const t = setTimeout(() => {
                 setIsPulsing(true);
                 const t2 = setTimeout(() => setIsPulsing(false), 120);
@@ -92,12 +96,12 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
       <div className={styles.scaler}>
         <div className={styles.soft}>
           <div className={styles.fluid}>
-            {/* CENTRAL CORE: Единственный элемент, который пульсирует на мобильных */}
+            {/* CENTRAL CORE */}
             <div className={styles.centralCore}>
                 <i className={cn(styles.blob, styles.m, styles.m0)} />
             </div>
 
-            {/* PERIPHERY: Прячется на мобильных через CSS для экономии ресурсов */}
+            {/* PERIPHERY */}
             <i className={cn(styles.blob, styles.m, styles.m1)} />
             <i className={cn(styles.blob, styles.m, styles.m2)} />
             <i className={cn(styles.blob, styles.m, styles.m3)} />
