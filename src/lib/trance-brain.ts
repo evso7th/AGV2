@@ -1,7 +1,7 @@
 /**
- * @fileOverview Trance Brain V80.0 — "Absolute Foundry Clone".
- * #ЗАЧЕМ: ПЛАН №1990. Полное дублирование логики Foundry для устранения заиканий.
- * #ЧТО: 100% копия кода DarkFoundryBrain. Никаких улучшений.
+ * @fileOverview Trance Brain V81.0 — "Golden Note Optimization".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1810. Применение "Золотой Ноты" к басу, мелодии и аккомпанементу.
+ * #ЧТО: 100% копия DarkFoundryBrain с внедренным фильтром сильных долей.
  */
 
 import type {
@@ -144,9 +144,6 @@ export class TranceBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
-
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
@@ -216,10 +213,8 @@ export class TranceBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. NEURO DRUMS
-        if (hints.drums) events.push(...this.renderFoundryDrums(epoch, tension, kit));
+        if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension, kit));
 
-        // 2. BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
@@ -227,7 +222,6 @@ export class TranceBrain {
             events.push(...b); 
         }
 
-        // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -264,19 +258,18 @@ export class TranceBrain {
             if (p.events.length > 0) events.push(...p.events); 
         }
 
-        // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' },
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Logic' },
             narrative: `Neuro Space Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
 
-    private renderFoundryDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
+    private renderNeuroDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
@@ -319,11 +312,23 @@ export class TranceBrain {
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
 
         const localBar = mosaicBar % this.phraseBarCount(phrase);
-        const offset = localBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
-        }));
+        const barOffset = localBar * TICKS_PER_BAR;
+        
+        // #ЗАЧЕМ: ПЛАН №1810. Применение "Золотой Ноты" к Басу.
+        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+            const relT = n.t - barOffset;
+            const isGolden = [0, 3, 6, 9].some(gt => Math.abs(relT - gt) < 0.1);
+            return {
+                type: 'bass', 
+                note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
+                time: relT * TICK_TO_BEAT, 
+                duration: n.d * TICK_TO_BEAT * (isGolden ? 1.2 : 0.6), 
+                weight: isGolden ? 1.0 : 0.3, 
+                technique: 'pulse', 
+                dynamics: isGolden ? 'f' : 'p', 
+                phrasing: 'detached'
+            };
+        });
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, mosaicBar: number): FractalEvent[] {
@@ -334,13 +339,19 @@ export class TranceBrain {
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         const goldenTicks = [0, 3, 6, 9];
+        
+        // #ЗАЧЕМ: ПЛАН №1810. Применение "Золотой Ноты" к Мелодии.
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const relT = n.t - offset;
-            const isGold = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+            const isGolden = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
             return {
-                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
-                time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
-                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', 
+                type: 'melody', 
+                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
+                time: relT * TICK_TO_BEAT, 
+                duration: n.d * TICK_TO_BEAT * (isGolden ? 1.5 : 0.4),
+                weight: isGolden ? 0.95 : 0.3, 
+                technique: isGolden ? 'vb' : 'pick', 
+                dynamics: isGolden ? 'mf' : 'p', 
                 phrasing: n.phrasing || 'legato',
                 params: { attack: n.params?.attack, release: n.params?.release }
             };
@@ -351,10 +362,22 @@ export class TranceBrain {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
+        
+        // #ЗАЧЕМ: ПЛАН №1810. Применение "Золотой Ноты" к Аккомпанементу.
+        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+            const relT = n.t - offset;
+            const isGolden = [0, 3, 6, 9].some(gt => Math.abs(relT - gt) < 0.1);
+            return {
+                type, 
+                note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
+                time: relT * TICK_TO_BEAT, 
+                duration: n.d * TICK_TO_BEAT * (isGolden ? 1.2 : 0.5), 
+                weight: isGolden ? 0.85 : 0.25, 
+                technique: 'swell', 
+                dynamics: 'p', 
+                phrasing: 'legato'
+            };
+        });
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
