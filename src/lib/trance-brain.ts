@@ -1,6 +1,7 @@
 /**
- * @fileOverview Trance Brain V85.0 — "Pure Golden Piano".
- * #ЗАЧЕМ: Реализация ПЛАНА №2010. Фильтрация пианиста по правилу "короче 1/8 -> только золотой тик".
+ * @fileOverview Trance Brain V86.0 — "Melody Persistence Reform".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2105. Мелодия из Наследия больше не глушится "паузами отдыха".
+ * #ЧТО: Отключено влияние isResting на Heritage-мелодию. Усилен приоритет Аксиом.
  */
 
 import type {
@@ -86,7 +87,7 @@ export class TranceBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -150,9 +151,6 @@ export class TranceBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
-
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
@@ -192,6 +190,7 @@ export class TranceBrain {
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
+        // #ЗАЧЕМ: ПЛАН №2105. Мелодия из Наследия игнорирует "отдых", если есть аксиома.
         if (this.soloistRestUntilBar <= epoch) {
             if (this.rng.chance(1)) this.soloistRestUntilBar = epoch + 1; 
         }
@@ -215,11 +214,14 @@ export class TranceBrain {
         }
 
         let melodyEvents: FractalEvent[] = [];
-        if (hints.melody && !isResting) {
+        if (hints.melody) {
+            // #ЗАЧЕМ: ПЛАН №2105. Если есть тема из Наследия, играем её невзирая на флаг отдыха.
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            if (melodyEvents.length === 0 || this.rng.chance(20)) {
+            
+            // Алгоритмическая добавка или заполнитель только если нет отдыха
+            if (!isResting && (melodyEvents.length === 0 || this.rng.chance(20))) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
             events.push(...melodyEvents); 
@@ -231,12 +233,9 @@ export class TranceBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                
-                // #ЗАЧЕМ: ПЛАН №2010. Разрядка партии пианиста.
                 if (target === 'pianoAccompaniment') {
                     renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
                 }
-                
                 events.push(...renders); 
                 usedTargetLayers.add(target);
             }
@@ -263,12 +262,10 @@ export class TranceBrain {
             let tier = 3;
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             const type = String(rawType).toLowerCase();
-            
             if (type.includes('kick') || type === 'bass' || type.includes('snare')) tier = 0; 
             else if (type === 'melody' && this.isGolden(e.time / TICK_TO_BEAT)) tier = 0; 
             else if (type === 'accompaniment') tier = 1; 
             else if (['harmony', 'pianoaccompaniment'].includes(type)) tier = 2; 
-            
             return { ...e, tier };
         });
 
@@ -282,7 +279,7 @@ export class TranceBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Hierarchy' },
-            narrative: `Tier V85: [0:${finalEvents.filter(e => e.tier === 0).length}] [1:${finalEvents.filter(e => e.tier === 1).length}] [2:${finalEvents.filter(e => e.tier === 2).length}]`
+            narrative: `Tier V86: Axiom Priority Active. NO_REST for DNA.`
         };
     }
 
@@ -291,11 +288,9 @@ export class TranceBrain {
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
-        
         [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.60, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
-        
         return events;
     }
 
@@ -303,10 +298,7 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
         [0, 3, 6, 9].forEach(t => {
-            events.push({
-                type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
-                weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
-            });
+            events.push({ type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached' });
         });
         return events;
     }
@@ -315,10 +307,8 @@ export class TranceBrain {
         if (!this.currentBassTheme) return [];
         let phrase = this.currentBassTheme.phrase;
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
-
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const barOffset = localBar * TICKS_PER_BAR;
-        
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
@@ -329,14 +319,11 @@ export class TranceBrain {
         if (!this.currentTheme) return [];
         let phrase = this.currentTheme.phrase;
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
-
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
-        
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5,
-            weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: n.phrasing || 'legato'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: n.phrasing || 'legato'
         }));
     }
 
@@ -344,11 +331,9 @@ export class TranceBrain {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        
         return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.2, weight: 0.8,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.2, weight: 0.8, technique: 'swell', dynamics: 'p', phrasing: 'legato'
         }));
     }
 
@@ -381,14 +366,11 @@ export class TranceBrain {
     private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         if (this.rng.chance(10)) {
-            events.push({
-                type: 'sfx', note: 60, time: this.rng.next() * 3, duration: 4.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato',
-                params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } }
-            });
+            events.push({ type: 'sfx', note: 60, time: this.rng.next() * 3, duration: 4.0, weight: 0.6, technique: 'hit', dynamics: 'p', phrasing: 'legato', params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } } });
         }
         return events;
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
