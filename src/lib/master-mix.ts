@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V2.7 — "Harmony Presence Update".
- * #ЗАЧЕМ: ПЛАН №1150. Повышение слышимости слоя гармонии.
+ * @fileOverview Master Mix Registry V2.8 — "Trance Accompaniment Boost".
+ * #ЗАЧЕМ: ПЛАН №1151. Увеличение громкости аккомпанемента в трансе в 2 раза.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,7 +9,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.21,        
     accompaniment: 0.10, 
-    harmony: 0.18,       // Усилено с 0.0625 для уверенного присутствия
+    harmony: 0.18,       
     pianoAccompaniment: 0.43,
     drums: 0.75,         
     sparkles: 0.65,      
@@ -17,7 +17,10 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 };
 
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
-    psybient: { ...UNIVERSAL_IMPERIAL_MIX },
+    psybient: { 
+        ...UNIVERSAL_IMPERIAL_MIX,
+        accompaniment: 0.20 // Увеличено в 2 раза с 0.10 по ТЗ
+    },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         ...UNIVERSAL_IMPERIAL_MIX,
