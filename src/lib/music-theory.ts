@@ -1,5 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.4 — "Robust Timbre Resolver".
+ * @fileOverview Universal Music Theory Utilities V5.5 — "Foundry Universal Standard".
+ * #ЗАЧЕМ: Укрепление связи Trance и Foundry для стабильности.
  */
 
 import type { 
@@ -47,7 +48,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №1801): Максимальная отказоустойчивость при выборе реестра.
+ * #ОБНОВЛЕНО (ПЛАН №1990): Принудительный переход Trance на Foundry-реестр.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -66,6 +67,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         // ─── REGISTRY SELECTION ───
+        // ПЛАН №1990: psybient (Trance) теперь ВСЕГДА использует высокопроизводительные пресеты Foundry.
         const isHighPerformance = genre === 'foundry' || genre === 'psybient';
         const registry = isHighPerformance ? (FOUNDRY_PRESETS || V2_PRESETS) : V2_PRESETS;
 
@@ -530,4 +532,3 @@ export function normalizeEventType(event: FractalEvent): Set<string> {
     Array.isArray(event.type) ? event.type : [event.type]
   );
 }
-
