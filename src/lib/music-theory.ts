@@ -15,6 +15,7 @@ import type {
 import { getChordNameForBar, getDynastyForMood } from './blues-theory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
+import { FOUNDRY_PRESETS } from './foundry-presets';
 
 // ───── GLOBAL CHRONOS CONSTANTS ─────
 export const TICKS_PER_BAR = 12;
@@ -46,7 +47,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №1.9.0): Исключены скрипка и флейта из дефолтов из-за лицензий.
+ * #ОБНОВЛЕНО (ПЛАН №1800): Объединение транса и фаундри для использования облегченных пресетов.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     if (!hint || hint === 'none') return 'none';
@@ -62,6 +63,11 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
     if (!targetHint || targetHint === 'none') return 'none';
     
     const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // ─── REGISTRY SELECTION ───
+    // #ЗАЧЕМ: ПЛАН №1800. Транс (psybient) теперь использует облегченные пресеты Foundry.
+    const isFoundry = genre === 'foundry' || genre === 'psybient';
+    const registry = isFoundry ? FOUNDRY_PRESETS : V2_PRESETS;
 
     // ─── Safety Guard ───
     if (clean === 'violin' || clean === 'flute') return 'guitarChords';
@@ -165,7 +171,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         return tension < 0.6 ? 'piano' : 'ep_rhodes_warm';
     }
 
-    const v2Keys = Object.keys(V2_PRESETS);
+    const v2Keys = Object.keys(registry);
     const matchedV2 = v2Keys.find(k => k.toLowerCase().replace(/[^a-z0-9]/g, '') === clean);
     if (matchedV2) return matchedV2;
     

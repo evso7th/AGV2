@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V70.0 — "Silicon Balance Protocol".
+ * @fileOverview Psybient Brain V71.0 — "Silicon Balance Protocol Final".
  * #ЗАЧЕМ: Реализация ПЛАНА №1800. Оптимизация производительности для устранения заиканий.
- * #ЧТО: Внедрен динамический лимитер плотности событий и Tier-приоритизация.
+ * #ЧТО: Динамический лимитер (BPM-Aware), Tier-приоритизация и Density Guard.
  */
 
 import type {
@@ -81,7 +81,7 @@ export class TranceBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -98,64 +98,6 @@ export class TranceBrain {
         if (this.isImprovising) return calculateMusiNum(epoch + startOffset, 7, this.seed, totalBars);
         const barsElapsed = epoch - startEpoch;
         return (barsElapsed + startOffset) % totalBars;
-    }
-
-    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        this.currentAccompAxioms = [];
-        this.currentBassTheme = null;
-        this.currentTheme = null;
-        
-        if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
-
-        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
-        
-        let filteredPool = effectiveAnchor 
-            ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
-            : poolToUse.filter(ax => {
-                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
-            });
-
-        if (filteredPool.length > 0) {
-            let basePool = filteredPool.filter(ax => ax.role === 'melody');
-            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
-
-            if (basePool.length > 0) {
-                if (!effectiveAnchor) {
-                    const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                }
-
-                const baseBars = Math.max(4, ...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
-                const sameOffsetPool = filteredPool.filter(ax => (ax.barOffset || 0) === targetOffset && (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')));
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)] : basePool[0];
-
-                if (selected) {
-                    this.currentTrackName = selected.compositionId;
-                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-                    const cid = normalizeStr(selected.compositionId);
-                    
-                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
-
-                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
-
-                    const axiomBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
-                    this.soloistBusyUntilBar = epoch + axiomBars;
-                    return selected.nativeBpm || undefined;
-                }
-            }
-        }
-        this.currentTrackName = 'Algorithmic';
-        this.soloistBusyUntilBar = epoch + 4;
-        return undefined;
     }
 
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
@@ -321,7 +263,11 @@ export class TranceBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
-        [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
+        
+        // #ЗАЧЕМ: Density Guard. При низком напряжении убираем 16-е доли.
+        const rhythmGrid = (tension < 0.4) ? [1.5, 7.5] : [1.5, 4.5, 7.5, 10.5];
+        
+        rhythmGrid.forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
                 weight: 0.85, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
@@ -485,7 +431,11 @@ export class TranceBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
-        return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40)).map(t => ({
+        
+        // #ЗАЧЕМ: Density Guard. При низком напряжении арпеджио более редкие.
+        const gate = (40 + tension * 40) * (tension < 0.4 ? 0.5 : 1.0);
+        
+        return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(gate)).map(t => ({
             type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
             time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
