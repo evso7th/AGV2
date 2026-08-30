@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V68.0 — "The Ghost Pianist & Harmony Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1550. Добавление генеративной гармонии и призрачного пианиста.
- * #ЧТО: Внедрены методы renderGenerativeHarmony и renderVirtuosoPiano для заполнения пустот в Heritage.
+ * @fileOverview Psybient Brain V70.0 — "Silicon Balance Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1800. Оптимизация производительности для устранения заиканий.
+ * #ЧТО: Внедрен динамический лимитер плотности событий и Tier-приоритизация.
  */
 
 import type {
@@ -81,7 +81,7 @@ export class TranceBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -250,7 +250,6 @@ export class TranceBrain {
             events.push(...this.renderSidechainedPad(epoch, resChord, tension)); 
         }
 
-        // #ЗАЧЕМ: Генерация гармонии и призрачного пианиста при отсутствии Heritage данных.
         if (hints.harmony && !usedTargetLayers.has('harmony')) {
             events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
             usedTargetLayers.add('harmony');
@@ -265,11 +264,47 @@ export class TranceBrain {
         // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
+        // ───── SILICON BALANCE PROTECTOR (PLAN #1800) ─────
+        // #ЗАЧЕМ: Предотвращение перегрузки процессора и заиканий (GC Storm).
+        const currentBpm = dna.baseTempo || 120;
+        const maxEvents = Math.floor(100 * (120 / currentBpm));
+
+        if (events.length > maxEvents) {
+            // 1. Присваиваем приоритеты (Tier System)
+            const prioritized = events.map(e => {
+                const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+                const tick = e.time / TICK_TO_BEAT;
+                const isGoldenTick = [0, 3, 6, 9].some(gt => Math.abs(tick - gt) < 0.1);
+                
+                let tier = 3; // Tier 3: Dust (Ghost notes, ornaments)
+                
+                if (rawType.includes('kick') || rawType.includes('snare') || rawType === 'bass') {
+                    tier = 0; // Tier 0: Foundation (Immune)
+                } else if (rawType === 'melody' && isGoldenTick) {
+                    tier = 1; // Tier 1: Core Melody
+                } else if (['accompaniment', 'harmony', 'pianoAccompaniment'].includes(rawType as string)) {
+                    tier = 2; // Tier 2: Flow layers
+                }
+                
+                return { event: e, tier };
+            });
+
+            // 2. Сортируем по важности (сначала Tier 0, потом Tier 1 и т.д.)
+            prioritized.sort((a, b) => a.tier - b.tier);
+            
+            // 3. Оставляем только допустимый лимит событий
+            const limited = prioritized.slice(0, maxEvents).map(p => p.event);
+            
+            // 4. Очищаем массив и заполняем отфильтрованными событиями (сохраняя хронологию)
+            events.length = 0;
+            events.push(...limited.sort((a, b) => a.time - b.time));
+        }
+
         return {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Sync' },
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Silicon Stable' },
             narrative: `Neuro Space Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
@@ -319,7 +354,7 @@ export class TranceBrain {
 
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const relT = n.t - offset;
-            const isFast = n.d <= 0.75; // 1/16 or smaller
+            const isFast = n.d <= 0.75; 
             const isOnAnchor = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
             
             let weight = 0.85;
@@ -395,7 +430,6 @@ export class TranceBrain {
         return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.4, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
     }
 
-    /** #ЗАЧЕМ: Пульсирующая генеративная гармония для транса. */
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         if (this.rng.next() > (0.2 + tension * 0.3)) return []; 
         const root = chord.rootNote + 12 + this.microTransposition;
@@ -420,7 +454,6 @@ export class TranceBrain {
         return events;
     }
 
-    /** #ЗАЧЕМ: Призрачный пианист — редкие виртуозные проигрыши. */
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         if (this.rng.next() > 0.25) return { events: [], style: 'none' };
         

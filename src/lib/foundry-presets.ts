@@ -1,38 +1,37 @@
-
 /**
- * @fileOverview Foundry Presets Library V1.2 — "The Industrial Wall Update".
- * #ЗАЧЕМ: ПЛАН №2020. Металлизация пэдов: добавление драйва, резонанса и "стеновых" пил.
+ * @fileOverview Foundry Presets Library V1.5 — "Silicon Balance Diet".
+ * #ЗАЧЕМ: ПЛАН №1800. Оптимизация тембров: сокращение осцилляторов и внедрение LFO-пульсации.
  */
 
 export const FOUNDRY_PRESETS = {
   synth: { 
     type: 'synth',
-    name: 'Industrial Grid Pad',
+    name: 'Industrial Pulse Pad',
     volume: 0.65,
     osc: [
-      { type: 'sawtooth', detune: -12, octave: 0, gain: 0.5 }, // Сильный детюн для ширины
-      { type: 'sawtooth', detune: +12, octave: 0, gain: 0.5 },
-      { type: 'square', detune: 0, octave: -1, gain: 0.4 }    // Прямоугольный саб для "грязи"
+      { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
+      { type: 'sine', detune: 0, octave: -1, gain: 0.5 }    // Чистый саб вместо грязного квадрата
     ],
-    noise: { on: true, gain: 0.025 }, // Больше шума для индустриального веса
-    adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, // Ускоренная атака для "стены звука"
-    lpf: { cutoff: 1200, q: 2.5 }, // Высокий резонанс для металлического лязга
-    drive: { type: 'soft', amount: 0.35 }, // Добавлен кранч
+    noise: { on: false }, // Отключен шум для снижения нагрузки
+    adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, 
+    lpf: { cutoff: 1400, q: 2.0 }, 
+    lfo: { rate: 0.2, amount: 400, target: 'filter' }, // Пульсация через LFO вместо рипплов
+    drive: { type: 'soft', amount: 0.25 },
     reverbMix: 0
   },
 
   synth_ambient_pad_lush: {
     type: 'synth',
-    name: 'Wall of Steel Pad',
+    name: 'Stable Steel Pad',
     volume: 0.62,
     osc: [
-      { type: 'sawtooth', detune: -6, octave: 0, gain: 0.6 },
-      { type: 'sawtooth', detune: +6, octave: 0, gain: 0.6 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.7 }
+      { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
     ],
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
     lpf: { cutoff: 850, q: 1.5 }, 
-    drive: { type: 'soft', amount: 0.22 }, // Легкая сатурация для плотности
+    lfo: { rate: 0.1, amount: 200, target: 'filter' },
+    drive: { type: 'soft', amount: 0.15 },
     reverbMix: 0
   },
 

@@ -1,7 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.5 — "Clear Sky Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1301 и №1305. 
- * #ЧТО: Внедрение Gain Staging (-6dB Headroom) и High-Pass Filter (150Hz) для всех не-басовых слоев.
+ * @fileOverview Центральная фабрика инструментов V8.7 — "Silicon Balance Hardening".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1800. 
+ * #ЧТО: HPF поднят до 300Hz для высокого напряжения. Усилена защита от перегрузки.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -386,13 +386,13 @@ const createIndependentVoice = (
         nodes.push(shaper);
     }
 
-    // #ЗАЧЕМ: "Протокол Чистого Неба 2.0". 
-    // #ЧТО: HPF 45Hz для баса/ударных, 220Hz для остальных (Density Guard поднимает до 280Hz).
+    // #ЗАЧЕМ: ПЛАН №1800. Протокол "Чистое Небо 2.5".
+    // #ЧТО: HPF 300Hz для не-басовых слоев при высоком напряжении.
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
     let hpfFreq = (type === 'bass' || type === 'drums') ? 45 : 220;
     if (type !== 'bass' && type !== 'drums' && tension > 0.7) {
-        hpfFreq = 280; 
+        hpfFreq = 300; 
     }
     hpf.frequency.value = hpfFreq;
     hpf.Q.value = 0.5;
@@ -400,13 +400,12 @@ const createIndependentVoice = (
     chainHead = hpf;
     nodes.push(hpf);
 
-    // #ЗАЧЕМ: ПЛАН №1335. Anti-Box Dip для разрежения "каши" в нижней середине.
     if (type !== 'bass' && type !== 'drums') {
         const dip = ctx.createBiquadFilter();
         dip.type = 'peaking';
         dip.frequency.value = 350;
         dip.Q.value = 1.0;
-        dip.gain.value = -2.0; // -2dB dip
+        dip.gain.value = -2.0; 
         chainHead.connect(dip);
         chainHead = dip;
         nodes.push(dip);
@@ -429,6 +428,22 @@ const createIndependentVoice = (
 
     const tempoScale = tempo / 72;
     finalCutoff = finalCutoff * tempoScale * humBright;
+
+    // #ЗАЧЕМ: ПЛАН №1800. Внедрение LFO пульсации из пресета.
+    if (preset.lfo && isFinite(preset.lfo.rate) && preset.lfo.amount > 0) {
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = preset.lfo.rate;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = preset.lfo.amount;
+        lfo.connect(lfoGain);
+        if (preset.lfo.target === 'filter') {
+            lfoGain.connect(filter.frequency);
+        } else {
+            // target pitch handled elsewhere, but can add here if needed
+        }
+        lfo.start(now);
+        nodes.push(lfo, lfoGain);
+    }
 
     filter.Q.value = finalQ;
     if (preset.pluckBrightness > 0) {
