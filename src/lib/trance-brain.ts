@@ -2,7 +2,7 @@
  * @fileOverview Trance Brain V83.0 — "Silicon Priority Protocol".
  * #ЗАЧЕМ: Реализация ПЛАНА №1815. Внедрение хирургического лимитера и Tier-приоритизации.
  * #ЧТО: Физическое удаление избыточных нот на основе их важности и текущего BPM.
- * #ОБНОВЛЕНО (ПЛАН №1995): Системное снижение громкости киков (1.15 -> 0.80).
+ * #ОБНОВЛЕНО (ПЛАН №1996): Вторичное снижение громкости киков (0.80 -> 0.60).
  */
 
 import type {
@@ -104,64 +104,6 @@ export class TranceBrain {
         if (this.isImprovising) return calculateMusiNum(epoch + startOffset, 7, this.seed, totalBars);
         const barsElapsed = epoch - startEpoch;
         return (barsElapsed + startOffset) % totalBars;
-    }
-
-    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
-        this.currentAccompAxioms = [];
-        this.currentBassTheme = null;
-        this.currentTheme = null;
-        
-        if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
-
-        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
-        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
-        
-        let filteredPool = effectiveAnchor 
-            ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
-            : poolToUse.filter(ax => {
-                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
-            });
-
-        if (filteredPool.length > 0) {
-            let basePool = filteredPool.filter(ax => ax.role === 'melody');
-            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
-
-            if (basePool.length > 0) {
-                if (!effectiveAnchor) {
-                    const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                }
-
-                const baseBars = Math.max(4, ...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
-                const sameOffsetPool = filteredPool.filter(ax => (ax.barOffset || 0) === targetOffset && (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')));
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)] : basePool[0];
-
-                if (selected) {
-                    this.currentTrackName = selected.compositionId;
-                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-                    const cid = normalizeStr(selected.compositionId);
-                    
-                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
-
-                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
-
-                    const axiomBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
-                    this.soloistBusyUntilBar = epoch + axiomBars;
-                    return selected.nativeBpm || undefined;
-                }
-            }
-        }
-        this.currentTrackName = 'Algorithmic';
-        this.soloistBusyUntilBar = epoch + 4;
-        return undefined;
     }
 
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
@@ -281,8 +223,8 @@ export class TranceBrain {
         const snareSample = kit.snare[0] || 'drum_snare';
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
         
-        // #ЗАЧЕМ: Снижение громкости кика (ПЛАН №1995).
-        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.80, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        // #ЗАЧЕМ: Снижение громкости кика (ПЛАН №1996).
+        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.60, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
