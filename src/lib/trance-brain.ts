@@ -1,8 +1,7 @@
 /**
- * @fileOverview Trance Brain V84.0 — "Tier Hierarchy Reform".
- * #ЗАЧЕМ: Реализация ПЛАНА №2000. Перенос Золотых Нот в Tier 0 и разделение аккомпанемента/гармонии.
- * #ЧТО: Золотые ноты мелодии теперь считаются фундаментом (Tier 0).
- * #ОБНОВЛЕНО (ПЛАН №1996): Вес кика зафиксирован на 0.60.
+ * @fileOverview Trance Brain V84.1 — "Pianist Calibration".
+ * #ЗАЧЕМ: Реализация запроса на снижение громкости пианиста в 2 раза.
+ * #ЧТО: Вес событий pianoAccompaniment снижен до 0.375.
  */
 
 import type {
@@ -171,7 +170,6 @@ export class TranceBrain {
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
         
-        // Physical deletion for Trance Silicon Balance
         return notes.filter(n => this.isGolden(n.t));
     }
 
@@ -246,22 +244,16 @@ export class TranceBrain {
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
-        // ───── REFORMED SILICON BALANCE PROTECTOR (V84.0) ─────
         const maxEvents = Math.floor(100 * (120 / bpm));
         
         const prioritizedEvents = events.map(e => {
-            let tier = 3; // Default: Atmos & SFX
+            let tier = 3;
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             const type = String(rawType).toLowerCase();
             
-            // Tier 0: The Eternal Grid (Rhythm + Golden Melody)
             if (type.includes('kick') || type === 'bass' || type.includes('snare')) tier = 0; 
             else if (type === 'melody' && this.isGolden(e.time / TICK_TO_BEAT)) tier = 0; 
-            
-            // Tier 1: Core Harmonic Cloud
             else if (type === 'accompaniment') tier = 1; 
-            
-            // Tier 2: Decorative Elements
             else if (['harmony', 'pianoaccompaniment'].includes(type)) tier = 2; 
             
             return { ...e, tier };
@@ -357,7 +349,7 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
             melodyEvents.forEach((m) => {
-                 events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.75, technique: 'hit' });
+                 events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.375, technique: 'hit' });
             });
             return { events, style: 'Golden Support' };
         }
