@@ -1,7 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.0 — "Global Mutation Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1440. Включение транспозиции, ретрограда, фазового сдвига и защитных алгоритмов.
- * #ОБНОВЛЕНО (ПЛАН №1996): Вторичное снижение громкости киков (0.80 -> 0.60).
+ * @fileOverview Dark Foundry Brain V4.1 — "Pianist Calibration & Thinning".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2010. Снижение громкости пианиста в 2 раза и внедрение "Золотой Сети" для разрядки партии.
  */
 
 import type {
@@ -67,6 +66,7 @@ export class DarkFoundryBrain {
     private microTransposition: number = 0;
 
     private readonly MELODY_CEILING = 88;
+    private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -74,6 +74,11 @@ export class DarkFoundryBrain {
         this.genre = genre;
         this.useHeritage = useHeritage;
         this.rng = new SeededRNG(seed);
+    }
+
+    private isGolden(tick: number): boolean {
+        const relT = ((tick % TICKS_PER_BAR) + TICKS_PER_BAR) % TICKS_PER_BAR;
+        return this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
@@ -160,7 +165,6 @@ export class DarkFoundryBrain {
         return undefined;
     }
 
-    /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
         let notes = [...phrase];
         if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
@@ -245,7 +249,14 @@ export class DarkFoundryBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
-                const renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                
+                // #ЗАЧЕМ: ПЛАН №2010. Разрядка партии пианиста.
+                if (target === 'pianoAccompaniment') {
+                    renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
+                    renders.forEach(n => n.weight = 0.375); 
+                }
+                
                 events.push(...renders); 
                 usedTargetLayers.add(target);
             }
@@ -262,7 +273,12 @@ export class DarkFoundryBrain {
 
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            if (p.events.length > 0) events.push(...p.events); 
+            if (p.events.length > 0) {
+                // #ЗАЧЕМ: ПЛАН №2010. Разрядка генеративного пианиста.
+                const thinned = p.events.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
+                thinned.forEach(n => n.weight = 0.375);
+                events.push(...thinned); 
+            }
         }
 
         // 4. ATMOSPHERIC
@@ -284,7 +300,6 @@ export class DarkFoundryBrain {
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
         const rideSample = kit.ride[0] || 'drum_ride_wetter';
 
-        // #ЗАЧЕМ: Снижение громкости кика (ПЛАН №1996).
         [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.60, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
@@ -396,7 +411,17 @@ export class DarkFoundryBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
-            melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.75, technique: 'hit' }); });
+            melodyEvents.forEach((m, i) => { 
+                if (i % 2 === 0) {
+                    events.push({ 
+                        ...m, 
+                        type: 'pianoAccompaniment', 
+                        note: this.constrainAccompanimentOctave(m.note + 7), 
+                        weight: 0.375, 
+                        technique: 'hit' 
+                    });
+                }
+            });
             return { events, style: 'Shadow Support' };
         }
         return { events: [], style: 'none' };

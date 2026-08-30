@@ -1,7 +1,6 @@
 /**
- * @fileOverview Trance Brain V84.1 — "Pianist Calibration".
- * #ЗАЧЕМ: Реализация запроса на снижение громкости пианиста в 2 раза.
- * #ЧТО: Вес событий pianoAccompaniment снижен до 0.375.
+ * @fileOverview Trance Brain V85.0 — "Pure Golden Piano".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2010. Фильтрация пианиста по правилу "короче 1/8 -> только золотой тик".
  */
 
 import type {
@@ -151,6 +150,9 @@ export class TranceBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
@@ -228,7 +230,14 @@ export class TranceBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
-                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar));
+                let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                
+                // #ЗАЧЕМ: ПЛАН №2010. Разрядка партии пианиста.
+                if (target === 'pianoAccompaniment') {
+                    renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
+                }
+                
+                events.push(...renders); 
                 usedTargetLayers.add(target);
             }
         });
@@ -239,7 +248,11 @@ export class TranceBrain {
 
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
-            if (p.events.length > 0) events.push(...p.events); 
+            if (p.events.length > 0) {
+                // #ЗАЧЕМ: ПЛАН №2010. Разрядка генеративного пианиста.
+                const thinned = p.events.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
+                events.push(...thinned); 
+            }
         }
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
@@ -269,7 +282,7 @@ export class TranceBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Hierarchy' },
-            narrative: `Tier V84: [0:${finalEvents.filter(e => e.tier === 0).length}] [1:${finalEvents.filter(e => e.tier === 1).length}] [2:${finalEvents.filter(e => e.tier === 2).length}]`
+            narrative: `Tier V85: [0:${finalEvents.filter(e => e.tier === 0).length}] [1:${finalEvents.filter(e => e.tier === 1).length}] [2:${finalEvents.filter(e => e.tier === 2).length}]`
         };
     }
 
