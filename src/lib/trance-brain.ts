@@ -1,7 +1,7 @@
 /**
- * @fileOverview Trance Brain V82.0 — "Pure Golden Note Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1815. Физическое удаление декоративных нот для экономии ресурсов.
- * #ЧТО: Ноты вне сетки 0,3,6,9 теперь фильтруются (удаляются) во всех слоях, включая Piano.
+ * @fileOverview Trance Brain V83.0 — "Silicon Priority Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1815. Внедрение хирургического лимитера и Tier-приоритизации.
+ * #ЧТО: Физическое удаление избыточных нот на основе их важности и текущего BPM.
  */
 
 import type {
@@ -63,7 +63,7 @@ export class TranceBrain {
     private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private soloistBusyUntilBar: number = -1;
-    private soloistRestUntilBar: number = -1; // #ЗАЧЕМ: Усиление мелодии
+    private soloistRestUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
 
@@ -76,7 +76,10 @@ export class TranceBrain {
         this.genre = genre;
         this.useHeritage = useHeritage;
         this.rng = new SeededRNG(seed);
+        this.ctx = { epoch: 0, tension: 0.5 };
     }
+
+    private ctx: { epoch: number; tension: number };
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
         this.cloudAxioms = axioms || [];
@@ -169,7 +172,7 @@ export class TranceBrain {
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
         
-        // #ЗАЧЕМ: Физическое удаление промежуточных нот.
+        // #ЗАЧЕМ: ПЛАН №1815. Физическая фильтрация золотых нот.
         return notes.filter(n => {
             const relT = n.t % TICKS_PER_BAR;
             return this.isGolden(relT);
@@ -178,6 +181,7 @@ export class TranceBrain {
 
     public generateBar(epoch: number, currentChord: GhostChord, navInfo: NavigationInfo, dna: SuiteDNA, hints: InstrumentHints): any {
         const tension = dna.tensionMap?.[epoch] ?? 0.5;
+        const bpm = dna.baseTempo || 75;
         const kit = DRUM_KITS.foundry[this.mood as any] || DRUM_KITS.foundry.melancholic;
 
         if (epoch % 4 === 0) {
@@ -192,15 +196,14 @@ export class TranceBrain {
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
-        // #ЗАЧЕМ: Усиление мелодической линии (минимальный отдых)
         if (this.soloistRestUntilBar <= epoch) {
-            if (this.rng.chance(1)) this.soloistRestUntilBar = epoch + 1; // Всего 1% шанс отдыха
+            if (this.rng.chance(1)) this.soloistRestUntilBar = epoch + 1; 
         }
         const isResting = epoch < this.soloistRestUntilBar;
 
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
-        const events: FractalEvent[] = [];
+        let events: FractalEvent[] = [];
 
         const ensembleAnchor = this.currentTheme ? this.currentTheme.startBar : epoch;
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
@@ -220,8 +223,8 @@ export class TranceBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            // #ЗАЧЕМ: Агрессивное наслоение мелодии
-            if (melodyEvents.length === 0 || this.rng.chance(45)) {
+            // #ЗАЧЕМ: Снижение шанса наслоения для облегчения микса.
+            if (melodyEvents.length === 0 || this.rng.chance(20)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
             events.push(...melodyEvents); 
@@ -232,8 +235,7 @@ export class TranceBrain {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && hints[target] && !usedTargetLayers.has(target)) {
-                const renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                events.push(...renders); 
+                events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar));
                 usedTargetLayers.add(target);
             }
         });
@@ -249,12 +251,33 @@ export class TranceBrain {
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
+        // ───── SILICON BALANCE PROTECTOR: TIERED LIMITER ─────
+        // #ЗАЧЕМ: ПЛАН №1815. Физическое удаление событий сверх лимита.
+        const maxEvents = Math.floor(100 * (120 / bpm));
+        
+        const prioritizedEvents = events.map(e => {
+            let tier = 3; // Default: Atmos/SFX
+            const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
+            const type = String(rawType).toLowerCase();
+            
+            if (type.includes('kick') || type === 'bass' || type.includes('snare')) tier = 0; // Vital
+            else if (type === 'melody' && this.isGolden(e.time / TICK_TO_BEAT)) tier = 1; // Core Melody
+            else if (['accompaniment', 'harmony', 'pianoaccompaniment'].includes(type)) tier = 2; // Support
+            
+            return { ...e, tier };
+        });
+
+        const finalEvents = prioritizedEvents
+            .sort((a, b) => a.tier - b.tier)
+            .slice(0, maxEvents)
+            .sort((a, b) => a.time - b.time);
+
         return {
-            events, tension, beautyScore: 0.95,
+            events: finalEvents, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Logic' },
-            narrative: `Neuro Space Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            narrative: `Neuro Space Evolution: ${this.currentTrackName} [Events: ${finalEvents.length}/${maxEvents}]`
         };
     }
 
@@ -274,7 +297,6 @@ export class TranceBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
-        // #ЗАЧЕМ: Бас в трансе всегда на сильных долях
         [0, 3, 6, 9].forEach(t => {
             events.push({
                 type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 1.0 * TICK_TO_BEAT,
@@ -306,7 +328,6 @@ export class TranceBrain {
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         
-        // Физическая фильтрация золотых нот
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR && this.isGolden(n.t - offset)).map(n => ({
             type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
             time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5,
@@ -335,7 +356,6 @@ export class TranceBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
-            // #ЗАЧЕМ: Золотая нота для пианиста (строгий фильтр 0,3,6,9)
             melodyEvents.filter(m => this.isGolden(m.time / TICK_TO_BEAT)).forEach((m) => {
                  events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.75, technique: 'hit' });
             });
@@ -347,7 +367,6 @@ export class TranceBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
-        // #ЗАЧЕМ: Шиммер тоже подчиняется золотому правилу
         return [0, 3, 6, 9].filter(() => this.rng.chance(55 + tension * 30)).map(t => ({
             type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
             time: t * TICK_TO_BEAT, duration: 0.8 * TICK_TO_BEAT, weight: 0.9, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
