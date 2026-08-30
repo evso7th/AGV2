@@ -1,4 +1,5 @@
-# DNA Rules: The Heritage Codex (v1.4 "Cyclic Eternity")
+
+# DNA Rules: The Heritage Codex (v1.5 "Silicon Integrity")
 
 1.  **Dual Mode Operation**: The engine exclusively uses 'DNA Anchor' (manual selection) and 'Composer' (heritage-enabled free play) modes.
 2.  **Strict Channel Routing**: In Anchor mode, axioms must play exactly as recorded through their assigned channels: Bass, Melody, Accompaniment, Harmony, and Rhodes.
@@ -21,5 +22,6 @@
 19. **DNA INTERFACE SANCTITY**: КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ ТРОГАТЬ СИСТЕМУ ЛОГИРОВАНИЯ И ИНТЕРФЕЙС DNA.
 20. **ANCHOR PERSISTENCE**: The active DNA Anchor must remain strictly locked during Pause/Play cycles.
 21. **NARRATIVE SCALING**: The engine supports `timeScale` parameter. For Solo/Melody, this expands the reading window of the Axiom while slowing down the playback, creating 'laid-back' feel.
-22. **GOLDEN NOTE SUPREMACY**: In high-density passages, notes on strong beats (0, 3, 6, 9) must be preserved and enhanced (vibrato, duration), while others become ghost notes (30% weight).
-23. **Infinite Journey Loop (MUST HAVE)**: The playback queue (Route) is required to operate in a continuous cycle. Upon reaching the end of the sequence, the engine must automatically restart from the first item. Each loop iteration must generate a new unique Seed to ensure variety within the fixed structure.
+22. **GOLDEN NOTE SUPREMACY**: In high-density passages (Trance, Foundry), notes on strong beats (0, 3, 6, 9) must be preserved and enhanced, while others are physically deleted to ensure performance.
+23. **Infinite Journey Loop (MUST HAVE)**: The playback queue (Route) is required to operate in a continuous cycle. Upon reaching the end of the sequence, the engine must automatically restart from the first item. Each loop iteration must generate a new unique Seed.
+24. **MELODY PERSISTENCE**: In Trance/Foundry, Heritage Melody (Axiom) ignores "resting" periods. It must play as long as the axiom defines.
