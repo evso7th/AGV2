@@ -1,7 +1,7 @@
 /**
- * @fileOverview Psybient Brain V72.0 — "Silicon Stability Fix".
- * #ЗАЧЕМ: Исправление критического бага (тишина и остановка тактов).
- * #ЧТО: ПЛАН №1801. Добавлены null-checks, импорты тайминга и защищенный лимитер.
+ * @fileOverview Psybient Brain V73.0 — "Melodic Density Boost".
+ * #ЗАЧЕМ: Повышение частоты использования мелодии и арпеджио.
+ * #ЧТО: Сокращение пауз солиста, увеличение шанса наслоения Shimmer Arp.
  */
 
 import type {
@@ -64,6 +64,7 @@ export class TranceBrain {
     private sessionAnchorId: string | null = null; 
     private currentNativeRoot: number | null = null;
     private soloistBusyUntilBar: number = -1;
+    private soloistRestingUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
 
@@ -146,7 +147,14 @@ export class TranceBrain {
             else this.currentMutationType = 'velocity_curve';
         }
 
-        if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
+        const isSoloistFree = epoch >= this.soloistBusyUntilBar;
+        if (isSoloistFree && this.soloistRestingUntilBar <= epoch) {
+            // #ЗАЧЕМ: ПЛАН №1802. Снижение вероятности отдыха с 8% до 2% для более частых мелодий.
+            if (this.rng.next() < 0.02 || tension < 0.05) this.soloistRestingUntilBar = epoch + 1; 
+        }
+        const isSoloistResting = epoch < this.soloistRestingUntilBar;
+
+        if (isSoloistFree && !isSoloistResting) this.selectNextAxiom(navInfo, dna, epoch);
 
         const resRoot = (this.currentNativeRoot !== null) ? this.currentNativeRoot : currentChord.rootNote;
         const resChord = { ...currentChord, rootNote: resRoot };
@@ -169,11 +177,12 @@ export class TranceBrain {
 
         // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
         let melodyEvents: FractalEvent[] = [];
-        if (hints.melody) {
+        if (hints.melody && !isSoloistResting) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            if (melodyEvents.length === 0 || this.rng.chance(15)) {
+            // #ЗАЧЕМ: ПЛАН №1802. Повышение шанса наслоения арпеджио до 35%.
+            if (melodyEvents.length === 0 || this.rng.chance(35)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
             events.push(...melodyEvents); 
@@ -208,7 +217,7 @@ export class TranceBrain {
         // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
-        // ───── SILICON BALANCE PROTECTOR (PLAN #1801) ─────
+        // ───── SILICON BALANCE PROTECTOR ─────
         const currentBpm = dna.baseTempo || 120;
         const maxEvents = Math.max(20, Math.floor(100 * (120 / currentBpm)));
 
@@ -217,24 +226,15 @@ export class TranceBrain {
                 const rawType = Array.isArray(e.type) ? String(e.type[0]) : String(e.type);
                 const tick = (e.time || 0) / (TICK_TO_BEAT || 0.333);
                 const isGoldenTick = [0, 3, 6, 9].some(gt => Math.abs(tick - gt) < 0.1);
-                
                 let tier = 3; 
                 const lowType = rawType.toLowerCase();
-                
-                if (lowType.includes('kick') || lowType.includes('snare') || lowType === 'bass') {
-                    tier = 0; 
-                } else if (lowType === 'melody' && isGoldenTick) {
-                    tier = 1; 
-                } else if (['accompaniment', 'harmony', 'pianoAccompaniment'].includes(lowType)) {
-                    tier = 2; 
-                }
-                
+                if (lowType.includes('kick') || lowType.includes('snare') || lowType === 'bass') tier = 0; 
+                else if (lowType === 'melody' && isGoldenTick) tier = 1; 
+                else if (['accompaniment', 'harmony', 'pianoAccompaniment'].includes(lowType)) tier = 2; 
                 return { event: e, tier };
             });
-
             prioritized.sort((a, b) => a.tier - b.tier);
             const limited = prioritized.slice(0, maxEvents).map(p => p.event);
-            
             events.length = 0;
             events.push(...limited.sort((a, b) => (a.time || 0) - (b.time || 0)));
         }
@@ -243,7 +243,7 @@ export class TranceBrain {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Silicon Stable' },
+            activeAxioms: { melody: isSoloistResting ? 'Breath' : (this.currentTheme ? this.currentTheme.id : 'Neuro Arp'), ensemble: 'Silicon Stable' },
             narrative: `Neuro Space Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
     }
@@ -308,8 +308,7 @@ export class TranceBrain {
 
     private renderNeuroDrums(epoch: number, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const kickSample = 'drum_kick_drum6';
-        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        [0, 3, 6, 9].forEach(t => events.push({ type: 'drum_kick_drum6', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.05, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: 'drum_open_hh_top2', note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.45, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         return events;
@@ -423,7 +422,8 @@ export class TranceBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
-        const gate = (40 + tension * 40) * (tension < 0.4 ? 0.5 : 1.0);
+        // #ЗАЧЕМ: ПЛАН №1802. Повышение базовой плотности арпеджио до 55.
+        const gate = (55 + tension * 35) * (tension < 0.4 ? 0.5 : 1.0);
         return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(gate)).map(t => ({ type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)], time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.6, technique: 'pick', dynamics: 'p', phrasing: 'staccato' }));
     }
 
@@ -439,4 +439,3 @@ export class TranceBrain {
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
     private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
-
