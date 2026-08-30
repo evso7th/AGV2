@@ -1,8 +1,9 @@
 /**
- * @fileOverview Drum Fill Registry & Shadow Drummer Engine V2.0
+ * @fileOverview Drum Fill Registry & Shadow Drummer Engine V2.1
  * #ЗАЧЕМ: ПЛАН №2150 — "Call & Response" Protocol.
  * #ЧТО: 1. Добавлен Melody Guard: сбивка отменяется, если мелодия активна.
  *       2. Добавлены виртуозные паттерны на основе нотной транскрипции (Linear Six, Sync Accents).
+ *       3. ПЛАН №1820: Интенсификация сбивок для Trance/Foundry (каждые 4 такта, без Melody Guard).
  */
 
 import type { FractalEvent, Technique } from '@/types/music';
@@ -14,6 +15,7 @@ import { TICK_TO_BEAT } from '../music-theory';
 
 export const FILL_CONFIG = {
     triggerEveryNBars: 8,       
+    tranceTriggerEveryNBars: 4,  // #ЗАЧЕМ: ПЛАН №1820. Удвоенная частота для транса.
     tensionThreshold: 0.85,     
     historyLimit: 6,            
     excludedGenres: ['ambient'], 
@@ -103,23 +105,26 @@ export class ShadowDrummer {
     ): FractalEvent[] {
         if (FILL_CONFIG.excludedGenres.includes(genre)) return events;
 
+        const isTrance = genre === 'psybient' || genre === 'foundry';
+
         // --- 1. MELODY GUARD (CALL & RESPONSE) ---
         // #ЗАЧЕМ: Сбивка — это ОТВЕТ. Если мелодия активна в конце такта, барабанщик молчит.
-        const melodyInFillZone = events.some(e => {
+        // #ЧТО: ПЛАН №1820. Для транса отключаем заслон, так как там наслоение - норма.
+        const melodyInFillZone = !isTrance && events.some(e => {
             const type = Array.isArray(e.type) ? e.type : [e.type];
             return type.includes('melody') && e.time >= (FILL_CONFIG.melodyGuardThreshold * TICK_TO_BEAT);
         });
 
         if (melodyInFillZone) {
-            // Если мелодия играет, мы не делаем сбивку, даже если пора.
             return events;
         }
 
-        const isTimeForFill = (barCount + 1) % FILL_CONFIG.triggerEveryNBars === 0;
+        const interval = isTrance ? FILL_CONFIG.tranceTriggerEveryNBars : FILL_CONFIG.triggerEveryNBars;
+        const isTimeForFill = (barCount + 1) % interval === 0;
         const isExtremeTension = tension >= FILL_CONFIG.tensionThreshold;
         
         // --- 2. PICKUP LOGIC (Bar BEFORE Fill) ---
-        const isPreFill = (barCount + 2) % FILL_CONFIG.triggerEveryNBars === 0;
+        const isPreFill = (barCount + 2) % interval === 0;
         if (isPreFill) {
             const pickup: FractalEvent = {
                 type: 'drum_snare',
@@ -135,7 +140,7 @@ export class ShadowDrummer {
         }
 
         // --- 3. LANDING LOGIC (Bar AFTER Fill) ---
-        const isPostFill = barCount % FILL_CONFIG.triggerEveryNBars === 0 && barCount > 0;
+        const isPostFill = barCount % interval === 0 && barCount > 0;
         if (isPostFill) {
             const landing: FractalEvent = {
                 type: 'drum_crash2',
