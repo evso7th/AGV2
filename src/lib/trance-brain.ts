@@ -2,6 +2,7 @@
  * @fileOverview Trance Brain V83.0 — "Silicon Priority Protocol".
  * #ЗАЧЕМ: Реализация ПЛАНА №1815. Внедрение хирургического лимитера и Tier-приоритизации.
  * #ЧТО: Физическое удаление избыточных нот на основе их важности и текущего BPM.
+ * #ОБНОВЛЕНО (ПЛАН №1995): Системное снижение громкости киков (1.15 -> 0.80).
  */
 
 import type {
@@ -76,10 +77,11 @@ export class TranceBrain {
         this.genre = genre;
         this.useHeritage = useHeritage;
         this.rng = new SeededRNG(seed);
-        this.ctx = { epoch: 0, tension: 0.5 };
     }
 
-    private ctx: { epoch: number; tension: number };
+    private isGolden(tick: number): boolean {
+        return this.GOLDEN_TICKS.some(gt => Math.abs(tick - gt) < 0.1);
+    }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
         this.cloudAxioms = axioms || [];
@@ -87,10 +89,6 @@ export class TranceBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
-    }
-
-    private isGolden(tick: number): boolean {
-        return this.GOLDEN_TICKS.some(gt => Math.abs(tick - gt) < 0.1);
     }
 
     private phraseBarCount(phrase: any[]): number {
@@ -172,7 +170,6 @@ export class TranceBrain {
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
         
-        // #ЗАЧЕМ: ПЛАН №1815. Физическая фильтрация золотых нот.
         return notes.filter(n => {
             const relT = n.t % TICKS_PER_BAR;
             return this.isGolden(relT);
@@ -223,7 +220,6 @@ export class TranceBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            // #ЗАЧЕМ: Снижение шанса наслоения для облегчения микса.
             if (melodyEvents.length === 0 || this.rng.chance(20)) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
@@ -251,18 +247,16 @@ export class TranceBrain {
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
-        // ───── SILICON BALANCE PROTECTOR: TIERED LIMITER ─────
-        // #ЗАЧЕМ: ПЛАН №1815. Физическое удаление событий сверх лимита.
         const maxEvents = Math.floor(100 * (120 / bpm));
         
         const prioritizedEvents = events.map(e => {
-            let tier = 3; // Default: Atmos/SFX
+            let tier = 3; 
             const rawType = Array.isArray(e.type) ? e.type[0] : e.type;
             const type = String(rawType).toLowerCase();
             
-            if (type.includes('kick') || type === 'bass' || type.includes('snare')) tier = 0; // Vital
-            else if (type === 'melody' && this.isGolden(e.time / TICK_TO_BEAT)) tier = 1; // Core Melody
-            else if (['accompaniment', 'harmony', 'pianoaccompaniment'].includes(type)) tier = 2; // Support
+            if (type.includes('kick') || type === 'bass' || type.includes('snare')) tier = 0; 
+            else if (type === 'melody' && this.isGolden(e.time / TICK_TO_BEAT)) tier = 1; 
+            else if (['accompaniment', 'harmony', 'pianoaccompaniment'].includes(type)) tier = 2; 
             
             return { ...e, tier };
         });
@@ -287,7 +281,8 @@ export class TranceBrain {
         const snareSample = kit.snare[0] || 'drum_snare';
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
         
-        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        // #ЗАЧЕМ: Снижение громкости кика (ПЛАН №1995).
+        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.80, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         

@@ -1,6 +1,7 @@
 /**
  * @fileOverview Dark Foundry Brain V4.0 — "Global Mutation Sync".
  * #ЗАЧЕМ: Реализация ПЛАНА №1440. Включение транспозиции, ретрограда, фазового сдвига и защитных алгоритмов.
+ * #ОБНОВЛЕНО (ПЛАН №1995): Системное снижение громкости киков (1.15 -> 0.80).
  */
 
 import type {
@@ -143,6 +144,9 @@ export class DarkFoundryBrain {
                     const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
+                    const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
+
                     const axiomBars = selected.bars || 4;
                     this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
                     this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
@@ -280,7 +284,8 @@ export class DarkFoundryBrain {
         const hatSample = kit.hihat[0] || 'drum_open_hh_top2';
         const rideSample = kit.ride[0] || 'drum_ride_wetter';
 
-        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 1.15, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
+        // #ЗАЧЕМ: Снижение громкости кика (ПЛАН №1995).
+        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.80, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
         [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({ type: hatSample as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'staccato' }));
         [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.95, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
         
@@ -430,5 +435,5 @@ export class DarkFoundryBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }
