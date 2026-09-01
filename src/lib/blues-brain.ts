@@ -1,6 +1,6 @@
 /**
- * @fileOverview Blues Brain V82.0 — "Global Mutation Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1440. Внедрение Density Guard и Velocity Curve.
+ * @fileOverview Blues Brain V83.0 — "Internal Rotation Law".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
  */
 
 import {
@@ -91,21 +91,15 @@ export class BluesBrain {
   private currentTrackName: string = 'Local';
   private sessionAnchorId: string | null = null; 
   private ensembleStatus: 'SIBLING' | 'ADAPTIVE' | 'LOCAL' = 'ADAPTIVE';
-  private pianistMode: 'rhodes' | 'acoustic' = 'rhodes';
-
-  private readonly MELODY_CEILING = 72;
-  private readonly BASS_FLOOR = 31;
-  private readonly BASS_CEILING = 47;
 
   private soloistBusyUntilBar: number = -1;
   private soloistRestingUntilBar: number = -1;
-  private accompanimentRestingUntilBar: number = -1;
 
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
 
   private activeHarmonyInstrument: 'violin' | 'guitarChords' = 'guitarChords';
-  private lastHarmonySwitchBar: number = -1;
+  private lickHistory: string[] = [];
 
   private state: BluesCognitiveState & {
       lastMutationType: string,
@@ -282,14 +276,27 @@ export class BluesBrain {
                   basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
               }
 
-              const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+              const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
               const tension = dna.tensionMap?.[epoch] ?? 0.5;
               const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+              
               const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-              const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
-              const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
+              const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+
+              let selected = null;
+              if (freshLicks.length > 0) {
+                  selected = freshLicks[this.random.nextInt(freshLicks.length)];
+              } else if (sameOffsetPool.length > 0) {
+                  selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
+              } else {
+                  const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                  selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+              }
 
               if (selected) {
+                  this.lickHistory.push(selected.id);
+                  if (this.lickHistory.length > 50) this.lickHistory.shift();
+
                   this.currentTrackName = selected.compositionId;
                   this.currentLickId = selected.id || 'DNA-Lick';
                   this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
@@ -308,9 +315,6 @@ export class BluesBrain {
                       role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument
                   }));
 
-                  const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
-                  this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
-
                   const baseBars = selected.bars || 4;
                   this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
                   this.currentAxiom = rawPhrase;
@@ -325,7 +329,6 @@ export class BluesBrain {
       return undefined;
   }
 
-  /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
   private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
       let notes = [...phrase];
       if (this.state.lastMutationType === 'inversion') notes = invertPhrase(notes);

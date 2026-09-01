@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.1 — "Pianist Calibration & Thinning".
- * #ЗАЧЕМ: Реализация ПЛАНА №2010. Снижение громкости пианиста в 2 раза и внедрение "Золотой Сети" для разрядки партии.
+ * @fileOverview Dark Foundry Brain V4.2 — "Internal Rotation Law".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
  */
 
 import type {
@@ -57,6 +57,7 @@ export class DarkFoundryBrain {
     private currentAxiomMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
+    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
@@ -64,6 +65,7 @@ export class DarkFoundryBrain {
     private soloistBusyUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
+    private lickHistory: string[] = [];
 
     private readonly MELODY_CEILING = 88;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
@@ -85,7 +87,7 @@ export class DarkFoundryBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -130,15 +132,32 @@ export class DarkFoundryBrain {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                const baseBars = Math.max(4, ...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                // #ЗАЧЕМ: Закон Внутренней Ротации.
+                const baseBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
-                const sameOffsetPool = filteredPool.filter(ax => (ax.barOffset || 0) === targetOffset && (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')));
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)] : basePool[0];
+                
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+
+                let selected = null;
+                if (freshLicks.length > 0) {
+                    selected = freshLicks[this.rng.nextInt(freshLicks.length)];
+                } else if (sameOffsetPool.length > 0) {
+                    selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
+                } else {
+                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
+                }
 
                 if (selected) {
+                    this.lickHistory.push(selected.id);
+                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     const cid = normalizeStr(selected.compositionId);

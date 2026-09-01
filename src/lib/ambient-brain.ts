@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V117.0 — "Global Mutation Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1440. Внедрение новых типов мутаций и транспозиции.
+ * @fileOverview Ambient Brain V118.0 — "Internal Rotation Law".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
  */
 
 import type {
@@ -42,8 +42,6 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-
 export class AmbientBrain {
     private seed: number;
     private mood: Mood;
@@ -69,12 +67,10 @@ export class AmbientBrain {
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
 
-    // #ЗАЧЕМ: ПЛАН №1267. Межтактовая память для борьбы с гудением.
     private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
+    private lickHistory: string[] = [];
 
     private readonly MELODY_CEILING = 88;
-    private readonly BASS_FLOOR = 31;
-    private readonly BASS_CEILING = 47;
 
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
@@ -103,79 +99,6 @@ export class AmbientBrain {
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
         if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
-    }
-
-    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
-        if (e.chordName) return [e]; 
-        if (e.duration < 5.0) return [e]; 
-
-        const rippled: FractalEvent[] = [];
-        const useLick = this.random.next() < 0.50; 
-        
-        const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
-        const chunkDur = e.duration / numChunks;
-        
-        const baseMidi = e.note;
-        const isMinor = chord.chordType === 'minor';
-        const neighborSemitone = isMinor ? 3 : 2; 
-
-        for (let i = 0; i < numChunks; i++) {
-            const jitter = 0.9 + (this.random.next() * 0.2 - 0.1); 
-            let note = baseMidi;
-            if (useLick && i === 1 && numChunks >= 3) {
-                note += neighborSemitone;
-            }
-
-            rippled.push({
-                ...e,
-                note: note,
-                time: e.time + (i * chunkDur),
-                duration: chunkDur * 1.2, 
-                weight: e.weight * jitter,
-                technique: i === 0 ? e.technique : 'hit',
-                params: { 
-                    ...e.params, 
-                    attack: i === 0 ? (e.params?.attack || 0.8) : 0.8, 
-                    release: 2.5,
-                    filterCutoff: 800 + (this.random.next() * 1200) 
-                }
-            });
-        }
-        return rippled;
-    }
-
-    private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
-        if (events.length === 0) return events;
-
-        const primary = events.find(e => e.time === 0) || events[0];
-        const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
-
-        if (primary.note === state.midi) {
-            state.barCount++;
-        } else {
-            state.midi = primary.note;
-            state.barCount = 1;
-        }
-        this.heldNotesState.set(part, state);
-
-        if (state.barCount >= 3) {
-            state.barCount = 0; 
-            const strategy = this.random.nextInt(3);
-
-            if (strategy === 0) {
-                return []; 
-            } else if (strategy === 1) {
-                return events.map(e => ({ 
-                    ...e, 
-                    note: e.note + 7, 
-                    params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
-                }));
-            } else {
-                return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
-            }
-        }
-
-        return events;
     }
 
     private getMosaicIndex(epoch: number, startEpoch: number, totalBars: number, tension: number): number {
@@ -217,16 +140,32 @@ export class AmbientBrain {
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
                     filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                const maxDonorBars = Math.max(...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                // #ЗАЧЕМ: Закон Внутренней Ротации.
+                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                 
-                const sameOffsetPool = filteredPool.filter(ax => (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')) && (ax.barOffset || 0) === targetOffset);
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[this.random.nextInt(sameOffsetPool.length)] : basePool[0];
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                
+                let selected = null;
+                if (freshLicks.length > 0) {
+                    selected = freshLicks[this.random.nextInt(freshLicks.length)];
+                } else if (sameOffsetPool.length > 0) {
+                    selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
+                } else {
+                    // Fallback to any fresh lick in the track
+                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+                }
 
                 if (selected) {
+                    this.lickHistory.push(selected.id);
+                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
@@ -256,7 +195,6 @@ export class AmbientBrain {
         return undefined;
     }
 
-    /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
         let notes = [...phrase];
         if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
@@ -353,7 +291,7 @@ export class AmbientBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedLayers.has(target)) {
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
@@ -404,6 +342,79 @@ export class AmbientBrain {
             activeAxioms: layerAxioms,
             narrative: `Ambient Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
+    }
+
+    private rippleLongNote(e: FractalEvent, chord: GhostChord, chunkDurBase: number = 1.5): FractalEvent[] {
+        if (e.chordName) return [e]; 
+        if (e.duration < 5.0) return [e]; 
+
+        const rippled: FractalEvent[] = [];
+        const useLick = this.random.next() < 0.50; 
+        
+        const numChunks = Math.max(2, Math.ceil(e.duration / chunkDurBase));
+        const chunkDur = e.duration / numChunks;
+        
+        const baseMidi = e.note;
+        const isMinor = chord.chordType === 'minor';
+        const neighborSemitone = isMinor ? 3 : 2; 
+
+        for (let i = 0; i < numChunks; i++) {
+            const jitter = 0.9 + (this.random.next() * 0.2 - 0.1); 
+            let note = baseMidi;
+            if (useLick && i === 1 && numChunks >= 3) {
+                note += neighborSemitone;
+            }
+
+            rippled.push({
+                ...e,
+                note: note,
+                time: e.time + (i * chunkDur),
+                duration: chunkDur * 1.2, 
+                weight: e.weight * jitter,
+                technique: i === 0 ? e.technique : 'hit',
+                params: { 
+                    ...e.params, 
+                    attack: i === 0 ? (e.params?.attack || 0.8) : 0.8, 
+                    release: 2.5,
+                    filterCutoff: 800 + (this.random.next() * 1200) 
+                }
+            });
+        }
+        return rippled;
+    }
+
+    private applyAntiPedal(part: string, events: FractalEvent[], chord: GhostChord): FractalEvent[] {
+        if (events.length === 0) return events;
+
+        const primary = events.find(e => e.time === 0) || events[0];
+        const state = this.heldNotesState.get(part) || { midi: -1, barCount: 0 };
+
+        if (primary.note === state.midi) {
+            state.barCount++;
+        } else {
+            state.midi = primary.note;
+            state.barCount = 1;
+        }
+        this.heldNotesState.set(part, state);
+
+        if (state.barCount >= 3) {
+            state.barCount = 0; 
+            const strategy = this.random.nextInt(3);
+
+            if (strategy === 0) {
+                return []; 
+            } else if (strategy === 1) {
+                return events.map(e => ({ 
+                    ...e, 
+                    note: e.note + 7, 
+                    params: { ...e.params, narrative: 'Anti-Pedal Jump' } 
+                }));
+            } else {
+                return events.flatMap(e => this.rippleLongNote(e, chord, 0.4));
+            }
+        }
+
+        return events;
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {

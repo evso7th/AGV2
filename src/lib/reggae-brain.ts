@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V25.0 — "Global Mutation Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1440. Внедрение транспозиции и новых защитных алгоритмов.
+ * @fileOverview Reggae Brain V26.0 — "Internal Rotation Law".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
  */
 
 import type {
@@ -66,6 +66,7 @@ export class ReggaeBrain {
     private drumRestUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
+    private lickHistory: string[] = [];
     private readonly MELODY_CEILING = 84;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -90,7 +91,7 @@ export class ReggaeBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -107,12 +108,13 @@ export class ReggaeBrain {
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
         this.currentAccompAxioms = [];
         this.currentBassTheme = null;
+        this.currentTheme = null;
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
-        const filteredPool = effectiveAnchor 
+        let filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
@@ -129,16 +131,32 @@ export class ReggaeBrain {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                const maxDonorBars = Math.max(...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                // #ЗАЧЕМ: Закон Внутренней Ротации.
+                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                const variantIdx = calculateMusiNum(this.seed, 19, 0, sameOffsetPool.length || 1);
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[variantIdx % sameOffsetPool.length] : basePool[0];
+                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+
+                let selected = null;
+                if (freshLicks.length > 0) {
+                    selected = freshLicks[this.random.nextInt(freshLicks.length)];
+                } else if (sameOffsetPool.length > 0) {
+                    selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
+                } else {
+                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+                }
 
                 if (selected) {
+                    this.lickHistory.push(selected.id);
+                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     this.currentPreferredInstrument = selected.preferredInstrument || null;
@@ -277,23 +295,23 @@ export class ReggaeBrain {
         }
 
         // 3. HARMONY & PIANO
-        const usedLayers = new Set<string>();
+        const usedTargetLayers = new Set<string>();
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
-            if (target && hints[target] && !usedLayers.has(target)) {
+            if (target && hints[target] && !usedTargetLayers.has(target)) {
                 events.push(...this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar));
-                usedLayers.add(target);
+                usedTargetLayers.add(target);
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'reggae');
             }
         });
 
-        if (hints.harmony && !usedLayers.has('harmony')) {
+        if (hints.harmony && !usedTargetLayers.has('harmony')) {
             events.push(...this.renderGenerativeHarmony(resChord, epoch, tension));
-            usedLayers.add('harmony');
+            usedTargetLayers.add('harmony');
         }
 
-        if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
+        if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension);
             events.push(...p.events);
         }

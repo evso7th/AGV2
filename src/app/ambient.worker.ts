@@ -1,5 +1,6 @@
 /**
- * @file AuraGroove Music Worker V6.5 — "Law of a Single Name".
+ * @file AuraGroove Music Worker V6.6 — "Internal Rotation Logic".
+ * #ЗАЧЕМ: Поддержка сессионной истории ликов для исключения повторов внутри трека.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -82,7 +83,6 @@ const Scheduler = {
             });
 
             if (matchingAxioms.length > 0) {
-                // #ЗАЧЕМ: Закон Единого Имени. Нормализуем ID для точного поиска в истории.
                 const uniqueIds = Array.from(new Set(matchingAxioms.map(ax => normalizeStr(ax.compositionId))));
                 const freshCandidates = uniqueIds.filter(id => !this.playedTrackHistory.includes(id));
                 const pool = freshCandidates.length > 0 ? freshCandidates : uniqueIds;
@@ -199,7 +199,7 @@ const Scheduler = {
                this.filterRotationIndex++;
            }
 
-           this.sessionLickHistory = []; 
+           // We preserve sessionLickHistory even on seed change to maintain rotation within session
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);
@@ -232,7 +232,6 @@ const Scheduler = {
              }
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
-                 this.sessionLickHistory = [];
                  this.settings.seed = generateTrueSeed();
                  this.initializeEngine(this.settings);
                  return 2000;
@@ -285,7 +284,6 @@ self.onmessage = (event: MessageEvent) => {
             case 'init': 
                 Scheduler.settings = { ...Scheduler.settings, ...data }; 
                 if (data.sessionLickHistory) Scheduler.sessionLickHistory = data.sessionLickHistory;
-                // #ЗАЧЕМ: Закон Единого Имени. Нормализуем входящую историю из localStorage.
                 if (data.playedTrackHistory) Scheduler.playedTrackHistory = data.playedTrackHistory.map((h: any) => normalizeStr(String(h)));
                 break;
             case 'start': Scheduler.start(); break;

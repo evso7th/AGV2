@@ -1,7 +1,6 @@
 /**
- * @fileOverview Trance Brain V86.0 — "Melody Persistence Reform".
- * #ЗАЧЕМ: Реализация ПЛАНА №2105. Мелодия из Наследия больше не глушится "паузами отдыха".
- * #ЧТО: Отключено влияние isResting на Heritage-мелодию. Усилен приоритет Аксиом.
+ * @fileOverview Trance Brain V87.0 — "Internal Rotation Law".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
  */
 
 import type {
@@ -66,6 +65,7 @@ export class TranceBrain {
     private soloistRestUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
+    private lickHistory: string[] = [];
 
     private readonly MELODY_CEILING = 88;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
@@ -113,7 +113,7 @@ export class TranceBrain {
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
-        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
+        const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool = effectiveAnchor 
@@ -132,15 +132,32 @@ export class TranceBrain {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
                     this.sessionAnchorId = normalizeStr(first.compositionId);
                     effectiveAnchor = this.sessionAnchorId;
+                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                const baseBars = Math.max(4, ...filteredPool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                // #ЗАЧЕМ: Закон Внутренней Ротации.
+                const baseBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
-                const sameOffsetPool = filteredPool.filter(ax => (ax.barOffset || 0) === targetOffset && (ax.role === 'melody' || ax.role.toLowerCase().includes('accomp')));
-                const selected = sameOffsetPool.length > 0 ? sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)] : basePool[0];
+                
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+
+                let selected = null;
+                if (freshLicks.length > 0) {
+                    selected = freshLicks[this.rng.nextInt(freshLicks.length)];
+                } else if (sameOffsetPool.length > 0) {
+                    selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
+                } else {
+                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+                }
 
                 if (selected) {
+                    this.lickHistory.push(selected.id);
+                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+
                     this.currentTrackName = selected.compositionId;
                     this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
                     const cid = normalizeStr(selected.compositionId);
@@ -190,7 +207,6 @@ export class TranceBrain {
 
         if (epoch >= this.soloistBusyUntilBar) this.selectNextAxiom(navInfo, dna, epoch);
 
-        // #ЗАЧЕМ: ПЛАН №2105. Мелодия из Наследия игнорирует "отдых", если есть аксиома.
         if (this.soloistRestUntilBar <= epoch) {
             if (this.rng.chance(1)) this.soloistRestUntilBar = epoch + 1; 
         }
@@ -215,12 +231,10 @@ export class TranceBrain {
 
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
-            // #ЗАЧЕМ: ПЛАН №2105. Если есть тема из Наследия, играем её невзирая на флаг отдыха.
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
             
-            // Алгоритмическая добавка или заполнитель только если нет отдыха
             if (!isResting && (melodyEvents.length === 0 || this.rng.chance(20))) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
@@ -248,7 +262,6 @@ export class TranceBrain {
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) {
-                // #ЗАЧЕМ: ПЛАН №2010. Разрядка генеративного пианиста.
                 const thinned = p.events.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
                 events.push(...thinned); 
             }
