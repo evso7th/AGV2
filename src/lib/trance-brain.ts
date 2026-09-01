@@ -1,6 +1,6 @@
 /**
- * @fileOverview Trance Brain V87.0 — "Internal Rotation Law".
- * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
+ * @fileOverview Trance Brain V88.0 — "Robust Ensemble Restoration".
+ * #ЗАЧЕМ: Исправление замирания (защита от пустого basePool) и расширение охвата жанров.
  */
 
 import type {
@@ -38,7 +38,10 @@ class SeededRNG {
     this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32);
     return this.state / Math.pow(2, 32);
   }
-  nextInt(max: number): number { return Math.floor(this.next() * max); }
+  nextInt(max: number): number { 
+      if (max <= 0) return 0;
+      return Math.floor(this.next() * max); 
+  }
   chance(p: number): boolean { return this.next() < p / 100; }
 }
 
@@ -116,12 +119,14 @@ export class TranceBrain {
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
+        // #ЗАЧЕМ: Расширенное сопоставление жанров (psybient <-> trance).
         let filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                return (axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues')) && (axMoods.length === 0 || axMoods.includes(this.mood));
+                const isTranceMatch = axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry');
+                return (this.genre === 'psybient' ? isTranceMatch : axGenres.includes(this.genre)) && (axMoods.length === 0 || axMoods.includes(this.mood));
             });
 
         if (filteredPool.length > 0) {
@@ -131,10 +136,18 @@ export class TranceBrain {
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    if (first) {
+                        this.sessionAnchorId = normalizeStr(first.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
+                }
+
+                // Защита от пустого пула после фильтрации
+                if (basePool.length === 0) {
+                    this.soloistBusyUntilBar = epoch + 4;
+                    return undefined;
                 }
 
                 const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
@@ -187,6 +200,7 @@ export class TranceBrain {
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
         
+        // В трансе мы всегда применяем Золотую Сеть (30 FPS Law)
         return notes.filter(n => this.isGolden(n.t));
     }
 
@@ -220,8 +234,10 @@ export class TranceBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
+        // 1. NEURO DRUMS
         if (hints.drums) events.push(...this.renderNeuroDrums(epoch, tension, kit));
 
+        // 2. BASS
         if (hints.bass) {
             const b = (this.currentBassTheme && epoch < this.currentBassTheme.endBar)
                 ? this.renderHeritageBass(epoch, resChord, tension, mosaicBar)
@@ -229,6 +245,7 @@ export class TranceBrain {
             events.push(...b); 
         }
 
+        // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -385,5 +402,5 @@ export class TranceBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
 }

@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V6.6 — "Internal Rotation Logic".
- * #ЗАЧЕМ: Поддержка сессионной истории ликов для исключения повторов внутри трека.
+ * @file AuraGroove Music Worker V6.7 — "Ensemble Recovery".
+ * #ЗАЧЕМ: Устранение замирания Neuro Space путем расширения сопоставления жанров (psybient <-> trance).
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -79,7 +79,12 @@ const Scheduler = {
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                return (genres.includes(uiGenre) || (uiGenre === 'foundry' && (genres.includes('trance') || genres.includes('foundry')))) && (moods.length === 0 || moods.includes(uiMood));
+                
+                // #ЗАЧЕМ: Протокол инклюзивности жанров.
+                const isTranceMatch = genres.includes('trance') || genres.includes('psybient') || genres.includes('foundry');
+                const genreMatch = (uiGenre === 'psybient' || uiGenre === 'foundry') ? isTranceMatch : genres.includes(uiGenre);
+                
+                return genreMatch && (moods.length === 0 || moods.includes(uiMood));
             });
 
             if (matchingAxioms.length > 0) {
@@ -199,7 +204,6 @@ const Scheduler = {
                this.filterRotationIndex++;
            }
 
-           // We preserve sessionLickHistory even on seed change to maintain rotation within session
            this.initializeEngine(this.settings);
        } else if (fractalMusicEngine) {
            fractalMusicEngine.updateConfig(this.settings);

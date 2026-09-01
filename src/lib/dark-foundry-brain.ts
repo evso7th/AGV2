@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.3 — "Code Integrity Fix".
- * #ЗАЧЕМ: Исправление ошибок обращения к несуществующим свойствам и неверных имен RNG.
+ * @fileOverview Dark Foundry Brain V4.4 — "Code Integrity Fix".
+ * #ЗАЧЕМ: Исправление зависания (защита от пустого basePool) и расширение сопоставления жанров.
  */
 
 import type {
@@ -38,7 +38,10 @@ class SeededRNG {
     this.state = (this.state * 1664525 + 1013904223) % Math.pow(2, 32);
     return this.state / Math.pow(2, 32);
   }
-  nextInt(max: number): number { return Math.floor(this.next() * max); }
+  nextInt(max: number): number { 
+      if (max <= 0) return 0;
+      return Math.floor(this.next() * max); 
+  }
   chance(p: number): boolean { return this.next() < p / 100; }
 }
 
@@ -120,7 +123,9 @@ export class DarkFoundryBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
+                const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
+                const isFoundryMatch = axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry');
+                return (this.genre === 'foundry' ? isFoundryMatch : axGenres.includes(this.genre)) && (axMoods.length === 0 || axMoods.includes(this.mood));
             });
 
         if (filteredPool.length > 0) {
@@ -130,10 +135,17 @@ export class DarkFoundryBrain {
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    if (first) {
+                        this.sessionAnchorId = normalizeStr(first.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
+                }
+
+                if (basePool.length === 0) {
+                    this.soloistBusyUntilBar = epoch + 4;
+                    return undefined;
                 }
 
                 const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));

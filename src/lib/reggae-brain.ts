@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V26.1 — "Internal Rotation Law Fix".
- * #ЗАЧЕМ: Исправление ошибок объявления переменных (const -> let).
+ * @fileOverview Reggae Brain V26.2 — "Robust Ensemble Restoration".
+ * #ЗАЧЕМ: Исправление зависания (защита от пустого basePool) и расширение охвата жанров.
  */
 
 import type {
@@ -83,7 +83,10 @@ export class ReggaeBrain {
             state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
             return state / Math.pow(2, 32);
         };
-        const nextInt = (max: number) => Math.floor(next() * max);
+        const nextInt = (max: number) => {
+            if (max <= 0) return 0;
+            return Math.floor(next() * max);
+        };
         return { next, nextInt };
     }
 
@@ -129,10 +132,17 @@ export class ReggaeBrain {
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    if (first) {
+                        this.sessionAnchorId = normalizeStr(first.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
+                }
+
+                if (basePool.length === 0) {
+                    this.soloistBusyUntilBar = epoch + 4;
+                    return undefined;
                 }
 
                 const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
