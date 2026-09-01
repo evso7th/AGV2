@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V118.0 — "Internal Rotation Law".
- * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
+ * @fileOverview Ambient Brain V118.1 — "Reference & Rotation Fix".
+ * #ЗАЧЕМ: Исправление замирания (ReferenceError: usedTargetLayers) и внедрение ротации.
  */
 
 import type {
@@ -137,10 +137,17 @@ export class AmbientBrain {
             if (basePool.length > 0) {
                 if (!effectiveAnchor) {
                     const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
-                    this.sessionAnchorId = normalizeStr(first.compositionId);
-                    effectiveAnchor = this.sessionAnchorId;
-                    filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
-                    basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    if (first) {
+                        this.sessionAnchorId = normalizeStr(first.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
+                }
+
+                if (basePool.length === 0) {
+                    this.soloistBusyUntilBar = epoch + 4;
+                    return undefined;
                 }
 
                 // #ЗАЧЕМ: Закон Внутренней Ротации.
@@ -157,7 +164,6 @@ export class AmbientBrain {
                 } else if (sameOffsetPool.length > 0) {
                     selected = sameOffsetPool[this.random.nextInt(sameOffsetPool.length)];
                 } else {
-                    // Fallback to any fresh lick in the track
                     const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
                     selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                 }
@@ -287,7 +293,7 @@ export class AmbientBrain {
         }
 
         // 3. Accompaniment & Piano
-        const usedLayers = new Set<string>();
+        const usedTargetLayers = new Set<string>();
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('accomp') ? 'accompaniment' : (role.includes('harmony') ? 'harmony' : null));
@@ -295,20 +301,20 @@ export class AmbientBrain {
                 let rendered = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension);
                 rendered = this.applyAntiPedal(target, rendered, resChord);
                 events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord, 1.2)));
-                usedLayers.add(target);
+                usedTargetLayers.add(target);
                 layerAxioms[target === 'pianoAccompaniment' ? 'piano' : (target === 'harmony' ? 'harmony' : 'accompaniment')] = ax.id;
                 if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'ambient');
             }
         });
 
-        if (hints.accompaniment && !usedLayers.has('accompaniment')) {
+        if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
             let pad = this.renderSidechainedPad(epoch, resChord, tension);
             pad = this.applyAntiPedal('accompaniment', pad, resChord);
             events.push(...pad.flatMap(e => this.rippleLongNote(e, resChord, 2.0)));
             layerAxioms.accompaniment = 'Generative Cloud';
         }
 
-        if (hints.pianoAccompaniment && !usedLayers.has('pianoAccompaniment')) {
+        if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, m);
             if (p.events.length > 0) {
                 const antiPedalPiano = this.applyAntiPedal('pianoAccompaniment', p.events, resChord);
@@ -317,7 +323,7 @@ export class AmbientBrain {
             }
         }
 
-        if (hints.harmony && !usedLayers.has('harmony')) {
+        if (hints.harmony && !usedTargetLayers.has('harmony')) {
             const h = this.renderDerivativeHarmony(resChord, epoch, tension);
             if (h.length > 0) {
                 events.push(...h.flatMap(e => this.rippleLongNote(e, resChord, 2.5)));
@@ -470,7 +476,7 @@ export class AmbientBrain {
 
         return barNotes.map(n => ({
             type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
             technique: 'swell', dynamics: 'p', phrasing: 'legato',
             params: { 
                 attack: n.params?.attack || 1.2, 
