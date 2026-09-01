@@ -1,6 +1,8 @@
 /**
- * @fileOverview Audio Engine Context V66.1 — "DNA Sync Hardening".
- * #ЗАЧЕМ: Гарантированная синхронизация DNA в кэш.
+ * @fileOverview Audio Engine Context V67.0 — "The Bass Purity Update".
+ * #ЗАЧЕМ: ПЛАН №1850. 
+ * #ЧТО: 1. Внедрен Master HPF 35Hz.
+ *       2. Реализован Sidechain Ducking для баса при ударе бочки.
  */
 'use client';
 
@@ -85,7 +87,6 @@ interface AudioEngineContextType {
   setVoiceLimit: (limit: number) => void;
   startMasterFadeOut: (durationInSeconds: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
-  calculateMasterFadeOut: (target: number, duration: number) => void;
   calculateMasterFadeOut: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
@@ -322,6 +323,30 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (!Array.isArray(events)) return;
     
     const isFoundry = settingsRef.current?.genre === 'foundry';
+    
+    // #ЗАЧЕМ: ПЛАН №1850. Сайдчейн дакинг баса от бочки.
+    const duckBass = (hitTime: number) => {
+        if (!audioContextRef.current || !gainNodesRef.current.bass || !settingsRef.current) return;
+        const bassGain = gainNodesRef.current.bass.gain;
+        const baseVol = (settingsRef.current.instrumentSettings.bass.volume || 0.5) * (VOICE_BALANCE['bass'] || 0.5);
+        
+        // Быстрый дак до 20% громкости и возврат
+        bassGain.cancelScheduledValues(hitTime);
+        bassGain.setValueAtTime(baseVol, hitTime);
+        bassGain.setTargetAtTime(baseVol * 0.2, hitTime, 0.015); 
+        bassGain.setTargetAtTime(baseVol, hitTime + 0.1, 0.04);
+    };
+
+    for (const event of events) {
+        const et = Array.isArray(event.type) ? event.type[0] : event.type;
+        const isKick = String(et).toLowerCase().includes('kick');
+        if (isKick) {
+            const beatDuration = 60 / tempo;
+            const absoluteHitTime = barStartTime + (event.time * beatDuration);
+            duckBass(absoluteHitTime);
+        }
+    }
+
     if (isFoundry && foundryDrumMachineRef.current) {
         foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
     } else if (drumMachineRef.current) {
@@ -347,7 +372,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyAxiomsToEngine = useCallback((rawAxioms: any[], rawMasterpieces?: any[]) => {
     workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
     
-    // #ЗАЧЕМ: Профессиональный лог загрузки ДНК.
     if (rawAxioms.length > 0) {
         console.log(`%c[DNA] ${rawAxioms.length} axioms and ${rawMasterpieces?.length || 0} masterpieces loaded from local vault.`, 'color: #c084fc; font-weight: bold;');
     }
@@ -371,7 +395,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const refreshCloudAxioms = useCallback(async () => {
     if (!db) return;
     try {
-      // #ЗАЧЕМ: ПЛАН №2270 — Гарантированное получение данных из Firestore.
       const [axSnap, mpSnap] = await Promise.all([
         getDocs(query(collection(db, 'heritage_axioms'))),
         getDocs(query(collection(db, 'masterpieces'))),
@@ -384,8 +407,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           console.log(`%c[Firestore] Fetched ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces.`, 'color: #4ade80;');
           applyAxiomsToEngine(rawAxioms, rawMasterpieces);
           saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
-      } else {
-          console.warn('[Firestore] Received empty DNA pool.');
       }
     } catch (e: any) {
         console.error('[Firestore] DNA Sync Error:', e);
@@ -402,9 +423,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [applyAxiomsToEngine]);
 
   const syncDna = useCallback(async () => {
-    const l = getLanguage();
     await refreshCloudAxioms();
-    // Лог уже выводится в refreshCloudAxioms
   }, [refreshCloudAxioms]);
 
   const initialize = useCallback(async () => {
@@ -425,8 +444,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             transitionGainRef.current.gain.value = 0.6;
             analyserNodeRef.current = context.createAnalyser(); 
             analyserNodeRef.current.fftSize = 512;
+
+            // #ЗАЧЕМ: ПЛАН №1850. Master HPF для удаления инфра-гула.
+            const masterHPF = context.createBiquadFilter();
+            masterHPF.type = 'highpass';
+            masterHPF.frequency.value = 35;
+            masterHPF.Q.value = 0.707;
+
             samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
-            masterGainNodeRef.current.connect(analyserNodeRef.current);
+            masterGainNodeRef.current.connect(masterHPF);
+            masterHPF.connect(analyserNodeRef.current);
             transitionGainRef.current.connect(analyserNodeRef.current);
             analyserNodeRef.current.connect(speakerGainNodeRef.current); 
             speakerGainNodeRef.current.connect(context.destination);
@@ -531,10 +558,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 else if (type === 'SUITE_TRANSITION') { 
                     window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION')); 
                     triggerVinyl();
-                }
-                else if (type === 'error') {
-                    const l = getLanguage();
-                    toast({ variant: "destructive", title: TRANSLATIONS.toast_sync_fail[l], description: error });
                 }
             };
             try {

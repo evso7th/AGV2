@@ -1,7 +1,8 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.7 — "Silicon Balance Hardening".
- * #ЗАЧЕМ: Реализация ПЛАНА №1800. 
- * #ЧТО: HPF поднят до 300Hz для высокого напряжения. Усилена защита от перегрузки.
+ * @fileOverview Центральная фабрика инструментов V8.8 — "Rumble & Hum Protection".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1900. 
+ * #ЧТО: 1. Добавлен HPF 15Hz (DC Cut) для каждого инструмента.
+ *       2. Реализована монофония для басовых инструментов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -386,8 +387,6 @@ const createIndependentVoice = (
         nodes.push(shaper);
     }
 
-    // #ЗАЧЕМ: ПЛАН №1800. Протокол "Чистое Небо 2.5".
-    // #ЧТО: HPF 300Hz для не-басовых слоев при высоком напряжении.
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass';
     let hpfFreq = (type === 'bass' || type === 'drums') ? 45 : 220;
@@ -429,7 +428,6 @@ const createIndependentVoice = (
     const tempoScale = tempo / 72;
     finalCutoff = finalCutoff * tempoScale * humBright;
 
-    // #ЗАЧЕМ: ПЛАН №1800. Внедрение LFO пульсации из пресета.
     if (preset.lfo && isFinite(preset.lfo.rate) && preset.lfo.amount > 0) {
         const lfo = ctx.createOscillator();
         lfo.frequency.value = preset.lfo.rate;
@@ -438,8 +436,6 @@ const createIndependentVoice = (
         lfo.connect(lfoGain);
         if (preset.lfo.target === 'filter') {
             lfoGain.connect(filter.frequency);
-        } else {
-            // target pitch handled elsewhere, but can add here if needed
         }
         lfo.start(now);
         nodes.push(lfo, lfoGain);
@@ -483,6 +479,8 @@ const createIndependentVoice = (
     nodes.forEach(n => {
         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop(now + totalLife + 0.5);
     });
+    
+    return record; // Return the record for monophonic tracking
 };
 
 export interface InstrumentAPI {
@@ -509,6 +507,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 } = {}): Promise<InstrumentAPI> {
     
     let currentPreset = { ...preset };
+    let lastVoiceRecord: any = null; // #ЗАЧЕМ: ПЛАН №1900. Память для монофонии.
 
     if (type === 'guitar' && currentPreset.attackTransient > 0) ensureTransientsLoaded(ctx);
 
@@ -520,6 +519,12 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = 0.0;
     limiter.ratio.value = 1.0;
+    
+    // #ЗАЧЕМ: ПЛАН №1900. DC-cut фильтр на выходе каждого инструмента.
+    const dcCut = ctx.createBiquadFilter();
+    dcCut.type = 'highpass';
+    dcCut.frequency.value = 15;
+    dcCut.Q.value = 0.707;
 
     const sharedDelayNode = ctx.createDelay(2.0);
     const feedbackGain = ctx.createGain();
@@ -585,7 +590,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const calTrimDb = isFinite(currentPreset.calibrationTrimDb) ? currentPreset.calibrationTrimDb : 0;
     let outputTail: AudioNode = limiter;
     let calTrim: GainNode | null = null;
-    expressionGain.connect(panner).connect(limiter);
+    expressionGain.connect(panner).connect(dcCut).connect(limiter);
+    
     if (calTrimDb !== 0) {
         calTrim = ctx.createGain();
         calTrim.gain.value = dbToGain(calTrimDb);
@@ -600,15 +606,25 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         disconnect: () => {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
             leslieNodes.forEach(n => { if (n instanceof OscillatorNode) { try { n.stop(); } catch(e){} } });
-            [instrumentGain, expressionGain, panner, limiter, sharedDelayNode, feedbackGain, delayMixGain, ...(calTrim ? [calTrim] : []), ...leslieNodes].forEach(n => { try { n.disconnect(); } catch(e){} });
+            [instrumentGain, expressionGain, panner, limiter, dcCut, sharedDelayNode, feedbackGain, delayMixGain, ...(calTrim ? [calTrim] : []), ...leslieNodes].forEach(n => { try { n.disconnect(); } catch(e){} });
         },
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             if (!isFinite(midi) || midi < 0 || midi > 127) return;
             if (!isFinite(velocity) || velocity < 0 || velocity > 1) return;
             if (!isFinite(duration) || duration <= 0) return;
+            
+            // #ЗАЧЕМ: ПЛАН №1900. Монофонический режим для баса.
+            if (type === 'bass' && lastVoiceRecord && !lastVoiceRecord.cleaned) {
+                const node = lastVoiceRecord.voiceState?.node;
+                if (node) {
+                    node.gain.cancelScheduledValues(when);
+                    node.gain.setTargetAtTime(0, when, 0.015);
+                }
+            }
+
             enforceVoiceLimit();
             const tempo = Math.max(20, Math.min(300, params?.tempo || 72));
-            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params, tempo);
+            lastVoiceRecord = createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params, tempo);
         },
         noteOff: () => {}, 
         allNotesOff: () => {
@@ -653,6 +669,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 expressionGain.gain.cancelScheduledValues(now);
                 expressionGain.gain.setTargetAtTime(v, now, 0.01); 
             }
+        },
+        setValueAtTime: (v: number, t: number) => {
+            instrumentGain.gain.setValueAtTime(v, t);
         },
         setPan: (v) => { 
             if(isFinite(v)) {

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Foundry Presets Library V1.5 — "Silicon Balance Diet".
- * #ЗАЧЕМ: ПЛАН №1800. Оптимизация тембров: сокращение осцилляторов и внедрение LFO-пульсации.
+ * @fileOverview Foundry Presets Library V1.6 — "Low End Clean-up".
+ * #ЗАЧЕМ: ПЛАН №1850. Снижение громкости саб-осцилляторов для борьбы с гудением.
  */
 
 export const FOUNDRY_PRESETS = {
@@ -10,12 +10,12 @@ export const FOUNDRY_PRESETS = {
     volume: 0.65,
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
-      { type: 'sine', detune: 0, octave: -1, gain: 0.5 }    // Чистый саб вместо грязного квадрата
+      { type: 'sine', detune: 0, octave: -1, gain: 0.15 }    // Reduced from 0.5 for clarity
     ],
-    noise: { on: false }, // Отключен шум для снижения нагрузки
+    noise: { on: false },
     adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, 
     lpf: { cutoff: 1400, q: 2.0 }, 
-    lfo: { rate: 0.2, amount: 400, target: 'filter' }, // Пульсация через LFO вместо рипплов
+    lfo: { rate: 0.2, amount: 400, target: 'filter' },
     drive: { type: 'soft', amount: 0.25 },
     reverbMix: 0
   },
@@ -26,7 +26,7 @@ export const FOUNDRY_PRESETS = {
     volume: 0.62,
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
+      { type: 'sine', detune: 0, octave: -1, gain: 0.2 }     // Reduced from 0.8 for clarity
     ],
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
     lpf: { cutoff: 850, q: 1.5 }, 
