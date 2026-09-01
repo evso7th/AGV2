@@ -2,12 +2,12 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (Semantic HTML Edition).
  * #ЗАЧЕМ: Профессиональное форматирование документации с разделами и заголовками.
- * #ОБНОВЛЕНО (V3.7.0): Добавлена информация об оптимизации 30 FPS и Золотой Ноте.
+ * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по Silent Bridge и 100% Offline режиму.
  */
 
 export const GUIDE_RU = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">Полное руководство пользователя AuraGroove V 3.7.0</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">Полное руководство пользователя AuraGroove V 3.7.1</h2>
   
   <p class="opacity-90 font-bold italic">Infinite Take Orchestra – Ready for Deploy</p>
   
@@ -19,19 +19,29 @@ export const GUIDE_RU = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Технология «Золотой Ноты»</h3>
-    <p>Для обеспечения кристально чистого звука на любом устройстве мы внедрили протокол «Золотой Сети». В жанрах Транс и Фаундри система физически удаляет «ритмический мусор», оставляя только самые важные акценты такта. Это гарантирует отсутствие хрипов и идеальную синхронизацию ансамбля.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Бродкаст и «Тихий Прогрев»</h3>
+    <p>Для идеальной работы на мобильных устройствах используйте иконку башни (Broadcast). Нажмите её за 10-15 секунд до начала игры. Система запустит «тихий» мост (Standby, громкость 0.01), подготовив аудио-поток. Когда вы нажмете <strong>Play</strong>, музыка начнется мгновенно и без артефактов. При нажатии паузы мост автоматически вернется в режим Standby.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">3. Экономия ресурсов (30 FPS)</h3>
-    <p>Ваша визуализация (Туманность и Орбиты) теперь работает в режиме «Экономии Ядра» на частоте 30 FPS. Это осознанное решение позволяет вашему устройству тратить максимум сил на расчет идеального звука, сохраняя при этом эстетическую плавность картинки.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Автономная работа (Offline)</h3>
+    <p>AuraGroove может работать абсолютно без интернета. Для этого:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li>Нажмите на иконку молнии/базы данных (Vault) в нижнем тулбаре.</li>
+      <li>Нажмите кнопку <strong>Sync All</strong>.</li>
+      <li>Дождитесь завершения загрузки всех аудио-атомов (Samples) и DNA Наследия до 100%.</li>
+    </ul>
+    <p>После этого приложение можно добавить на главный экран (PWA) и запускать в любом месте без связи.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">4. Интерфейс и Управление</h3>
-    <p><strong>CURRENT PATH (Очередь):</strong> Соберите свой маршрут. Теперь он зациклен бесконечно — достигнув конца списка, оркестр начнет сначала с новым «семенем» генерации.</p>
-    <p><strong>System Mixer:</strong> Мы откалибровали баланс. Кики стали мягче, пианист деликатнее, а аккомпанемент в Трансе теперь звучит в два раза ярче.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">4. Технология «Золотой Ноты»</h3>
+    <p>В жанрах Транс и Фаундри система физически удаляет «ритмический мусор», оставляя только самые важные акценты такта. Это гарантирует отсутствие хрипов на мобильных устройствах.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Экономия ресурсов (30 FPS)</h3>
+    <p>Ваша визуализация теперь работает на частоте 30 FPS. Это позволяет вашему устройству тратить максимум сил на расчет идеального звука.</p>
   </section>
 
   <p class="text-destructive/80 font-bold uppercase text-[10px]">⚠️ Рекомендация: Для мобильных устройств держите лимит голосов (ARP) в диапазоне 50-120.</p>
@@ -40,7 +50,7 @@ export const GUIDE_RU = `
 
 export const GUIDE_EN = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">AuraGroove V 3.7.0 – Complete User Guide</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">AuraGroove V 3.7.1 – Complete User Guide</h2>
   
   <p class="opacity-90 font-bold italic">Infinite Take Orchestra – Ready for Deploy</p>
   
@@ -52,19 +62,29 @@ export const GUIDE_EN = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">2. The Golden Note Protocol</h3>
-    <p>To ensure crystal clear sound on any device, we've implemented the "Golden Grid" protocol. In Trance and Foundry genres, the system physically removes "rhythmic noise", keeping only the most important beat accents. This guarantees zero glitches and perfect ensemble synchronization.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">2. Broadcast & "Silent Warm-up"</h3>
+    <p>For a flawless experience on mobile devices, use the tower icon (Broadcast). Tap it 10-15 seconds before starting playback. The system will initiate a "silent" bridge (Standby, volume 0.01), warming up the audio stream. When you press <strong>Play</strong>, the music starts instantly without artifacts. Pausing will return the bridge to Standby mode automatically.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">3. Visual Efficiency (30 FPS)</h3>
-    <p>Your visualization (Nebula and Orbits) now operates in "Core Economy" mode at 30 FPS. This conscious decision allows your device to dedicate maximum power to calculating perfect audio while maintaining aesthetic smoothness.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Offline Autonomy</h3>
+    <p>AuraGroove can function completely without an internet connection. To enable this:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li>Tap the lightning/database icon (Vault) in the bottom toolbar.</li>
+      <li>Press the <strong>Sync All</strong> button.</li>
+      <li>Wait for both Audio Atoms (Samples) and Heritage DNA to reach 100% synchronization.</li>
+    </ul>
+    <p>Once synced, you can install the app as a PWA and play music anywhere, even without cellular service.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">4. Interface & Controls</h3>
-    <p><strong>CURRENT PATH (Queue):</strong> Build your journey. It is now infinitely looped—reaching the end of the list, the orchestra restarts from the first step with a new unique Seed.</p>
-    <p><strong>System Mixer:</strong> We have re-calibrated the balance. Kicks are softer, the pianist is more delicate, and the Trance accompaniment is now twice as bright.</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">4. The Golden Note Protocol</h3>
+    <p>In Trance and Foundry genres, the system physically removes "rhythmic noise", keeping only the most important beat accents. This ensures zero glitches and perfect synchronization.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Visual Efficiency (30 FPS)</h3>
+    <p>Your visualization now operates in "Core Economy" mode at 30 FPS. This allows your device to dedicate maximum power to calculating perfect audio.</p>
   </section>
 
   <p class="text-destructive/80 font-bold uppercase text-[10px]">⚠️ Pro Tip: For mobile devices, keep the voice limit (ARP) between 50-120.</p>
@@ -73,7 +93,7 @@ export const GUIDE_EN = `
 
 export const DISCLAIMER_RU = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3 (Build 3.7.0)</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3 (Build 3.7.1)</h2>
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Статус системы</h3>
@@ -83,9 +103,9 @@ export const DISCLAIMER_RU = `
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Технические лимиты</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
+      <li><strong>Автономия:</strong> Поддерживается 100% оффлайн-режим через Masterforge Vault.</li>
       <li><strong>Визуализация:</strong> Ограничена 30 FPS для всех жанров (Visual Throttle Active).</li>
-      <li><strong>События:</strong> Применяется «Золотая Сеть» — автоматическое удаление второстепенных нот в нагруженных жанрах.</li>
-      <li><strong>Звук:</strong> Использование киков Foundry в трансовых жанрах для максимальной производительности.</li>
+      <li><strong>События:</strong> Применяется «Золотая Сеть» — автоматическое удаление второстепенных нот.</li>
     </ul>
   </section>
 
@@ -97,7 +117,7 @@ export const DISCLAIMER_RU = `
 
 export const DISCLAIMER_EN = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3 (Build 3.7.0)</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3 (Build 3.7.1)</h2>
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. System Status</h3>
@@ -107,9 +127,9 @@ export const DISCLAIMER_EN = `
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Technical Limits</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
+      <li><strong>Autonomy:</strong> 100% Offline mode supported via Masterforge Vault.</li>
       <li><strong>Visualization:</strong> Limited to 30 FPS for all genres (Visual Throttle Active).</li>
-      <li><strong>Events:</strong> "Golden Grid" applies—automatic removal of non-essential notes in high-load genres.</li>
-      <li><strong>Audio:</strong> Shared Foundry kicks for trance genres to ensure maximum performance parity.</li>
+      <li><strong>Events:</strong> "Golden Grid" applies—automatic removal of non-essential notes.</li>
     </ul>
   </section>
 
@@ -144,7 +164,7 @@ export const CREDITS_HTML = `
   </section>
 
   <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 text-[10px] italic">
-    <strong>Status:</strong> Ready for Deploy. Version 3.7.0.
+    <strong>Status:</strong> Ready for Deploy. Version 3.7.1.
   </div>
 </div>
 `;
