@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.2 — "Internal Rotation Law".
- * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
+ * @fileOverview Dark Foundry Brain V4.3 — "Code Integrity Fix".
+ * #ЗАЧЕМ: Исправление ошибок обращения к несуществующим свойствам и неверных имен RNG.
  */
 
 import type {
@@ -136,10 +136,9 @@ export class DarkFoundryBrain {
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                // #ЗАЧЕМ: Закон Внутренней Ротации.
-                const baseBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                 
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
                 const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
@@ -270,7 +269,6 @@ export class DarkFoundryBrain {
             if (target && hints[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
                 
-                // #ЗАЧЕМ: ПЛАН №2010. Разрядка партии пианиста.
                 if (target === 'pianoAccompaniment') {
                     renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
                     renders.forEach(n => n.weight = 0.375); 
@@ -293,7 +291,6 @@ export class DarkFoundryBrain {
         if (hints.pianoAccompaniment && !usedTargetLayers.has('pianoAccompaniment')) {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) {
-                // #ЗАЧЕМ: ПЛАН №2010. Разрядка генеративного пианиста.
                 const thinned = p.events.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
                 thinned.forEach(n => n.weight = 0.375);
                 events.push(...thinned); 
@@ -308,7 +305,7 @@ export class DarkFoundryBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' },
-            narrative: `Foundry Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
+            narrative: `Foundry Epoch ${epoch} | DNA: ${this.currentTrackName}`
         };
     }
 

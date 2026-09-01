@@ -113,14 +113,15 @@ export class TranceBrain {
         
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
-        const poolToUse = this.config.cloudAxioms.filter(ax => ax.ignored !== true);
+        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
         let filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues');
+                const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
+                return (axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry') || axGenres.includes('blues')) && (axMoods.length === 0 || axMoods.includes(this.mood));
             });
 
         if (filteredPool.length > 0) {
@@ -136,10 +137,9 @@ export class TranceBrain {
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                // #ЗАЧЕМ: Закон Внутренней Ротации.
-                const baseBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, baseBars, tension);
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                 
                 const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
                 const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
@@ -151,7 +151,7 @@ export class TranceBrain {
                     selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
                 } else {
                     const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
-                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
                 }
 
                 if (selected) {
@@ -292,7 +292,7 @@ export class TranceBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Neuro Arp', ensemble: 'Spiral Hierarchy' },
-            narrative: `Tier V86: Axiom Priority Active. NO_REST for DNA.`
+            narrative: `Spiral Epoch ${epoch}: Axiom Priority Active.`
         };
     }
 

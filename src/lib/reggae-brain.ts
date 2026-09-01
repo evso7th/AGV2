@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V26.0 — "Internal Rotation Law".
- * #ЗАЧЕМ: Реализация ПЛАНА №2200. Ротация аксиом внутри одного трека.
+ * @fileOverview Reggae Brain V26.1 — "Internal Rotation Law Fix".
+ * #ЗАЧЕМ: Исправление ошибок объявления переменных (const -> let).
  */
 
 import type {
@@ -135,7 +135,6 @@ export class ReggaeBrain {
                     basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
                 }
 
-                // #ЗАЧЕМ: Закон Внутренней Ротации.
                 const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
@@ -171,10 +170,10 @@ export class ReggaeBrain {
                     const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(selected.compositionId) === cid && ax.barOffset === selected.barOffset);
                     this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
-                    const baseBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
-                    this.soloistBusyUntilBar = epoch + baseBars;
+                    const axiomBars = selected.bars || 4;
+                    this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
+                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
+                    this.soloistBusyUntilBar = epoch + axiomBars;
                     return selected.nativeBpm || undefined;
                 }
             }
@@ -209,7 +208,6 @@ export class ReggaeBrain {
         return Math.max(1, Math.floor(maxT / TICKS_PER_BAR) + 1);
     }
 
-    /** #ЗАЧЕМ: Унифицированный маппер мутаций. */
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
         let notes = [...phrase];
         if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
@@ -342,17 +340,11 @@ export class ReggaeBrain {
             instrumentOverrides,
             activeAxioms: { 
                 melody: melodyLabel, 
-                drums: isDrumResting ? 'BREATH' : `Riddim Sync [${this.getStyleName(epoch, tension)}]`,
+                drums: isDrumResting ? 'BREATH' : `Riddim Sync`,
                 bass: this.currentBassTheme ? 'Sibling DNA' : 'One-Drop Dub'
             },
             narrative: `Reggae Evolution: ${this.currentTrackName} [Mut: ${this.currentMutationType.toUpperCase()}]`
         };
-    }
-
-    private getStyleName(epoch: number, tension: number): string {
-        if (epoch < 32 || tension < 0.4) return 'One Drop';
-        if (tension > 0.8 || epoch > 80) return 'Steppers';
-        return 'Rockers';
     }
 
     private renderReggaeGroove(epoch: number, tension: number, kit: any, bassTicks: Set<number>): FractalEvent[] {
