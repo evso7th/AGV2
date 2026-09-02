@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.1.5 — "Offline Integration".
- * #ЗАЧЕМ: Интеграция OfflineSyncCenter в нижний тулбар навигатора.
+ * @fileOverview UI AuraGroove V17.1.6 — "HUD Typography Patch".
+ * #ЗАЧЕМ: Увеличение шрифта индикатора шагов в HUD для лучшей читаемости.
  */
 'use client';
 
@@ -611,7 +611,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                 {t(`m_${props.mood}` as any)}
                             </div>
                             <div 
-                                className="text-[8px] font-mono font-black uppercase tracking-tighter opacity-70 transition-colors duration-500 mt-1" 
+                                className="text-[13px] font-mono font-black uppercase tracking-tighter opacity-90 transition-colors duration-500 mt-1" 
                                 style={{ color: hudColor }}
                             >
                                 STEP {props.activeRouteIndex + 1} / {props.route.length}
