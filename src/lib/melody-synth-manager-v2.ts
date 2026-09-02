@@ -6,6 +6,7 @@ import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { BASS_PRESETS } from './bass-presets';
 import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
