@@ -1,12 +1,11 @@
 /**
- * @fileOverview Melody Synth Manager V2.1 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ * @fileOverview Melody Synth Manager V2.2 — "Soft Entrance Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1401 — Линейное нарастание громкости на старте трека.
  */
-import type { FractalEvent, AccompanimentInstrument } from '@/types/fractal';
+import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
-import { BASS_PRESETS } from './bass-presets';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
@@ -61,7 +60,6 @@ export class MelodySynthManagerV2 {
 
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
-            // #ЗАЧЕМ: Детерминированный сброс.
             this.preamp.gain.cancelScheduledValues(this.audioContext.currentTime);
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
@@ -107,7 +105,7 @@ export class MelodySynthManagerV2 {
                 this.scheduleCleanup(oldInst, 5000, `loadInstrument-${Date.now()}`);
             }
         } catch (error) {
-            // console.error(`[MelodySynthManagerV2] Error loading synth for ${this.partName}:`, error);
+            // console.error(`[MelodySynthManagerV2] Error loading synth:`, error);
         } finally {
             this.isChangingInstrument = false;
         }
@@ -121,16 +119,22 @@ export class MelodySynthManagerV2 {
         const boundedTempo = Math.max(20, Math.min(300, tempo));
         const beatDuration = 60 / boundedTempo;
 
+        // #ЗАЧЕМ: Протокол Мягкого Входа. Линейное нарастание за 6 тактов.
+        const isMelody = this.partName === 'melody';
+        const entranceMultiplier = (isMelody && barCount < 6) 
+            ? (0.3 + (barCount / 6) * 0.7) 
+            : 1.0;
+
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
             const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
                 duration: (e.duration * beatDuration) + extraDuration, 
-                velocity: e.weight, 
+                velocity: e.weight * entranceMultiplier, // Применение множителя входа
                 technique: e.technique, 
                 pan: e.pan, 
-                params: e.params 
+                params: { ...e.params, tempo: boundedTempo }
             };
         });
         
@@ -193,7 +197,7 @@ export class MelodySynthManagerV2 {
                 this.synth.setParam('lpf', note.params.filterCutoff);
             }
             if (isFinite(note.duration) && note.duration > 0) {
-                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration);
+                 this.synth.noteOn(note.midi, noteOnTime, note.velocity, note.duration, note.params);
             }
         });
     }

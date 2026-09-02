@@ -1,8 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V67.0 — "The Bass Purity Update".
- * #ЗАЧЕМ: ПЛАН №1850. 
- * #ЧТО: 1. Внедрен Master HPF 35Hz.
- *       2. Реализован Sidechain Ducking для баса при ударе бочки.
+ * @fileOverview Audio Engine Context V68.0 — "Soft Entrance Implementation".
+ * #ЗАЧЕМ: ПЛАН №1401. Поддержка нарастания громкости Melody и Piano.
  */
 'use client';
 
@@ -19,6 +17,7 @@ import { SfxSynthManager } from '@/lib/sfx-synth-manager';
 import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
+import { cs80SamplerRef } from '@/lib/cs80-guitar-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { GUITAR_LOUDNESS_TRIM_DB } from '@/lib/guitar-loudness';
 import { loadDnaCache, saveDnaCache } from '@/lib/dna-cache';
@@ -324,13 +323,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const isFoundry = settingsRef.current?.genre === 'foundry';
     
-    // #ЗАЧЕМ: ПЛАН №1850. Сайдчейн дакинг баса от бочки.
     const duckBass = (hitTime: number) => {
         if (!audioContextRef.current || !gainNodesRef.current.bass || !settingsRef.current) return;
         const bassGain = gainNodesRef.current.bass.gain;
         const baseVol = (settingsRef.current.instrumentSettings.bass.volume || 0.5) * (VOICE_BALANCE['bass'] || 0.5);
         
-        // Быстрый дак до 20% громкости и возврат
         bassGain.cancelScheduledValues(hitTime);
         bassGain.setValueAtTime(baseVol, hitTime);
         bassGain.setTargetAtTime(baseVol * 0.2, hitTime, 0.015); 
@@ -361,7 +358,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (pianoAccompanimentManagerRef.current) { 
         const pianoHint = instrumentHints?.pianoAccompaniment; 
         pianoAccompanimentManagerRef.current.setInstrumentType(pianoHint === 'piano' ? 'acoustic' : 'rhodes'); 
-        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo); 
+        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo, barCount); 
     }
     if (sparklePlayerRef.current) { 
         events.filter(e => e.type === 'sparkle').forEach(s => sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * (60/tempo)), s.params?.genre, s.params?.mood, s.params?.category)); 
@@ -445,7 +442,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             analyserNodeRef.current = context.createAnalyser(); 
             analyserNodeRef.current.fftSize = 512;
 
-            // #ЗАЧЕМ: ПЛАН №1850. Master HPF для удаления инфра-гула.
             const masterHPF = context.createBiquadFilter();
             masterHPF.type = 'highpass';
             masterHPF.frequency.value = 35;
