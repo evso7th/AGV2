@@ -1,6 +1,6 @@
 /**
- * @fileOverview Accompaniment Synth Manager V2.1 — "Deterministic Gain Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1301 — "Закон Микшера".
+ * @fileOverview Accompaniment Synth Manager V2.2 — "Soft Entrance Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1401 — Линейное нарастание громкости на старте трека для пэдов.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
@@ -105,13 +105,18 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
+        // #ЗАЧЕМ: Протокол Мягкого Входа. Линейное нарастание за 6 тактов.
+        const entranceMultiplier = barCount < 6 
+            ? (0.3 + (barCount / 6) * 0.7) 
+            : 1.0;
+
         const notesToPlay = filtered.map(e => {
             const extraDuration = 1.5; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,
                 duration: (e.duration * beatDuration) + extraDuration,
-                velocity: e.weight,
+                velocity: e.weight * entranceMultiplier, // Применение множителя входа
                 technique: e.technique,
                 pan: e.pan,
                 params: e.params
