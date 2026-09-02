@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Music Control Hook V34.5 — "Infinite Loop Implementation".
- * #ЗАЧЕМ: Реализация ПЛАНА №1500 — Бесконечный цикл воспроизведения маршрута.
+ * @fileOverview Music Control Hook V35.0 — "Proactive Balance Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1600 — Применение настроек до начала проигрывания первой ноты.
  */
 'use client';
 
@@ -18,6 +19,9 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { useFirestore } from "@/firebase/provider";
 import { TRANSLATIONS, type Language } from "@/lib/translations";
 import { saveMasterpiece } from "@/lib/firebase-service";
+import MIXER_SEEDS_RAW from '@/lib/assets/mixer-seeds.json';
+
+const MIXER_SEEDS = MIXER_SEEDS_RAW as PresetItem[];
 
 const SAVED_JOURNEYS_KEY = 'AuraGroove_SavedJourneys';
 const CURRENT_ROUTE_KEY = 'AuraGroove_CurrentRoute';
@@ -468,7 +472,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
 
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
-    if (savedMixes) {
+    if (!savedMixes || JSON.parse(savedMixes).length === 0) {
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(MIXER_SEEDS));
+        setMixerPresets(MIXER_SEEDS);
+    } else {
         try {
             const list = JSON.parse(savedMixes);
             setMixerPresets(list);
@@ -610,20 +617,34 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
-            applyCurrentMixToEngine();
-            eqSettings.forEach((v, i) => setEQGain(i, v));
-            if (route.length > 0 && !activeRouteItemId) {
-                const first = route[0];
-                const g = first.genre === 'random' ? genre : (first.genre as Genre);
-                const m = first.mood === 'random' ? mood : (first.mood as Mood);
-                setGenreState(g); setMoodState(m); setActiveRouteItemId(first.id);
-                updateSettings({ genre: g, mood: m, route, activeRouteIndex: 0 });
+            // #ЗАЧЕМ: ПЛАН №1600. Проактивное применение настроек до старта.
+            let targetG = genre;
+            if (route.length > 0) {
+                const active = route.find(it => it.id === activeRouteItemId) || route[0];
+                if (active.genre !== 'random') targetG = active.genre as Genre;
+                if (!activeRouteItemId) {
+                    setActiveRouteItemId(active.id);
+                    setMoodState(active.mood as Mood);
+                }
             }
+            
+            applyGenreMix(targetG);
+            applyGenreEq(targetG);
+            
+            eqSettings.forEach((v, i) => setEQGain(i, v));
             sessionStartTimeRef.current = Date.now();
             setIsPlaying(true);
         }
     } else { 
         if (!isPlaying) {
+            // #ЗАЧЕМ: ПЛАН №1600. Повторное применение при возобновлении.
+            let targetG = genre;
+            const active = route.find(it => it.id === activeRouteItemId) || route[0];
+            if (active && active.genre !== 'random') targetG = active.genre as Genre;
+            
+            applyGenreMix(targetG);
+            applyGenreEq(targetG);
+            
             if (route.length > 0 && !activeRouteItemId) {
                 const first = route[0];
                 const g = first.genre === 'random' ? genre : (first.genre as Genre);
@@ -635,7 +656,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
         setIsPlaying(!isPlaying); 
     }
-  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, applyCurrentMixToEngine, eqSettings, setEQGain, genre, mood, updateSettings]);
+  }, [isInitialized, isPlaying, initialize, setIsPlaying, route, activeRouteItemId, eqSettings, setEQGain, genre, mood, updateSettings, applyGenreMix, applyGenreEq]);
 
   const handleStartAlbumMode = useCallback(async () => {
     if (!isInitialized) {
@@ -673,7 +694,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
-    availableCompositions, availableCompositions: [], 
+    availableCompositions,
     selectedCompositionIds: [], toggleCompositionFilter: () => {}, clearCompositionFilters: () => {}, 
     refreshCloudAxioms: async () => {}, syncDna: async () => {},
     handlePlayPause: handlePlayPauseCallback,
@@ -736,7 +757,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
     language, toggleLanguage, t
   }), [
-      isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, selectedCompositionIds, refreshCloudAxioms, engineSyncDna,
+      isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, refreshCloudAxioms, engineSyncDna,
       handlePlayPauseCallback, isRecording, stopRecording, startRecording, handleStartAlbumMode, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,
       setInstrument, handleVolumeChange, textureSettings, score, setScore, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,

@@ -1,0 +1,67 @@
+
+[
+  {
+    "id": "seed-neuro",
+    "name": "NEURO DEFAULT",
+    "values": {
+      "master": 0.65,
+      "bass": 0.78,
+      "melody": 0.48,
+      "accompaniment": 0.62,
+      "pianoAccompaniment": 0.27,
+      "harmony": 0.30,
+      "sparkles": 0.55,
+      "sfx": 0.17,
+      "drums": 0.43
+    },
+    "genre": "psybient"
+  },
+  {
+    "id": "seed-ambient",
+    "name": "SLOW FUSION DEFAULT",
+    "values": {
+      "master": 0.65,
+      "bass": 0.60,
+      "melody": 0.40,
+      "accompaniment": 0.35,
+      "pianoAccompaniment": 0.35,
+      "harmony": 0.25,
+      "sparkles": 0.60,
+      "sfx": 0.50,
+      "drums": 0.40
+    },
+    "genre": "ambient"
+  },
+  {
+    "id": "seed-foundry",
+    "name": "DARK TRANCE DEFAULT",
+    "values": {
+      "master": 0.70,
+      "bass": 0.80,
+      "melody": 0.50,
+      "accompaniment": 0.50,
+      "pianoAccompaniment": 0.30,
+      "harmony": 0.30,
+      "sparkles": 0.50,
+      "sfx": 0.20,
+      "drums": 0.55
+    },
+    "genre": "foundry"
+  },
+  {
+    "id": "seed-blues",
+    "name": "CAFE BLUES DEFAULT",
+    "values": {
+      "master": 0.75,
+      "bass": 0.70,
+      "melody": 0.65,
+      "accompaniment": 0.15,
+      "pianoAccompaniment": 0.35,
+      "harmony": 0.20,
+      "sparkles": 0.40,
+      "sfx": 0.30,
+      "drums": 0.50
+    },
+    "genre": "blues"
+  }
+]
