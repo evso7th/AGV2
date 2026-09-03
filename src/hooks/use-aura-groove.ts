@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V35.0 — "Proactive Balance Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1600 — Применение настроек до начала проигрывания первой ноты.
+ * @fileOverview Music Control Hook V35.1 — "Infinite Journey Loop".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1500 — Бесконечный цикл воспроизведения очереди.
  */
 'use client';
 
@@ -600,10 +600,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
 
         // #ЗАЧЕМ: ПЛАН №1500. Бесконечный цикл маршрута.
+        // Очередь работает по циклическому принципу: (index + 1) % length.
         if (route.length > 0) {
             const nextIndex = (activeRouteIndex + 1) % route.length;
             setActiveRouteItemId(route[nextIndex].id);
-            setCurrentSeed(Date.now()); // Каждое повторение цикла — уникально
+            setCurrentSeed(Date.now()); // Каждое повторение цикла — уникально за счет нового зерна
             return;
         }
 
