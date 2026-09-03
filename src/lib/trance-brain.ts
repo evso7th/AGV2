@@ -170,7 +170,7 @@ export class TranceBrain {
                     selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
                 } else {
                     const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
-                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
+                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                 }
 
                 if (selected) {

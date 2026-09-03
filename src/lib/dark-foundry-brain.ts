@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.5 — "Velvet Standard".
- * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
+ * @fileOverview Dark Foundry Brain V4.6 — "Velvet Standard & Reference Fix".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) и исправление ошибок оффсета.
  */
 
 import type {
@@ -170,7 +170,7 @@ export class DarkFoundryBrain {
                     selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
                 } else {
                     const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
-                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
+                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
                 }
 
                 if (selected) {
@@ -378,10 +378,10 @@ export class DarkFoundryBrain {
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
 
         const localBar = mosaicBar % this.phraseBarCount(phrase);
-        const offset = localBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
+        const barOffset = localBar * TICKS_PER_BAR;
+        return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+            time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
         }));
     }
 

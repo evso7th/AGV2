@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V26.4 — "Stability Patch".
- * #ЗАЧЕМ: Исправление ReferenceError (currentTransposition, rng) и ошибок сигнатур.
+ * @fileOverview Reggae Brain V26.5 — "Velvet Standard & Transition Fix".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) и исправление ReferenceErrors.
  */
 
 import type {
@@ -66,7 +66,7 @@ export class ReggaeBrain {
     private drumRestUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
-    private currentTransposition: number = 0; // #ЗАЧЕМ: Фикс ReferenceError
+    private currentTransposition: number = 0; 
     private lickHistory: string[] = [];
 
     // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
@@ -439,15 +439,6 @@ export class ReggaeBrain {
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
             time: (n.t - barOffset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.9, technique: 'pulse', dynamics: 'mf', phrasing: 'detached'
         }));
-    }
-
-    private renderGenerativeBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        const root = chord.rootNote - 12 + this.microTransposition;
-        return [
-            { type: 'bass', note: root, time: 1.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' },
-            { type: 'bass', note: root, time: 6.0 * TICK_TO_BEAT, duration: 3.0 * TICK_TO_BEAT, weight: 1.0, technique: 'pulse', dynamics: 'f', phrasing: 'detached' }, 
-            { type: 'bass', note: root + 7, time: 10.5 * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT, weight: 0.7, technique: 'pulse', dynamics: 'mf', phrasing: 'detached' }
-        ];
     }
 
     private renderHeritageMelody(epoch: number, chord: GhostChord, tension: number, timeScale: number, mosaicBar: number, density?: { min: number; max: number }): FractalEvent[] {

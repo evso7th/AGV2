@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V6.7 — "Ensemble Recovery".
- * #ЗАЧЕМ: Устранение замирания Neuro Space путем расширения сопоставления жанров (psybient <-> trance).
+ * @file AuraGroove Music Worker V6.8 — "Transition Recovery".
+ * #ЗАЧЕМ: Исправление застревания на треках путем отслеживания activeRouteIndex.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -79,11 +79,8 @@ const Scheduler = {
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                
-                // #ЗАЧЕМ: Протокол инклюзивности жанров.
                 const isTranceMatch = genres.includes('trance') || genres.includes('psybient') || genres.includes('foundry');
                 const genreMatch = (uiGenre === 'psybient' || uiGenre === 'foundry') ? isTranceMatch : genres.includes(uiGenre);
-                
                 return genreMatch && (moods.length === 0 || moods.includes(uiMood));
             });
 
@@ -193,12 +190,14 @@ const Scheduler = {
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
+       // #ЗАЧЕМ: Исправление застревания. Если индекс очереди изменился - пересоздаем движок.
+       const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
        
        this.settings = { ...this.settings, ...newSettings };
        
-       if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged) {
+       if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged || routeIndexChanged) {
            this.bpmLocked = false; 
-           if (filterChanged || genreOrMoodChanged) {
+           if (filterChanged || genreOrMoodChanged || routeIndexChanged) {
                this.filterRotationIndex = 0;
            } else if (seedChanged) {
                this.filterRotationIndex++;

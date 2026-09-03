@@ -407,7 +407,7 @@ export class BluesBrain {
     }
 
     const isSoloistFree = epoch >= this.soloistBusyUntilBar;
-    if (isSoloistFree && this.soloistRestingUntilBar <= epoch) {
+    if (isSoloistFree && this.soloistRestUntilBar <= epoch) {
         if (this.random.next() < 0.08 || tension < 0.1) this.soloistRestingUntilBar = epoch + 1; 
     }
     const isSoloistResting = epoch < this.soloistRestingUntilBar;
