@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V6.8 — "Transition Recovery".
- * #ЗАЧЕМ: Исправление застревания на треках путем отслеживания activeRouteIndex.
+ * @file AuraGroove Music Worker V7.0 — "Absolute Transition Recovery".
+ * #ЗАЧЕМ: Устранение "застревания" на 3-й/4-й позициях очереди путем жесткого сброса barCount.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -190,12 +190,14 @@ const Scheduler = {
        const filterChanged = newSettings.selectedCompositionIds !== undefined && JSON.stringify(newSettings.selectedCompositionIds) !== JSON.stringify(this.settings.selectedCompositionIds);
        const genreOrMoodChanged = (newSettings.genre && newSettings.genre !== this.settings.genre) || (newSettings.mood && newSettings.mood !== this.settings.mood);
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
-       // #ЗАЧЕМ: Исправление застревания. Если индекс очереди изменился - пересоздаем движок.
        const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
+       
+       // #ЗАЧЕМ: Принудительный сброс, если UI переключил трек, пока воркер был в ожидании.
+       const forceReset = this.awaitingDirective && routeIndexChanged;
        
        this.settings = { ...this.settings, ...newSettings };
        
-       if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged || routeIndexChanged) {
+       if (seedChanged || genreOrMoodChanged || filterChanged || useHeritageChanged || routeIndexChanged || forceReset) {
            this.bpmLocked = false; 
            if (filterChanged || genreOrMoodChanged || routeIndexChanged) {
                this.filterRotationIndex = 0;
@@ -233,6 +235,7 @@ const Scheduler = {
                  this.awaitingSince = Date.now();
                  return 500;
              }
+             // #ЗАЧЕМ: Авто-регенерация, если UI не ответил за 4 секунды (защита от зависаний).
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.settings.seed = generateTrueSeed();
@@ -246,7 +249,9 @@ const Scheduler = {
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            return this.barDuration * 1000;
+            // console.error("[Worker] Engine crash during tick. Re-initializing...");
+            this.initializeEngine(this.settings);
+            return 1000;
         }
 
         const decoratedEvents = ShadowDrummer.decorate(
