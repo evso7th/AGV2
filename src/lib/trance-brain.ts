@@ -1,6 +1,6 @@
 /**
- * @fileOverview Trance Brain V88.2 — "Reference & Logic Stability Fix".
- * #ЗАЧЕМ: Исправление TypeError (this.random is undefined) и стабилизация переходов.
+ * @fileOverview Trance Brain V88.3 — "Reference Stability Patch".
+ * #ЗАЧЕМ: Исправление TypeError (this.random is undefined).
  */
 
 import type {
@@ -70,7 +70,6 @@ export class TranceBrain {
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
 
-    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
     private readonly MELODY_CEILING = 71;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
@@ -87,7 +86,6 @@ export class TranceBrain {
         return this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
     }
 
-    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
     private wrapMelody(midi: number): number {
         let v = midi;
         while (v > this.MELODY_CEILING) v -= 12;
