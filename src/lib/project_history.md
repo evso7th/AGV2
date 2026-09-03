@@ -3,6 +3,20 @@
 
 ---
 
+### ЗАЧЕМ: FINAL RELEASE V3.7.1
+**СОБЫТИЕ**: Официальное завершение цикла разработки V3.7.1 и подготовка к деплою.
+**РЕЗУЛЬТАТ**:
+1. **Status**: System is verified and ready for production.
+2. **Core Accomplishments**:
+    - **Velvet Standard**: Внедрен октавный заслон (MIDI 71) для всех мелодических инструментов. Звук стал плотнее и благороднее.
+    - **Soft Entrance Protocol**: Реализовано нарастание громкости (30% -> 100%) за 6 тактов для Melody, Piano и Accompaniment.
+    - **Proactive Balance**: Мгновенная загрузка микшера и тембров при нажатии Play, до начала генерации.
+    - **Offline Sovereignty**: Поддержка 100% автономной работы через Masterforge Vault.
+    - **UI Polish**: Крупная типографика шагов в HUD и обновленный Инфоцентр.
+3. **Rollback Record**: Протокол «Коллаж» удален как деструктивный для мелодии. Система возвращена к стабильной модели цельных фраз.
+
+---
+
 ### ЗАЧЕМ: VELVET STANDARD (Octave Guard Implementation)
 **СОБЫТИЕ**: Внедрение октавного заслона (MIDI 71) во все модули генерации.
 **РЕЗУЛЬТАТ**:
@@ -19,23 +33,8 @@
 
 ---
 
-### ЗАЧЕМ: READY FOR DEPLOY (Final Pre-flight Commit)
-**СОБЫТИЕ**: Официальная фиксация стабильного состояния системы V3.7.1.
-**РЕЗУЛЬТАТ**:
-1. **Status**: System is verified and ready for production deployment.
-2. **Key Accomplishments**:
-    - **NeuroSpace Resurrection**: Fixed critical worker crashes and genre mapping for Trance/Foundry.
-    - **Soft Entrance Protocol**: Implemented smooth linear volume ramp (0.3 -> 1.0) for Melody, Piano, and Accompaniment.
-    - **Proactive Balance**: Instant mixer preset application before the first note playback.
-    - **HUD Typography Patch**: Increased legibility of step indicators in ambient mode.
-    - **Internal Rotation**: Full compliance with Rule #25 (Axiom diversity within donor tracks).
-3. **Verdict**: Industrial stability achieved. All systems nominal.
-
----
-
 ### ЗАЧЕМ: HUD TYPOGRAPHY PATCH
 **СОБЫТИЕ**: Увеличение шрифта индикатора текущего шага в амбиентном режиме (HUD).
 **РЕЗУЛЬТАТ**:
 1. **Font Size Updated**: Параметр `text-[8px]` для надписи `STEP N/X` заменен на `text-[13px]`.
 2. **Opacity Adjustment**: Прозрачность увеличена до `opacity-90` для обеспечения четкого контраста на фоне активных визуальных эффектов.
-3. **Readability**: Информация о прогрессе маршрута стала легко считываемой с любого расстояния от экрана.
