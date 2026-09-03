@@ -1,6 +1,6 @@
 /**
- * @fileOverview Trance Brain V88.1 — "Velvet Standard".
- * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
+ * @fileOverview Trance Brain V88.2 — "Reference & Logic Stability Fix".
+ * #ЗАЧЕМ: Исправление TypeError (this.random is undefined) и стабилизация переходов.
  */
 
 import type {
@@ -114,7 +114,7 @@ export class TranceBrain {
         const startOffset = calculateMusiNum(this.seed, 13, 0, totalBars);
         if (this.isImprovising) return calculateMusiNum(epoch + startOffset, 7, this.seed, totalBars);
         const barsElapsed = epoch - startEpoch;
-        return (barsElapsed + startOffset) % totalBars;
+        return Math.abs(barsElapsed + startOffset) % totalBars;
     }
 
     private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
@@ -151,47 +151,45 @@ export class TranceBrain {
                     }
                 }
 
-                if (basePool.length === 0) {
-                    this.soloistBusyUntilBar = epoch + 4;
-                    return undefined;
-                }
-
-                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
-                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
-
-                let selected = null;
-                if (freshLicks.length > 0) {
-                    selected = freshLicks[this.rng.nextInt(freshLicks.length)];
-                } else if (sameOffsetPool.length > 0) {
-                    selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
-                } else {
-                    const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
-                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
-                }
-
-                if (selected) {
-                    this.lickHistory.push(selected.id);
-                    if (this.lickHistory.length > 50) this.lickHistory.shift();
-
-                    this.currentTrackName = selected.compositionId;
-                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-                    const cid = normalizeStr(selected.compositionId);
+                if (basePool.length > 0) {
+                    const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                    const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                    const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
                     
-                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
+                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                    const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
 
-                    const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
+                    let selected = null;
+                    if (freshLicks.length > 0) {
+                        selected = freshLicks[this.rng.nextInt(freshLicks.length)];
+                    } else if (sameOffsetPool.length > 0) {
+                        selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
+                    } else {
+                        const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
+                        selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
+                    }
 
-                    const axiomBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
-                    this.soloistBusyUntilBar = epoch + axiomBars;
-                    return selected.nativeBpm || undefined;
+                    if (selected) {
+                        this.lickHistory.push(selected.id);
+                        if (this.lickHistory.length > 50) this.lickHistory.shift();
+
+                        this.currentTrackName = selected.compositionId;
+                        this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
+                        this.currentPreferredInstrument = selected.preferredInstrument || null;
+                        const cid = normalizeStr(selected.compositionId);
+                        
+                        const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                        if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
+
+                        const accs = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano') || ax.role.toLowerCase().includes('harmony')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                        this.currentAccompAxioms = accs.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
+
+                        const axiomBars = selected.bars || 4;
+                        this.currentAxiomMaxTick = axiomBars * TICKS_PER_BAR;
+                        this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + axiomBars, id: selected.id };
+                        this.soloistBusyUntilBar = epoch + axiomBars;
+                        return selected.nativeBpm || undefined;
+                    }
                 }
             }
         }
@@ -342,7 +340,7 @@ export class TranceBrain {
         if (!this.currentBassTheme) return [];
         let phrase = this.currentBassTheme.phrase;
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
-        const localBar = mosaicBar % this.phraseBarCount(phrase);
+        const localBar = Math.abs(mosaicBar) % this.phraseBarCount(phrase);
         const barOffset = localBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
             type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
@@ -354,20 +352,20 @@ export class TranceBrain {
         if (!this.currentTheme) return [];
         let phrase = this.currentTheme.phrase;
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
-        const localBar = mosaicBar % this.phraseBarCount(phrase);
+        const localBar = Math.abs(mosaicBar) % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
                 type: 'melody', note: this.wrapMelody(rawNote),
-                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: n.phrasing || 'legato'
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: 'legato'
             };
         });
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
-        const localBar = mosaicBar % this.phraseBarCount(mutated);
+        const localBar = Math.abs(mosaicBar) % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
         return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
@@ -414,5 +412,5 @@ export class TranceBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
