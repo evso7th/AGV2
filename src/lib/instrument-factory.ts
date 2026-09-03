@@ -1,8 +1,9 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.8 — "Rumble & Hum Protection".
- * #ЗАЧЕМ: Реализация ПЛАНА №1900. 
- * #ЧТО: 1. Добавлен HPF 15Hz (DC Cut) для каждого инструмента.
- *       2. Реализована монофония для басовых инструментов.
+ * @fileOverview Центральная фабрика инструментов V8.9 — "Articulations & Legato".
+ * #ЗАЧЕМ: Реализация ПЛАНА №3.1. 
+ * #ЧТО: 1. Внедрена логика Legato (пропуск щелчка медиатора).
+ *       2. Реализован эффект Slide (частотный переход между нотами).
+ *       3. Монофония для гитарных лидов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -280,7 +281,9 @@ const createIndependentVoice = (
     duration: number,
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null,
-    tempo: number = 72
+    tempo: number = 72,
+    isLegato: boolean = false,
+    prevMidi: number | null = null
 ) => {
     const f0 = midiToHz(midi);
     const adsr = getADSR(preset, eventParams);
@@ -296,38 +299,52 @@ const createIndependentVoice = (
     voiceGain.gain.value = 0;
     
     const nodes: AudioNode[] = [voiceGain];
-    let guitarOsc: OscillatorNode | null = null;
+    let mainOsc: OscillatorNode | null = null;
+
+    // #ЗАЧЕМ: ПЛАН №3.1. Логика Slide.
+    const setupFrequency = (osc: OscillatorNode, targetF: number) => {
+        if (isLegato && (eventParams?.technique === 'sl' || eventParams?.technique === 'slide') && prevMidi) {
+            const startF = midiToHz(prevMidi);
+            osc.frequency.setValueAtTime(startF, now);
+            osc.frequency.exponentialRampToValueAtTime(targetF, now + 0.1); // Slide duration: 100ms
+        } else {
+            osc.frequency.setValueAtTime(targetF, now);
+        }
+    };
 
     if (type === 'guitar') {
         const width = preset.osc?.width || 0.45;
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getGuitarWave(ctx, width));
-        osc.frequency.setValueAtTime(f0, now);
+        setupFrequency(osc, f0);
         osc.connect(voiceGain);
         osc.start(now);
         nodes.push(osc);
-        guitarOsc = osc;
+        mainOsc = osc;
     } else if (type === 'organ') {
         const drawbars = preset.drawbars || [8,0,8,0,0,0,0,0,0];
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getOrganWave(ctx, drawbars));
-        osc.frequency.setValueAtTime(f0, now);
+        setupFrequency(osc, f0);
         if (humDetune !== 0) osc.detune.setValueAtTime(humDetune, now);
         osc.connect(voiceGain);
         osc.start(now);
         nodes.push(osc);
+        mainOsc = osc;
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
-        oscConfigs.forEach((o: any) => {
+        oscConfigs.forEach((o: any, idx: number) => {
             const osc = ctx.createOscillator();
             osc.type = o.type;
-            osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
+            const targetFreq = f0 * Math.pow(2, o.octave || 0);
+            setupFrequency(osc, targetFreq);
             if (isFinite(o.detune) && o.detune !== 0) osc.detune.setValueAtTime(o.detune, now);
             const g = ctx.createGain();
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
             osc.start(now);
             nodes.push(osc, g);
+            if (idx === 0) mainOsc = osc;
         });
     }
 
@@ -350,7 +367,8 @@ const createIndependentVoice = (
         nodes.push(colorInput);
         chainHead = colorInput;
 
-        if (preset.attackTransient > 0) {
+        // #ЗАЧЕМ: Режим Legato. Пропускаем атаку, если нота связана с предыдущей.
+        if (preset.attackTransient > 0 && !isLegato) {
             const t = getTransient(ctx, midi);
             if (t) {
                 const tSrc = ctx.createBufferSource();
@@ -365,14 +383,14 @@ const createIndependentVoice = (
             }
         }
 
-        if (preset.vibrato && guitarOsc) {
+        if (preset.vibrato && mainOsc) {
             const { rate = 5.2, depthCents = 7, delay = 0.35 } = preset.vibrato;
             const lfo = ctx.createOscillator();
             lfo.frequency.value = rate;
             const lfoGain = ctx.createGain();
             lfoGain.gain.setValueAtTime(0, now);
             lfoGain.gain.setTargetAtTime(depthCents, now + delay, 0.25);
-            lfo.connect(lfoGain).connect(guitarOsc.detune);
+            lfo.connect(lfoGain).connect(mainOsc.detune);
             lfo.start(now);
             nodes.push(lfo, lfoGain);
         }
@@ -480,7 +498,7 @@ const createIndependentVoice = (
         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop(now + totalLife + 0.5);
     });
     
-    return record; // Return the record for monophonic tracking
+    return record; 
 };
 
 export interface InstrumentAPI {
@@ -507,7 +525,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 } = {}): Promise<InstrumentAPI> {
     
     let currentPreset = { ...preset };
-    let lastVoiceRecord: any = null; // #ЗАЧЕМ: ПЛАН №1900. Память для монофонии.
+    let lastVoiceRecord: any = null; 
+    let lastMidi: number | null = null;
+    let lastNoteEndTime = 0;
 
     if (type === 'guitar' && currentPreset.attackTransient > 0) ensureTransientsLoaded(ctx);
 
@@ -520,7 +540,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     limiter.threshold.value = 0.0;
     limiter.ratio.value = 1.0;
     
-    // #ЗАЧЕМ: ПЛАН №1900. DC-cut фильтр на выходе каждого инструмента.
     const dcCut = ctx.createBiquadFilter();
     dcCut.type = 'highpass';
     dcCut.frequency.value = 15;
@@ -613,8 +632,14 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (!isFinite(velocity) || velocity < 0 || velocity > 1) return;
             if (!isFinite(duration) || duration <= 0) return;
             
-            // #ЗАЧЕМ: ПЛАН №1900. Монофонический режим для баса.
-            if (type === 'bass' && lastVoiceRecord && !lastVoiceRecord.cleaned) {
+            // #ЗАЧЕМ: ПЛАН №3.1. Определение Legato.
+            const now = ctx.currentTime;
+            const gap = when - lastNoteEndTime;
+            const isLegatoRequested = params?.technique === 'sl' || params?.technique === 'h/p' || params?.technique === 'slide' || params?.phrasing === 'legato';
+            const isLegato = (gap < 0.10 && gap > -0.05) && isLegatoRequested && lastMidi !== null;
+
+            // #ЗАЧЕМ: ПЛАН №1900. Монофонический режим для баса и гитарных лидов.
+            if ((type === 'bass' || type === 'guitar') && lastVoiceRecord && !lastVoiceRecord.cleaned) {
                 const node = lastVoiceRecord.voiceState?.node;
                 if (node) {
                     node.gain.cancelScheduledValues(when);
@@ -624,11 +649,16 @@ export async function buildMultiInstrument(ctx: AudioContext, {
 
             enforceVoiceLimit();
             const tempo = Math.max(20, Math.min(300, params?.tempo || 72));
-            lastVoiceRecord = createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params, tempo);
+            lastVoiceRecord = createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelayNode, params, tempo, isLegato, lastMidi);
+            
+            lastMidi = midi;
+            lastNoteEndTime = when + duration;
         },
         noteOff: () => {}, 
         allNotesOff: () => {
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
+            lastMidi = null;
+            lastNoteEndTime = 0;
         },
         setPreset: (p) => {
             const now = ctx.currentTime;
@@ -647,7 +677,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, now, 0.1);
             }
         },
-        setParam: () => {},
+        setParam: (k, v) => {
+            if (k === 'volume') this.setVolume(v);
+        },
         setVolume: (v) => {
             if (!isFinite(v)) return;
             const bounded = Math.max(0, Math.min(1, v));
@@ -669,9 +701,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 expressionGain.gain.cancelScheduledValues(now);
                 expressionGain.gain.setTargetAtTime(v, now, 0.01); 
             }
-        },
-        setValueAtTime: (v: number, t: number) => {
-            instrumentGain.gain.setValueAtTime(v, t);
         },
         setPan: (v) => { 
             if(isFinite(v)) {
