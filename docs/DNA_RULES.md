@@ -24,5 +24,5 @@
 21. **NARRATIVE SCALING**: The engine supports `timeScale` parameter. For Solo/Melody, this expands the reading window of the Axiom while slowing down the playback, creating 'laid-back' feel.
 22. **GOLDEN NOTE SUPREMACY**: In high-density passages (Trance, Foundry), notes on strong beats (0, 3, 6, 9) must be preserved and enhanced.
 23. **Infinite Journey Loop (MUST HAVE)**: The playback queue (Route) is required to operate in a continuous cycle. Upon reaching the end of the sequence, the engine must automatically restart from the first item.
-24. **PROACTIVE BALANCE**: All mixer and instrument settings associated with the starting genre must be applied instantly upon the first "Play" click, before the first note is rendered.
+24. **PROACTIVE BALANCE**: All mixer and instrument settings associated with the starting genre must be applied instantly upon the first "Play" click, before the first note is rendered. These initial settings serve as a "Factory Balance" subject to user-specific hardware calibration.
 25. **AXIOM ROTATION (The Law of Internal Rotation)**: When playing a donor track, the engine must not stick to the first axiom index. It must maintain a session history of played licks and prioritize "fresh" components within the active track to ensure varied performance upon repeated visits.

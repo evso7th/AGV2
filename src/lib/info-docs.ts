@@ -2,7 +2,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (Semantic HTML Edition).
  * #ЗАЧЕМ: Профессиональное форматирование документации с разделами и заголовками.
- * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по Silent Bridge и 100% Offline режиму.
+ * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по заводским пресетам и личной калибровке.
  */
 
 export const GUIDE_RU = `
@@ -40,7 +40,17 @@ export const GUIDE_RU = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Экономия ресурсов (30 FPS)</h3>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Заводской баланс и калибровка</h3>
+    <p>При первом выборе жанра система автоматически загружает <strong>заводские настройки микшера</strong>. Это «золотое» первичное сведение, созданное в студийных условиях. Однако помните:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li>Разная акустика (колонки, наушники) и звуковые карты имеют свои АЧХ.</li>
+      <li>Звук, идеальный на мониторах, может потребовать коррекции на портативной колонке.</li>
+      <li>Вы можете и должны корректировать громкость каждого музыканта в микшере, чтобы добиться идеального баланса именно для вашего оборудования.</li>
+    </ul>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">6. Экономия ресурсов (30 FPS)</h3>
     <p>Ваша визуализация теперь работает на частоте 30 FPS. Это позволяет вашему устройству тратить максимум сил на расчет идеального звука, предотвращая заикания даже на слабых процессорах.</p>
   </section>
 
@@ -83,7 +93,17 @@ export const GUIDE_EN = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Visual Efficiency (30 FPS)</h3>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Factory Balance & Calibration</h3>
+    <p>Upon choosing a genre, the system automatically loads <strong>Factory Mixer Presets</strong>. This provides a professional primary mix. However:</p>
+    <ul class="list-disc pl-4 space-y-1">
+      <li>Acoustic setups, sound cards, and amplifiers vary significantly between devices.</li>
+      <li>A mix that sounds perfect on headphones might need adjustment on large speakers.</li>
+      <li>You are encouraged to fine-tune the volume of each musician for your specific hardware to achieve your personal "Ideal Balance".</li>
+    </ul>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">6. Visual Efficiency (30 FPS)</h3>
     <p>Your visualization now operates in "Core Economy" mode at 30 FPS. This allows your device to dedicate maximum power to calculating perfect, glitch-free audio.</p>
   </section>
 
@@ -97,7 +117,7 @@ export const DISCLAIMER_RU = `
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Статус системы</h3>
-    <p>Система оптимизирована для работы в режиме 100% автономности. Весь контент является результатом математической генерации в реальном времени.</p>
+    <p>Система оптимизирована для работы в режиме 100% автономности. Весь контент является результатом математической генерации в реальном времени. Первичное сведение обеспечивается заводскими пресетами, но окончательный результат зависит от калибровки под ваше оборудование.</p>
   </section>
 
   <section class="space-y-2">
@@ -121,7 +141,7 @@ export const DISCLAIMER_EN = `
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. System Status</h3>
-    <p>The system is optimized for 100% autonomous operation. All content is the result of real-time mathematical generation.</p>
+    <p>The system is optimized for 100% autonomous operation. All content is the result of real-time mathematical generation. While factory presets provide a primary mix, final balance is dependent on your specific hardware calibration.</p>
   </section>
 
   <section class="space-y-2">
