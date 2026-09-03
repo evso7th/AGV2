@@ -1,9 +1,9 @@
 /**
- * @fileOverview Центральная фабрика инструментов V8.9 — "Articulations & Legato".
- * #ЗАЧЕМ: Реализация ПЛАНА №3.1. 
- * #ЧТО: 1. Внедрена логика Legato (пропуск щелчка медиатора).
- *       2. Реализован эффект Slide (частотный переход между нотами).
- *       3. Монофония для гитарных лидов.
+ * @fileOverview Центральная фабрика инструментов V9.0 — "DSP Hardening".
+ * #ЗАЧЕМ: Реализация физически обоснованной модели синтеза гитары. 
+ * #ЧТО: 1. Расширение спектра до 64 гармоник с усилением нечетных рядов.
+ *       2. Студийная эквализация (Boxy Cut & Presence Boost).
+ *       3. Оптимизация затухания струны (Q=0.7).
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -158,10 +158,19 @@ const getCachedWave = (ctx: AudioContext, key: string, build: () => PeriodicWave
     return wave;
 };
 
+/**
+ * #ЗАЧЕМ: Физическая модель гитарной струны V2.
+ * #ЧТО: 64 гармоники и усиление нечетных рядов (лязг щипка).
+ */
 const getGuitarWave = (ctx: AudioContext, width: number): PeriodicWave =>
-    getCachedWave(ctx, `g:${Math.round(width * 1e4) / 1e4}`, () => {
-        const real = new Float32Array(32), imag = new Float32Array(32);
-        for (let n = 1; n < 32; n++) real[n] = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width);
+    getCachedWave(ctx, `g:${Math.round(width * 1e4) / 1e4}:v2`, () => {
+        const real = new Float32Array(65), imag = new Float32Array(65);
+        for (let n = 1; n < 65; n++) {
+            let amplitude = (2 / (n * Math.PI)) * Math.sin(n * Math.PI * width);
+            // ПЛАН №12.1. Усиление нечетных гармоник (коэффициент 1.5) для металлического призвука.
+            if (n % 2 !== 0) amplitude *= 1.5;
+            real[n] = amplitude;
+        }
         return ctx.createPeriodicWave(real, imag);
     });
 
@@ -301,12 +310,11 @@ const createIndependentVoice = (
     const nodes: AudioNode[] = [voiceGain];
     let mainOsc: OscillatorNode | null = null;
 
-    // #ЗАЧЕМ: ПЛАН №3.1. Логика Slide.
     const setupFrequency = (osc: OscillatorNode, targetF: number) => {
         if (isLegato && (eventParams?.technique === 'sl' || eventParams?.technique === 'slide') && prevMidi) {
             const startF = midiToHz(prevMidi);
             osc.frequency.setValueAtTime(startF, now);
-            osc.frequency.exponentialRampToValueAtTime(targetF, now + 0.1); // Slide duration: 100ms
+            osc.frequency.exponentialRampToValueAtTime(targetF, now + 0.1); 
         } else {
             osc.frequency.setValueAtTime(targetF, now);
         }
@@ -367,7 +375,6 @@ const createIndependentVoice = (
         nodes.push(colorInput);
         chainHead = colorInput;
 
-        // #ЗАЧЕМ: Режим Legato. Пропускаем атаку, если нота связана с предыдущей.
         if (preset.attackTransient > 0 && !isLegato) {
             const t = getTransient(ctx, midi);
             if (t) {
@@ -417,7 +424,28 @@ const createIndependentVoice = (
     chainHead = hpf;
     nodes.push(hpf);
 
-    if (type !== 'bass' && type !== 'drums') {
+    /** #ЗАЧЕМ: Студийная эквализация (ПЛАН №2.1). */
+    if (type === 'guitar') {
+        // Boxy Cut: -3.5dB at 500Hz
+        const boxyCut = ctx.createBiquadFilter();
+        boxyCut.type = 'peaking';
+        boxyCut.frequency.value = 500;
+        boxyCut.Q.value = 1.2;
+        boxyCut.gain.value = -3.5;
+        chainHead.connect(boxyCut);
+        chainHead = boxyCut;
+        nodes.push(boxyCut);
+
+        // Presence Boost: +2.5dB at 2500Hz
+        const presenceBoost = ctx.createBiquadFilter();
+        presenceBoost.type = 'peaking';
+        presenceBoost.frequency.value = 2500;
+        presenceBoost.Q.value = 1.0;
+        presenceBoost.gain.value = 2.5;
+        chainHead.connect(presenceBoost);
+        chainHead = presenceBoost;
+        nodes.push(presenceBoost);
+    } else if (type !== 'bass' && type !== 'drums') {
         const dip = ctx.createBiquadFilter();
         dip.type = 'peaking';
         dip.frequency.value = 350;
@@ -431,7 +459,9 @@ const createIndependentVoice = (
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     const baseCutoff = preset.post?.lpf || preset.lpf?.cutoff || preset.lpf || 2000;
-    const baseQ = preset.lpf?.q || 0.7;
+    
+    /** #ЗАЧЕМ: Оптимизированное затухание (ПЛАН №3.1). */
+    const baseQ = type === 'guitar' ? 0.7 : (preset.lpf?.q || 0.7);
 
     let finalCutoff = baseCutoff;
     let finalQ = baseQ;
@@ -632,13 +662,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if (!isFinite(velocity) || velocity < 0 || velocity > 1) return;
             if (!isFinite(duration) || duration <= 0) return;
             
-            // #ЗАЧЕМ: ПЛАН №3.1. Определение Legato.
-            const now = ctx.currentTime;
             const gap = when - lastNoteEndTime;
             const isLegatoRequested = params?.technique === 'sl' || params?.technique === 'h/p' || params?.technique === 'slide' || params?.phrasing === 'legato';
             const isLegato = (gap < 0.10 && gap > -0.05) && isLegatoRequested && lastMidi !== null;
 
-            // #ЗАЧЕМ: ПЛАН №1900. Монофонический режим для баса и гитарных лидов.
             if ((type === 'bass' || type === 'guitar') && lastVoiceRecord && !lastVoiceRecord.cleaned) {
                 const node = lastVoiceRecord.voiceState?.node;
                 if (node) {

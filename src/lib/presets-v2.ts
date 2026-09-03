@@ -1,5 +1,5 @@
 // V2 Presets — Compatible with buildMultiInstrument()
-// #ОБНОВЛЕНО (ПЛАН №1335): Реализация "Протокола Чистого Неба 2.0".
+// #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -17,7 +17,6 @@ export const V2_PRESETS = {
       { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
     ],
     noise: { on: true, gain: 0.012 },
-    // #ЗАЧЕМ: ПЛАН №1335. Снижение уровня накопления хвостов.
     adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.2 },
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
@@ -32,7 +31,6 @@ export const V2_PRESETS = {
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
     ],
-    // #ЗАЧЕМ: ПЛАН №1335. Разрежение текстурного слоя.
     adsr: { a: 2.0, d: 2.5, s: 0.6, r: 1.8 },
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
@@ -47,7 +45,6 @@ export const V2_PRESETS = {
     name: 'Clean Organ',
     volume: 0.4,
     drawbars: [8, 8, 4, 0, 0, 0, 0, 0, 0],
-    // #ЗАЧЕМ: ПЛАН №1335. Сокращение релиза для чистоты микса.
     adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
     lpf: 1800,
     reverbMix: 0,
@@ -61,7 +58,6 @@ export const V2_PRESETS = {
     volume: 0.4,
     drawbars: [8, 0, 8, 2, 0, 0, 0, 0, 0],
     lpf: 1400,
-    // #ЗАЧЕМ: ПЛАН №1335. Минимизация наслоения в нижней середине.
     adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
     reverbMix: 0,
     leslie: { rate: 5.0, pitchDepth: 0.0002, ampDepth: 0.025, driftPct: 0.18, driftRate: 0.17 },
@@ -69,7 +65,7 @@ export const V2_PRESETS = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // GUITAR (LEGION ARCHITECTURE ACTIVE)
+  // GUITAR (PHYSICAL MODEL V2)
   // ═══════════════════════════════════════════════════════════════════════════
 
   guitar_clean: {
@@ -77,8 +73,9 @@ export const V2_PRESETS = {
     name: 'Clean Guitar',
     volume: 0.7,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.6 },
-    lpf: 4000,
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, // Sustain 0.6 for natural decay
+    lpf: 5000, // Higher ceiling for physical model
+    pluckBrightness: 0.8,
     reverbMix: 0
   },
 
@@ -88,12 +85,12 @@ export const V2_PRESETS = {
     volume: 0.10,
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
-    post: { lpf: 2800 },
-    adsr: { a: 0.020, d: 0.35, s: 0.85, r: 1.8 },
+    post: { lpf: 5000 }, // Refined LPF
+    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 }, // Sustain 0.65
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0,
     attackTransient: 0.15,
-    pluckBrightness: 1.5,
+    pluckBrightness: 0.9,
     vibrato: { rate: 5.0, depthCents: 8, delay: 0.40 },
     calibrationTrimDb: 7.54
   },
@@ -104,12 +101,12 @@ export const V2_PRESETS = {
     volume: 0.06,
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
-    post: { lpf: 2400 },
-    adsr: { a: 0.020, d: 0.5, s: 0.65, r: 1.0 },
+    post: { lpf: 4000 },
+    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 }, // Sustain 0.55
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0,
     attackTransient: 0.10,
-    pluckBrightness: 0.8,
+    pluckBrightness: 0.6,
     vibrato: { rate: 5.5, depthCents: 10, delay: 0.30 },
     calibrationTrimDb: 3.13
   },
@@ -122,7 +119,6 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    // #ЗАЧЕМ: ПЛАН №1335. Сокращение релиза для Rhodes.
     adsr: { a: 0.01, d: 0.3, s: 0.6, r: 0.4 },
     lpf: { cutoff: 2400, q: 0.7 }, 
     reverbMix: 0

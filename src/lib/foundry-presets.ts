@@ -1,6 +1,5 @@
 /**
- * @fileOverview Foundry Presets Library V1.6 — "Low End Clean-up".
- * #ЗАЧЕМ: ПЛАН №1850. Снижение громкости саб-осцилляторов для борьбы с гудением.
+ * @fileOverview Foundry Presets Library V1.7 — "Guitar Hardening".
  */
 
 export const FOUNDRY_PRESETS = {
@@ -10,7 +9,7 @@ export const FOUNDRY_PRESETS = {
     volume: 0.65,
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
-      { type: 'sine', detune: 0, octave: -1, gain: 0.15 }    // Reduced from 0.5 for clarity
+      { type: 'sine', detune: 0, octave: -1, gain: 0.15 }
     ],
     noise: { on: false },
     adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, 
@@ -26,7 +25,7 @@ export const FOUNDRY_PRESETS = {
     volume: 0.62,
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.2 }     // Reduced from 0.8 for clarity
+      { type: 'sine', detune: 0, octave: -1, gain: 0.2 }
     ],
     adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
     lpf: { cutoff: 850, q: 1.5 }, 
@@ -66,8 +65,9 @@ export const FOUNDRY_PRESETS = {
     name: 'Clean Guitar',
     volume: 0.7,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.7, r: 0.6 },
-    lpf: 4000,
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 },
+    lpf: 5000,
+    pluckBrightness: 0.8,
     reverbMix: 0
   },
 
@@ -77,12 +77,12 @@ export const FOUNDRY_PRESETS = {
     volume: 0.10,
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
-    post: { lpf: 2800 },
-    adsr: { a: 0.020, d: 0.35, s: 0.85, r: 1.8 },
+    post: { lpf: 5000 },
+    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 },
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0,
     attackTransient: 0.15,
-    pluckBrightness: 1.5,
+    pluckBrightness: 0.9,
     vibrato: { rate: 5.0, depthCents: 8, delay: 0.40 },
     calibrationTrimDb: 7.54
   },
@@ -93,12 +93,12 @@ export const FOUNDRY_PRESETS = {
     volume: 0.06,
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
-    post: { lpf: 2400 },
-    adsr: { a: 0.020, d: 0.5, s: 0.65, r: 1.0 },
+    post: { lpf: 4000 },
+    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 },
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0,
     attackTransient: 0.10,
-    pluckBrightness: 0.8,
+    pluckBrightness: 0.6,
     vibrato: { rate: 5.5, depthCents: 10, delay: 0.30 },
     calibrationTrimDb: 3.13
   },
