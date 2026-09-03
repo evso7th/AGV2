@@ -63,5 +63,21 @@
       "drums": 0.50
     },
     "genre": "blues"
+  },
+  {
+    "id": "seed-reggae",
+    "name": "ROOT REGGEE DEFAULT",
+    "values": {
+      "master": 0.75,
+      "bass": 0.70,
+      "melody": 0.65,
+      "accompaniment": 0.15,
+      "pianoAccompaniment": 0.35,
+      "harmony": 0.20,
+      "sparkles": 0.40,
+      "sfx": 0.30,
+      "drums": 0.50
+    },
+    "genre": "reggae"
   }
 ]
