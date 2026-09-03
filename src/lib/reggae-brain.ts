@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V26.3 — "Velvet Standard".
- * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
+ * @fileOverview Reggae Brain V26.4 — "Stability Patch".
+ * #ЗАЧЕМ: Исправление ReferenceError (currentTransposition, rng) и ошибок сигнатур.
  */
 
 import type {
@@ -66,6 +66,7 @@ export class ReggaeBrain {
     private drumRestUntilBar: number = -1;
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
+    private currentTransposition: number = 0; // #ЗАЧЕМ: Фикс ReferenceError
     private lickHistory: string[] = [];
 
     // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
@@ -510,7 +511,7 @@ export class ReggaeBrain {
         const barNotes = mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
 
         return barNotes.map(n => {
-            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
             const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
             return {
                 type, note: finalNote,
@@ -523,7 +524,7 @@ export class ReggaeBrain {
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         if (this.random.next() > (0.1 + tension * 0.4)) return [];
         const t = calculateMusiNum(epoch, 7, this.seed, 2) === 0 ? 3 : 9;
-        const root = chord.rootNote + 12 + this.microTransposition;
+        const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
         return (chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7]).map(interval => ({
             type: 'harmony', note: this.constrainAccompanimentOctave(root + interval),
             time: t * TICK_TO_BEAT, duration: 0.4 * TICK_TO_BEAT, weight: 0.35,
@@ -533,7 +534,7 @@ export class ReggaeBrain {
 
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number): { events: FractalEvent[], style: string } {
         if (this.random.next() > 0.3) return { events: [], style: 'none' };
-        const root = chord.rootNote + 12 + this.microTransposition;
+        const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
         const rawNote = root + (chord.chordType === 'minor' ? 3 : 4);
         return {
             style: 'Dub Echoes',
@@ -547,7 +548,7 @@ export class ReggaeBrain {
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
-        const root = chord.rootNote + 12 + this.microTransposition;
+        const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
         const isMinor = chord.chordType === 'minor';
         const scale = isMinor ? [0, 3, 5, 7, 10] : [0, 4, 7, 9]; 
         
