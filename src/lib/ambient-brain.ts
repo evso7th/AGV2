@@ -1,6 +1,6 @@
 /**
- * @fileOverview Ambient Brain V118.1 — "Reference & Rotation Fix".
- * #ЗАЧЕМ: Исправление замирания (ReferenceError: usedTargetLayers) и внедрение ротации.
+ * @fileOverview Ambient Brain V118.2 — "Velvet Standard".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
  */
 
 import type {
@@ -70,7 +70,8 @@ export class AmbientBrain {
     private heldNotesState: Map<string, { midi: number, barCount: number }> = new Map();
     private lickHistory: string[] = [];
 
-    private readonly MELODY_CEILING = 88;
+    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
+    private readonly MELODY_CEILING = 71;
 
     private cloudAxioms: any[] = [];
     private activeAnchorId: string | null = null;
@@ -91,6 +92,13 @@ export class AmbientBrain {
         };
         const nextInt = (max: number) => Math.floor(next() * max);
         return { next, nextInt };
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
+    private wrapMelody(midi: number): number {
+        let v = midi;
+        while (v > this.MELODY_CEILING) v -= 12;
+        return v;
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
@@ -150,7 +158,6 @@ export class AmbientBrain {
                     return undefined;
                 }
 
-                // #ЗАЧЕМ: Закон Внутренней Ротации.
                 const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
                 const tension = dna.tensionMap?.[epoch] ?? 0.5;
                 const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
@@ -434,9 +441,11 @@ export class AmbientBrain {
         
         return barNotes.map(n => {
             const isLong = n.d > 3;
+            // #ЗАЧЕМ: Вельветовый Стандарт.
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
                 type: 'melody', 
-                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
+                note: this.wrapMelody(rawNote),
                 time: n.t * TICK_TO_BEAT, 
                 duration: n.d * TICK_TO_BEAT, 
                 weight: isLong ? 0.85 : 0.65,
@@ -474,15 +483,19 @@ export class AmbientBrain {
         const rawBarNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({ ...n, t: n.t - offset }));
         const barNotes = this.applyMutationLogic(rawBarNotes, tension, this.seed + epoch + 2);
 
-        return barNotes.map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato',
-            params: { 
-                attack: n.params?.attack || 1.2, 
-                release: n.params?.release || 4.5 
-            }
-        }));
+        return barNotes.map(n => {
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
+            return {
+                type, note: finalNote,
+                time: (n.t) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+                technique: 'swell', dynamics: 'p', phrasing: 'legato',
+                params: { 
+                    attack: n.params?.attack || 1.2, 
+                    release: n.params?.release || 4.5 
+                }
+            };
+        });
     }
 
     private renderPulsatingBass(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -514,17 +527,20 @@ export class AmbientBrain {
 
         return {
             style: 'Ambient Echoes',
-            events: shuffledTicks.map(t => ({
-                type: 'pianoAccompaniment', 
-                note: this.constrainAccompanimentOctave(root + (this.random.next() < 0.4 ? 0 : (chord.chordType === 'minor' ? 3 : 4))),
-                time: t * TICK_TO_BEAT,
-                duration: 0.8, 
-                weight: 0.58, 
-                technique: 'hit', 
-                dynamics: 'p', 
-                phrasing: 'staccato',
-                params: { attack: 0.01, release: 2.5 }
-            }))
+            events: shuffledTicks.map(t => {
+                const rawNote = root + (this.random.next() < 0.4 ? 0 : (chord.chordType === 'minor' ? 3 : 4));
+                return {
+                    type: 'pianoAccompaniment', 
+                    note: this.wrapMelody(rawNote),
+                    time: t * TICK_TO_BEAT,
+                    duration: 0.8, 
+                    weight: 0.58, 
+                    technique: 'hit', 
+                    dynamics: 'p', 
+                    phrasing: 'staccato',
+                    params: { attack: 0.01, release: 2.5 }
+                };
+            })
         };
     }
 
@@ -556,9 +572,10 @@ export class AmbientBrain {
 
     private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const scale = [0, 2, 3, 5, 7, 10, 12];
+        const rawNote = chord.rootNote + 12 + scale[calculateMusiNum(epoch, 7, this.seed, scale.length)] + this.microTransposition;
         return [{
             type: 'melody', 
-            note: chord.rootNote + 12 + scale[calculateMusiNum(epoch, 7, this.seed, scale.length)] + this.microTransposition,
+            note: this.wrapMelody(rawNote),
             time: [3, 6, 9][this.random.nextInt(3)] * TICK_TO_BEAT,
             duration: 2.5, 
             weight: 0.65, 

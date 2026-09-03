@@ -1,6 +1,6 @@
 /**
- * @fileOverview Blues Brain V84.0 — "Golden Note Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №2250. Нарративный фильтр для очистки быстрых пассажей.
+ * @fileOverview Blues Brain V84.1 — "Velvet Standard".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
  */
 
 import {
@@ -108,7 +108,8 @@ export class BluesBrain {
       lastPlayedOffset: number
   };
 
-  private readonly MELODY_CEILING = 88;
+  // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
+  private readonly MELODY_CEILING = 71;
 
   constructor(
       seed: number,
@@ -168,6 +169,13 @@ export class BluesBrain {
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
 
+  // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
+  private wrapMelody(midi: number): number {
+    let v = midi;
+    while (v > this.MELODY_CEILING) v -= 12;
+    return v;
+  }
+
   public updateCloudAxioms(axioms: any[], selectedCompositionIds?: string[], activeAnchorId?: string | null, activeAnchorRoot?: number | null, useHeritage?: boolean, isImprovising?: boolean) {
       const wasEmpty = !this.config.cloudAxioms || this.config.cloudAxioms.length === 0;
       this.config.cloudAxioms = axioms;
@@ -222,7 +230,7 @@ export class BluesBrain {
         let finalNote = note;
         
         if (rawType === 'bass') finalNote = this.constrainBassOctave(note);
-        else if (rawType === 'melody') finalNote = Math.min(note, this.MELODY_CEILING);
+        else if (rawType === 'melody' || rawType === 'pianoAccompaniment') finalNote = this.wrapMelody(note);
         else finalNote = this.constrainAccompanimentOctave(note);
 
         rippled.push({
@@ -534,9 +542,9 @@ export class BluesBrain {
       const ticks = [0, 3, 6, 9].sort(() => this.random.next() - 0.5).slice(0, noteCount);
       ticks.forEach(t => {
           const degIdx = calculateMusiNum(epoch + t, 11, this.seed, scale.length);
-          const note = root + scale[degIdx] + this.currentTransposition + this.microTransposition;
+          const rawNote = root + scale[degIdx] + this.currentTransposition + this.microTransposition;
           events.push({
-              type: 'melody', note: Math.min(note, this.MELODY_CEILING), time: t * TICK_TO_BEAT, duration: 1.8 * TICK_TO_BEAT,
+              type: 'melody', note: this.wrapMelody(rawNote), time: t * TICK_TO_BEAT, duration: 1.8 * TICK_TO_BEAT,
               weight: 0.65 + (tension * 0.15), technique: tension > 0.4 ? 'vb' : 'pick', dynamics: 'p', phrasing: 'legato'
           });
       });
@@ -583,22 +591,22 @@ export class BluesBrain {
         if (useNarrativeFilter) {
             if (isGolden) {
                 weight = 0.95;
-                durationScale = 2.0; // Удлиняем опорные ноты
+                durationScale = 2.0; 
                 tech = 'vb';
             } else {
-                weight = 0.30; // Быстрые ноты пассажа уходят в тень
+                weight = 0.30; 
                 durationScale = 0.4;
                 tech = 'pick';
             }
         } else {
-            // Стандартное взвешивание для редких мелодий
             weight = isGolden ? 0.95 : 0.75;
             durationScale = isGolden ? 1.5 : 1.0;
         }
 
+        const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
         return {
             type: type as any, 
-            note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition, this.MELODY_CEILING),
+            note: this.wrapMelody(rawNote),
             time: relativeTick * TICK_TO_BEAT * timeScale, 
             duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale,
             weight, 
@@ -639,18 +647,22 @@ export class BluesBrain {
       const startEpoch = this.soloistBusyUntilBar - totalBars;
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
       const barOffset = mosaicBar * TICKS_PER_BAR;
-      return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => ({
-          type: type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-          time: (n.t - barOffset) * TICK_TO_BEAT, duration: Math.min(n.d, 6) * TICK_TO_BEAT, weight: 0.6, technique: 'hit', 
-          params: { attack: n.params?.attack, release: n.params?.release }
-      }));
+      return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+          const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
+          const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
+          return {
+              type: type, note: finalNote,
+              time: (n.t - barOffset) * TICK_TO_BEAT, duration: Math.min(n.d, 6) * TICK_TO_BEAT, weight: 0.6, technique: 'hit', 
+              params: { attack: n.params?.attack, release: n.params?.release }
+          };
+      });
   }
 
   private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): { events: FractalEvent[], style: string } {
       const events: FractalEvent[] = [];
       const root = chord.rootNote + 12 + this.currentTransposition + this.microTransposition;
       if (melodyEvents.length > 0) {
-          melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + (chord.chordType === 'minor' ? 3 : 4)), weight: 0.65, technique: 'hit' }); });
+          melodyEvents.forEach((m, i) => { if (i % 2 === 0) events.push({ ...m, type: 'pianoAccompaniment', note: this.wrapMelody(m.note + (chord.chordType === 'minor' ? 3 : 4)), weight: 0.65, technique: 'hit' }); });
           return { events, style: "Shadow Support" };
       }
       return { events: [], style: "none" };

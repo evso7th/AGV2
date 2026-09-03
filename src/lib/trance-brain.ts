@@ -1,6 +1,6 @@
 /**
- * @fileOverview Trance Brain V88.0 — "Robust Ensemble Restoration".
- * #ЗАЧЕМ: Исправление замирания (защита от пустого basePool) и расширение охвата жанров.
+ * @fileOverview Trance Brain V88.1 — "Velvet Standard".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
  */
 
 import type {
@@ -46,10 +46,10 @@ class SeededRNG {
 }
 
 export class TranceBrain {
+    private rng: SeededRNG;
     private seed: number;
     private mood: Mood;
     private genre: Genre;
-    private rng: SeededRNG;
     private useHeritage: boolean;
     private isImprovising: boolean = false;
 
@@ -70,7 +70,8 @@ export class TranceBrain {
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
 
-    private readonly MELODY_CEILING = 88;
+    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
+    private readonly MELODY_CEILING = 71;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -84,6 +85,13 @@ export class TranceBrain {
     private isGolden(tick: number): boolean {
         const relT = ((tick % TICKS_PER_BAR) + TICKS_PER_BAR) % TICKS_PER_BAR;
         return this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
+    private wrapMelody(midi: number): number {
+        let v = midi;
+        while (v > this.MELODY_CEILING) v -= 12;
+        return v;
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
@@ -119,7 +127,6 @@ export class TranceBrain {
         const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
         let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
         
-        // #ЗАЧЕМ: Расширенное сопоставление жанров (psybient <-> trance).
         let filteredPool = effectiveAnchor 
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
@@ -144,7 +151,6 @@ export class TranceBrain {
                     }
                 }
 
-                // Защита от пустого пула после фильтрации
                 if (basePool.length === 0) {
                     this.soloistBusyUntilBar = epoch + 4;
                     return undefined;
@@ -200,7 +206,6 @@ export class TranceBrain {
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
         
-        // В трансе мы всегда применяем Золотую Сеть (30 FPS Law)
         return notes.filter(n => this.isGolden(n.t));
     }
 
@@ -351,20 +356,27 @@ export class TranceBrain {
         phrase = this.applyMutationLogic(phrase, tension, this.seed + epoch);
         const localBar = mosaicBar % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: n.phrasing || 'legato'
-        }));
+        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            return {
+                type: 'melody', note: this.wrapMelody(rawNote),
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.5, weight: 1.0, technique: 'vb', dynamics: 'mf', phrasing: n.phrasing || 'legato'
+            };
+        });
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.2, weight: 0.8, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
+        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
+            return {
+                type, note: finalNote,
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * 1.2, weight: 0.8, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            };
+        });
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -377,7 +389,7 @@ export class TranceBrain {
         const events: FractalEvent[] = [];
         if (melodyEvents.length > 0) {
             melodyEvents.forEach((m) => {
-                 events.push({ ...m, type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(m.note + 7), weight: 0.375, technique: 'hit' });
+                 events.push({ ...m, type: 'pianoAccompaniment', note: this.wrapMelody(m.note + 7), weight: 0.375, technique: 'hit' });
             });
             return { events, style: 'Golden Support' };
         }
@@ -388,7 +400,7 @@ export class TranceBrain {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
         return [0, 3, 6, 9].filter(() => this.rng.chance(20)).map(t => ({
-            type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
+            type: 'melody', note: this.wrapMelody(root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)]),
             time: t * TICK_TO_BEAT, duration: 0.8 * TICK_TO_BEAT, weight: 0.9, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
     }

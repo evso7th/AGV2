@@ -1,6 +1,6 @@
 /**
- * @fileOverview Reggae Brain V26.2 — "Robust Ensemble Restoration".
- * #ЗАЧЕМ: Исправление зависания (защита от пустого basePool) и расширение охвата жанров.
+ * @fileOverview Reggae Brain V26.3 — "Velvet Standard".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
  */
 
 import type {
@@ -67,7 +67,9 @@ export class ReggaeBrain {
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
-    private readonly MELODY_CEILING = 84;
+
+    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
+    private readonly MELODY_CEILING = 71;
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -88,6 +90,13 @@ export class ReggaeBrain {
             return Math.floor(next() * max);
         };
         return { next, nextInt };
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
+    private wrapMelody(midi: number): number {
+        let v = midi;
+        while (v > this.MELODY_CEILING) v -= 12;
+        return v;
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
@@ -478,9 +487,11 @@ export class ReggaeBrain {
                 if (isGolden) { weight = 0.95; durationScale = 2.0; tech = 'vb'; }
                 else { weight = 0.3; durationScale = 0.4; }
             }
+            // #ЗАЧЕМ: Вельветовый Стандарт.
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
                 type: 'melody',
-                note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
+                note: this.wrapMelody(rawNote),
                 time: relativeTick * TICK_TO_BEAT * timeScale,
                 duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale,
                 weight,
@@ -498,11 +509,15 @@ export class ReggaeBrain {
         const offset = localBar * TICKS_PER_BAR;
         const barNotes = mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
 
-        return barNotes.map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
-            technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
+        return barNotes.map(n => {
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
+            return {
+                type, note: finalNote,
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.45,
+                technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            };
+        });
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
@@ -519,10 +534,11 @@ export class ReggaeBrain {
     private renderVirtuosoPiano(epoch: number, chord: GhostChord, tension: number): { events: FractalEvent[], style: string } {
         if (this.random.next() > 0.3) return { events: [], style: 'none' };
         const root = chord.rootNote + 12 + this.microTransposition;
+        const rawNote = root + (chord.chordType === 'minor' ? 3 : 4);
         return {
             style: 'Dub Echoes',
             events: [{
-                type: 'pianoAccompaniment', note: this.constrainAccompanimentOctave(root + (chord.chordType === 'minor' ? 3 : 4)),
+                type: 'pianoAccompaniment', note: this.wrapMelody(rawNote),
                 time: 10.5 * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.5,
                 technique: 'hit', dynamics: 'p', phrasing: 'staccato'
             }]
@@ -542,11 +558,11 @@ export class ReggaeBrain {
             const tIdx = calculateMusiNum(epoch + i, 11, this.seed, offbeats.length);
             const time = offbeats[tIdx];
             const degIdx = calculateMusiNum(epoch + i, 13, this.seed, scale.length);
-            const note = root + scale[degIdx];
+            const rawNote = root + scale[degIdx];
             
             events.push({
                 type: 'melody',
-                note: Math.min(note, this.MELODY_CEILING),
+                note: this.wrapMelody(rawNote),
                 time: time * TICK_TO_BEAT,
                 duration: 0.5 * TICK_TO_BEAT, 
                 weight: 0.6 + (tension * 0.2),

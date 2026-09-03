@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.4 — "Code Integrity Fix".
- * #ЗАЧЕМ: Исправление зависания (защита от пустого basePool) и расширение сопоставления жанров.
+ * @fileOverview Dark Foundry Brain V4.5 — "Velvet Standard".
+ * #ЗАЧЕМ: Реализация октавного заслона (MIDI 71) для мягкого звучания.
  */
 
 import type {
@@ -70,7 +70,8 @@ export class DarkFoundryBrain {
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
 
-    private readonly MELODY_CEILING = 88;
+    // #ЗАЧЕМ: Вельветовый Стандарт. Ограничение 4-й октавой.
+    private readonly MELODY_CEILING = 71;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -84,6 +85,13 @@ export class DarkFoundryBrain {
     private isGolden(tick: number): boolean {
         const relT = ((tick % TICKS_PER_BAR) + TICKS_PER_BAR) % TICKS_PER_BAR;
         return this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1480. Октавный враппинг для мелодии.
+    private wrapMelody(midi: number): number {
+        let v = midi;
+        while (v > this.MELODY_CEILING) v -= 12;
+        return v;
     }
 
     public updateCloudAxioms(axioms: any[], activeAnchorId?: string | null, useHeritage?: boolean, isImprovising?: boolean) {
@@ -162,7 +170,7 @@ export class DarkFoundryBrain {
                     selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
                 } else {
                     const anyFresh = basePool.filter(ax => !this.lickHistory.includes(ax.id));
-                    selected = anyFresh.length > 0 ? anyFresh[this.rng.nextInt(anyFresh.length)] : basePool[0];
+                    selected = anyFresh.length > 0 ? anyFresh[this.random.nextInt(anyFresh.length)] : basePool[0];
                 }
 
                 if (selected) {
@@ -283,7 +291,10 @@ export class DarkFoundryBrain {
                 
                 if (target === 'pianoAccompaniment') {
                     renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
-                    renders.forEach(n => n.weight = 0.375); 
+                    renders.forEach(n => {
+                        n.note = this.wrapMelody(n.note);
+                        n.weight = 0.375;
+                    }); 
                 }
                 
                 events.push(...renders); 
@@ -304,7 +315,10 @@ export class DarkFoundryBrain {
             const p = this.renderVirtuosoPiano(epoch, resChord, tension, melodyEvents);
             if (p.events.length > 0) {
                 const thinned = p.events.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
-                thinned.forEach(n => n.weight = 0.375);
+                thinned.forEach(n => {
+                    n.note = this.wrapMelody(n.note);
+                    n.weight = 0.375;
+                });
                 events.push(...thinned); 
             }
         }
@@ -382,8 +396,9 @@ export class DarkFoundryBrain {
         return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
             const relT = n.t - offset;
             const isGold = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
-                type: 'melody', note: Math.min(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition, this.MELODY_CEILING),
+                type: 'melody', note: this.wrapMelody(rawNote),
                 time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
                 weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', 
                 phrasing: n.phrasing || 'legato',
@@ -396,10 +411,14 @@ export class DarkFoundryBrain {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = mosaicBar % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => ({
-            type, note: this.constrainAccompanimentOctave(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
-        }));
+        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
+            return {
+                type, note: finalNote,
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+            };
+        });
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -444,7 +463,7 @@ export class DarkFoundryBrain {
                     events.push({ 
                         ...m, 
                         type: 'pianoAccompaniment', 
-                        note: this.constrainAccompanimentOctave(m.note + 7), 
+                        note: this.wrapMelody(m.note + 7), 
                         weight: 0.375, 
                         technique: 'hit' 
                     });
@@ -459,7 +478,7 @@ export class DarkFoundryBrain {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
         return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40)).map(t => ({
-            type: 'melody', note: root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)],
+            type: 'melody', note: this.wrapMelody(root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)]),
             time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
     }
