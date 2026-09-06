@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V1.9 — "Toolbar Integration".
- * #ЗАЧЕМ: Обновление стиля кнопки для соответствия тулбару навигатора (h-10, outline).
+ * @fileOverview Offline Sync Center V2.0 — "App Code Warm-up".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2207 — Принудительное кэширование JS/HTML бандлов приложения.
  */
 'use client';
 
@@ -83,6 +83,21 @@ export function OfflineSyncCenter() {
     }
   }, []);
 
+  /**
+   * #ЗАЧЕМ: Прогрев кода. Обращаемся ко всем основным страницам, 
+   * чтобы Service Worker поместил их в CacheStorage.
+   */
+  const warmUpAppCode = useCallback(async () => {
+    const routes = ['/', '/home', '/aura-groove', '/hypercube-dashboard', '/timbre-lab'];
+    console.log('[Vault] Warming up app code...');
+    for (const route of routes) {
+      try {
+        // Обычный fetch заставит Service Worker перехватить запрос и сохранить ответ.
+        await fetch(route, { priority: 'low' });
+      } catch (e) {}
+    }
+  }, []);
+
   const startSync = useCallback(async () => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -94,7 +109,10 @@ export function OfflineSyncCenter() {
       // 1. ПРИНУДИТЕЛЬНАЯ СИНХРОНИЗАЦИЯ DNA (Firestore -> Local Cache)
       await syncDna();
 
-      // 2. СИНХРОНИЗАЦИЯ ATOMS (Samples)
+      // 2. ПРОГРЕВ КОДА ПРИЛОЖЕНИЯ
+      await warmUpAppCode();
+
+      // 3. СИНХРОНИЗАЦИЯ ATOMS (Samples)
       const res = await fetch('/audio-manifest.json');
       if (!res.ok) throw new Error('Manifest unavailable');
       
@@ -125,7 +143,7 @@ export function OfflineSyncCenter() {
       await refreshStats();
 
       setStatus('complete');
-      toast({ title: "System Synchronized", description: "All atoms and DNA records are now local." });
+      toast({ title: "System Synchronized", description: "All atoms, code and DNA records are now local." });
     } catch (e: any) {
       setStatus('error');
       setErrorMessage(e.message || "Network Error");
@@ -133,7 +151,7 @@ export function OfflineSyncCenter() {
     } finally {
       setIsSyncing(false);
     }
-  }, [isSyncing, toast, syncDna, refreshStats]);
+  }, [isSyncing, toast, syncDna, refreshStats, warmUpAppCode]);
 
   const handleResync = useCallback(async () => {
     setStatus('scanning');
@@ -181,7 +199,7 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Asset & DNA Synchronization Unit v1.9
+              Asset & DNA Synchronization Unit v2.0
             </DialogDescription>
           </DialogHeader>
 
@@ -240,7 +258,7 @@ export function OfflineSyncCenter() {
                         </p>
                     )}
 
-                    {/* MAINTENANCE BUTTON (Moved inside accordion) */}
+                    {/* MAINTENANCE BUTTON */}
                     <div className="pt-6 border-t border-white/10 flex flex-col items-center gap-3">
                         <Button 
                             variant="ghost" 

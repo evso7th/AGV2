@@ -78,7 +78,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
 
     // #ЗАЧЕМ: ПЛАН №2305. Офлайн-байпас. 
-    // Если за 2.5с Auth не ответил (нет сети), принудительно снимаем флаг загрузки,
+    // Если за 1с Auth не ответил (нет сети), принудительно снимаем флаг загрузки,
     // чтобы приложение могло запуститься в офлайн-режиме.
     const authTimeout = setTimeout(() => {
         setUserAuthState(prev => {
@@ -88,7 +88,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
             }
             return prev;
         });
-    }, 2500);
+    }, 1000); // Снижено до 1с для ускорения оффлайн-старта
 
     const unsubscribe = onAuthStateChanged(
       auth,

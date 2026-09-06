@@ -17,13 +17,27 @@ const withPWA = require('next-pwa')({
       },
     },
     {
+      urlPattern: /\/_next\/static\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'next-static-assets',
+        expiration: {
+          maxEntries: 1000,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days - Code immortality
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    {
       urlPattern: /\/audio-manifest\.json$/i,
       handler: 'StaleWhileRevalidate',
       options: {
         cacheName: 'manifest-cache',
         expiration: {
           maxEntries: 1,
-          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 days
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
         },
       },
     },
@@ -47,8 +61,8 @@ const withPWA = require('next-pwa')({
       options: {
         cacheName: 'static-json-assets',
         expiration: {
-          maxEntries: 50,
-          maxAgeSeconds: 24 * 60 * 60,
+          maxEntries: 100,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
         },
       },
     }

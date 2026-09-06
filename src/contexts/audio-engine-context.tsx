@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V68.0 — "Soft Entrance Implementation".
- * #ЗАЧЕМ: ПЛАН №1401. Поддержка нарастания громкости Melody и Piano.
+ * @fileOverview Audio Engine Context V69.0 — "Absolute Autonomy".
+ * #ЗАЧЕМ: ПЛАН №2206. Устранение блокирующего ожидания сети при инициализации DNA.
  */
 'use client';
 
@@ -564,8 +564,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 }
             } catch (e) {}
         }
-        const hadCache = await loadDnaFromCache();
-        if (hadCache) { void refreshCloudAxioms(); } else { await refreshCloudAxioms(); }
+        
+        // #ЗАЧЕМ: ПЛАН №2206. Никогда не блокируем инициализацию ожиданием сети.
+        await loadDnaFromCache();
+        void refreshCloudAxioms(); 
+        
         applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
