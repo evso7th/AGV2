@@ -2,7 +2,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (Semantic HTML Edition).
  * #ЗАЧЕМ: Профессиональное форматирование документации с разделами и заголовками.
- * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по заводским пресетам и личной калибровке.
+ * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по вечному оффлайну и авто-прогреву кода.
  */
 
 export const GUIDE_RU = `
@@ -11,8 +11,6 @@ export const GUIDE_RU = `
   
   <p class="opacity-90 font-bold italic">Infinite Take Orchestra – Ready for Deploy</p>
   
-  <p>Добро пожаловать в AuraGroove V3 — автономный музыкальный интеллект. Это руководство поможет вам настроить систему под себя и понять принципы работы нашего «Кремниевого Оркестра».</p>
-
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Введение: Математическая магия</h3>
     <p>AuraGroove — это не нейросеть, а сложный алгоритмический генератор. Мы используем фрактальную математику, цепи Маркова и «Вельветовый Стандарт» для создания музыки, которая всегда звучит мягко и никогда не повторяется.</p>
@@ -20,38 +18,33 @@ export const GUIDE_RU = `
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Бродкаст и «Тихий Прогрев»</h3>
-    <p>Для идеальной работы на мобильных устройствах используйте иконку башни (Broadcast). Мы рекомендуем нажимать её за 10-15 секунд до начала игры. Система запустит «тихий» мост (Standby), подготовив аудио-поток. Когда вы нажмете <strong>Play</strong>, музыка начнется мгновенно и без артефактов благодаря <strong>Протоколу Проактивного Баланса</strong>.</p>
+    <p>Для идеальной работы на мобильных устройствах используйте иконку башни (Broadcast). Мы рекомендуем нажимать её за 10-15 секунд до начала игры. Система подготовит аудио-поток, и музыка начнется мгновенно и без артефактов.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Автономная работа (Offline)</h3>
-    <p>AuraGroove может работать абсолютно без интернета. Для этого:</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Вечный Оффлайн (Offline)</h3>
+    <p>В версии 3.7.1 AuraGroove может работать абсолютно без интернета до 30 дней. Для этого:</p>
     <ul class="list-disc pl-4 space-y-1">
-      <li>Нажмите на иконку молнии/базы данных (Vault) в нижнем тулбаре.</li>
+      <li>Нажмите на иконку молнии (Vault) в нижнем тулбаре.</li>
       <li>Нажмите кнопку <strong>Sync All</strong>.</li>
-      <li>Дождитесь завершения загрузки всех аудио-атомов (Samples) и DNA Наследия до 100%.</li>
+      <li>Система автоматически скачает не только звуки, но и программный код всех страниц приложения (Code Warm-up).</li>
     </ul>
-    <p>После этого приложение можно добавить на главный экран (PWA) и запускать в любом месте без связи.</p>
+    <p><strong>Важно:</strong> Установите приложение как PWA (Добавить на главный экран), чтобы защитить кэш от удаления браузером.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">4. Протокол Мягкого Входа</h3>
-    <p>Каждая новая композиция начинается деликатно. Мелодия, пианино и аккомпанемент плавно нарастают с 30% до 100% громкости в течение первых 6 тактов. Это маскирует технические переключения и создает эффект «дыхания» оркестра.</p>
+    <p>Каждая новая композиция начинается деликатно. Мелодия, пианино и аккомпанемент плавно нарастают с 30% до 100% громкости в течение первых 6 тактов. Это создает эффект «дыхания» оркестра.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">5. Заводской баланс и калибровка</h3>
-    <p>При первом выборе жанра система автоматически загружает <strong>заводские настройки микшера</strong>. Это «золотое» первичное сведение, созданное в студийных условиях. Однако помните:</p>
-    <ul class="list-disc pl-4 space-y-1">
-      <li>Разная акустика (колонки, наушники) и звуковые карты имеют свои АЧХ.</li>
-      <li>Звук, идеальный на мониторах, может потребовать коррекции на портативной колонке.</li>
-      <li>Вы можете и должны корректировать громкость каждого музыканта в микшере, чтобы добиться идеального баланса именно для вашего оборудования.</li>
-    </ul>
+    <p>При выборе жанра система загружает заводские настройки микшера. Вы можете корректировать громкость каждого музыканта, чтобы добиться идеального баланса для вашего оборудования.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">6. Экономия ресурсов (30 FPS)</h3>
-    <p>Ваша визуализация теперь работает на частоте 30 FPS. Это позволяет вашему устройству тратить максимум сил на расчет идеального звука, предотвращая заикания даже на слабых процессорах.</p>
+    <p>Визуализация работает на частоте 30 FPS. Это позволяет вашему устройству тратить максимум сил на расчет идеального звука без заиканий.</p>
   </section>
 
   <p class="text-destructive/80 font-bold uppercase text-[10px] bg-destructive/5 p-2 rounded">⚠️ Рекомендация: Для мобильных устройств держите лимит голосов (ARP) в диапазоне 50-120.</p>
@@ -64,8 +57,6 @@ export const GUIDE_EN = `
   
   <p class="opacity-90 font-bold italic">Infinite Take Orchestra – Ready for Deploy</p>
   
-  <p>Welcome to AuraGroove V3—an autonomous musical intelligence. This guide will help you customize the system and understand the principles of our "Silicon Orchestra".</p>
-
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Introduction: Mathematical Sovereignty</h3>
     <p>AuraGroove is not an AI; it is a complex algorithmic generator. We use fractal mathematics, Markov chains, and the "Velvet Standard" to create music that always sounds warm and never repeats.</p>
@@ -73,38 +64,33 @@ export const GUIDE_EN = `
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Broadcast & "Silent Warm-up"</h3>
-    <p>For a flawless experience on mobile devices, use the tower icon (Broadcast). Tap it 10-15 seconds before starting playback. The system will initiate a "silent" bridge (Standby), warming up the audio stream. When you press <strong>Play</strong>, the music starts instantly via the <strong>Proactive Balance Protocol</strong>.</p>
+    <p>For a flawless experience on mobile devices, use the tower icon (Broadcast). Tap it 10-15 seconds before starting playback. The system will initiate a "silent" bridge, preparing the audio stream for instant playback.</p>
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Offline Autonomy</h3>
-    <p>AuraGroove can function completely without an internet connection. To enable this:</p>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">3. 100% Eternal Offline Autonomy</h3>
+    <p>In v3.7.1, AuraGroove can function completely without an internet connection for up to 30 days. To enable this:</p>
     <ul class="list-disc pl-4 space-y-1">
-      <li>Tap the lightning/database icon (Vault) in the bottom toolbar.</li>
+      <li>Tap the lightning icon (Vault) in the bottom toolbar.</li>
       <li>Press the <strong>Sync All</strong> button.</li>
-      <li>Wait for both Audio Atoms (Samples) and Heritage DNA to reach 100% synchronization.</li>
+      <li>The system automatically caches not only sounds but the application code itself (Code Warm-up).</li>
     </ul>
-    <p>Once synced, you can install the app as a PWA and play music anywhere, even without cellular service.</p>
+    <p><strong>Pro Tip:</strong> Install as a PWA (Add to Home Screen) to ensure the browser grants "Persistent Storage" status to the app.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">4. Soft Entrance Protocol</h3>
-    <p>Every new composition begins delicately. The melody, piano, and accompaniment fade in from 30% to 100% volume over the first 6 bars. This masks technical preset changes and creates a natural orchestral "breath".</p>
+    <p>Every new composition begins delicately. The melody, piano, and accompaniment fade in from 30% to 100% volume over the first 6 bars, creating a natural orchestral "breath".</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">5. Factory Balance & Calibration</h3>
-    <p>Upon choosing a genre, the system automatically loads <strong>Factory Mixer Presets</strong>. This provides a professional primary mix. However:</p>
-    <ul class="list-disc pl-4 space-y-1">
-      <li>Acoustic setups, sound cards, and amplifiers vary significantly between devices.</li>
-      <li>A mix that sounds perfect on headphones might need adjustment on large speakers.</li>
-      <li>You are encouraged to fine-tune the volume of each musician for your specific hardware to achieve your personal "Ideal Balance".</li>
-    </ul>
+    <p>Upon choosing a genre, the system loads Factory Mixer Presets. You are encouraged to fine-tune the volume of each musician for your specific hardware to achieve your "Ideal Balance".</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">6. Visual Efficiency (30 FPS)</h3>
-    <p>Your visualization now operates in "Core Economy" mode at 30 FPS. This allows your device to dedicate maximum power to calculating perfect, glitch-free audio.</p>
+    <p>Visualization operates in "Core Economy" mode at 30 FPS, allowing your device to dedicate maximum power to calculating perfect, glitch-free audio.</p>
   </section>
 
   <p class="text-destructive/80 font-bold uppercase text-[10px] bg-destructive/5 p-2 rounded">⚠️ Pro Tip: For mobile devices, keep the voice limit (ARP) between 50-120.</p>
@@ -117,15 +103,15 @@ export const DISCLAIMER_RU = `
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Статус системы</h3>
-    <p>Система оптимизирована для работы в режиме 100% автономности. Весь контент является результатом математической генерации в реальном времени. Первичное сведение обеспечивается заводскими пресетами, но окончательный результат зависит от калибровки под ваше оборудование.</p>
+    <p>Система оптимизирована для работы в режиме 100% автономности до 30 дней. Весь контент является результатом математической генерации в реальном времени. Окончательный баланс зависит от калибровки под ваше оборудование.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Технические лимиты</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
-      <li><strong>Автономия:</strong> Поддерживается 100% оффлайн-режим через Masterforge Vault.</li>
+      <li><strong>Автономия:</strong> Вечный оффлайн через Masterforge Vault (TTL 30 дней).</li>
       <li><strong>Визуализация:</strong> Ограничена 30 FPS для всех жанров (Visual Throttle Active).</li>
-      <li><strong>Вельветовый Стандарт:</strong> Принудительное ограничение мелодии 4-й октавой (MIDI 71) для устранения резкости.</li>
+      <li><strong>Вельветовый Стандарт:</strong> Ограничение мелодии 4-й октавой (MIDI 71) для устранения резкости.</li>
     </ul>
   </section>
 
@@ -141,15 +127,15 @@ export const DISCLAIMER_EN = `
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. System Status</h3>
-    <p>The system is optimized for 100% autonomous operation. All content is the result of real-time mathematical generation. While factory presets provide a primary mix, final balance is dependent on your specific hardware calibration.</p>
+    <p>The system is optimized for 100% autonomous operation for up to 30 days. All content is the result of real-time mathematical generation. Final balance is dependent on your specific hardware calibration.</p>
   </section>
 
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Technical Limits</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
-      <li><strong>Autonomy:</strong> 100% Offline mode supported via Masterforge Vault.</li>
+      <li><strong>Autonomy:</strong> Eternal Offline mode supported via Masterforge Vault (30-day TTL).</li>
       <li><strong>Visualization:</strong> Limited to 30 FPS for all genres (Visual Throttle Active).</li>
-      <li><strong>Velvet Standard:</strong> Melodic ceiling at MIDI 71 to ensure warm, dense tonality.</li>
+      <li><strong>Velvet Standard:</strong> Melodic ceiling at MIDI 71 to ensure warm tonality.</li>
     </ul>
   </section>
 
