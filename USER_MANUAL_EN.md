@@ -19,8 +19,9 @@ Every device and audio system sounds different. Calibrate the system once:
 AuraGroove is designed to function entirely without an internet connection. Once synced, it becomes a stand-alone music station.
 1. **Initiate Sync All**: Tap the lightning icon (Vault) and run a full synchronization.
 2. **Code Warm-up**: As of v3.7.1, the system automatically caches the application code for all main pages along with the audio atoms. No manual "tab-clicking" is required.
-3. **Persistence**: The synchronized app will remain functional for up to 30 days without a network connection.
-4. **PWA Installation**: We strongly recommend using the "Add to Home Screen" feature. This ensures Chrome grants the app "Persistent Storage" status, protecting your cache from being cleared.
+3. **Periodic Sync**: While the system can operate autonomously for up to 30 days, we recommend performing a "Sync All" whenever you have a stable connection. This ensures your local genetic pool receives the latest "Masterpieces" — successful musical states added to the cloud by users worldwide.
+4. **Persistence**: The synchronized app will remain functional for up to 30 days without a network connection.
+5. **PWA Installation**: We strongly recommend using the "Add to Home Screen" feature. This ensures Chrome grants the app "Persistent Storage" status, protecting your cache from being cleared.
 
 ## 4. Key Features
 

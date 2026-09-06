@@ -29,7 +29,7 @@ export const GUIDE_RU = `
       <li>Нажмите кнопку <strong>Sync All</strong>.</li>
       <li>Система автоматически скачает не только звуки, но и программный код всех страниц приложения (Code Warm-up).</li>
     </ul>
-    <p><strong>Важно:</strong> Установите приложение как PWA (Добавить на главный экран), чтобы защитить кэш от удаления браузером.</p>
+    <p class="pt-2"><strong>Важно:</strong> Рекомендуется иногда проводить синхронизацию при наличии сети, чтобы обновить локальный список «Шедевров» (Masterpieces), которые постоянно пополняются новыми музыкальными фрагментами от всех пользователей.</p>
   </section>
 
   <section class="space-y-2">
@@ -75,7 +75,7 @@ export const GUIDE_EN = `
       <li>Press the <strong>Sync All</strong> button.</li>
       <li>The system automatically caches not only sounds but the application code itself (Code Warm-up).</li>
     </ul>
-    <p><strong>Pro Tip:</strong> Install as a PWA (Add to Home Screen) to ensure the browser grants "Persistent Storage" status to the app.</p>
+    <p class="pt-2"><strong>Note:</strong> We recommend periodic synchronization when online to refresh your local "Masterpieces" collection, which is constantly updated with new musical snapshots from the global community.</p>
   </section>
 
   <section class="space-y-2">
