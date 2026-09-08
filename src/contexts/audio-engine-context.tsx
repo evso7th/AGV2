@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V69.0 — "Absolute Autonomy".
- * #ЗАЧЕМ: ПЛАН №2206. Устранение блокирующего ожидания сети при инициализации DNA.
+ * @fileOverview Audio Engine Context V70.0 — "Source Intel Mode".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2300 — Переключатель между Cloud-First и Vault-First режимами.
  */
 'use client';
 
@@ -30,7 +30,6 @@ import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS } from '@/lib/presets-v2';
 import { FOUNDRY_PRESETS } from '@/lib/foundry-presets';
 import { BASS_PRESETS } from '@/lib/bass-presets';
-import { TRANSLATIONS, type Language } from '@/lib/translations';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.5,
@@ -69,6 +68,8 @@ interface AudioEngineContextType {
   totalBars: number;
   currentTrackName: string;
   tension: number;
+  dnaSourcePreference: 'cache' | 'network';
+  setDnaSourcePreference: (pref: 'cache' | 'network') => void;
   initialize: () => Promise<boolean>;
   setIsPlaying: (playing: boolean) => void;
   updateSettings: (settings: Partial<WorkerSettings>) => void;
@@ -129,6 +130,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         return saved ? parseInt(saved, 10) : 512;
     }
     return 512;
+  });
+
+  const [dnaSourcePreference, setDnaSourcePreferenceState] = useState<'cache' | 'network'>(() => {
+    if (typeof window !== 'undefined') {
+        return (localStorage.getItem('AG_DnaSourcePreference') as 'cache' | 'network') || 'cache';
+    }
+    return 'cache';
   });
 
   const [currentBar, setCurrentBar] = useState(0);
@@ -195,12 +203,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const db = useFirestore();
   const auth = useAuth();
 
-  const getLanguage = (): Language => {
-    if (typeof window === 'undefined') return 'en';
-    const saved = localStorage.getItem('AuraGroove_Language');
-    if (saved === 'ru' || saved === 'en') return saved as Language;
-    return navigator.language.startsWith('ru') ? 'ru' : 'en';
-  };
+  const setDnaSourcePreference = useCallback((pref: 'cache' | 'network') => {
+      setDnaSourcePreferenceState(pref);
+      localStorage.setItem('AG_DnaSourcePreference', pref);
+      toast({ 
+        title: pref === 'network' ? "Cloud-First DNA Enabled" : "Vault DNA Enabled",
+        description: pref === 'network' ? "The orchestra will now prioritize live cloud data." : "The orchestra will now prioritize local vault for instant start."
+      });
+  }, [toast]);
 
   const getEffectivePreset = useCallback((presetName: string) => {
       const isFoundry = settingsRef.current?.genre === 'foundry';
@@ -565,15 +575,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             } catch (e) {}
         }
         
-        // #ЗАЧЕМ: ПЛАН №2206. Никогда не блокируем инициализацию ожиданием сети.
-        await loadDnaFromCache();
-        void refreshCloudAxioms(); 
+        // #ЗАЧЕМ: ПЛАН №2300. Выбор источника DNA.
+        if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) {
+             console.log('%c[DNA] Source Intel Mode: CLOUD (Awaiting Sync...)', 'color: #3b82f6; font-weight: bold;');
+             await refreshCloudAxioms();
+        } else {
+             console.log('%c[DNA] Source Intel Mode: VAULT (Cache Optimized)', 'color: #c084fc; font-weight: bold;');
+             await loadDnaFromCache();
+             void refreshCloudAxioms(); 
+        }
         
         applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { return false; }
-  }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast, triggerVinyl]);
+  }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast, triggerVinyl, dnaSourcePreference]);
 
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) { const success = await initialize(); if (!success) return; }
@@ -596,6 +612,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const contextValue = useMemo(() => ({
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete, availableCompositions, initialize,
       analyser: analyserNodeRef.current, voiceLimit, setVoiceLimit, currentBar, totalBars, currentTrackName, tension,
+      dnaSourcePreference, setDnaSourcePreference,
       setIsPlaying: handleTogglePlay,
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
       refreshCloudAxioms, syncDna, getWorker: () => workerRef.current, resetWorker: () => { setCurrentBar(0); workerRef.current?.postMessage({ command: 'reset' }); },
@@ -633,7 +650,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete,
       availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms, syncDna,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, triggerVinyl,
-      stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents
+      stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents,
+      dnaSourcePreference, setDnaSourcePreference
   ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
