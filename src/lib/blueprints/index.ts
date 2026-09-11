@@ -1,3 +1,4 @@
+
 import type { MusicBlueprint, Genre, Mood } from '@/types/music';
 
 // --- Static Imports for All Blueprints ---
@@ -79,6 +80,17 @@ export const BLUEPRINT_LIBRARY: Record<Genre, Partial<Record<Mood, MusicBlueprin
         anxious: AnxiousAmbientBlueprint,
     },
     blues: {
+        melancholic: WinterBluesBlueprint,
+        dark: DarkBluesBlueprint,
+        enthusiastic: EnthusiasticBluesBlueprint,
+        joyful: JoyfulBluesBlueprint,
+        contemplative: ContemplativeBluesBlueprint,
+        calm: CalmBluesBlueprint,
+        dreamy: DreamyBluesBlueprint,
+        epic: EpicBluesBlueprint,
+        anxious: AnxiousBluesBlueprint,
+    },
+    cyber_blues: {
         melancholic: WinterBluesBlueprint,
         dark: DarkBluesBlueprint,
         enthusiastic: EnthusiasticBluesBlueprint,

@@ -1,8 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.1.7 — "Mobile Layout Optimization".
- * #ЗАЧЕМ: Улучшение отображения плейлиста на мобильных устройствах (сокращенные метки, мелкий шрифт).
- * #ЧТО: ПЛАН №1520 — Внедрена кнопка очистки очереди и адаптивные лейблы.
+ * @fileOverview UI AuraGroove V17.2.0 — "Cyber Blues Support".
+ * #ЗАЧЕМ: Добавление 6-го жанра в список выбора.
  */
 'use client';
 
@@ -36,7 +35,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
-import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
+import type { RouteItem, TextureSettings, InstrumentSettings, Genre } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
@@ -68,7 +67,7 @@ import {
 // DND Kit Utilities
 import { CSS } from '@dnd-kit/utilities';
 
-const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'foundry'];
+const GENRE_IDS: Genre[] = ['ambient', 'psybient', 'blues', 'cyber_blues', 'reggae', 'foundry'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'dark'];
 
 const MIXER_CHANNELS = [
@@ -175,7 +174,7 @@ function PresetManager({
                                     </SelectTrigger>
                                     <SelectContent className="bg-card">
                                         <SelectItem value="none" className="text-[10px] uppercase font-black">---</SelectItem>
-                                        {['ambient', 'psybient', 'blues', 'reggae', 'foundry'].map(g => (
+                                        {['ambient', 'psybient', 'blues', 'cyber_blues', 'reggae', 'foundry'].map(g => (
                                             <SelectItem key={g} value={g} className="text-[10px] uppercase font-black">{t(`g_${g}` as any)}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -218,7 +217,6 @@ function SimpleRouteItem({
     dragListeners?: any,
     isDragging?: boolean
 }) {
-    // #ЗАЧЕМ: Адаптивные метки для предотвращения переполнения на мобильных.
     const getGenreLabel = (id: string) => isMobile ? t(`short_g_${id}` as any) : t(`g_${id}` as any);
     const getMoodLabel = (id: string) => isMobile ? t(`short_m_${id}` as any) : t(`m_${id}` as any);
 
@@ -338,15 +336,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         }
     };
 
-    // --- SMART STOP LOGIC (PLAN №1456) ---
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
     const [longPressActive, setLongPressActive] = useState(false);
 
-    // --- OPTIMISTIC HUD STATE ---
     const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(props.isPlaying);
     useEffect(() => { setOptimisticIsPlaying(props.isPlaying); }, [props.isPlaying]);
 
-    // --- SMART HUD LOGIC (PLAN №1460) ---
     const [isAmbientMode, setIsAmbientMode] = useState(false);
 
     useEffect(() => {
@@ -406,7 +401,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
 
-    // --- Unified Long Press & Tap Handler ---
     const handleRecordDown = () => {
         setLongPressActive(false); 
         if (props.isRecording || props.isAlbumMode) return; 
@@ -420,15 +414,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     const handleRecordUp = () => {
         if (longPressTimer.current) {
-            // Short click detected while idle
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
             props.handleToggleRecording();
         } else if (!longPressActive) {
-            // We were already recording or holding, but not just triggered long-press
             props.handleToggleRecording();
         }
-        // longPressActive will reset on next Down
     };
 
     const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
@@ -442,11 +433,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL */}
+            {/* Ambient Overlay */}
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
-                    
-                    {/* Top Controls Stack - Axis Symmetry with Bottom Stack */}
                     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); props.handleRegenerate(); showFeedback(t('toast_next_desc')); }}
@@ -465,7 +454,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) - NOW ACTIVE */}
                     <div className="absolute top-10 left-0 right-0 text-center select-none z-20">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
@@ -478,7 +466,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Focused Core with Axis Alignment - PERFECT SQUARE */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 flex items-center justify-center overflow-visible"
                         style={{ width: '90vw', height: '90vw', maxWidth: '400px', maxHeight: '400px' }}
@@ -493,7 +480,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
 
-                    {/* Feedback Message */}
                     {feedbackMessage && (
                         <div className="absolute top-[65%] left-1/2 -translate-x-1/2 z-[10000] animate-in fade-in zoom-in duration-300">
                             <Badge 
@@ -506,7 +492,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
 
-                    {/* Progress Bar - UPDATED (PLAN №1482) - Moved up to top-[71%] to avoid overlap */}
                     <div className="absolute top-[71%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] h-[1px] bg-white/10 overflow-hidden z-10 rounded-full">
                         <div 
                             className="h-full transition-all duration-1000 ease-linear"
@@ -517,7 +502,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
                     
-                    {/* Control Pill - UPDATED (PLAN №1482) - Shifted down to top-[82%] and height reduced with py-3.5 */}
                     <div 
                         className="absolute top-[82%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-between gap-0.5 px-2 py-3.5 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[92vw] max-w-[380px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
@@ -594,7 +578,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Bottom Info Stack - Axis Symmetry 90vw */}
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
@@ -766,14 +749,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </div>
 
-            {/* BOTTOM: Route List */}
             <div className={cn("flex-1 min-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
                 <div className={cn("p-2 flex gap-1.5 shrink-0 transition-colors items-center", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
                     <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-tight h-10 shadow-lg px-1.5">
                         <Plus className="h-4 w-4 mr-1" /> {t('btn_add_to_route')}
                     </Button>
                     <div className="flex gap-1">
-                        {/* #ЗАЧЕМ: Кнопка полной очистки очереди. */}
                         <Button 
                             variant="outline" 
                             size="icon" 
@@ -948,7 +929,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Mixer & EQ - FORCED Frosted Glass Style */}
+            {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent 
                     className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
@@ -1058,7 +1039,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* --- ONBOARDING TIPS DIALOG --- */}
             <Dialog open={isTipsOpen} onOpenChange={setIsTipsOpen}>
                 <DialogContent className="sm:max-w-md bg-neutral-950/80 backdrop-blur-xl border-primary/30 shadow-2xl p-6">
                     <DialogHeader>

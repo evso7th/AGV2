@@ -1,6 +1,7 @@
+
 /**
- * @file AuraGroove Music Worker V7.0 — "Absolute Transition Recovery".
- * #ЗАЧЕМ: Устранение "застревания" на 3-й/4-й позициях очереди путем жесткого сброса barCount.
+ * @file AuraGroove Music Worker V7.1 — "Cyber Blues Readiness".
+ * #ЗАЧЕМ: Поддержка нового жанра Cyber Blues.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -35,7 +36,7 @@ const Scheduler = {
         genre: 'ambient' as Genre,
         drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0, volume: 0.5 },
         instrumentSettings: { 
-            bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'walking' },
+            bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'walking' as any },
             melody: { name: "blackAcoustic", volume: 0.5 },
             accompaniment: { name: "organ_soft_jazz", volume: 0.5 },
             harmony: { name: "violin", volume: 0.5 },
@@ -79,8 +80,12 @@ const Scheduler = {
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
+                
+                // #ЗАЧЕМ: Cyber Blues принудительно заимствует только блюзовое наследие.
+                const targetGenre = (uiGenre === 'cyber_blues') ? 'blues' : uiGenre;
+                
                 const isTranceMatch = genres.includes('trance') || genres.includes('psybient') || genres.includes('foundry');
-                const genreMatch = (uiGenre === 'psybient' || uiGenre === 'foundry') ? isTranceMatch : genres.includes(uiGenre);
+                const genreMatch = (targetGenre === 'psybient' || targetGenre === 'foundry') ? isTranceMatch : genres.includes(targetGenre);
                 return genreMatch && (moods.length === 0 || moods.includes(uiMood));
             });
 
@@ -192,7 +197,6 @@ const Scheduler = {
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
        
-       // #ЗАЧЕМ: Принудительный сброс, если UI переключил трек, пока воркер был в ожидании.
        const forceReset = this.awaitingDirective && routeIndexChanged;
        
        this.settings = { ...this.settings, ...newSettings };
@@ -235,7 +239,6 @@ const Scheduler = {
                  this.awaitingSince = Date.now();
                  return 500;
              }
-             // #ЗАЧЕМ: Авто-регенерация, если UI не ответил за 4 секунды (защита от зависаний).
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.settings.seed = generateTrueSeed();
@@ -249,7 +252,6 @@ const Scheduler = {
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            // console.error("[Worker] Engine crash during tick. Re-initializing...");
             this.initializeEngine(this.settings);
             return 1000;
         }

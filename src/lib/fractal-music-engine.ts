@@ -7,6 +7,7 @@ import { AmbientBrain } from './ambient-brain';
 import { TranceBrain } from './trance-brain';
 import { ReggaeBrain } from './reggae-brain';
 import { DarkFoundryBrain } from './dark-foundry-brain';
+import { CyberBluesBrain } from './cyber-blues-brain';
 import { generateSuiteDNA, createHarmonyAxiom, pickWeightedDeterministic, resolveSemanticTimbre } from './music-theory';
 import { MelancholicMinorK } from './resonance-matrices';
 
@@ -57,8 +58,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V45.0 — "Foundry Hardware Link".
- * #ЗАЧЕМ: Явное использование DarkFoundryBrain для жанра foundry.
+ * @fileOverview Fractal Music Engine V46.0 — "Cyber Blues Activation".
+ * #ЗАЧЕМ: Подключение CyberBluesBrain для нового жанра.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -70,6 +71,7 @@ export class FractalMusicEngine {
   private isInitialized = false;
 
   private bluesBrain: BluesBrain | null = null;
+  private cyberBluesBrain: CyberBluesBrain | null = null;
   private ambientBrain: AmbientBrain | null = null;
   private tranceBrain: TranceBrain | null = null;
   private reggaeBrain: ReggaeBrain | null = null;
@@ -105,6 +107,7 @@ export class FractalMusicEngine {
           const useH = this.config.useHeritage;
 
           if (this.bluesBrain) this.bluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
+          if (this.cyberBluesBrain) this.cyberBluesBrain.updateCloudAxioms(axioms, this.config.selectedCompositionIds, anchor, null, useH, impro);
           if (this.ambientBrain) this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
           if (this.tranceBrain) this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
           if (this.reggaeBrain) this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
@@ -124,7 +127,7 @@ export class FractalMusicEngine {
     const pool: InstrumentPart[] = ['bass', 'melody', 'accompaniment', 'drums', 'harmony', 'sparkles', 'sfx', 'pianoAccompaniment'];
     const shuffled = this.random.shuffle(pool);
 
-    if (this.config.genre === 'reggae' || this.config.genre === 'foundry') {
+    if (this.config.genre === 'reggae' || this.config.genre === 'foundry' || this.config.genre === 'cyber_blues') {
         for (let i = 0; i < shuffled.length; i++) {
             this.lotterySchedule.set(shuffled[i], Math.floor(i / 2));
         }
@@ -164,23 +167,26 @@ export class FractalMusicEngine {
 
     if (this.config.genre === 'blues') {
         this.bluesBrain = new BluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
-        this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
+        this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
+    } else if (this.config.genre === 'cyber_blues') {
+        this.cyberBluesBrain = new CyberBluesBrain(this.config.seed, this.config.mood, this.config.sessionLickHistory, axioms, this.config.selectedCompositionIds, anchor, this.config.genre, useH);
+        this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'psybient') {
         this.tranceBrain = new TranceBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.tranceBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
+        this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'reggae') {
         this.reggaeBrain = new ReggaeBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.reggaeBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.foundryBrain = null;
+        this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.foundryBrain = null;
     } else if (this.config.genre === 'foundry') {
         this.foundryBrain = new DarkFoundryBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.foundryBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
+        this.bluesBrain = null; this.cyberBluesBrain = null; this.ambientBrain = null; this.tranceBrain = null; this.reggaeBrain = null;
     } else {
         this.ambientBrain = new AmbientBrain(this.config.seed, this.config.mood, this.config.genre, useH);
         this.ambientBrain.updateCloudAxioms(axioms, anchor, useH, impro);
-        this.bluesBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
+        this.bluesBrain = null; this.cyberBluesBrain = null; this.tranceBrain = null; this.reggaeBrain = null; this.foundryBrain = null;
     }
 
     this.config.tempo = this.suiteDNA.baseTempo;
@@ -290,7 +296,7 @@ export class FractalMusicEngine {
                 }
                 else if (part === 'harmony') {
                     if (this.config.genre === 'reggae' || this.config.genre === 'foundry') defaultInst = 'guitarChords';
-                    else if (this.config.genre === 'blues') defaultInst = 'guitarChords';
+                    else if (this.config.genre === 'blues' || this.config.genre === 'cyber_blues') defaultInst = 'guitarChords';
                     else defaultInst = 'guitarChords';
                 }
                 else if (part === 'pianoAccompaniment') {
@@ -323,6 +329,8 @@ export class FractalMusicEngine {
         result = this.foundryBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else if (this.config.genre === 'blues' && this.bluesBrain) {
         result = this.bluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
+    } else if (this.config.genre === 'cyber_blues' && this.cyberBluesBrain) {
+        result = this.cyberBluesBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints);
     } else {
         result = this.ambientBrain ? this.ambientBrain.generateBar(this.epoch, currentChord, navInfo, this.suiteDNA, instrumentHints) : { events: [] };
     }
