@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V70.0 — "Source Intel Mode".
- * #ЗАЧЕМ: Реализация ПЛАНА №2300 — Переключатель между Cloud-First и Vault-First режимами.
+ * @fileOverview Audio Engine Context V71.0 — "Resilient Offline Startup".
+ * #ЗАЧЕМ: Устранение критических падений при старте без сети.
  */
 'use client';
 
@@ -379,10 +379,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const applyAxiomsToEngine = useCallback((rawAxioms: any[], rawMasterpieces?: any[]) => {
     workerRef.current?.postMessage({ command: 'update_cloud_axioms', data: rawAxioms });
     
-    if (rawAxioms.length > 0) {
-        console.log(`%c[DNA] ${rawAxioms.length} axioms and ${rawMasterpieces?.length || 0} masterpieces loaded from local vault.`, 'color: #c084fc; font-weight: bold;');
-    }
-
     const compMeta: Record<string, { count: number, genres: Set<string>, moods: Set<string> }> = {};
     rawAxioms.forEach(data => {
         const compId = data.compositionId;
@@ -411,12 +407,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       const rawMasterpieces = mpSnap.docs.map(d => ({ ...d.data(), id: d.id }));
       
       if (rawAxioms.length > 0) {
-          console.log(`%c[Firestore] Fetched ${rawAxioms.length} axioms and ${rawMasterpieces.length} masterpieces.`, 'color: #4ade80;');
           applyAxiomsToEngine(rawAxioms, rawMasterpieces);
           saveDnaCache(rawAxioms, rawMasterpieces, Date.now());
       }
     } catch (e: any) {
-        console.error('[Firestore] DNA Sync Error:', e);
+        console.warn('[Firestore] DNA Sync Deferred.');
     }
   }, [db, applyAxiomsToEngine]);
 
@@ -503,20 +498,23 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
         cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
-        await Promise.all([
-          drumMachineRef.current.init(true),
-          foundryDrumMachineRef.current.init(true),
-          blackGuitarSamplerRef.current.init(true),
-          harmonyManagerRef.current.init(true),
-          pianoAccompanimentManagerRef.current.init(),
-          sparklePlayerRef.current.init(5),
-          sfxSynthManagerRef.current.init(5)
-        ]);
+        // #ЗАЧЕМ: Пакетная инициализация без блокировки на ошибках
+        try {
+            await Promise.allSettled([
+                drumMachineRef.current.init(true),
+                foundryDrumMachineRef.current.init(true),
+                blackGuitarSamplerRef.current.init(true),
+                harmonyManagerRef.current.init(true),
+                pianoAccompanimentManagerRef.current.init(),
+                sparklePlayerRef.current.init(5),
+                sfxSynthManagerRef.current.init(5)
+            ]);
+        } catch (e) {}
 
         setBackgroundLoadInProgress(true);
         setTimeout(async () => {
           try {
-            await Promise.all([
+            await Promise.allSettled([
               telecasterSamplerRef.current?.init(),
               darkTelecasterSamplerRef.current?.init(),
               cs80SamplerRef.current?.init(),
@@ -566,29 +564,28 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                     triggerVinyl();
                 }
             };
-            try {
-                const savedHist = localStorage.getItem('AuraGroove_TrackHistory');
-                const parsed = savedHist ? JSON.parse(savedHist) : null;
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                    workerRef.current.postMessage({ command: 'init', data: { playedTrackHistory: parsed } });
-                }
-            } catch (e) {}
         }
         
-        // #ЗАЧЕМ: ПЛАН №2300. Выбор источника DNA.
+        // #ЗАЧЕМ: Реактивная загрузка DNA. Никогда не блокирует старт.
         if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) {
-             console.log('%c[DNA] Source Intel Mode: CLOUD (Awaiting Sync...)', 'color: #3b82f6; font-weight: bold;');
+             console.log('%c[DNA] Source Intel Mode: CLOUD (Forced)', 'color: #3b82f6; font-weight: bold;');
              await refreshCloudAxioms();
         } else {
-             console.log('%c[DNA] Source Intel Mode: VAULT (Cache Optimized)', 'color: #c084fc; font-weight: bold;');
-             await loadDnaFromCache();
-             void refreshCloudAxioms(); 
+             console.log('%c[DNA] Source Intel Mode: VAULT (Reactive)', 'color: #c084fc; font-weight: bold;');
+             const cacheLoaded = await loadDnaFromCache();
+             if (!cacheLoaded) {
+                 void refreshCloudAxioms();
+             }
         }
         
         applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
-    } catch (e) { return false; }
+    } catch (e) { 
+        setIsInitializing(false); 
+        initializationInFlightRef.current = false;
+        return false; 
+    }
   }, [auth, refreshCloudAxioms, loadDnaFromCache, db, applyCalibration, scheduleEvents, voiceLimit, toast, triggerVinyl, dnaSourcePreference]);
 
   const toggleBroadcastCallback = useCallback(async () => {

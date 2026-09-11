@@ -7,7 +7,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Универсальный сэмплер V4.3 — "Vault Integration".
+ * #ЗАЧЕМ: Универсальный сэмплер V4.4 — "Null Buffer Guard".
+ * #ЧТО: Безопасное декодирование данных из Vault.
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -61,14 +62,21 @@ export class SamplerPlayer {
 
                 try {
                     const arrayBuffer = await vault.fetch(url);
-                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
-                    loadedBuffers.set(midi, audioBuffer);
-                } catch (error) {}
+                    if (arrayBuffer) {
+                        const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+                        loadedBuffers.set(midi, audioBuffer);
+                    }
+                } catch (error) {
+                    console.warn(`[Sampler] Failed to decode ${url}`);
+                }
             });
 
             await Promise.all(loadPromises);
 
-            if (loadedBuffers.size === 0) return false;
+            if (loadedBuffers.size === 0) {
+                console.warn(`[Sampler] No buffers loaded for ${instrumentName}`);
+                return false;
+            }
             
             this.instruments.set(instrumentName, {
                 buffers: loadedBuffers,
@@ -78,6 +86,7 @@ export class SamplerPlayer {
             this.isInitialized = true;
             return true;
         } catch (error) {
+            console.error(`[Sampler] Critical error loading ${instrumentName}:`, error);
             return false;
         }
     }
