@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.5 — "Foundry Universal Standard".
- * #ЗАЧЕМ: Укрепление связи Trance и Foundry для стабильности.
+ * @fileOverview Universal Music Theory Utilities V5.6 — "Cyber Blues Alignment".
+ * #ЗАЧЕМ: Укрепление связи Trance, Foundry и Cyber Blues для стабильности и тяжелого звука.
  */
 
 import type { 
@@ -48,7 +48,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №1990): Принудительный переход Trance на Foundry-реестр.
+ * #ОБНОВЛЕНО (ПЛАН №1990): Cyber Blues теперь также использует Foundry-реестр.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -67,8 +67,8 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         // ─── REGISTRY SELECTION ───
-        // ПЛАН №1990: psybient (Trance) теперь ВСЕГДА использует высокопроизводительные пресеты Foundry.
-        const isHighPerformance = genre === 'foundry' || genre === 'psybient';
+        // ПЛАН №1990: foundry, psybient и cyber_blues теперь ВСЕГДА используют высокопроизводительные пресеты Foundry.
+        const isHighPerformance = genre === 'foundry' || genre === 'psybient' || genre === 'cyber_blues';
         const registry = isHighPerformance ? (FOUNDRY_PRESETS || V2_PRESETS) : V2_PRESETS;
 
         // ─── Safety Guard ───
@@ -173,7 +173,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         if (part === 'accompaniment') {
             const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
-            if (isPianoTimbre) return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
+            if (isPianoTimbre) return (genre === 'blues' || genre === 'cyber_blues') ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
         }
 
         if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {

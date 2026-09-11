@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Cyber Blues Brain V1.0 — "Absolute Copy of Blues Brain".
- * #ЗАЧЕМ: Создание нового 6-го жанра на базе эталонной логики блюза.
+ * @fileOverview Cyber Blues Brain V1.1 — "Strict Heritage Sovereignty".
+ * #ЗАЧЕМ: Принудительное использование инструментов из аксиом наследия.
  */
 
 import {
@@ -268,6 +267,7 @@ export class CyberBluesBrain {
           filteredPool = poolToUse.filter(ax => {
               const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
               const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
+              // #ЗАЧЕМ: Cyber Blues принудительно берет только блюзовое наследие.
               return axGenres.includes('blues') && (axMoods.length === 0 || axMoods.includes(this.mood));
           });
       }
@@ -381,7 +381,7 @@ export class CyberBluesBrain {
     this.state.lastTension = tension;
     const isBridge = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
 
-    const timeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
+    this.currentTimeScale = navInfo.currentPart.instrumentRules?.melody?.timeScale || 1;
 
     if (navInfo.isPartTransition) {
         this.soloistBusyUntilBar = epoch;
@@ -434,15 +434,16 @@ export class CyberBluesBrain {
     const usedTargetLayers = new Set<string>();
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
+    // #ЗАЧЕМ: Cyber Blues — принудительно используем только инструменты Наследия.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'blues');
+        instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre);
     }
 
     let melodyEvents: FractalEvent[] = [];
     if (hints.melody && !isSoloistResting) {
         if (this.currentAxiom.length > 0 && epoch < this.soloistBusyUntilBar) {
             let activeAxiom = this.applyMutationLogic(this.currentAxiom, tension, this.seed + epoch);
-            melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, timeScale, tension);
+            melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
         }
         if (melodyEvents.length === 0) melodyEvents = this.renderGapFiller(epoch, resChord, tension);
         melodyEvents.forEach(e => e.pan = -0.15);
@@ -457,7 +458,8 @@ export class CyberBluesBrain {
                 let p = this.applyMutationLogic(ax.phrase, tension, this.seed + epoch + 1);
                 const rendered = this.renderHeritageAccompaniment(resChord, epoch, p, target, dna, tension);
                 if (rendered.length > 0) {
-                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'blues');
+                    // #ЗАЧЕМ: Приоритет инструмента из Аксиомы.
+                    if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre);
                     events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
                     usedTargetLayers.add(target);
                 }
