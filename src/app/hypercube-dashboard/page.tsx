@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * @fileOverview DNA Auditor V7.0.1 — "Reference Integrity Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: MultiSelector is not defined.
+ * @fileOverview DNA Auditor V7.0.2 — "Reference Stability Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError и оптимизация структуры компонентов.
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -285,6 +285,7 @@ const CHART_COLORS = ['#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE', '#EDE9FE'];
 
 // ───── HELPER UI ─────
 
+// #ЗАЧЕМ: Определение MultiSelector до основного контента.
 function MultiSelector<T extends string>({ 
   options, 
   values, 
@@ -658,7 +659,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 7.0.1</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 7.0.2</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
