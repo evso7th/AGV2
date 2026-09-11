@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Engine Context V73.0 — "Mobile Pulse Reform".
- * #ЗАЧЕМ: Исправление "немоты" на мобильных при прогреве Бродкаста.
+ * @fileOverview Audio Engine Context V73.1 — "Reference Error Patch".
+ * #ЗАЧЕМ: Исправление ReferenceError: setVoiceLimit is not defined.
  */
 'use client';
 
@@ -132,6 +131,12 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
     return 512;
   });
+
+  const setVoiceLimit = useCallback((limit: number) => {
+    setVoiceLimitState(limit);
+    localStorage.setItem('AuraGroove_VoiceLimit', limit.toString());
+    setGlobalVoiceLimit(limit);
+  }, []);
 
   const [dnaSourcePreference, setDnaSourcePreferenceState] = useState<'cache' | 'network'>(() => {
     if (typeof window !== 'undefined') {
