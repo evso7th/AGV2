@@ -6,7 +6,7 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
-      // 1. ПРИОРИТЕТ: Программный код (Immortality)
+      // 1. Critical Static Assets (JS, CSS, etc.)
       urlPattern: /\/_next\/static\/.*/i,
       handler: 'CacheFirst',
       options: {
@@ -21,7 +21,7 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // 2. ПРИОРИТЕТ: Аудио-атомы (The Fuel)
+      // 2. Audio Assets (The Fuel)
       urlPattern: /\.(?:ogg|mp3|wav|m4a)$/i,
       handler: 'CacheFirst',
       options: {
@@ -36,11 +36,11 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // 3. ПРИОРИТЕТ: Манифесты и JSON (The Map)
-      urlPattern: /\.(?:json)$/i,
-      handler: 'CacheFirst',
+      // 3. Manifests and App Data (The Map)
+      urlPattern: /\.(?:json|xml|csv)$/i,
+      handler: 'NetworkFirst',
       options: {
-        cacheName: 'static-json-assets',
+        cacheName: 'static-data-assets',
         expiration: {
           maxEntries: 100,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
@@ -48,18 +48,22 @@ const withPWA = require('next-pwa')({
       },
     },
     {
-      // 4. HTML Страницы (The Shell)
-      urlPattern: /\/($|home|aura-groove|hypercube-dashboard|timbre-lab)/,
+      // 4. HTML Pages (The Shell) - Catch all navigation requests
+      urlPattern: ({ request }) => request.mode === 'navigate',
       handler: 'CacheFirst',
       options: {
         cacheName: 'pages-cache',
         expiration: {
-          maxEntries: 10,
+          maxEntries: 50,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
         },
       },
     },
     {
+      // 5. External Fonts
       urlPattern: /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
       handler: 'CacheFirst',
       options: {

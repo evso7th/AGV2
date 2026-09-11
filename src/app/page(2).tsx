@@ -1,8 +1,6 @@
-
 /**
- * @fileOverview Conflict Resolution Dummy.
- * #ЗАЧЕМ: Устранение ошибки 404 путем нейтрализации дублирующей страницы.
+ * @fileOverview Obsolete file neutralized to prevent route conflicts.
  */
-export default function GhostPage() {
+export default function ObsoletePage() {
   return null;
 }
