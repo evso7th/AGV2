@@ -83,6 +83,7 @@ export const TRANSLATIONS = {
     toast_record_stopped: { ru: "Запись остановлена", en: "Recording stopped" },
     toast_queue_refreshed: { ru: "Очередь обновлена", en: "Queue Refreshed" },
     toast_queue_refreshed_desc: { ru: "Воспроизведение начнется с первого шага", en: "Playback will start from the first step" },
+    toast_queue_cleared: { ru: "Очередь очищена", en: "Queue Cleared" },
     
     // Full Track Record Mode
     toast_album_mode_started: { ru: "FULL TRACK RECORD: запись начата", en: "FULL TRACK RECORD: recording started" },
@@ -100,11 +101,27 @@ export const TRANSLATIONS = {
     g_foundry: { ru: "Dark Trance", en: "Dark Trance" },
     g_random: { ru: "⚡ SURPRISE", en: "⚡ SURPRISE" },
     
+    // Short Genres
+    short_g_ambient: { ru: "SF", en: "SF" },
+    short_g_psybient: { ru: "NS", en: "NS" },
+    short_g_blues: { ru: "CB", en: "CB" },
+    short_g_reggae: { ru: "RR", en: "RR" },
+    short_g_foundry: { ru: "DT", en: "DT" },
+    short_g_random: { ru: "RZ", en: "RZ" },
+    
     // Moods (UI Display)
     m_melancholic: { ru: "Меланхолия", en: "Melancholic" },
     m_dreamy: { ru: "Мечтательность", en: "Dreamy" },
     m_calm: { ru: "Спокойствие", en: "Calm" },
     m_joyful: { ru: "Радость", en: "Joyful" },
     m_dark: { ru: "Темное", en: "Dark" },
-    m_random: { ru: "⚡ ЛЮБОЕ", en: "⚡ ANY" }
+    m_random: { ru: "⚡ ЛЮБОЕ", en: "⚡ ANY" },
+
+    // Short Moods
+    short_m_melancholic: { ru: "мел", en: "mel" },
+    short_m_dreamy: { ru: "мечт", en: "dream" },
+    short_m_calm: { ru: "спок", en: "calm" },
+    short_m_joyful: { ru: "рад", en: "joy" },
+    short_m_dark: { ru: "темн", en: "dark" },
+    short_m_random: { ru: "??", en: "??" }
 };

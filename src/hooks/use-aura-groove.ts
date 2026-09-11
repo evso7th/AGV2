@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V35.1 — "Infinite Journey Loop".
- * #ЗАЧЕМ: Реализация ПЛАНА №1500 — Бесконечный цикл воспроизведения очереди.
+ * @fileOverview Music Control Hook V35.2 — "Queue Management Reform".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1510 — Функция полной очистки очереди.
  */
 'use client';
 
@@ -100,6 +100,7 @@ export interface AuraGrooveProps {
   route: RouteItem[];
   addToRoute: (g: Genre | 'random', m: Mood | 'random') => void;
   removeFromRoute: (id: string) => void;
+  clearRoute: () => void;
   selectRouteItem: (id: string) => void;
   refreshRoute: () => void;
   moveRouteItem: (oldIdx: number, newIdx: number) => void;
@@ -692,6 +693,13 @@ export const useAuraGroove = (): AuraGrooveProps => {
     toast({ title: t('toast_journey_loaded'), description: saved.name });
   }, [toast, t]);
 
+  const clearRoute = useCallback(() => {
+    setRoute([]);
+    localStorage.removeItem(CURRENT_ROUTE_KEY);
+    setActiveRouteItemId(null);
+    toast({ title: t('toast_queue_cleared' as any) });
+  }, [toast, t]);
+
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
     loadingText: isInitializing ? 'Igniting Engine...' : 'Ready',
@@ -733,6 +741,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     voiceLimit, setVoiceLimit,
     route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
     removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
+    clearRoute,
     selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
     refreshRoute: () => { 
         if (isPlaying) { 
@@ -763,7 +772,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
       setInstrument, handleVolumeChange, textureSettings, score, setScore, composerControlsInstruments, 
       setComposerControlsInstruments, useHeritage, setUseHeritage, setIsPlaying, stopAllSounds, handleGoHome, eqSettings, handleEqChange,
       calibrationGains, setCalibrationGain, timerSettings, introBars, voiceLimit, setVoiceLimit, route, activeRouteIndex, isRepeat,
-      savedRoutes, isShuffle, activeRouteItemId, loadRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
+      savedRoutes, isShuffle, activeRouteItemId, loadRoute, clearRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
       saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset,
       updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
       language, toggleLanguage, t, resetWorker, updateSettings
