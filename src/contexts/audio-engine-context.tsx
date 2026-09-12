@@ -43,7 +43,7 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.55,
+    acoustic: 0.275, // Reduced from 0.55 to 0.275 (2x reduction)
     electric: 0.55, 
     piano: 0.8,
     orchecial: 0.5, 
@@ -258,7 +258,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     foundryDrumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
-    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
+    [blackGuitarSamplerRef, telecasterGuitarSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
   const triggerStreamPulse = useCallback(() => {
