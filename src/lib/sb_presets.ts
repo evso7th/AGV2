@@ -1,66 +1,75 @@
 /**
- * @fileOverview Cyber Blues Presets Library V1.0.
+ * @fileOverview Cyber Blues Presets Library V1.1 — "Rock Hardening".
  * #ЗАЧЕМ: Выделенный реестр тембров для жанра Cyber Blues.
- * #ЧТО: Клон реестра Foundry для обеспечения тяжелого индустриального звука.
+ * #ЧТО: Внедрение агрессивных роковых тембров (sawtooth, drive) для органов и пэдов.
  */
 
 export const SB_PRESETS = {
+  // ───── PADS & LEADS ─────
+  
   synth: { 
     type: 'synth',
-    name: 'Cyber Pulse Lead',
+    name: 'Cyber Rock Pad',
     volume: 0.65,
     osc: [
-      { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
-      { type: 'sine', detune: 0, octave: -1, gain: 0.15 }
+      { type: 'sawtooth', detune: -7, octave: 0, gain: 0.5 }, 
+      { type: 'sawtooth', detune: +7, octave: 0, gain: 0.4 }, 
+      { type: 'square', detune: 0, octave: -1, gain: 0.25 }
     ],
-    noise: { on: false },
-    adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, 
-    lpf: { cutoff: 1400, q: 2.0 }, 
-    lfo: { rate: 0.2, amount: 400, target: 'filter' },
-    drive: { type: 'soft', amount: 0.25 },
-    reverbMix: 0
+    noise: { on: true, gain: 0.02 },
+    adsr: { a: 0.2, d: 0.8, s: 0.7, r: 1.2 }, 
+    lpf: { cutoff: 2200, q: 2.5 }, 
+    lfo: { rate: 0.8, amount: 600, target: 'filter' },
+    drive: { type: 'soft', amount: 0.40 },
+    reverbMix: 0.2
   },
 
   synth_ambient_pad_lush: {
     type: 'synth',
-    name: 'Cyber Steel Pad',
+    name: 'Cyber Wall Pad',
     volume: 0.62,
     osc: [
-      { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.2 }
+      { type: 'sawtooth', detune: -4, octave: 0, gain: 0.6 },
+      { type: 'sawtooth', detune: +4, octave: 1, gain: 0.3 },
+      { type: 'sine', detune: 0, octave: -1, gain: 0.4 }
     ],
-    adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
-    lpf: { cutoff: 850, q: 1.5 }, 
-    lfo: { rate: 0.1, amount: 200, target: 'filter' },
-    drive: { type: 'soft', amount: 0.15 },
-    reverbMix: 0
+    adsr: { a: 1.5, d: 2.0, s: 0.8, r: 2.5 },
+    lpf: { cutoff: 1100, q: 1.2 }, 
+    lfo: { rate: 0.1, amount: 300, target: 'filter' },
+    drive: { type: 'soft', amount: 0.20 },
+    reverbMix: 0.3
   },
+
+  // ───── ORGANS ─────
 
   organ: {
     type: 'organ',
-    name: 'Cyber B3 (Industrial)',
-    volume: 0.45,
-    drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
-    adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
-    lpf: 2400,
-    reverbMix: 0,
-    drive: { type: 'soft', amount: 0.45 },
-    leslie: { rate: 5.8, pitchDepth: 0.00005, ampDepth: 0.06, driftPct: 0.12, driftRate: 0.2 },
-    humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.08 }
+    name: 'Cyber Rock B3',
+    volume: 0.48,
+    // "All out" drawbars for heavy rock sound
+    drawbars: [8, 8, 8, 8, 8, 8, 8, 8, 8],
+    adsr: { a: 0.02, d: 0.1, s: 0.9, r: 0.6 },
+    lpf: 3200,
+    reverbMix: 0.15,
+    drive: { type: 'soft', amount: 0.65 },
+    leslie: { rate: 6.2, pitchDepth: 0.0001, ampDepth: 0.08, driftPct: 0.15, driftRate: 0.3 },
+    humanize: { detuneCents: 3.5, levelPct: 0.08, brightnessPct: 0.12 }
   },
 
   organ_soft_jazz: {
     type: 'organ',
-    name: 'Cyber Jazz B3',
-    volume: 0.42,
-    drawbars: [8, 0, 8, 4, 2, 0, 0, 0, 0],
-    lpf: 1800,
-    adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
-    reverbMix: 0,
-    drive: { type: 'soft', amount: 0.22 },
-    leslie: { rate: 5.2, pitchDepth: 0.00005, ampDepth: 0.04, driftPct: 0.15, driftRate: 0.15 },
-    humanize: { detuneCents: 2.0, levelPct: 0.05, brightnessPct: 0.06 }
+    name: 'Cyber Dirty Jazz',
+    volume: 0.45,
+    drawbars: [8, 0, 8, 5, 3, 0, 0, 0, 0],
+    lpf: 2100,
+    adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.5 },
+    reverbMix: 0.1,
+    drive: { type: 'soft', amount: 0.35 },
+    leslie: { rate: 5.4, pitchDepth: 0.00008, ampDepth: 0.05, driftPct: 0.18, driftRate: 0.2 },
+    humanize: { detuneCents: 2.5, levelPct: 0.06, brightnessPct: 0.08 }
   },
+
+  // ───── GUITARS ─────
 
   guitar_clean: {
     type: 'guitar',
