@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V74.0 — "Hook Integrity Fix".
- * #ЗАЧЕМ: Исправление Invalid Hook Call. Хуки перенесены на верхний уровень провайдера.
+ * @fileOverview Audio Engine Context V75.0 — "Transition Signaling Fix".
+ * #ЗАЧЕМ: Исправление переключения треков. Добавлена трансляция AG_SUITE_TRANSITION.
  */
 'use client';
 
@@ -112,7 +112,6 @@ export const useAudioEngine = () => {
 };
 
 export const AudioEngineProvider = ({ children }: { children: React.ReactNode }) => {
-  // #ЗАЧЕМ: Фикс Invalid Hook Call. Хуки вызываются строго на верхнем уровне провайдера.
   const db = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
@@ -397,7 +396,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, []);
 
   const refreshCloudAxioms = useCallback(async () => {
-    // #ЗАЧЕМ: Используем переданный 'db' из верхнего уровня, чтобы не нарушать правила хуков.
     if (!db) return;
     try {
       const [axSnap, mpSnap] = await Promise.all([
@@ -507,7 +505,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 });
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
-            } else if (type === 'SUITE_TRANSITION') { triggerVinyl(); }
+            } else if (type === 'SUITE_TRANSITION') { 
+                // #ЗАЧЕМ: Критический фикс навигации. Трансляция события в интерфейс.
+                triggerVinyl(); 
+                window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
+            }
         };
         
         if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) await refreshCloudAxioms();
@@ -554,8 +556,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const pi = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = pi; const ss = () => { const n = audioContextRef.current!.currentTime + 0.1; [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}].forEach(note => { pi.noteOn(note.m, n + note.t, 0.8, note.d); }); if (loopingRef.current) previewTimeoutRef.current = setTimeout(ss, 4000); else previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), 4000); }; ss(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
-      db, isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, isPreviewPlaying, isPreviewLooping, backgroundLoadInProgress, backgroundLoadComplete,
-      availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,
+      db, isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, triggerVinyl,
       stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents,
       dnaSourcePreference, setDnaSourcePreference

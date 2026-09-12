@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Music Control Hook V36.0 — "Factory Preset Sync".
- * #ЗАЧЕМ: Реализация ПЛАНА №1520 — Автоматическое слияние заводских пресетов с пользовательскими.
+ * @fileOverview Music Control Hook V37.0 — "Route Navigation Fix".
+ * #ЗАЧЕМ: Исправление переключения треков. Добавлена смена Seed при ручном выборе.
  */
 'use client';
 
@@ -472,14 +471,12 @@ export const useAuraGroove = (): AuraGrooveProps => {
         } catch (e) {} 
     }
 
-    // #ЗАЧЕМ: Умная синхронизация заводских пресетов.
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
     let currentList: PresetItem[] = [];
     if (savedMixes) {
         try { currentList = JSON.parse(savedMixes); } catch(e) {}
     }
     
-    // Слияние: добавляем только те заводские семена, которых нет в списке (по ID)
     const missingSeeds = MIXER_SEEDS.filter(seed => !currentList.some(p => p.id === seed.id));
     if (missingSeeds.length > 0) {
         const newList = [...currentList, ...missingSeeds];
@@ -750,10 +747,21 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleToggleTimer: () => setTimerSettings(p => ({ ...p, isActive: !p.isActive, timeLeft: p.duration })),
     mood, setMood: setMoodState, genre, setGenre: setGenreState, introBars, setIntroBars,
     voiceLimit, setVoiceLimit,
-    route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }); },
+    route, addToRoute: (g: any, m: any) => { const id = `route-${Date.now()}`; setRoute(prev => { 
+        const next = [...prev, { id, genre: g, mood: m, status: 'pending' as const }]; 
+        localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); 
+        if (next.length === 1) setActiveRouteItemId(id);
+        return next; 
+    }); },
     removeFromRoute: (id: string) => setRoute(prev => { const next = prev.filter(it => it.id !== id); localStorage.setItem(CURRENT_ROUTE_KEY, JSON.stringify(next)); return next; }),
     clearRoute,
-    selectRouteItem: (id: string) => { const item = route.find(it => it.id === id); if (item) setActiveRouteItemId(id); },
+    selectRouteItem: (id: string) => { 
+        const item = route.find(it => it.id === id); 
+        if (item) {
+            setActiveRouteItemId(id);
+            setCurrentSeed(Date.now()); // #ЗАЧЕМ: Форсированная регенерация при ручном выборе.
+        }
+    },
     refreshRoute: () => { 
         if (isPlaying) { 
             toast({ variant: "destructive", title: t('toast_action_blocked'), description: t('toast_only_in_pause') }); 
