@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.2 — "Cyber DNA Fusion".
- * #ЗАЧЕМ: Разрешение Cyber Blues использовать трансовые аксиомы.
+ * @file AuraGroove Music Worker V7.3 — "Cognitive Monitoring Edition".
+ * #ЗАЧЕМ: Внедрение детального по-тактового логирования инструментов и DNA.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -264,6 +264,28 @@ const Scheduler = {
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
 
+        // ───── COGNITIVE BAR LOGGING ─────
+        // #ЗАЧЕМ: Вывод информации о текущих инструментах и DNA в консоль.
+        const getTimestamp = () => new Date().toLocaleTimeString();
+        const getHash = (id: string) => id?.split('_').pop() || 'none';
+        
+        const hints = payload.instrumentHints || {};
+        const ax = payload.activeAxioms || {};
+        const sectionName = payload.sectionName || 'Sequence';
+        const t = (payload.tension || 0.5).toFixed(2);
+        const track = payload.trackName || 'Generative';
+        const trackHash = getHash(track);
+        const mut = payload.mutationType || 'none';
+
+        console.log(
+            `%c[${getTimestamp()}] [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} Axioms: [MEL: ${getHash(ax.melody)}] [ACC: ${getHash(ax.accompaniment)}]\n` +
+            `%c  ↳ Narrative: ${payload.narrative || 'Algorithmic Evolution'}\n` +
+            `%c  | Timbres: [MELODY: ${hints.melody || 'none'}] [ACCOMP: ${hints.accompaniment || 'none'}]`,
+            'color: #888;',
+            'color: #c084fc;', 
+            'color: #888;'
+        );
+
         self.postMessage({ 
             type: 'SCORE_READY', 
             payload: {
@@ -276,7 +298,7 @@ const Scheduler = {
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
                 trackName: payload.trackName || 'Generative',
-                sectionName: payload.navInfo?.currentPart.name || 'Unknown',
+                sectionName: sectionName,
                 tension: payload.tension
             }
         });
