@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.7 — "Cyber Blues Sovereignty".
- * #ЗАЧЕМ: Подключение выделенного реестра пресетов SB_PRESETS для Cyber Blues.
+ * @fileOverview Universal Music Theory Utilities V5.8 — "Bar-by-Bar Resolution".
+ * #ЗАЧЕМ: Расширение словаря алиасов для динамических групп.
  */
 
 import type { 
@@ -48,8 +48,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
- * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №2000): Переключение Cyber Blues на суверенный реестр SB_PRESETS.
+ * #ЗАЧЕМ: Резолвер тембров с поддержкой UI-алиасов и по-тактового разрешения.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -67,16 +66,11 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // ─── REGISTRY SELECTION ───
-        // ПЛАН №2000: У каждого тяжелого жанра теперь свой реестр.
-        // ПЛАН №2305: Защита Reggae от роковых тембров.
         let registry = V2_PRESETS;
         if (genre === 'foundry' || genre === 'psybient') {
             registry = FOUNDRY_PRESETS;
         } else if (genre === 'cyber_blues') {
             registry = SB_PRESETS;
-        } else if (genre === 'reggae') {
-            registry = V2_PRESETS; // Форсированная мягкость
         }
 
         // ─── Safety Guard ───
@@ -84,7 +78,9 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         // ─── Piano Channel Specific ───
         if (part === 'pianoAccompaniment') {
-            if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
+            if (clean === 'piano' || clean === 'acousticpiano' || clean === 'dynamicpianodual') {
+                 return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
+            }
             if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
         }
 
@@ -101,20 +97,20 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
 
         // ─── Dynamic Groups (Guitars) ───
-        if (clean === 'dynteledark') {
+        if (clean === 'dynteledark' || clean === 'dyn_tele_dark') {
             return tension < 0.6 ? 'telecaster' : 'darkTelecaster';
         }
-        if (clean === 'dynblackteledark') {
+        if (clean === 'dynblackteledark' || clean === 'dynamicblackshine') {
             if (tension < 0.4) return 'blackAcoustic';
             if (tension < 0.75) return 'telecaster';
             return 'darkTelecaster';
         }
-        if (clean === 'dyntelecs80black') {
+        if (clean === 'dyntelecs80black' || clean === 'dynamichybrid1') {
             if (tension < 0.4) return 'telecaster';
             if (tension < 0.75) return 'cs80';
             return 'blackAcoustic';
         }
-        if (clean === 'dynblackcs80tele') {
+        if (clean === 'dynblackcs80tele' || clean === 'dynamichybrid2') {
             if (tension < 0.4) return 'blackAcoustic';
             if (tension < 0.75) return 'cs80';
             return 'telecaster';
@@ -139,7 +135,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             if (tension < 0.75) return 'cs80';
             return 'guitar_muffLead';
         }
-        if (clean === 'dynshinemuff') {
+        if (clean === 'dynshinemuff' || clean === 'dynamiclead') {
             return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
         }
 
@@ -194,7 +190,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return 'synth'; // Universal fallback
+        return 'synth'; 
     }
 }
 

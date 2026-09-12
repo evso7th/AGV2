@@ -1,4 +1,3 @@
-
 import type { FractalEvent, Mood, Genre, InstrumentPart, InstrumentHints, GhostChord, SuiteDNA, NavigationInfo, MusicBlueprint, Technique } from '@/types/music';
 import { BlueprintNavigator } from './blueprint-navigator';
 import { getBlueprint } from './blueprints';
@@ -58,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V46.0 — "Cyber Blues Activation".
- * #ЗАЧЕМ: Подключение CyberBluesBrain для нового жанра.
+ * @fileOverview Fractal Music Engine V47.0 — "Per-Bar Timbre Resolution".
+ * #ЗАЧЕМ: Динамическое разрешение инструментов внутри групп на каждом такте.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -303,8 +302,8 @@ export class FractalMusicEngine {
                     defaultInst = 'ep_rhodes_warm';
                 }
 
-                const rawTimbre = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
-                this.activeTimbres[part] = resolveSemanticTimbre(rawTimbre, tension, part, this.config.genre);
+                // #ЗАЧЕМ: ПЛАН №907. Сохраняем ГРУППУ (Hint), а не финальный инструмент.
+                this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
             }
         }
     });
@@ -312,7 +311,9 @@ export class FractalMusicEngine {
     this.activatedParts.forEach(part => {
         const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
-            instrumentHints[part] = this.activeTimbres[part] || 'synth';
+            // #ЗАЧЕМ: РЕШЕНИЕ — Разрешаем тембр КАЖДЫЙ ТАКТ на основе текущего Tension.
+            const rawHint = this.activeTimbres[part] || 'synth';
+            instrumentHints[part] = resolveSemanticTimbre(rawHint, tension, part, this.config.genre);
         }
     });
 
