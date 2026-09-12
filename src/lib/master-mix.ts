@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Master Mix Registry V2.8 — "Trance Accompaniment Boost".
- * #ЗАЧЕМ: ПЛАН №1151. Увеличение громкости аккомпанемента в трансе в 2 раза.
+ * @fileOverview Master Mix Registry V2.9 — "Cyber Blues Support".
+ * #ЗАЧЕМ: ПЛАН №1151. Унификация системных миксов для всех 6 жанров.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -20,7 +20,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.20 // Увеличено в 2 раза с 0.10 по ТЗ
+        accompaniment: 0.20 
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {

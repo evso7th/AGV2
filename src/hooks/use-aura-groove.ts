@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Music Control Hook V35.2 — "Queue Management Reform".
- * #ЗАЧЕМ: Реализация ПЛАНА №1510 — Функция полной очистки очереди.
+ * @fileOverview Music Control Hook V36.0 — "Factory Preset Sync".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1520 — Автоматическое слияние заводских пресетов с пользовательскими.
  */
 'use client';
 
@@ -411,9 +411,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     });
   }, []);
 
-  const setEqPresetGenre = useCallback((id: string, g: string) => {
+  const setEqPresetGenre = useCallback((id: string, genre: string) => {
     setEqPresets(prev => {
-        const next = prev.map(p => p.id === id ? { ...p, genre: g || undefined } : p);
+        const next = prev.map(p => p.id === id ? { ...p, genre: genre || undefined } : p);
         localStorage.setItem(EQ_PRESETS_KEY, JSON.stringify(next));
         return next;
     });
@@ -472,39 +472,51 @@ export const useAuraGroove = (): AuraGrooveProps => {
         } catch (e) {} 
     }
 
+    // #ЗАЧЕМ: Умная синхронизация заводских пресетов.
     const savedMixes = localStorage.getItem(MIXER_PRESETS_KEY);
-    if (!savedMixes || JSON.parse(savedMixes).length === 0) {
+    let currentList: PresetItem[] = [];
+    if (savedMixes) {
+        try { currentList = JSON.parse(savedMixes); } catch(e) {}
+    }
+    
+    // Слияние: добавляем только те заводские семена, которых нет в списке (по ID)
+    const missingSeeds = MIXER_SEEDS.filter(seed => !currentList.some(p => p.id === seed.id));
+    if (missingSeeds.length > 0) {
+        const newList = [...currentList, ...missingSeeds];
+        localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(newList));
+        setMixerPresets(newList);
+    } else if (currentList.length > 0) {
+        setMixerPresets(currentList);
+    } else {
         localStorage.setItem(MIXER_PRESETS_KEY, JSON.stringify(MIXER_SEEDS));
         setMixerPresets(MIXER_SEEDS);
-    } else {
-        try {
-            const list = JSON.parse(savedMixes);
-            setMixerPresets(list);
-            const activeId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
-            if (activeId) {
-                const target = list.find((p: any) => p.id === activeId);
-                if (target && target.values) {
-                    const v = target.values;
-                    if (v.master !== undefined) setCalibrationGain('master', v.master);
-                    setInstrumentSettings(prev => ({
-                        ...prev,
-                        bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
-                        melody: { ...prev.melody, volume: v.melody ?? prev.melody.volume },
-                        accompaniment: { ...prev.accompaniment, volume: v.accompaniment ?? prev.accompaniment.volume },
-                        pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment ?? prev.pianoAccompaniment.volume },
-                        harmony: { ...prev.harmony, volume: v.harmony ?? prev.harmony.volume },
-                    }));
-                    setDrumSettings(prev => ({ ...prev, volume: v.drums ?? prev.volume }));
-                    setTextureSettings(prev => ({
-                        ...prev,
-                        sparkles: { ...prev.sparkles, volume: v.sparkles ?? prev.sparkles.volume },
-                        sfx: { ...prev.sfx, volume: v.sfx ?? prev.sfx.volume },
-                    }));
-                    setActiveMixerPresetId(activeId);
-                }
-            }
-        } catch(e) {}
     }
+
+    const activeMixerId = localStorage.getItem(ACTIVE_MIXER_ID_KEY);
+    if (activeMixerId) {
+        const list = JSON.parse(localStorage.getItem(MIXER_PRESETS_KEY) || '[]');
+        const target = list.find((p: any) => p.id === activeMixerId);
+        if (target && target.values) {
+            const v = target.values;
+            if (v.master !== undefined) setCalibrationGain('master', v.master);
+            setInstrumentSettings(prev => ({
+                ...prev,
+                bass: { ...prev.bass, volume: v.bass ?? prev.bass.volume },
+                melody: { ...prev.melody, volume: v.melody ?? prev.melody.volume },
+                accompaniment: { ...prev.accompaniment, volume: v.accompaniment ?? prev.accompaniment.volume },
+                pianoAccompaniment: { ...prev.pianoAccompaniment, volume: v.pianoAccompaniment ?? prev.pianoAccompaniment.volume },
+                harmony: { ...prev.harmony, volume: v.harmony ?? prev.harmony.volume },
+            }));
+            setDrumSettings(prev => ({ ...prev, volume: v.drums ?? prev.volume }));
+            setTextureSettings(prev => ({
+                ...prev,
+                sparkles: { ...prev.sparkles, volume: v.sparkles ?? prev.sparkles.volume },
+                sfx: { ...prev.sfx, volume: v.sfx ?? prev.sfx.volume },
+            }));
+            setActiveMixerPresetId(activeMixerId);
+        }
+    }
+
     const savedEqs = localStorage.getItem(EQ_PRESETS_KEY);
     if (savedEqs) {
         try {
@@ -600,12 +612,10 @@ export const useAuraGroove = (): AuraGrooveProps => {
             return;
         }
 
-        // #ЗАЧЕМ: ПЛАН №1500. Бесконечный цикл маршрута.
-        // Очередь работает по циклическому принципу: (index + 1) % length.
         if (route.length > 0) {
             const nextIndex = (activeRouteIndex + 1) % route.length;
             setActiveRouteItemId(route[nextIndex].id);
-            setCurrentSeed(Date.now()); // Каждое повторение цикла — уникально за счет нового зерна
+            setCurrentSeed(Date.now()); 
             return;
         }
 
@@ -619,7 +629,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     if (!isInitialized) {
         const success = await initialize();
         if (success) {
-            // #ЗАЧЕМ: ПЛАН №1600. Проактивное применение настроек до старта.
             let targetG = genre;
             if (route.length > 0) {
                 const active = route.find(it => it.id === activeRouteItemId) || route[0];
@@ -639,7 +648,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
         }
     } else { 
         if (!isPlaying) {
-            // #ЗАЧЕМ: ПЛАН №1600. Повторное применение при возобновлении.
             let targetG = genre;
             const active = route.find(it => it.id === activeRouteItemId) || route[0];
             if (active && active.genre !== 'random') targetG = active.genre as Genre;
@@ -699,6 +707,9 @@ export const useAuraGroove = (): AuraGrooveProps => {
     setActiveRouteItemId(null);
     toast({ title: t('toast_queue_cleared' as any) });
   }, [toast, t]);
+
+  const useMelodyV2 = true;
+  const toggleMelodyEngine = () => {};
 
   return useMemo(() => ({
     isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, isWarmingUp: false, warmUpTimeLeft: 0,
@@ -764,7 +775,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
     savedRoutes, isShuffle, setShuffle, isRepeat, setRepeat, activeRouteIndex, showAdvancedUI, setShowAdvancedUI,
     currentBar, totalBars, currentTrackName, tension,
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre,
-    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
+    mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
+    useMelodyV2, toggleMelodyEngine,
     language, toggleLanguage, t
   }), [
       isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, refreshCloudAxioms, engineSyncDna,
@@ -775,6 +787,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
       savedRoutes, isShuffle, activeRouteItemId, loadRoute, clearRoute, currentBar, totalBars, currentTrackName, tension, eqPresets, activeEqPresetId, 
       saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, mixerPresets, activeMixerPresetId, saveMixerPreset,
       updateActiveMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem, loadMixerPreset,
-      language, toggleLanguage, t, resetWorker, updateSettings
+      useMelodyV2, language, toggleLanguage, t, resetWorker, updateSettings
   ]);
 };
