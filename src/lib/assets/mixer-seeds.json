@@ -11,7 +11,7 @@
       "harmony": 0.30,
       "sparkles": 0.55,
       "sfx": 0.17,
-      "drums": 0.43
+      "drums": 0.215
     },
     "genre": "psybient"
   },
@@ -27,7 +27,7 @@
       "harmony": 0.25,
       "sparkles": 0.60,
       "sfx": 0.50,
-      "drums": 0.40
+      "drums": 0.20
     },
     "genre": "ambient"
   },
@@ -43,7 +43,7 @@
       "harmony": 0.30,
       "sparkles": 0.50,
       "sfx": 0.20,
-      "drums": 0.55
+      "drums": 0.275
     },
     "genre": "foundry"
   },
@@ -59,7 +59,7 @@
       "harmony": 0.20,
       "sparkles": 0.40,
       "sfx": 0.30,
-      "drums": 0.50
+      "drums": 0.25
     },
     "genre": "blues"
   },
@@ -75,7 +75,7 @@
       "harmony": 0.20,
       "sparkles": 0.40,
       "sfx": 0.30,
-      "drums": 0.50
+      "drums": 0.25
     },
     "genre": "cyber_blues"
   },
@@ -91,7 +91,7 @@
       "harmony": 0.20,
       "sparkles": 0.40,
       "sfx": 0.30,
-      "drums": 0.50
+      "drums": 0.25
     },
     "genre": "reggae"
   }

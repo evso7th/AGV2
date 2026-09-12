@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V2.9 — "Cyber Blues Support".
- * #ЗАЧЕМ: ПЛАН №1151. Унификация системных миксов для всех 6 жанров.
+ * @fileOverview Master Mix Registry V3.0 — "Drum Balance Correction".
+ * #ЗАЧЕМ: ПЛАН №1200. Глобальное уменьшение громкости ударных на 50%.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -11,7 +11,7 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     accompaniment: 0.10, 
     harmony: 0.18,       
     pianoAccompaniment: 0.43,
-    drums: 0.75,         
+    drums: 0.375, // Was 0.75
     sparkles: 0.65,      
     sfx: 0.65            
 };
@@ -35,7 +35,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         accompaniment: 0.06,
         harmony: 0.0875,
         pianoAccompaniment: 0.32,
-        drums: 0.50,
+        drums: 0.25, // Was 0.50
         sparkles: 0.65, 
         sfx: 0.65       
     },
@@ -45,13 +45,13 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         accompaniment: 0.06,
         harmony: 0.0875,
         pianoAccompaniment: 0.32,
-        drums: 0.50,
+        drums: 0.25, // Was 0.50
         sparkles: 0.65, 
         sfx: 0.65       
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        drums: 0.22,      
+        drums: 0.11, // Was 0.22
         harmony: 0.0375    
     },
     progressive: { ...UNIVERSAL_IMPERIAL_MIX },
