@@ -1,3 +1,9 @@
+/**
+@fileOverview Cyber Blues Brain V1.2 — "Heavy Rock-Blues Arsenal".
+#ЗАЧЕМ: Трансформация Cyber Blues в тяжелый рок-блюз (Crow Blues Band, The Motivation, Black Keys, Royal Blood).
+#ЧТО: Прямой рок-грув, фазз-бас, пауэр-аккорды, приоритет бендов и дабл-стопов,
+      фильтрация наследия по жанрам heavy_blues_rock/garage_blues/stoner_rock.
+*/
 import {
   FractalEvent,
   GhostChord,
@@ -37,9 +43,8 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+// #ЗАЧЕМ: Расширенный список жанров для тяжелого рок-блюза.
 const HEAVY_BLUES_GENRES = ['blues', 'heavy_blues_rock', 'garage_blues', 'stoner_rock', 'blues_rock'];
-const TRANCE_GENRES = ['trance', 'psybient', 'foundry'];
-const COMBINED_GENRES = [...HEAVY_BLUES_GENRES, ...TRANCE_GENRES];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -60,17 +65,20 @@ export interface BluesBrainConfig {
 }
 
 export const DEFAULT_CONFIG: BluesBrainConfig = {
+  // #ЗАЧЕМ: Темп 82 — "стомп" темп тяжелого рок-блюза (как у Black Keys / Royal Blood).
   tempo: 82,
   rootNote: 55,
-  genre: 'cyber_blues',
+  genre: 'heavy_blues_rock',
   useHeritage: true,
   isImprovising: false,
   emotion: {
-    melancholy: 0.35,
-    darkness: 0.85,
-    aggression: 0.75
+    melancholy: 0.35,  // Меньше грусти — больше драйва
+    darkness: 0.85,    // Мрак и тяжесть
+    aggression: 0.75   // Агрессия рок-блюза
   }
 };
+
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export class CyberBluesBrain {
   private config: BluesBrainConfig;
@@ -121,7 +129,7 @@ export class CyberBluesBrain {
       cloudAxioms: cloudAxioms || [],
       selectedCompositionIds: selectedCompositionIds || [],
       activeAnchorId: activeAnchorId || null,
-      genre: genre || 'cyber_blues',
+      genre: genre || 'heavy_blues_rock',
       useHeritage: useHeritage,
       isImprovising: (selectedCompositionIds || []).length === 0,
       emotion: {
@@ -254,8 +262,9 @@ export class CyberBluesBrain {
       filteredPool = poolToUse.filter(ax => {
         const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
         const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-        const matchesCombined = axGenres.some((g: string) => COMBINED_GENRES.includes(g));
-        return matchesCombined && (axMoods.length === 0 || axMoods.includes(this.mood));
+        // #ЗАЧЕМ: Heavy Rock-Blues — принудительно берем только тяжелое блюзовое наследие.
+        const isHeavyBlues = axGenres.some((g: string) => HEAVY_BLUES_GENRES.includes(g));
+        return isHeavyBlues && (axMoods.length === 0 || axMoods.includes(this.mood));
       });
     }
 
@@ -297,6 +306,7 @@ export class CyberBluesBrain {
             let rawPhrase = decompressCompactPhrase(selected.phrase);
             if (selected.role === 'melody') rawPhrase = mergeIdenticalNotes(rawPhrase);
             const cid = normalizeStr(selected.compositionId);
+            // #ЗАЧЕМ: Sibling Sovereignty — бас и аккомпанемент только из того же трека-донора.
             const bassSibling = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
             if (bassSibling) this.currentBassAxiom = decompressCompactPhrase(bassSibling.phrase);
             const accompSiblings = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
@@ -408,6 +418,7 @@ export class CyberBluesBrain {
     const usedTargetLayers = new Set<string>();
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
+    // #ЗАЧЕМ: Instrument Veto — принудительно используем инструменты Наследия.
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
       instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre);
     }
@@ -439,6 +450,7 @@ export class CyberBluesBrain {
       });
 
       if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
+        // #ЗАЧЕМ: Heavy Rock-Blues — пауэр-аккорды вместо джазовых синкоп.
         const adaptiveAcc = this.renderPowerChordAccompaniment(epoch, resChord, tension, melodyEvents);
         adaptiveAcc.forEach(e => e.pan = 0.1);
         events.push(...adaptiveAcc.flatMap(e => this.rippleLongNote(e, resChord)));
@@ -470,10 +482,12 @@ export class CyberBluesBrain {
   private renderPowerChordAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + this.currentTransposition + this.microTransposition;
+    // Пауэр-аккорд: тоника + квинта + дубль в октаве
     const intervals = [0, 7, 12];
     const isSoloistBusy = melodyEvents.length > 3;
 
     if (isSoloistBusy) {
+      // #ЗАЧЕМ: В активном груве — прямые удары на каждую сильную долю.
       [0, 3, 6, 9].forEach(t => {
         intervals.forEach(interval => {
           events.push({
@@ -490,6 +504,7 @@ export class CyberBluesBrain {
         });
       });
     } else {
+      // #ЗАЧЕМ: В спокойных секциях — длинные "нависающие" пауэр-аккорды.
       [0, 6].forEach(t => {
         intervals.forEach(interval => {
           events.push({
@@ -512,12 +527,14 @@ export class CyberBluesBrain {
   private renderGapFiller(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + 12;
+    // #ЗАЧЕМ: Блюзовая пентатоника с малой септимой и "блюзовой" терцией.
     const scale = [0, 3, 5, 6, 7, 10];
     const noteCount = calculateMusiNum(epoch, 3, this.seed, 3) + 1;
     const ticks = [0, 3, 6, 9].sort(() => this.random.next() - 0.5).slice(0, noteCount);
     ticks.forEach(t => {
       const degIdx = calculateMusiNum(epoch + t, 11, this.seed, scale.length);
       const rawNote = root + scale[degIdx] + this.currentTransposition + this.microTransposition;
+      // #ЗАЧЕМ: Приоритет бендам на "золотых" долях — фазз должен "выть".
       const tech: Technique = tension > 0.4 ? 'bn' : 'pick';
       events.push({
         type: 'melody',
@@ -535,16 +552,20 @@ export class CyberBluesBrain {
 
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
     const events: FractalEvent[] = [];
+    // Тяжелая бочка: прямая на 1, синкопа на "и" 4-й доли
     events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.2, technique: 'hit', dynamics: 'ff', phrasing: 'staccato' });
     events.push({ type: 'drum_kick_reso', note: 36, time: 4.5 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
     events.push({ type: 'drum_kick_reso', note: 36, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
 
+    // Жесткий малый на 2 и 4 (классический рок-бит)
     [3, 9].forEach(t => events.push({
       type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1,
       weight: 1.1, technique: 'hit', dynamics: 'ff', phrasing: 'staccato'
     }));
 
+    // Прямые восьмые по хэтам
     [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
+      // #ЗАЧЕМ: Крэш на первой доле каждого 4-го такта или при высоком напряжении.
       const isCrash = (t === 0 && (epoch % 4 === 0 || tension > 0.7));
       events.push({
         type: isCrash ? 'drum_crash2' : 'drum_25693__walter_odington__hackney-hat-1',
@@ -556,6 +577,7 @@ export class CyberBluesBrain {
       });
     });
 
+    // Филл на 4-м такте — тяжелые томы
     const isFourthBar = epoch % 4 === 3;
     if (isFourthBar || isSoloistResting) {
       const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
@@ -582,6 +604,7 @@ export class CyberBluesBrain {
       const isGolden = goldenTicks.some(gt => Math.abs(relativeTick - gt) < 0.1);
       let weight = 0.85;
       let durationScale = 1.0;
+      // #ЗАЧЕМ: Приоритет бендам и дабл-стопам — визитная карточка рок-блюза.
       let tech: Technique = 'pick';
       if (n.tech === 'bn' || n.tech === 'vb') tech = 'bn';
       else if (n.tech === 'ds') tech = 'ds';
@@ -590,8 +613,8 @@ export class CyberBluesBrain {
       if (useNarrativeFilter) {
         if (isGolden) {
           weight = 1.0;
-          durationScale = 2.5;
-          tech = 'bn';
+          durationScale = 2.5;  // Долгие, воющие ноты
+          tech = 'bn';          // Принудительный бенд на пике фразы
         } else {
           weight = 0.35;
           durationScale = 0.5;
