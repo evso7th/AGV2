@@ -264,8 +264,9 @@ const Scheduler = {
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
 
-        // ───── COGNITIVE BAR LOGGING ─────
+        // ───── COGNITIVE BAR LOGGING (DISABLED BY REQUEST) ─────
         // #ЗАЧЕМ: Вывод информации о текущих инструментах и DNA в консоль.
+        /*
         const getTimestamp = () => new Date().toLocaleTimeString();
         const getHash = (id: string) => id?.split('_').pop() || 'none';
         
@@ -285,6 +286,7 @@ const Scheduler = {
             'color: #c084fc;', 
             'color: #888;'
         );
+        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -298,7 +300,7 @@ const Scheduler = {
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
                 trackName: payload.trackName || 'Generative',
-                sectionName: sectionName,
+                sectionName: payload.sectionName || 'Sequence',
                 tension: payload.tension
             }
         });
