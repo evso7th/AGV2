@@ -1,3 +1,4 @@
+
 /**
  * @fileOverview Master Mix Registry V2.8 — "Trance Accompaniment Boost".
  * #ЗАЧЕМ: ПЛАН №1151. Увеличение громкости аккомпанемента в трансе в 2 раза.
@@ -30,6 +31,16 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         pianoAccompaniment: 0.55  
     },
     blues: {
+        bass: 0.68,
+        melody: 0.50,
+        accompaniment: 0.06,
+        harmony: 0.0875,
+        pianoAccompaniment: 0.32,
+        drums: 0.50,
+        sparkles: 0.65, 
+        sfx: 0.65       
+    },
+    cyber_blues: {
         bass: 0.68,
         melody: 0.50,
         accompaniment: 0.06,
