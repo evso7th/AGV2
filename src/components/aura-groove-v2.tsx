@@ -96,6 +96,7 @@ const DISPLAY_NAMES: Record<string, string> = {
     'flute': 'Silver Flute',
     'bass_jazz_warm': 'Warm Jazz Bass',
     'psybient': 'Psy-Ambient',
+    'cyber_blues': 'CYBER BLUES',
     'guitarChords': 'Telecaster Chords',
     'yamahaChords': 'Yamaha Acoustic Chords',
     'dyn_tele_dark': '⚡ Tele → Dark Tele',
@@ -197,7 +198,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
     timerSettings, handleTimerDurationChange, handleToggleTimer,
     composerControlsInstruments, setComposerControlsInstruments,
     useHeritage, setUseHeritage,
-    mood, setMood, genre, setGenre, isRegenerating,
+    mood, setMoodState, genre, setGenre, isRegenerating,
     availableCompositions, selectedCompositionIds, toggleCompositionFilter, clearCompositionFilters, refreshCloudAxioms
   } = props;
 
@@ -407,7 +408,7 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                   <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs">Style</Label><Select value={score} onValueChange={(v) => handleScoreChange(v as any)} disabled={isPlaying}><SelectTrigger className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="neuro_f_matrix">Neuro F-Matrix</SelectItem></SelectContent></Select></div>
                    {isFractalStyle && (<>
                      <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs">Genre</Label><Select value={genre} onValueChange={(v) => setGenre(v as Genre)} disabled={isPlaying}><SelectTrigger className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_GENRES.map(g => <SelectItem key={g} value={g} className="text-xs capitalize">{DISPLAY_NAMES[g] || g}</SelectItem>)}</SelectContent></Select></div>
-                      <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs">Mood</Label><Select value={mood} onValueChange={(v) => setMood(v as Mood)} disabled={isPlaying}><SelectTrigger className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_MOODS.map(m => <SelectItem key={m} value={m} className={cn("text-xs capitalize", MOOD_COLOR_CLASSES[MOOD_CATEGORIES[m]])}>{m}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs">Mood</Label><Select value={mood} onValueChange={(v) => setMoodState(v as Mood)} disabled={isPlaying}><SelectTrigger className="col-span-2 h-8 text-xs"><SelectValue /></SelectTrigger><SelectContent>{AVAILABLE_MOODS.map(m => <SelectItem key={m} value={m} className={cn("text-xs capitalize", MOOD_COLOR_CLASSES[MOOD_CATEGORIES[m]])}>{m}</SelectItem>)}</SelectContent></Select></div>
                       <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs flex items-center gap-1.5 justify-end"><Dna className="h-3.5 w-3.5 text-primary" /> Heritage</Label><div className="col-span-2 flex items-center"><Switch checked={useHeritage} onCheckedChange={setUseHeritage} disabled={isPlaying}/></div></div>
                       <div className="grid grid-cols-3 items-center gap-2"><Label className="text-right text-xs flex items-center gap-1.5 justify-end"><Bot className="h-3 w-3" /> Control</Label><div className="col-span-2 flex items-center"><Switch checked={composerControlsInstruments} onCheckedChange={setComposerControlsInstruments} disabled={isPlaying}/></div></div>
                     </>)}

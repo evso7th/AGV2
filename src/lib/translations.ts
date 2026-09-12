@@ -97,7 +97,8 @@ export const TRANSLATIONS = {
     g_ambient: { ru: "Slow Fusion", en: "Slow Fusion" },
     g_psybient: { ru: "Neuro Space", en: "Neuro Space" },
     g_blues: { ru: "Cafe's Blues", en: "Cafe's Blues" },
-    g_reggae: { ru: "Root Reggey", en: "Root Reggey" },
+    g_cyber_blues: { ru: "CYBER BLUES", en: "CYBER BLUES" },
+    g_reggae: { ru: "Root Reggee", en: "Root Reggee" },
     g_foundry: { ru: "Dark Trance", en: "Dark Trance" },
     g_random: { ru: "⚡ SURPRISE", en: "⚡ SURPRISE" },
     
@@ -105,6 +106,7 @@ export const TRANSLATIONS = {
     short_g_ambient: { ru: "SF", en: "SF" },
     short_g_psybient: { ru: "NS", en: "NS" },
     short_g_blues: { ru: "CB", en: "CB" },
+    short_g_cyber_blues: { ru: "CYB", en: "CYB" },
     short_g_reggae: { ru: "RR", en: "RR" },
     short_g_foundry: { ru: "DT", en: "DT" },
     short_g_random: { ru: "RZ", en: "RZ" },
