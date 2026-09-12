@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V75.0 — "Transition Signaling Fix".
- * #ЗАЧЕМ: Исправление переключения треков. Добавлена трансляция AG_SUITE_TRANSITION.
+ * @fileOverview Audio Engine Context V75.1 — "Reference Stability Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError (telecasterGuitarSamplerRef is not defined).
  */
 'use client';
 
@@ -258,7 +258,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     foundryDrumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
-    [blackGuitarSamplerRef, telecasterGuitarSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
+    // #ЗАЧЕМ: ПЛАН №75.1. Исправление опечатки в названии ссылки.
+    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
   const triggerStreamPulse = useCallback(() => {
@@ -506,7 +507,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
-                // #ЗАЧЕМ: Критический фикс навигации. Трансляция события в интерфейс.
                 triggerVinyl(); 
                 window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
             }
