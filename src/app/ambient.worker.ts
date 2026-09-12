@@ -80,7 +80,6 @@ const Scheduler = {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
                 
-                // #ЗАЧЕМ: ПЛАН №2500. Cyber Blues разрешено брать трансовое наследие.
                 let allowedGenres = [uiGenre];
                 if (uiGenre === 'cyber_blues') {
                     allowedGenres = ['blues', 'trance', 'psybient', 'foundry'];

@@ -69,9 +69,15 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         // ─── REGISTRY SELECTION ───
         // ПЛАН №2000: У каждого тяжелого жанра теперь свой реестр.
+        // ПЛАН №2305: Защита Reggae от роковых тембров.
         let registry = V2_PRESETS;
-        if (genre === 'foundry' || genre === 'psybient') registry = FOUNDRY_PRESETS;
-        else if (genre === 'cyber_blues') registry = SB_PRESETS;
+        if (genre === 'foundry' || genre === 'psybient') {
+            registry = FOUNDRY_PRESETS;
+        } else if (genre === 'cyber_blues') {
+            registry = SB_PRESETS;
+        } else if (genre === 'reggae') {
+            registry = V2_PRESETS; // Форсированная мягкость
+        }
 
         // ─── Safety Guard ───
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';

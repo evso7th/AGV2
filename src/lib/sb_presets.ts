@@ -10,7 +10,7 @@ export const SB_PRESETS = {
     ],
     noise: { on: true, gain: 0.04 },
     adsr: { a: 0.005, d: 0.4, s: 0.8, r: 0.8 },
-    lpf: { cutoff: 1800, q: 4.5 },
+    lpf: { cutoff: 4200, q: 4.5 },
     lfo: { rate: 2.5, amount: 1200, target: 'filter' },
     drive: { type: 'fuzz', amount: 0.75 },
     reverbMix: 0.08
