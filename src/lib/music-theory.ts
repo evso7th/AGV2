@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.6 — "Cyber Blues Alignment".
- * #ЗАЧЕМ: Укрепление связи Trance, Foundry и Cyber Blues для стабильности и тяжелого звука.
+ * @fileOverview Universal Music Theory Utilities V5.7 — "Cyber Blues Sovereignty".
+ * #ЗАЧЕМ: Подключение выделенного реестра пресетов SB_PRESETS для Cyber Blues.
  */
 
 import type { 
@@ -17,6 +17,7 @@ import { getChordNameForBar, getDynastyForMood } from './blues-theory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
+import { SB_PRESETS } from './sb_presets';
 
 // ───── GLOBAL CHRONOS CONSTANTS ─────
 export const TICKS_PER_BAR = 12;
@@ -48,7 +49,7 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 
 /**
  * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №1990): Cyber Blues теперь также использует Foundry-реестр.
+ * #ОБНОВЛЕНО (ПЛАН №2000): Переключение Cyber Blues на суверенный реестр SB_PRESETS.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -67,9 +68,10 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         // ─── REGISTRY SELECTION ───
-        // ПЛАН №1990: foundry, psybient и cyber_blues теперь ВСЕГДА используют высокопроизводительные пресеты Foundry.
-        const isHighPerformance = genre === 'foundry' || genre === 'psybient' || genre === 'cyber_blues';
-        const registry = isHighPerformance ? (FOUNDRY_PRESETS || V2_PRESETS) : V2_PRESETS;
+        // ПЛАН №2000: У каждого тяжелого жанра теперь свой реестр.
+        let registry = V2_PRESETS;
+        if (genre === 'foundry' || genre === 'psybient') registry = FOUNDRY_PRESETS;
+        else if (genre === 'cyber_blues') registry = SB_PRESETS;
 
         // ─── Safety Guard ───
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
