@@ -36,7 +36,11 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 };
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+// #ЗАЧЕМ: Список жанров, которые Cyber Blues может использовать как доноров.
 const HEAVY_BLUES_GENRES = ['blues', 'heavy_blues_rock', 'garage_blues', 'stoner_rock', 'blues_rock'];
+const TRANCE_GENRES = ['trance', 'psybient', 'foundry'];
+const COMBINED_GENRES = [...HEAVY_BLUES_GENRES, ...TRANCE_GENRES];
 
 export interface BluesBrainConfig {
   tempo: number;
@@ -158,6 +162,7 @@ export class CyberBluesBrain {
 
   private wrapMelody(midi: number): number {
     let v = midi;
+    if (!isFinite(v)) return 60;
     while (v > this.MELODY_CEILING) v -= 12;
     return v;
   }
@@ -250,8 +255,9 @@ export class CyberBluesBrain {
       filteredPool = poolToUse.filter(ax => {
         const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
         const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-        const isHeavyBlues = axGenres.some((g: string) => HEAVY_BLUES_GENRES.includes(g));
-        return isHeavyBlues && (axMoods.length === 0 || axMoods.includes(this.mood));
+        // #ЗАЧЕМ: ПЛАН №2500. Cyber Blues теперь может использовать ТРАНСОВЫЕ аксиомы.
+        const matchesCombined = axGenres.some((g: string) => COMBINED_GENRES.includes(g));
+        return matchesCombined && (axMoods.length === 0 || axMoods.includes(this.mood));
       });
     }
 
@@ -730,6 +736,6 @@ export class CyberBluesBrain {
     }];
   }
 
-  private constrainBassOctave(note: number): number { let n = note; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
-  private constrainAccompanimentOctave(note: number): number { let n = note; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
+  private constrainBassOctave(note: number): number { let n = note; if(!isFinite(n)) return 36; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
+  private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }

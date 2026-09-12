@@ -1,7 +1,6 @@
-
 /**
- * @file AuraGroove Music Worker V7.1 — "Cyber Blues Readiness".
- * #ЗАЧЕМ: Поддержка нового жанра Cyber Blues.
+ * @file AuraGroove Music Worker V7.2 — "Cyber DNA Fusion".
+ * #ЗАЧЕМ: Разрешение Cyber Blues использовать трансовые аксиомы.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -81,11 +80,13 @@ const Scheduler = {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
                 
-                // #ЗАЧЕМ: Cyber Blues принудительно заимствует только блюзовое наследие.
-                const targetGenre = (uiGenre === 'cyber_blues') ? 'blues' : uiGenre;
+                // #ЗАЧЕМ: ПЛАН №2500. Cyber Blues разрешено брать трансовое наследие.
+                let allowedGenres = [uiGenre];
+                if (uiGenre === 'cyber_blues') {
+                    allowedGenres = ['blues', 'trance', 'psybient', 'foundry'];
+                }
                 
-                const isTranceMatch = genres.includes('trance') || genres.includes('psybient') || genres.includes('foundry');
-                const genreMatch = (targetGenre === 'psybient' || targetGenre === 'foundry') ? isTranceMatch : genres.includes(targetGenre);
+                const genreMatch = genres.some(g => allowedGenres.includes(g));
                 return genreMatch && (moods.length === 0 || moods.includes(uiMood));
             });
 
