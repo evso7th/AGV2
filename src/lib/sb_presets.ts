@@ -1,3 +1,8 @@
+/**
+@fileOverview Cyber Blues Presets Library V1.4 — "Maximum Aggression".
+#ЗАЧЕМ: Финальная "закалка" органов для Cyber Blues.
+#ЧТО: Повышен уровень дисторшна, расширен спектр фильтров, усилены "зубастые" гармоники.
+*/
 export const SB_PRESETS = {
 // ───── PADS & SYNTHS (Dynamic Group: dynamicPad) ─────
 synth: {
@@ -46,20 +51,20 @@ drive: { type: 'fuzz', amount: 0.65 },
 reverbMix: 0.25
 },
 // ───── ORGANS (Dynamic Group: dynamicOrgan) ─────
-// #ЗАЧЕМ: ПЛАН №2155. Органы переведены на 'synth' для добавления зубастых волн (saw/square).
+// #ЗАЧЕМ: ПЛАН №2155. Максимальная агрессия (fuzz 0.92, lpf 4500).
 organ: {
 type: 'synth',
 name: 'Cyber Rock B3 (Lord)',
 volume: 0.58,
 osc: [
 { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
-{ type: 'sawtooth', octave: 0, detune: 4, gain: 0.2 },
-{ type: 'square', octave: 1, detune: -4, gain: 0.15 },
+{ type: 'sawtooth', octave: 0, detune: 4, gain: 0.28 },
+{ type: 'square', octave: 1, detune: -4, gain: 0.22 },
 { type: 'sine', octave: -1, detune: 0, gain: 0.4 }
 ],
 adsr: { a: 0.005, d: 0.08, s: 0.95, r: 0.4 },
-lpf: { cutoff: 3800, q: 2.5 },
-drive: { type: 'fuzz', amount: 0.82 },
+lpf: { cutoff: 4500, q: 3.2 },
+drive: { type: 'fuzz', amount: 0.92 },
 reverbMix: 0.12
 },
 organ_soft_jazz: {
@@ -68,12 +73,12 @@ name: 'Cyber Gritty Jazz B3',
 volume: 0.52,
 osc: [
 { type: 'sine', octave: 0, detune: 0, gain: 0.7 },
-{ type: 'sawtooth', octave: 1, detune: 0, gain: 0.12 },
-{ type: 'square', octave: 0, detune: 5, gain: 0.1 }
+{ type: 'sawtooth', octave: 1, detune: 0, gain: 0.18 },
+{ type: 'square', octave: 0, detune: 5, gain: 0.18 }
 ],
 adsr: { a: 0.01, d: 0.12, s: 0.88, r: 0.35 },
-lpf: { cutoff: 2200, q: 1.5 },
-drive: { type: 'fuzz', amount: 0.68 },
+lpf: { cutoff: 2800, q: 2.2 },
+drive: { type: 'fuzz', amount: 0.78 },
 reverbMix: 0.08
 },
 organ_prog: {
@@ -82,13 +87,13 @@ name: 'Cyber Prog B3',
 volume: 0.56,
 osc: [
 { type: 'sine', octave: 0, detune: 0, gain: 0.55 },
-{ type: 'sawtooth', octave: 0, detune: 8, gain: 0.22 },
-{ type: 'square', octave: 1, detune: -8, gain: 0.18 },
+{ type: 'sawtooth', octave: 0, detune: 8, gain: 0.35 },
+{ type: 'square', octave: 1, detune: -8, gain: 0.3 },
 { type: 'sine', octave: 1, detune: 0, gain: 0.3 }
 ],
 adsr: { a: 0.008, d: 0.1, s: 0.92, r: 0.5 },
-lpf: { cutoff: 4200, q: 2.0 },
-drive: { type: 'muff', amount: 0.74 },
+lpf: { cutoff: 5200, q: 2.8 },
+drive: { type: 'muff', amount: 0.88 },
 reverbMix: 0.15
 },
 organ_jimmy_smith: {
@@ -97,12 +102,12 @@ name: 'Cyber Percussive B3',
 volume: 0.48,
 osc: [
 { type: 'sine', octave: 0, detune: 0, gain: 0.75 },
-{ type: 'sawtooth', octave: 1, detune: 0, gain: 0.18 },
-{ type: 'square', octave: 0, detune: 0, gain: 0.12 }
+{ type: 'sawtooth', octave: 1, detune: 0, gain: 0.25 },
+{ type: 'square', octave: 0, detune: 0, gain: 0.22 }
 ],
 adsr: { a: 0.003, d: 0.06, s: 0.75, r: 0.25 },
-lpf: { cutoff: 3200, q: 1.0 },
-drive: { type: 'fuzz', amount: 0.62 },
+lpf: { cutoff: 3800, q: 1.8 },
+drive: { type: 'fuzz', amount: 0.76 },
 reverbMix: 0.06
 },
 // ───── GUITARS ─────

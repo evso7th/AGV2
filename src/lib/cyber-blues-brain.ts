@@ -1,8 +1,7 @@
 /**
-@fileOverview Cyber Blues Brain V1.3 — "Atmospheric & Harmony Expansion".
-#ЗАЧЕМ: Активация слоев гармонии (в стиле Dark Trance) и расширенной перкуссии (Sparkles).
-#ЧТО: 1. Гармония переведена на ритмические стабы (как в Dark Trance).
-      2. Sparkles используют полный арсенал (Organic/Melodic + SFX).
+@fileOverview Cyber Blues Brain V1.5 — "Bass Stability Guard".
+#ЗАЧЕМ: 1. Исправление исчезающего баса (принудительный fallback на рифф при пустых тактах аксиом).
+      2. Полная активация слоев гармонии и атмосферных событий.
 */
 import {
   FractalEvent,
@@ -43,7 +42,6 @@ const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-// #ЗАЧЕМ: Расширенный список жанров для тяжелого рок-блюза.
 const HEAVY_BLUES_GENRES = ['blues', 'heavy_blues_rock', 'garage_blues', 'stoner_rock', 'blues_rock'];
 
 export interface BluesBrainConfig {
@@ -490,7 +488,6 @@ export class CyberBluesBrain {
     const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
     const events: FractalEvent[] = [];
     
-    // #ЗАЧЕМ: Гармония как в Dark Trance — ритмические стабы.
     const grid = [4.5, 10.5]; 
     const gate = 0.3 + (tension * 0.4); 
 
@@ -517,7 +514,6 @@ export class CyberBluesBrain {
   private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
     
-    // SFX Logic
     if (this.random.next() < 0.15) {
       events.push({
         type: 'sfx',
@@ -536,7 +532,6 @@ export class CyberBluesBrain {
       });
     }
 
-    // Sparkles Logic - "Entire Arsenal"
     const sparkleChance = 0.3 + (tension * 0.4);
     if (this.random.next() < sparkleChance) {
       const count = tension > 0.6 ? this.random.nextInt(3) + 1 : 1;
@@ -709,23 +704,31 @@ export class CyberBluesBrain {
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
+    // #ЗАЧЕМ: ПЛАН №2280. Исправление исчезающего баса.
+    // Если есть аксиомы баса, пытаемся отрендерить их. 
     if (this.currentBassAxiom.length > 0) {
       const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
       const startEpoch = this.soloistBusyUntilBar - totalBars;
       const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
       const barOffset = mosaicBar * TICKS_PER_BAR;
       let notes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
-      notes = this.applyMutationLogic(notes, tension, this.seed + epoch);
-      return notes.map(n => ({
-        type: 'bass',
-        note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
-        time: (n.t - barOffset) * TICK_TO_BEAT,
-        duration: n.d * TICK_TO_BEAT,
-        weight: 0.9,
-        technique: 'pick',
-        params: { drive: 0.6 }
-      }));
+      
+      // Если в текущем такте мозаики нет нот аксиомы, принудительно падаем в генеративный рифф
+      if (notes.length > 0) {
+        notes = this.applyMutationLogic(notes, tension, this.seed + epoch);
+        return notes.map(n => ({
+          type: 'bass',
+          note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition),
+          time: (n.t - barOffset) * TICK_TO_BEAT,
+          duration: n.d * TICK_TO_BEAT,
+          weight: 0.9,
+          technique: 'pick',
+          params: { drive: 0.6 }
+        }));
+      }
     }
+    
+    // Fallback: Если аксиом нет или такт в аксиоме пустой — играем тяжелый рифф
     return this.renderHeavyRiffBass(chord, epoch, tension);
   }
 
@@ -811,6 +814,13 @@ export class CyberBluesBrain {
     return events;
   }
 
-  private constrainBassOctave(note: number): number { let n = note; if(!isFinite(n)) return 36; while (n > 47) n -= 12; while (n < 31) n += 12; return n; }
+  private constrainBassOctave(note: number): number { 
+      let n = note; 
+      if(!isFinite(n)) return 36; 
+      // #ЗАЧЕМ: ПЛАН №2280. Расширение диапазона до MIDI 28 для суб-низа.
+      while (n > 47) n -= 12; 
+      while (n < 28) n += 12; 
+      return n; 
+  }
   private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }
