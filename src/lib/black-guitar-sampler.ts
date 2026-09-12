@@ -104,7 +104,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.15;
+        this.preamp.gain.value = 0.2; // #ЗАЧЕМ: Установлено 0.2 для синхронности с контекстом.
 
         this.bodyFilter = this.audioContext.createBiquadFilter();
         this.bodyFilter.type = 'peaking';

@@ -43,7 +43,7 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.275, 
+    acoustic: 0.2, // #ЗАЧЕМ: Установлено точное значение 0.2 по запросу пользователя.
     electric: 0.825, // #ЗАЧЕМ: ПЛАН №920. Увеличено на 50% с 0.55 до 0.825.
     piano: 0.8,
     orchecial: 0.5, 
@@ -142,6 +142,11 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     setGlobalVoiceLimit(limit);
   }, []);
 
+  const setDnaSourcePreference = useCallback((pref: 'cache' | 'network') => {
+      setDnaSourcePreferenceState(pref);
+      localStorage.setItem('AG_DnaSourcePreference', pref);
+  }, []);
+
   const [dnaSourcePreference, setDnaSourcePreferenceState] = useState<'cache' | 'network'>(() => {
     if (typeof window !== 'undefined') {
         return (localStorage.getItem('AG_DnaSourcePreference') as 'cache' | 'network') || 'cache';
@@ -208,11 +213,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   useEffect(() => {
       calibrationGainsRef.current = calibrationGains;
   }, [calibrationGains]);
-
-  const setDnaSourcePreference = useCallback((pref: 'cache' | 'network') => {
-      setDnaSourcePreferenceState(pref);
-      localStorage.setItem('AG_DnaSourcePreference', pref);
-  }, []);
 
   const getEffectivePreset = useCallback((presetName: string) => {
       const isFoundry = settingsRef.current?.genre === 'foundry';
