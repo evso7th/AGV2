@@ -8,7 +8,7 @@
       "melody": 0.48,
       "accompaniment": 0.62,
       "pianoAccompaniment": 0.27,
-      "harmony": 0.30,
+      "harmony": 0.15,
       "sparkles": 0.55,
       "sfx": 0.17,
       "drums": 0.1075
@@ -24,7 +24,7 @@
       "melody": 0.40,
       "accompaniment": 0.35,
       "pianoAccompaniment": 0.35,
-      "harmony": 0.25,
+      "harmony": 0.125,
       "sparkles": 0.60,
       "sfx": 0.50,
       "drums": 0.10
@@ -40,7 +40,7 @@
       "melody": 0.50,
       "accompaniment": 0.50,
       "pianoAccompaniment": 0.30,
-      "harmony": 0.30,
+      "harmony": 0.15,
       "sparkles": 0.50,
       "sfx": 0.20,
       "drums": 0.1375
@@ -56,7 +56,7 @@
       "melody": 0.65,
       "accompaniment": 0.15,
       "pianoAccompaniment": 0.35,
-      "harmony": 0.20,
+      "harmony": 0.10,
       "sparkles": 0.40,
       "sfx": 0.30,
       "drums": 0.125
@@ -72,7 +72,7 @@
       "melody": 0.65,
       "accompaniment": 0.15,
       "pianoAccompaniment": 0.35,
-      "harmony": 0.20,
+      "harmony": 0.10,
       "sparkles": 0.40,
       "sfx": 0.30,
       "drums": 0.125
@@ -88,10 +88,10 @@
       "melody": 0.65,
       "accompaniment": 0.15,
       "pianoAccompaniment": 0.35,
-      "harmony": 0.20,
+      "harmony": 0.10,
       "sparkles": 0.40,
       "sfx": 0.30,
-      "drums": 0.125
+      "drums": 0.055
     },
     "genre": "reggae"
   }

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V3.1 — "Drum Balance Correction".
- * #ЗАЧЕМ: ПЛАН №1200. Глобальное уменьшение громкости ударных на 50%.
+ * @fileOverview Master Mix Registry V3.2 — "Harmony Balance Correction".
+ * #ЗАЧЕМ: ПЛАН №1201. Глобальное уменьшение громкости гармонии на 50%.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -9,9 +9,9 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
     melody: 0.21,        
     accompaniment: 0.10, 
-    harmony: 0.18,       
+    harmony: 0.09, // Was 0.18      
     pianoAccompaniment: 0.43,
-    drums: 0.1875, // Was 0.375
+    drums: 0.1875,
     sparkles: 0.65,      
     sfx: 0.65            
 };
@@ -26,16 +26,16 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         ...UNIVERSAL_IMPERIAL_MIX,
         accompaniment: 0.25,      
         melody: 0.45,             
-        harmony: 0.32,            
+        harmony: 0.16, // Was 0.32           
         pianoAccompaniment: 0.55  
     },
     blues: {
         bass: 0.68,
         melody: 0.50,
         accompaniment: 0.06,
-        harmony: 0.0875,
+        harmony: 0.04375, // Was 0.0875
         pianoAccompaniment: 0.32,
-        drums: 0.125, // Was 0.25
+        drums: 0.125,
         sparkles: 0.65, 
         sfx: 0.65       
     },
@@ -43,16 +43,16 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         bass: 0.68,
         melody: 0.50,
         accompaniment: 0.06,
-        harmony: 0.0875,
+        harmony: 0.04375, // Was 0.0875
         pianoAccompaniment: 0.32,
-        drums: 0.125, // Was 0.25
+        drums: 0.125,
         sparkles: 0.65, 
         sfx: 0.65       
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        drums: 0.055, // Was 0.11
-        harmony: 0.0375    
+        drums: 0.055,
+        harmony: 0.01875 // Was 0.0375   
     },
     progressive: { ...UNIVERSAL_IMPERIAL_MIX },
     rock: { ...UNIVERSAL_IMPERIAL_MIX },
