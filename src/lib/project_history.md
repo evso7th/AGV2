@@ -2,6 +2,11 @@
 
 ---
 
+### ЗАПИСЬ: 2026-07-22 (Telecaster Calibration)
+**СОБЫТИЕ**: Системное увеличение громкости сэмплера Telecaster на 50%.
+**ЧТО**: Значение `SAMPLER_DEFAULTS.electric` в `audio-engine-context.tsx` поднято с 0.55 до 0.825.
+**РЕЗУЛЬТАТ**: Более уверенное и прорезающее звучание электрогитары в миксе.
+
 ### ЗАПИСЬ: 2026-07-21 (Black Acoustic Calibration)
 **СОБЫТИЕ**: Системное уменьшение громкости сэмплера Black Acoustic в 2 раза.
 **ЧТО**: Значение `SAMPLER_DEFAULTS.acoustic` в `audio-engine-context.tsx` снижено с 0.55 до 0.275.

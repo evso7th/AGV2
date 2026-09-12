@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V75.1 — "Reference Stability Fix".
- * #ЗАЧЕМ: Исправление ReferenceError (telecasterGuitarSamplerRef is not defined).
+ * @fileOverview Audio Engine Context V75.2 — "Telecaster Calibration".
+ * #ЗАЧЕМ: Системное увеличение громкости электрогитары на 50%.
  */
 'use client';
 
@@ -43,8 +43,8 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.275, // Reduced from 0.55 to 0.275 (2x reduction)
-    electric: 0.55, 
+    acoustic: 0.275, 
+    electric: 0.825, // #ЗАЧЕМ: ПЛАН №920. Увеличено на 50% с 0.55 до 0.825.
     piano: 0.8,
     orchecial: 0.5, 
     chords: 1.2,
@@ -258,7 +258,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     foundryDrumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
-    // #ЗАЧЕМ: ПЛАН №75.1. Исправление опечатки в названии ссылки.
     [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
