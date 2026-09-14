@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.3 — "Cognitive Monitoring Edition".
- * #ЗАЧЕМ: Внедрение детального по-тактового логирования инструментов и DNA.
+ * @file AuraGroove Music Worker V7.4 — "Production Silence".
+ * #ЗАЧЕМ: Отключение по-тактовых логов для продакшена.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -111,7 +111,7 @@ const Scheduler = {
             }
 
             const anchorAxiom = this.cloudAxiomPool.find(ax => 
-                normalizeStr(ax.compositionId) === normalizedId && ax.nativeKey
+                normalizeStr(ax.compositionId) === normalizedId && ax.nativeBpm
             );
             
             if (anchorAxiom) {
@@ -264,8 +264,6 @@ const Scheduler = {
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
 
-        // ───── COGNITIVE BAR LOGGING (DISABLED BY REQUEST) ─────
-        // #ЗАЧЕМ: Вывод информации о текущих инструментах и DNA в консоль.
         /*
         const getTimestamp = () => new Date().toLocaleTimeString();
         const getHash = (id: string) => id?.split('_').pop() || 'none';

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.9 — "Velvet Stream Realignment".
- * #ЗАЧЕМ: Перевод Neuro Space (psybient) на поток пресетов Вельветового Стандарта.
+ * @fileOverview Universal Music Theory Utilities V6.0 — "Deployment Hardening".
+ * #ЗАЧЕМ: Фикс синтаксиса и подтверждение маршрутизации Neuro Space на V2.
  */
 
 import type { 
@@ -47,10 +47,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Резолвер тембров. 
- * #ОБНОВЛЕНО: Из условия FOUNDRY исключен psybient, чтобы он использовал V2_PRESETS.
- */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
         if (!hint || hint === 'none') return 'none';
@@ -68,7 +64,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         let registry = V2_PRESETS;
-        // #ЗАЧЕМ: ПЛАН №2285. Нейроспейс (psybient) теперь использует Velvet Standard (V2).
         if (genre === 'foundry') {
             registry = FOUNDRY_PRESETS;
         } else if (genre === 'cyber_blues') {

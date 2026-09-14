@@ -38,8 +38,6 @@ import {
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
-const HEAVY_BLUES_GENRES = ['blues', 'heavy_blues_rock', 'garage_blues', 'stoner_rock', 'blues_rock', 'trance', 'foundry'];
-
 export interface TranceBrainConfig {
   tempo: number;
   rootNote: number;
@@ -59,7 +57,7 @@ export interface TranceBrainConfig {
 }
 
 export const DEFAULT_CONFIG: TranceBrainConfig = {
-  tempo: 124, // Стандарт мягкого транса
+  tempo: 124, 
   rootNote: 55,
   genre: 'psybient',
   useHeritage: true,
@@ -67,7 +65,7 @@ export const DEFAULT_CONFIG: TranceBrainConfig = {
   emotion: {
     melancholy: 0.35,
     darkness: 0.5,
-    aggression: 0.2 // Низкая агрессия для мягкости
+    aggression: 0.2 
   }
 };
 
@@ -248,7 +246,6 @@ export class TranceBrain {
       filteredPool = poolToUse.filter(ax => {
         const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
         const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-        // Фильтр для транса
         const isTranceMatch = axGenres.some(g => ['trance', 'psybient', 'ambient', 'foundry'].includes(g));
         return isTranceMatch && (axMoods.length === 0 || axMoods.includes(this.mood));
       });
@@ -403,7 +400,6 @@ export class TranceBrain {
     if (hints.melody && !isSoloistResting) {
       if (this.currentAxiom.length > 0 && epoch < this.soloistBusyUntilBar) {
         let activeAxiom = this.applyMutationLogic(this.currentAxiom, tension, this.seed + epoch);
-        // МЕЛОДИЯ КАК В БЛЮЗЕ (Golden Note Protocol)
         melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
       }
       if (melodyEvents.length === 0) melodyEvents = this.renderGapArp(epoch, resChord, tension);
@@ -451,19 +447,16 @@ export class TranceBrain {
 
   private renderFoundryTranceDrums(epoch: number, tension: number): FractalEvent[] {
     const events: FractalEvent[] = [];
-    // ПРЯМАЯ БОЧКА ИЗ FOUNDRY (мягкий вес)
     [0, 3, 6, 9].forEach(t => events.push({ 
         type: 'drum_foundry_quality', note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
         weight: 0.65, technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
     }));
 
-    // Мягкий малый на 2 и 4
     [3, 9].forEach(t => events.push({
       type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1,
       weight: 0.4, technique: 'hit', dynamics: 'p', phrasing: 'staccato'
     }));
 
-    // Офф-бит хэты
     [1.5, 4.5, 7.5, 10.5].forEach(t => events.push({
       type: 'drum_25693__walter_odington__hackney-hat-1', note: 42, time: t * TICK_TO_BEAT, duration: 0.05,
       weight: 0.45, technique: 'hit'
@@ -476,7 +469,6 @@ export class TranceBrain {
     const root = this.constrainBassOctave(chord.rootNote - 12);
     const events: FractalEvent[] = [];
     
-    // Rolling pattern: 1/16 notes on offsets
     [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
         events.push({
             type: 'bass',
@@ -486,7 +478,7 @@ export class TranceBrain {
             weight: 0.5 + (tension * 0.1),
             technique: 'pulse',
             dynamics: 'mf',
-            params: { drive: 0.2 } // Мягкий бас
+            params: { drive: 0.2 } 
         });
     });
     return events;

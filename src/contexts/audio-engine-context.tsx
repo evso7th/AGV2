@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V75.2 — "Telecaster Calibration".
- * #ЗАЧЕМ: Системное увеличение громкости электрогитары на 50%.
+ * @fileOverview Audio Engine Context V75.3 — "Deployment Finalization".
+ * #ЗАЧЕМ: Установка системной громкости акустики на 0.2 и подготовка к деплою.
  */
 'use client';
 
@@ -43,8 +43,8 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.2, // #ЗАЧЕМ: Установлено точное значение 0.2 по запросу пользователя.
-    electric: 0.825, // #ЗАЧЕМ: ПЛАН №920. Увеличено на 50% с 0.55 до 0.825.
+    acoustic: 0.2, 
+    electric: 0.825, 
     piano: 0.8,
     orchecial: 0.5, 
     chords: 1.2,

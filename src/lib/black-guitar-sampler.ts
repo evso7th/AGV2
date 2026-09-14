@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.3 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Сэмплер Black Acoustic V5.4 — "Deployment Finalization".
+ * #ЗАЧЕМ: Установка системной громкости 0.2 и поддержка Vault.
  */
 
 function makeAcousticWarmthCurve() {
@@ -104,7 +104,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.2; // #ЗАЧЕМ: Установлено 0.2 для синхронности с контекстом.
+        this.preamp.gain.value = 0.2; 
 
         this.bodyFilter = this.audioContext.createBiquadFilter();
         this.bodyFilter.type = 'peaking';
