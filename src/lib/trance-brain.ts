@@ -1,7 +1,8 @@
 /**
-@fileOverview Trance Brain V27.0 — "The Absolute Cyber Clone".
-#ЗАЧЕМ: 100% клонирование логики Cyber Blues для обеспечения стабильности Neuro Space.
-#ЧТО: Полная репликация V1.5 CyberBluesBrain с адаптацией имен классов.
+@fileOverview Trance Brain V27.1 — "The Absolute Cyber Clone with Velvet Stream".
+#ЗАЧЕМ: 1. 100% клонирование логики Cyber Blues для обеспечения стабильности Neuro Space.
+      2. Полная репликация V1.5 CyberBluesBrain с адаптацией имен классов.
+      3. Использование V2_PRESETS через resolveSemanticTimbre (отключается в music-theory.ts).
 */
 import {
   FractalEvent,
@@ -595,7 +596,7 @@ export class TranceBrain {
     ticks.forEach(t => {
       const degIdx = calculateMusiNum(epoch + t, 11, this.seed, scale.length);
       const rawNote = root + scale[degIdx] + this.currentTransposition + this.microTransposition;
-      const tech: Technique = tension > 0.4 ? 'bn' : 'pick';
+      const tech: Technique = tension > 0.4 ? 'vb' : 'pick';
       events.push({
         type: 'melody',
         note: this.wrapMelody(rawNote),

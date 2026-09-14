@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.8 — "Bar-by-Bar Resolution".
- * #ЗАЧЕМ: Расширение словаря алиасов для динамических групп.
+ * @fileOverview Universal Music Theory Utilities V5.9 — "Velvet Stream Realignment".
+ * #ЗАЧЕМ: Перевод Neuro Space (psybient) на поток пресетов Вельветового Стандарта.
  */
 
 import type { 
@@ -48,7 +48,8 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
 };
 
 /**
- * #ЗАЧЕМ: Резолвер тембров с поддержкой UI-алиасов и по-тактового разрешения.
+ * #ЗАЧЕМ: Резолвер тембров. 
+ * #ОБНОВЛЕНО: Из условия FOUNDRY исключен psybient, чтобы он использовал V2_PRESETS.
  */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
@@ -67,16 +68,15 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
         let registry = V2_PRESETS;
-        if (genre === 'foundry' || genre === 'psybient') {
+        // #ЗАЧЕМ: ПЛАН №2285. Нейроспейс (psybient) теперь использует Velvet Standard (V2).
+        if (genre === 'foundry') {
             registry = FOUNDRY_PRESETS;
         } else if (genre === 'cyber_blues') {
             registry = SB_PRESETS;
         }
 
-        // ─── Safety Guard ───
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
-        // ─── Piano Channel Specific ───
         if (part === 'pianoAccompaniment') {
             if (clean === 'piano' || clean === 'acousticpiano' || clean === 'dynamicpianodual') {
                  return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
@@ -84,7 +84,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
         }
 
-        // ─── Dynamic Groups (Pads & Organs) ───
         if (clean === 'dynamicorgan') {
             if (tension < 0.4) return 'organ_prog';
             if (tension < 0.75) return 'organ_soft_jazz';
@@ -96,7 +95,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             return 'synth_cave_pad';
         }
 
-        // ─── Dynamic Groups (Guitars) ───
         if (clean === 'dynteledark' || clean === 'dyn_tele_dark') {
             return tension < 0.6 ? 'telecaster' : 'darkTelecaster';
         }
@@ -139,7 +137,6 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
         }
 
-        // ─── Dynamic Groups (Bass) ───
         if (clean === 'dynbassjazzstandard') return tension < 0.6 ? 'bass_jazz_warm' : 'bass_jazz_fretless';
         if (clean === 'dynbassbluespower') {
             if (tension < 0.4) return 'bass_jazz_warm';
@@ -296,12 +293,6 @@ export function normalizePhraseGroup(phrases: any[][]): void {
         phrases.forEach(p => p.forEach(n => { n.t -= minT; }));
     }
 }
-
-export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
-    HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
-    MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
-    VOID: { fog: 0.9, depth: 0.8, reg: 0 }
-};
 
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;
