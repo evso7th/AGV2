@@ -1,6 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V5.4 — "Yamaha Chords Integration".
+ * @fileOverview UI AuraGroove V5.5 — "Accessibility Fix".
+ * #ЗАЧЕМ: Устранение ворнингов "Missing Description".
  */
 'use client';
 
@@ -255,18 +256,43 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
             <h1 className={cn("text-lg font-bold", isDarkTheme ? "text-violet-400" : "text-violet-600")}>AuraGroove</h1>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => router.push('/home')} title="Navigator"><Navigation className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" onClick={() => router.push('/timbre-lab')} title="Lab"><Settings2 className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" onClick={() => router.push('/hypercube-dashboard')} title="DNA"><Database className="h-5 w-5" /></Button>
-            <Button variant="ghost" size="icon" onClick={handleGoHome}><Home className="h-5 w-5" /></Button>
+            <button 
+                onClick={() => router.push('/home')} title="Navigator"
+                className="h-9 w-9 flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors"
+            >
+                <Navigation className="h-5 w-5" />
+            </button>
+            <button 
+                onClick={() => router.push('/timbre-lab')} title="Lab"
+                className="h-9 w-9 flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors"
+            >
+                <Settings2 className="h-5 w-5" />
+            </button>
+            <button 
+                onClick={() => router.push('/hypercube-dashboard')} title="DNA"
+                className="h-9 w-9 flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors"
+            >
+                <Database className="h-5 w-5" />
+            </button>
+            <button 
+                onClick={handleGoHome}
+                className="h-9 w-9 flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors"
+            >
+                <Home className="h-5 w-5" />
+            </button>
 
             <Dialog open={isCalibrationModalOpen} onOpenChange={setIsCalibrationModalOpen}>
-                <DialogTrigger asChild><Button variant="ghost" size="icon" className="hidden md:inline-flex"><SlidersHorizontal className="h-5 w-5" /></Button></DialogTrigger>
+                <DialogTrigger asChild>
+                    <button className="h-9 w-9 hidden md:flex items-center justify-center hover:bg-primary/10 rounded-full transition-colors"><SlidersHorizontal className="h-5 w-5" /></button>
+                </DialogTrigger>
                 <DialogContent className="max-w-none w-screen h-screen m-0 p-0 border-0 rounded-none bg-background/95 backdrop-blur-3xl flex flex-col z-[100]">
                     <DialogHeader className="p-6 border-b border-primary/10 flex flex-row items-center justify-between bg-card/50">
-                        <DialogTitle className="text-2xl font-black uppercase text-primary flex items-center gap-3">
-                           <SlidersHorizontal className="h-8 w-8" /> Grand Studio Console
-                        </DialogTitle>
+                        <div>
+                            <DialogTitle className="text-2xl font-black uppercase text-primary flex items-center gap-3">
+                               <SlidersHorizontal className="h-8 w-8" /> Grand Studio Console
+                            </DialogTitle>
+                            <DialogDescription className="sr-only">Master calibration console for all instrument preamps and channel volumes.</DialogDescription>
+                        </div>
                         <Button variant="ghost" size="icon" onClick={() => setIsCalibrationModalOpen(false)}><X className="h-8 w-8" /></Button>
                     </DialogHeader>
                     <ScrollArea className="flex-grow">
@@ -329,7 +355,10 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
             <Dialog open={isEqModalOpen} onOpenChange={setIsEqModalOpen}>
                 <DialogTrigger asChild><Button variant="ghost" className="h-9 w-9 px-2">EQ</Button></DialogTrigger>
                 <DialogContent className="sm:max-w-md border-primary/20 bg-card">
-                    <DialogHeader><DialogTitle className="text-primary uppercase font-black">System Equalizer</DialogTitle></DialogHeader>
+                    <DialogHeader>
+                        <DialogTitle className="text-primary uppercase font-black">System Equalizer</DialogTitle>
+                        <DialogDescription className="sr-only">Seven-band frequency adjustment console.</DialogDescription>
+                    </DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (
                         <div key={index} className="flex flex-col items-center justify-end space-y-2">
                             <span className="text-xs font-mono text-muted-foreground">{eqSettings[index] > 0 ? '+' : ''}{eqSettings[index].toFixed(1)}</span>
@@ -381,7 +410,10 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                     <Dialog open={isFilterModalOpen} onOpenChange={(open) => { setIsFilterModalOpen(open); if (open) refreshCloudAxioms(); }}>
                         <DialogTrigger asChild><Button variant="ghost" size="sm" disabled={!useHeritage} className={cn("h-7 px-2 gap-1.5 text-[10px] font-bold uppercase tracking-tighter transition-all", selectedCompositionIds.length > 0 && useHeritage ? "text-primary bg-primary/10 border border-primary/20" : "opacity-70")}>{anchorBtnText}</Button></DialogTrigger>
                         <DialogContent className="sm:max-w-[420px] max-h-[85vh] flex flex-col p-0 bg-card border-primary/20">
-                            <DialogHeader className="p-4 pb-2 border-b border-primary/10"><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Database className="h-5 w-5" /> DNA Selection</DialogTitle></DialogHeader>
+                            <DialogHeader className="p-4 pb-2 border-b border-primary/10">
+                                <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Database className="h-5 w-5" /> DNA Selection</DialogTitle>
+                                <DialogDescription className="sr-only">Filter and select specific donor tracks from the cloud heritage pool.</DialogDescription>
+                            </DialogHeader>
                             <div className="p-3 pb-1 space-y-3 bg-muted/20">
                                 <div className="relative group"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary" /><Input placeholder="Search..." className="pl-9 h-9 text-xs border-primary/10 bg-background" value={filterSearchText} onChange={(e) => setFilterSearchText(e.target.value)}/></div>
                                 <div className="flex flex-wrap items-center gap-2 px-1">
@@ -420,11 +452,23 @@ export function AuraGrooveV2(props: AuraGrooveProps) {
                 <CardHeader className="p-2 py-1"><CardTitle className="flex items-center gap-2 text-sm"><Timer className="h-4 w-4"/> Systems</CardTitle></CardHeader>
                 <CardContent className="space-y-3 p-3 pt-0">
                     <div className="flex items-center gap-2">
-                         <Button onClick={handleToggleTimer} disabled={timerSettings.isActive} variant={timerSettings.isActive ? 'destructive' : 'secondary'} className="flex-grow h-8 text-[10px] uppercase font-black">{timerSettings.isActive ? `Stop (${formatTime(timerSettings.timeLeft)})` : `Timer (${timerSettings.duration / 60}m)`}</Button>
+                         <button 
+                            onClick={handleToggleTimer} 
+                            disabled={timerSettings.isActive} 
+                            className={cn(
+                                "flex-grow h-8 text-[10px] uppercase font-black rounded border px-3 transition-colors",
+                                timerSettings.isActive ? "bg-destructive text-white border-destructive" : "bg-secondary text-secondary-foreground border-border hover:bg-secondary/80"
+                            )}
+                         >
+                            {timerSettings.isActive ? `Stop (${formatTime(timerSettings.timeLeft)})` : `Timer (${timerSettings.duration / 60}m)`}
+                         </button>
                         <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                             <DialogTrigger asChild><Button variant="outline" className="w-10 h-8 p-0"><Activity className={cn("h-4 w-4", isPlaying && "text-primary animate-pulse")} /></Button></DialogTrigger>
                             <DialogContent className="sm:max-w-[480px] bg-card border-primary/20">
-                                <DialogHeader><DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle></DialogHeader>
+                                <DialogHeader>
+                                    <DialogTitle className="flex items-center gap-2 text-primary font-black uppercase text-base"><Activity className="h-5 w-5" /> Spectrum Analyzer</DialogTitle>
+                                    <DialogDescription className="sr-only">Live visualization of frequency output.</DialogDescription>
+                                </DialogHeader>
                                 <div className="py-4 h-[250px]">
                                     <SpectrumAnalyzer info={selectedCompositionIds.length > 0 ? `[DNA] ${genre}/${mood}` : `${genre}/${mood}`} />
                                 </div>

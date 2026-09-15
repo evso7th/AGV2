@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.2.1 — "Mobile UI Polish".
- * #ЗАЧЕМ: ПЛАН №1210 — Корректировка окон Микшера и EQ для мобильных браузеров.
+ * @fileOverview UI AuraGroove V17.2.2 — "Accessibility Fix".
+ * #ЗАЧЕМ: ПЛАН №1211 — Устранение ворнингов "Missing Description" через sr-only.
  */
 'use client';
 
@@ -768,15 +768,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20">
-                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Store your current sequence to the library.</DialogDescription>
+                                <DialogHeader>
+                                    <DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Store your current sequence to the library.</DialogDescription>
+                                </DialogHeader>
                                 <div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20">
-                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Select and load a previously stored journey.</DialogDescription>
+                                <DialogHeader>
+                                    <DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Select and load a previously stored journey.</DialogDescription>
+                                </DialogHeader>
                                 <ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
                     </div>
@@ -934,7 +938,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent 
                     className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader className="pt-4"><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
+                    <DialogHeader className="pt-4">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle>
+                        <DialogDescription className="sr-only">Mixer controls for individual channels</DialogDescription>
+                    </DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
@@ -971,7 +978,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 <DialogContent 
                     className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader className="pt-4"><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
+                    <DialogHeader className="pt-4">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle>
+                        <DialogDescription className="sr-only">Equalizer band adjustments</DialogDescription>
+                    </DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
@@ -989,8 +999,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Real-time frequency distribution analyzer.</DialogDescription>
+                    <DialogHeader>
+                        <DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Real-time frequency distribution analyzer.</DialogDescription>
+                    </DialogHeader>
                     <div className="h-64">
                         <SpectrumAnalyzer info={props.isPlaying ? `[DNA: ${props.currentTrackName.replace(/_/g, ' ')}] ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
                     </div>
@@ -1046,6 +1058,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         <DialogTitle className="font-black uppercase text-primary text-center tracking-tight">
                             {t('tips_title')}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">How to use AuraGroove to start generating music.</DialogDescription>
                     </DialogHeader>
                     
                     <div className="py-6">
