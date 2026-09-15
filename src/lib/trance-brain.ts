@@ -1,6 +1,6 @@
 /**
-@fileOverview Trance Brain V27.7 — "Stability: Atmospheric Guard".
-#ЗАЧЕМ: ПЛАН №2301 — Шаг 2: Снижение вероятности Sparkles до 16% для устранения перегруза.
+@fileOverview Trance Brain V28.0 — "Hard Golden Filter".
+#ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Полный пропуск ghost-нот для экономии ресурсов CPU.
 */
 import {
   FractalEvent,
@@ -391,7 +391,7 @@ export class TranceBrain {
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', 'psybient');
+      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre);
     }
 
     let melodyEvents: FractalEvent[] = [];
@@ -412,7 +412,7 @@ export class TranceBrain {
           let p = this.applyMutationLogic(ax.phrase, tension, this.seed + epoch + 1);
           const rendered = this.renderHeritageAccompaniment(resChord, epoch, p, target, dna, tension);
           if (rendered.length > 0) {
-            if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, 'psybient');
+            if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre);
             events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add(target);
           }
@@ -508,15 +508,16 @@ export class TranceBrain {
     const goldenTicks = [0, 3, 6, 9];
     const useNarrativeFilter = barNotes.length > 3;
 
-    return barNotes.map((n) => {
+    // #ЗАЧЕМ: Экономия ресурсов в Нейроспейс. Пропускаем ghost-ноты.
+    const finalNotes = useNarrativeFilter 
+        ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
+        : barNotes;
+
+    return finalNotes.map((n) => {
       const relativeTick = n.t - barOffset;
-      const isGolden = goldenTicks.some(gt => Math.abs(relativeTick - gt) < 0.1);
-      let weight = 0.65;
-      let durationScale = 1.0;
-      if (useNarrativeFilter) {
-        if (isGolden) { weight = 0.8; durationScale = 1.5; }
-        else { weight = 0.2; durationScale = 0.4; }
-      }
+      let weight = 0.8;
+      let durationScale = useNarrativeFilter ? 1.5 : 1.0;
+      
       const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
       return {
         type: type as any,
@@ -525,7 +526,7 @@ export class TranceBrain {
         duration: (n.d * TICK_TO_BEAT * timeScale) * durationScale,
         weight,
         technique: 'pick',
-        phrasing: (useNarrativeFilter && !isGolden) ? 'staccato' : (n.phrasing || 'legato'),
+        phrasing: n.phrasing || 'legato',
         params: { attack: 0.1, release: 1.5 }
       };
     });
@@ -550,12 +551,26 @@ export class TranceBrain {
     const startEpoch = this.soloistBusyUntilBar - totalBars;
     const mosaicBar = this.getMosaicIndex(epoch, startEpoch, totalBars, tension);
     const barOffset = mosaicBar * TICKS_PER_BAR;
-    return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR).map(n => {
+    const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
+    
+    const goldenTicks = [0, 3, 6, 9];
+    const useNarrativeFilter = barNotes.length > 3;
+    
+    // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе.
+    const finalNotes = useNarrativeFilter 
+        ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
+        : barNotes;
+
+    return finalNotes.map(n => {
       const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
       const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
       return {
-        type: type, note: finalNote,
-        time: (n.t - barOffset) * TICK_TO_BEAT, duration: Math.min(n.d, 6) * TICK_TO_BEAT, weight: 0.4, technique: 'hit'
+        type: type,
+        note: finalNote,
+        time: (n.t - barOffset) * TICK_TO_BEAT,
+        duration: Math.min(n.d, 6) * TICK_TO_BEAT,
+        weight: 0.4,
+        technique: 'hit'
       };
     });
   }
@@ -568,7 +583,7 @@ export class TranceBrain {
             note: this.wrapMelody(chord.rootNote + 24 + (chord.chordType === 'minor' ? 3 : 4)),
             time: 10.5 * TICK_TO_BEAT,
             duration: 0.5 * TICK_TO_BEAT,
-            weight: 0.4,
+            weight: 0.375,
             technique: 'hit',
             dynamics: 'p'
         });
@@ -605,8 +620,6 @@ export class TranceBrain {
       });
     }
 
-    // #ЗАЧЕМ: ПЛАН №2301 — Шаг 2: Атмосферный Ценз. 
-    // Снижение вероятности до 16% (Ambient Standard) и ограничение количества до 1.
     const sparkleChance = 0.16; 
     if (this.random.next() < sparkleChance) {
       events.push({
