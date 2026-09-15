@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview UI AuraGroove V17.2.0 — "Cyber Blues Support".
- * #ЗАЧЕМ: Добавление 6-го жанра в список выбора.
+ * @fileOverview UI AuraGroove V17.2.1 — "Mobile UI Polish".
+ * #ЗАЧЕМ: ПЛАН №1210 — Корректировка окон Микшера и EQ для мобильных браузеров.
  */
 'use client';
 
@@ -932,10 +932,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent 
-                    className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
+                    className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Adjust gain levels for each individual instrument channel.</DialogDescription>
+                    <DialogHeader className="pt-4"><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
@@ -970,10 +969,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
                 <DialogContent 
-                    className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
+                    className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Spectral shaping for the final output signal.</DialogDescription>
+                    <DialogHeader className="pt-4"><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
