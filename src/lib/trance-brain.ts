@@ -1,6 +1,6 @@
 /**
-@fileOverview Trance Brain V27.6 — "Stability: Rhythmic Diet".
-#ЗАЧЕМ: ПЛАН №2301 — Шаг 1: Снижение нагрузки через переход с 1/16 на 1/8 офф-бит бас.
+@fileOverview Trance Brain V27.7 — "Stability: Atmospheric Guard".
+#ЗАЧЕМ: ПЛАН №2301 — Шаг 2: Снижение вероятности Sparkles до 16% для устранения перегруза.
 */
 import {
   FractalEvent,
@@ -431,6 +431,8 @@ export class TranceBrain {
         events.push(...pResult.events);
     }
 
+    events.push(...this.renderAtmosphericEvents(epoch, tension));
+
     events.forEach(e => { if (!e.params) e.params = {}; e.params.tension = tension; });
     return {
       events, tension, beautyScore: 0.9, trackName: this.currentTrackName, mutationType: this.state.lastMutationType, newBpm, instrumentOverrides,
@@ -466,8 +468,6 @@ export class TranceBrain {
   private renderRollingBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
     const root = this.constrainBassOctave(chord.rootNote - 12);
     const events: FractalEvent[] = [];
-    
-    // #ЗАЧЕМ: ПЛАН №2301 — Шаг 1: Ритмическая Диета. Переход на 8-е офф-биты для снижения нагрузки.
     [1.5, 4.5, 7.5, 10.5].forEach(t => {
         events.push({
             type: 'bass',
@@ -582,6 +582,47 @@ export class TranceBrain {
         type: 'accompaniment', note: this.constrainAccompanimentOctave(root + 12),
         time: 0, duration: 4.0, weight: 0.3, technique: 'swell'
     }];
+  }
+
+  private renderAtmosphericEvents(epoch: number, tension: number): FractalEvent[] {
+    const events: FractalEvent[] = [];
+    
+    if (this.random.next() < 0.15) {
+      events.push({
+        type: 'sfx',
+        note: 60,
+        time: this.random.next() * 3,
+        duration: 4.0,
+        weight: 0.7,
+        technique: 'hit',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { 
+          mood: this.mood, 
+          genre: this.config.genre, 
+          rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } 
+        }
+      });
+    }
+
+    // #ЗАЧЕМ: ПЛАН №2301 — Шаг 2: Атмосферный Ценз. 
+    // Снижение вероятности до 16% (Ambient Standard) и ограничение количества до 1.
+    const sparkleChance = 0.16; 
+    if (this.random.next() < sparkleChance) {
+      events.push({
+        type: 'sparkle',
+        note: 60 + this.random.nextInt(12),
+        time: this.random.next() * 3.8,
+        duration: 4.0,
+        weight: 0.8 + (this.random.next() * 0.2),
+        technique: 'hit',
+        dynamics: 'p',
+        phrasing: 'legato',
+        params: { category: this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC' }
+      });
+    }
+
+    return events;
   }
 
   private constrainBassOctave(note: number): number { let n = note; if(!isFinite(n)) return 36; while (n > 47) n -= 12; while (n < 28) n += 12; return n; }
