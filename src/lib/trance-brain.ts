@@ -1,8 +1,6 @@
 /**
-@fileOverview Trance Brain V27.5 — "Soft Neuro Space".
-#ЗАЧЕМ: 1. Мелодия работает точно как в Cyber Blues (Heritage + Golden Notes).
-      2. Ритм и база — мягкий транс с киками из Foundry.
-      3. Реализация Sidechain-пэдов и Rolling-баса для атмосферности.
+@fileOverview Trance Brain V27.6 — "Stability: Rhythmic Diet".
+#ЗАЧЕМ: ПЛАН №2301 — Шаг 1: Снижение нагрузки через переход с 1/16 на 1/8 офф-бит бас.
 */
 import {
   FractalEvent,
@@ -469,12 +467,13 @@ export class TranceBrain {
     const root = this.constrainBassOctave(chord.rootNote - 12);
     const events: FractalEvent[] = [];
     
-    [1, 2, 4, 5, 7, 8, 10, 11].forEach(t => {
+    // #ЗАЧЕМ: ПЛАН №2301 — Шаг 1: Ритмическая Диета. Переход на 8-е офф-биты для снижения нагрузки.
+    [1.5, 4.5, 7.5, 10.5].forEach(t => {
         events.push({
             type: 'bass',
             note: root,
             time: t * TICK_TO_BEAT,
-            duration: 0.8 * TICK_TO_BEAT,
+            duration: 1.2 * TICK_TO_BEAT,
             weight: 0.5 + (tension * 0.1),
             technique: 'pulse',
             dynamics: 'mf',
