@@ -131,9 +131,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        return saved ? parseInt(saved, 10) : 512;
+        // #ЗАЧЕМ: ПЛАН №2302. Снижение лимита по умолчанию до 128 для стабильности.
+        return saved ? parseInt(saved, 10) : 128;
     }
-    return 512;
+    return 128;
   });
 
   const setVoiceLimit = useCallback((limit: number) => {

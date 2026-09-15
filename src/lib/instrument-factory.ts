@@ -1,9 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V9.0 — "DSP Hardening".
- * #ЗАЧЕМ: Реализация физически обоснованной модели синтеза гитары. 
- * #ЧТО: 1. Расширение спектра до 64 гармоник с усилением нечетных рядов.
- *       2. Студийная эквализация (Boxy Cut & Presence Boost).
- *       3. Оптимизация затухания струны (Q=0.7).
+ * @fileOverview Центральная фабрика инструментов V9.2 — "Polyphony Shield".
+ * #ЗАЧЕМ: ПЛАН №2302. Пакетная чистка голосов для предотвращения CPU шторма.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -11,7 +8,7 @@ import { dbToGain } from './guitar-loudness';
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 512; 
+let globalVoiceLimit = 128; // #ЗАЧЕМ: Снижено до 128 по умолчанию.
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -60,7 +57,11 @@ const deepCleanup = (voiceRecord: any) => {
 };
 
 const enforceVoiceLimit = () => {
-    if (globalActiveVoices.length <= globalVoiceLimit) return;
+    // #ЗАЧЕМ: ПЛАН №2302. Пакетная чистка для экономии CPU.
+    // Сортируем массив только если превысили лимит на 10% (минимум 16 голосов).
+    // Это избавляет от сортировки 128+ элементов при каждой новой ноте на границе лимита.
+    const headroom = Math.max(16, Math.floor(globalVoiceLimit * 0.1));
+    if (globalActiveVoices.length <= globalVoiceLimit + headroom) return;
 
     const voicesToConsider = [...globalActiveVoices].sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
@@ -69,6 +70,7 @@ const enforceVoiceLimit = () => {
         return a.startTime - b.startTime;
     });
 
+    // Очищаем ровно до установленного лимита (удаляем излишки + запас).
     const toKillCount = globalActiveVoices.length - globalVoiceLimit;
     const targets = voicesToConsider.slice(0, toKillCount);
 
@@ -543,6 +545,7 @@ export interface InstrumentAPI {
     setVolumeDb: (db: number) => void;
     getVolume: () => number;
     setExpression: (level: number) => void;
+    setExpressionDb: (db: number) => void;
     setPan: (level: number) => void;
     preset: any;
     type: string;
@@ -727,6 +730,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 const now = ctx.currentTime;
                 expressionGain.gain.cancelScheduledValues(now);
                 expressionGain.gain.setTargetAtTime(v, now, 0.01); 
+            }
+        },
+        setExpressionDb: (db) => {
+            if(isFinite(db)) {
+                const now = ctx.currentTime;
+                expressionGain.gain.cancelScheduledValues(now);
+                expressionGain.gain.setTargetAtTime(Math.pow(10, db/20), now, 0.01);
             }
         },
         setPan: (v) => { 
