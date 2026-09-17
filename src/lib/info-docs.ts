@@ -2,7 +2,7 @@
 /**
  * @fileOverview Справочные материалы AuraGroove (Semantic HTML Edition).
  * #ЗАЧЕМ: Профессиональное форматирование документации с разделами и заголовками.
- * #ОБНОВЛЕНО (V3.7.1): Добавлены инструкции по вечному оффлайну и управлению очередью.
+ * #ОБНОВЛЕНО (V3.7.1): Добавлена функция Stay Awake (Screen Wake Lock).
  */
 
 export const GUIDE_RU = `
@@ -37,7 +37,12 @@ export const GUIDE_RU = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Протокол Мягкого Входа</h3>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Функция «Stay Awake»</h3>
+    <p>Мы внедрили <strong>Screen Wake Lock API</strong>. Пока играет музыка, ваше устройство не будет гасить экран. Это гарантирует, что операционная система не «усыпит» вкладку браузера и звук не прервется.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">6. Протокол Мягкого Входа</h3>
     <p>Каждая новая композиция начинается деликатно. Мелодия, пианино и аккомпанемент плавно нарастают с 30% до 100% громкости в течение первых 6 тактов.</p>
   </section>
 
@@ -76,7 +81,12 @@ export const GUIDE_EN = `
   </section>
 
   <section class="space-y-2">
-    <h3 class="text-[11px] font-black uppercase text-primary/70">5. Soft Entrance Protocol</h3>
+    <h3 class="text-[11px] font-black uppercase text-primary/70">5. "Stay Awake" Feature</h3>
+    <p>We implemented the <strong>Screen Wake Lock API</strong>. Your screen will stay on while music is playing. This prevents the OS from putting the browser to sleep, ensuring smooth, uninterrupted audio.</p>
+  </section>
+
+  <section class="space-y-2">
+    <h3 class="text-[11px] font-black uppercase text-primary/70">6. Soft Entrance Protocol</h3>
     <p>Every new composition begins delicately. The melody, piano, and accompaniment fade in from 30% to 100% volume over the first 6 bars.</p>
   </section>
 
@@ -97,6 +107,7 @@ export const DISCLAIMER_RU = `
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Технические лимиты</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
       <li><strong>Автономия:</strong> Вечный оффлайн через Masterforge Vault (TTL 30 дней).</li>
+      <li><strong>Stay Awake:</strong> Автоматическая блокировка сна экрана при активном плеере.</li>
       <li><strong>Визуализация:</strong> Ограничена 30 FPS для экономии ресурсов.</li>
       <li><strong>Мобильный UI:</strong> Использование сокращенных меток (SF, NS, CB, RR, DT) для идеального отображения.</li>
     </ul>
@@ -121,6 +132,7 @@ export const DISCLAIMER_EN = `
     <h3 class="text-[11px] font-black uppercase text-primary/70">2. Technical Limits</h3>
     <ul class="list-disc pl-4 space-y-1 opacity-80">
       <li><strong>Autonomy:</strong> Eternal Offline mode supported via Masterforge Vault (30-day TTL).</li>
+      <li><strong>Stay Awake:</strong> Automatic screen wake lock during active playback.</li>
       <li><strong>Efficiency:</strong> Visualization limited to 30 FPS.</li>
       <li><strong>Mobile UI:</strong> Abbreviated labels (SF, NS, CB, RR, DT) for perfect fit on small screens.</li>
     </ul>

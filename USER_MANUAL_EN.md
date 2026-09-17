@@ -1,4 +1,5 @@
 
+
 # AuraGroove User Manual
 
 **Document Version: 3.7.1**
@@ -25,6 +26,7 @@ AuraGroove is designed to function entirely without an internet connection. Once
 ## 4. Key Features
 
 * **Play/Pause**: Control the flow.
+* **Stay Awake**: While music is playing, your device screen will stay on. This prevents the OS from throttling player resources.
 * **Regenerate**: Create a new Seed and a fresh musical mutation instantly.
 * **Save Masterpiece (Like)**: Contribute to the global Heritage pool.
 * **Source Intel Mode**: Find the **"Cloud-First DNA"** toggle in the Vault menu to pull live data directly from the Cloud, bypassing local storage.
