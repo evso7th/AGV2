@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview UI AuraGroove V17.2.2 — "Accessibility Fix".
  * #ЗАЧЕМ: ПЛАН №1211 — Устранение ворнингов "Missing Description" через sr-only.
@@ -350,7 +349,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         }
     }, []);
 
-    // DND Sensors
+    // DND Kit Sensors
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -936,13 +935,13 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
             {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent 
-                    className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
+                    className="w-[98vw] sm:max-w-xl px-[1%] !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
                     <DialogHeader className="pt-4">
                         <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle>
                         <DialogDescription className="sr-only">Mixer controls for individual channels</DialogDescription>
                     </DialogHeader>
-                    <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
+                    <div className="flex justify-between items-end h-48 gap-1 sm:gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
                             : (ch.key === 'drums' 
