@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V75.3 — "Deployment Finalization".
- * #ЗАЧЕМ: Установка системной громкости акустики на 0.2 и подготовка к деплою.
+ * @fileOverview Audio Engine Context V76.0 — "Wake Lock Integration".
+ * #ЗАЧЕМ: Программный запрет на засыпание экрана во время игры (Screen Wake Lock API).
  */
 'use client';
 
@@ -88,6 +88,7 @@ interface AudioEngineContextType {
   calculateMasterFade: (target: number, duration: number) => void;
   calculateMasterFadeOut: (target: number, duration: number) => void;
   calculateMasterFadeOutFixed: (target: number, duration: number) => void;
+  calculateMasterFadeOutFixed: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -131,7 +132,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        // #ЗАЧЕМ: ПЛАН №2302. Снижение лимита по умолчанию до 128 для стабильности.
         return saved ? parseInt(saved, 10) : 128;
     }
     return 128;
@@ -167,6 +167,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const wakeLockRef = useRef<any>(null); // Ref for Screen Wake Lock
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const foundryDrumMachineRef = useRef<DrumMachine | null>(null); 
@@ -215,7 +216,41 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       calibrationGainsRef.current = calibrationGains;
   }, [calibrationGains]);
 
-  // CRITICAL FIX: Cleanup effect for worker and audio context
+  const requestWakeLock = useCallback(async () => {
+    if (typeof window === 'undefined' || !('wakeLock' in navigator)) return;
+    try {
+        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+        console.log('[WakeLock] Acquired: Screen stay-awake active');
+        
+        wakeLockRef.current.addEventListener('release', () => {
+            console.log('[WakeLock] Released automatically');
+            wakeLockRef.current = null;
+        });
+    } catch (err: any) {
+        console.warn('[WakeLock] Request failed:', err.message);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+        wakeLockRef.current.release().then(() => {
+            wakeLockRef.current = null;
+            console.log('[WakeLock] Released manually');
+        });
+    }
+  }, []);
+
+  // Effect to re-acquire wake lock when coming back to foreground
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isPlaying) {
+        await requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isPlaying, requestWakeLock]);
+
   useEffect(() => {
     return () => {
       if (workerRef.current) {
@@ -223,12 +258,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current = null;
       }
       if (audioContextRef.current) {
-        globalAllNotesOff(); // Stop any lingering sounds
+        globalAllNotesOff();
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
+      releaseWakeLock();
     };
-  }, []); // Empty dependency array ensures this runs only on provider unmount
+  }, [releaseWakeLock]);
 
   const getEffectivePreset = useCallback((presetName: string) => {
       const isFoundry = settingsRef.current?.genre === 'foundry';
@@ -304,6 +340,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
+          await requestWakeLock(); // Request Screen Wake Lock
           
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
@@ -320,6 +357,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
+          releaseWakeLock(); // Release Screen Wake Lock
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
               masterGainNodeRef.current.gain.setTargetAtTime(0.0, context.currentTime, 0.01); 
@@ -327,7 +365,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
       }
-  }, [stopAllSounds, isBroadcastActive, triggerStreamPulse]);
+  }, [stopAllSounds, isBroadcastActive, triggerStreamPulse, requestWakeLock, releaseWakeLock]);
 
   const setCalibrationGain = useCallback((key: string, val: number) => {
       setCalibrationGains(prev => {
@@ -574,7 +612,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       db, isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, triggerVinyl,
       stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents,
-      dnaSourcePreference, setDnaSourcePreference
+      dnaSourcePreference, setDnaSourcePreference, requestWakeLock, releaseWakeLock
   ]);
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
