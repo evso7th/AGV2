@@ -215,6 +215,21 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       calibrationGainsRef.current = calibrationGains;
   }, [calibrationGains]);
 
+  // CRITICAL FIX: Cleanup effect for worker and audio context
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+      }
+      if (audioContextRef.current) {
+        globalAllNotesOff(); // Stop any lingering sounds
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array ensures this runs only on provider unmount
+
   const getEffectivePreset = useCallback((presetName: string) => {
       const isFoundry = settingsRef.current?.genre === 'foundry';
       const registry = isFoundry ? FOUNDRY_PRESETS : V2_PRESETS;

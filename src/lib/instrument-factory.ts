@@ -1,14 +1,14 @@
 /**
- * @fileOverview Центральная фабрика инструментов V9.2 — "Polyphony Shield".
- * #ЗАЧЕМ: ПЛАН №2302. Пакетная чистка голосов для предотвращения CPU шторма.
+ * @fileOverview Центральная фабрика инструментов V9.4 — "Concurrent Shield".
+ * #ЗАЧЕМ: Замена Array на Set для globalActiveVoices для мгновенной O(1) очистки.
  */
 
 import { dbToGain } from './guitar-loudness';
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
-let globalActiveVoices: any[] = [];
-let globalVoiceLimit = 128; // #ЗАЧЕМ: Снижено до 128 по умолчанию.
+let globalActiveVoices = new Set<any>();
+let globalVoiceLimit = 128;
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -29,8 +29,9 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 export const globalAllNotesOff = () => {
-    [...globalActiveVoices].forEach(v => deepCleanup(v));
-    globalActiveVoices = [];
+    // Create a snapshot because deepCleanup modifies the Set during iteration.
+    const allVoices = [...globalActiveVoices];
+    allVoices.forEach(v => deepCleanup(v));
 };
 
 const deepCleanup = (voiceRecord: any) => {
@@ -52,46 +53,68 @@ const deepCleanup = (voiceRecord: any) => {
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
     
-    const idx = globalActiveVoices.indexOf(voiceRecord);
-    if (idx !== -1) globalActiveVoices.splice(idx, 1);
+    // O(1) removal, a massive performance gain over Array.splice.
+    globalActiveVoices.delete(voiceRecord);
 };
 
 const enforceVoiceLimit = () => {
-    // #ЗАЧЕМ: ПЛАН №2302. Пакетная чистка для экономии CPU.
-    // Сортируем массив только если превысили лимит на 10% (минимум 16 голосов).
-    // Это избавляет от сортировки 128+ элементов при каждой новой ноте на границе лимита.
     const headroom = Math.max(16, Math.floor(globalVoiceLimit * 0.1));
-    if (globalActiveVoices.length <= globalVoiceLimit + headroom) return;
+    const currentLength = globalActiveVoices.size;
+    if (currentLength <= globalVoiceLimit + headroom) return;
 
-    const voicesToConsider = [...globalActiveVoices].sort((a, b) => {
-        const prioA = STEAL_PRIORITY[a.type] ?? 1;
-        const prioB = STEAL_PRIORITY[b.type] ?? 1;
-        if (prioA !== prioB) return prioA - prioB;
-        return a.startTime - b.startTime;
-    });
+    const toKillCount = currentLength - globalVoiceLimit;
+    
+    const targets = [];
 
-    // Очищаем ровно до установленного лимита (удаляем излишки + запас).
-    const toKillCount = globalActiveVoices.length - globalVoiceLimit;
-    const targets = voicesToConsider.slice(0, toKillCount);
+    for (const voice of globalActiveVoices) {
+        if (voice.cleaned) {
+            continue;
+        }
 
-    targets.forEach(oldest => {
+        const voiceScore = (STEAL_PRIORITY[voice.type] ?? 1) * 1e12 + (voice.voiceState?.startTime ?? 0);
+
+        if (targets.length < toKillCount) {
+            targets.push({ voice, score: voiceScore });
+            if (targets.length === toKillCount) {
+                targets.sort((a, b) => b.score - a.score);
+            }
+        } else {
+            if (voiceScore < targets[0].score) {
+                targets[0] = { voice, score: voiceScore };
+                targets.sort((a, b) => b.score - a.score);
+            }
+        }
+    }
+
+    const finalTargets = targets.map(t => t.voice);
+
+    finalTargets.forEach(oldest => {
+        if (oldest.cleaned) return;
+        oldest.cleaned = true;
+
         const voiceNode = oldest.voiceState?.node;
-        if (voiceNode && !oldest.cleaned) {
+        if (voiceNode) {
             const now = voiceNode.context.currentTime;
-            const stealFadeOut = 0.5; 
+            const stealFadeOut = 0.05;
             try {
                 voiceNode.gain.cancelScheduledValues(now);
                 voiceNode.gain.setTargetAtTime(0, now, stealFadeOut / 4);
+
+                const stopTime = now + stealFadeOut + 0.1;
                 if (oldest.nodes) {
                     oldest.nodes.forEach((n: any) => {
                         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                            try { n.stop(now + stealFadeOut + 0.1); } catch(e){}
+                            try { n.stop(stopTime); } catch (e) {}
                         }
                     });
                 }
                 setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 200);
-            } catch (e) { deepCleanup(oldest); }
-        } else { deepCleanup(oldest); }
+            } catch (e) {
+                deepCleanup(oldest);
+            }
+        } else {
+            deepCleanup(oldest);
+        }
     });
 };
 
@@ -520,7 +543,7 @@ const createIndependentVoice = (
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
     const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
-    globalActiveVoices.push(record);
+    globalActiveVoices.add(record);
     enforceVoiceLimit();
 
     const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
@@ -686,6 +709,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         },
         noteOff: () => {}, 
         allNotesOff: () => {
+            // Use a snapshot to safely iterate while cleaning up
             [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
             lastMidi = null;
             lastNoteEndTime = 0;
