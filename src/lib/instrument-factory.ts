@@ -1,14 +1,17 @@
 /**
- * @fileOverview Центральная фабрика инструментов V9.4 — "Concurrent Shield".
- * #ЗАЧЕМ: Замена Array на Set для globalActiveVoices для мгновенной O(1) очистки.
+ * @fileOverview Центральная фабрика инструментов V9.5 — "Garbage Collector".
+ * #ЗАЧЕМ: Замена тысяч setTimeout на единый setInterval для пакетной очистки голосов.
  */
 
 import { dbToGain } from './guitar-loudness';
 
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
-let globalActiveVoices = new Set<any>();
+export let globalActiveVoices = new Set<any>();
 let globalVoiceLimit = 128;
+
+// The single interval timer for our garbage collector
+let garbageCollectorInterval: any = null;
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -29,12 +32,11 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 export const globalAllNotesOff = () => {
-    // Create a snapshot because deepCleanup modifies the Set during iteration.
     const allVoices = [...globalActiveVoices];
     allVoices.forEach(v => deepCleanup(v));
 };
 
-const deepCleanup = (voiceRecord: any) => {
+export const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.cleaned) return;
     voiceRecord.cleaned = true;
     
@@ -53,9 +55,28 @@ const deepCleanup = (voiceRecord: any) => {
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
     
-    // O(1) removal, a massive performance gain over Array.splice.
     globalActiveVoices.delete(voiceRecord);
 };
+
+/**
+ * The centralized garbage collector. Iterates through all active voices
+ * and cleans up any that have passed their expiration time.
+ */
+export const collectExpiredVoices = (audioCtxTime: number) => {
+    // Create a list of voices to remove to avoid modifying the Set while iterating.
+    const voicesToCull: any[] = [];
+    for (const voice of globalActiveVoices) {
+        if (voice.expirationTime < audioCtxTime) {
+            voicesToCull.push(voice);
+        }
+    }
+    
+    // Cleanup the collected voices.
+    for (const voice of voicesToCull) {
+        deepCleanup(voice);
+    }
+};
+
 
 const enforceVoiceLimit = () => {
     const headroom = Math.max(16, Math.floor(globalVoiceLimit * 0.1));
@@ -108,7 +129,8 @@ const enforceVoiceLimit = () => {
                         }
                     });
                 }
-                setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 200);
+                // Instead of a timeout per-voice, the central garbage collector will handle this.
+                // setTimeout(() => deepCleanup(oldest), (stealFadeOut * 1000) + 200);
             } catch (e) {
                 deepCleanup(oldest);
             }
@@ -542,12 +564,12 @@ const createIndependentVoice = (
     const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
-    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type };
+    const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
+    const expirationTime = now + totalLife;
+
+    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, cleaned: false, type, expirationTime };
     globalActiveVoices.add(record);
     enforceVoiceLimit();
-
-    const totalLife = duration + (releaseTimeConstant * 5) + 1.0;
-    setTimeout(() => deepCleanup(record), totalLife * 1000 + 200);
 
     nodes.forEach(n => {
         if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop(now + totalLife + 0.5);

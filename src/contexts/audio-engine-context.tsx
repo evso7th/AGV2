@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V76.0 — "Wake Lock Integration".
- * #ЗАЧЕМ: Программный запрет на засыпание экрана во время игры (Screen Wake Lock API).
+ * @fileOverview Audio Engine Context V77.0 — "Garbage Collector".
+ * #ЗАЧЕМ: Замена тысяч setTimeout на единый setInterval для пакетной очистки голосов.
  */
 'use client';
 
@@ -21,7 +21,7 @@ import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
 import { GUITAR_LOUDNESS_TRIM_DB } from '@/lib/guitar-loudness';
 import { loadDnaCache, saveDnaCache } from '@/lib/dna-cache';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
-import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff } from '@/lib/instrument-factory';
+import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff, collectExpiredVoices } from '@/lib/instrument-factory';
 import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
@@ -163,6 +163,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const initializationInFlightRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const garbageCollectorIntervalRef = useRef<any>(null);
   const settingsRef = useRef<WorkerSettings | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -253,6 +254,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     return () => {
+      if (garbageCollectorIntervalRef.current) {
+        clearInterval(garbageCollectorIntervalRef.current);
+        garbageCollectorIntervalRef.current = null;
+      }
       if (workerRef.current) {
         workerRef.current.terminate();
         workerRef.current = null;
@@ -482,6 +487,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         audioContextRef.current = new AudioCtx({ sampleRate: 44100 });
         const context = audioContextRef.current!; if (context.state === 'suspended') await context.resume();
         setGlobalVoiceLimit(voiceLimit);
+
+        // Start the centralized garbage collector
+        if (garbageCollectorIntervalRef.current) clearInterval(garbageCollectorIntervalRef.current);
+        garbageCollectorIntervalRef.current = setInterval(() => {
+            if (audioContextRef.current) {
+                collectExpiredVoices(audioContextRef.current.currentTime);
+            }
+        }, 250);
         
         masterGainNodeRef.current = context.createGain(); 
         samplersMasterGainRef.current = context.createGain(); 
