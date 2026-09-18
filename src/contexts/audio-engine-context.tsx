@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.0 — "Garbage Collector".
- * #ЗАЧЕМ: Замена тысяч setTimeout на единый setInterval для пакетной очистки голосов.
+ * @fileOverview Audio Engine Context V77.2 — "Full Asset Load".
+ * #ЗАЧЕМ: Снятие искусственного ограничения на 5 сэмплов для SFX и Sparkles.
  */
 'use client';
 
@@ -87,7 +87,6 @@ interface AudioEngineContextType {
   startMasterFadeOut: (durationInSeconds: number) => void;
   calculateMasterFade: (target: number, duration: number) => void;
   calculateMasterFadeOut: (target: number, duration: number) => void;
-  calculateMasterFadeOutFixed: (target: number, duration: number) => void;
   calculateMasterFadeOutFixed: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
@@ -447,8 +446,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         if (compId) {
             if (!compMeta[compId]) compMeta[compId] = { count: 0, genres: new Set(), moods: new Set() };
             compMeta[compId].count++;
-            (Array.isArray(data.genre) ? data.genre : [data.genre]).forEach(g => compMeta[compId].genres.add(g));
-            (Array.isArray(data.mood) ? data.mood : [data.mood]).forEach(m => compMeta[compId].moods.add(m));
+            (Array.isArray(data.genre) ? data.genre : [data.genre]).forEach((g: string) => compMeta[compId].genres.add(g));
+            (Array.isArray(data.mood) ? data.mood : [data.mood]).forEach((m: string) => compMeta[compId].moods.add(m));
         }
     });
     setAvailableCompositions(Object.entries(compMeta).map(([id, info]) => ({ id, count: info.count, genres: Array.from(info.genres), moods: Array.from(info.moods) })).sort((a,b) => a.id.localeCompare(b.id)));
@@ -549,7 +548,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         await Promise.allSettled([
             drumMachineRef.current.init(true), foundryDrumMachineRef.current.init(true),
             blackGuitarSamplerRef.current.init(true), harmonyManagerRef.current.init(true),
-            pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(5), sfxSynthManagerRef.current.init(5)
+            pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
         ]);
 
         workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });

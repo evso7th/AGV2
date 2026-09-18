@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V9.5 — "Garbage Collector".
- * #ЗАЧЕМ: Замена тысяч setTimeout на единый setInterval для пакетной очистки голосов.
+ * @fileOverview Центральная фабрика инструментов V9.7 — "Explicit This".
+ * #ЗАЧЕМ: Явное указание типа this для исправления ошибки в async функции.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -600,7 +600,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     type = 'synth',
     preset = {} as any,
     output = ctx.destination
-} = {}): Promise<InstrumentAPI> {
+}: { type?: string, preset?: any, output?: AudioNode } = {}): Promise<InstrumentAPI> {
     
     let currentPreset = { ...preset };
     let lastVoiceRecord: any = null; 
@@ -753,7 +753,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
                 delayMixGain.gain.setTargetAtTime(p.delay.mix || 0, now, 0.1);
             }
         },
-        setParam: (k, v) => {
+        setParam: function(this: InstrumentAPI, k, v) {
             if (k === 'volume') this.setVolume(v);
         },
         setVolume: (v) => {
@@ -775,7 +775,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             if(isFinite(v)) {
                 const now = ctx.currentTime;
                 expressionGain.gain.cancelScheduledValues(now);
-                expressionGain.gain.setTargetAtTime(v, now, 0.01); 
+                expressionGain.gain.setTargetAtTime(v, now, 0.01);
             }
         },
         setExpressionDb: (db) => {
