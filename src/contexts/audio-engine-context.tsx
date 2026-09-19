@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.2 — "Full Asset Load".
- * #ЗАЧЕМ: Снятие искусственного ограничения на 5 сэмплов для SFX и Sparkles.
+ * @fileOverview Audio Engine Context V77.3 — "Aggressive GC Protocol".
+ * #ЗАЧЕМ: Ускорение цикла очистки для предотвращения накопления неиспользуемых узлов.
  */
 'use client';
 
@@ -167,7 +167,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const recDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const wakeLockRef = useRef<any>(null); // Ref for Screen Wake Lock
+  const wakeLockRef = useRef<any>(null); 
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const foundryDrumMachineRef = useRef<DrumMachine | null>(null); 
@@ -220,27 +220,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     if (typeof window === 'undefined' || !('wakeLock' in navigator)) return;
     try {
         wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-        console.log('[WakeLock] Acquired: Screen stay-awake active');
-        
-        wakeLockRef.current.addEventListener('release', () => {
-            console.log('[WakeLock] Released automatically');
-            wakeLockRef.current = null;
-        });
-    } catch (err: any) {
-        console.warn('[WakeLock] Request failed:', err.message);
-    }
+    } catch (err: any) {}
   }, []);
 
   const releaseWakeLock = useCallback(() => {
     if (wakeLockRef.current) {
         wakeLockRef.current.release().then(() => {
             wakeLockRef.current = null;
-            console.log('[WakeLock] Released manually');
         });
     }
   }, []);
 
-  // Effect to re-acquire wake lock when coming back to foreground
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && isPlaying) {
@@ -344,7 +334,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
-          await requestWakeLock(); // Request Screen Wake Lock
+          await requestWakeLock();
           
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
@@ -361,7 +351,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
-          releaseWakeLock(); // Release Screen Wake Lock
+          releaseWakeLock(); 
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
               masterGainNodeRef.current.gain.setTargetAtTime(0.0, context.currentTime, 0.01); 
@@ -487,13 +477,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const context = audioContextRef.current!; if (context.state === 'suspended') await context.resume();
         setGlobalVoiceLimit(voiceLimit);
 
-        // Start the centralized garbage collector
+        // #ЗАЧЕМ: ПЛАН №2325. Ускорение GC до 100мс.
         if (garbageCollectorIntervalRef.current) clearInterval(garbageCollectorIntervalRef.current);
         garbageCollectorIntervalRef.current = setInterval(() => {
             if (audioContextRef.current) {
                 collectExpiredVoices(audioContextRef.current.currentTime);
             }
-        }, 250);
+        }, 100);
         
         masterGainNodeRef.current = context.createGain(); 
         samplersMasterGainRef.current = context.createGain(); 

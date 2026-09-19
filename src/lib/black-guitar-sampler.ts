@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.4 — "Deployment Finalization".
- * #ЗАЧЕМ: Установка системной громкости 0.2 и поддержка Vault.
+ * @fileOverview Сэмплер Black Acoustic V5.5 — "Pure Cleanup".
+ * #ЗАЧЕМ: Принудительный разрыв связей AudioNode при завершении ноты.
  */
 
 function makeAcousticWarmthCurve() {
@@ -146,6 +146,7 @@ export class BlackGuitarSampler {
         try {
             const loadSample = async (url: string) => {
                 const arrayBuffer = await vault.fetch(url);
+                if (!arrayBuffer) return null;
                 return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
             };
 
@@ -269,11 +270,17 @@ export class BlackGuitarSampler {
             source.start(startTime);
         }
         this.activeSources.add(source);
-        source.onended = () => { this.activeSources.delete(source); try { gainNode.disconnect(); } catch(e) {} };
+        source.onended = () => { 
+            this.activeSources.delete(source); 
+            try { 
+                source.disconnect();
+                gainNode.disconnect(); 
+            } catch(e) {} 
+        };
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
+        this.activeSources.forEach(source => { try { source.stop(0); source.disconnect(); } catch(e) {} });
         this.activeSources.clear();
     }
 
