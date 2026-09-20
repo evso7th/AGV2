@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
  * #ЧТО: ПЛАН №2401 — Укрепление стабильности для предотвращения краха в Safari.
+ *       Удалены уведомления об успехе (дублируют HUD).
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -40,15 +41,6 @@ export function saveMasterpiece(db: Firestore, data: {
     };
 
     setDoc(newDocRef, payload)
-      .then(() => {
-          // Уведомление об успехе
-          if (!data.isArbiterFind) {
-              toast({
-                  title: "Masterpiece Saved!",
-                  description: "This seed has been added to the Cloud Registry.",
-              });
-          }
-      })
       .catch(async (serverError) => {
         // ПЛАН №2401: Очистка payload от FieldValue перед логированием ошибки
         const { timestamp, ...serializablePayload } = payload;
@@ -92,7 +84,7 @@ export function saveProjectDocument(db: Firestore, data: {
             timestamp: serverTimestamp()
         };
 
-        setDoc(docRef, payload, { merge: true })
+        setDoc(docId, payload, { merge: true })
             .catch(async (serverError) => {
                 const { timestamp, ...serializable } = payload;
                 const permissionError = new FirestorePermissionError({

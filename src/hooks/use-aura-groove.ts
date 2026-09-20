@@ -1,6 +1,6 @@
 /**
- * @fileOverview Music Control Hook V37.0 — "Route Navigation Fix".
- * #ЗАЧЕМ: Исправление переключения треков. Добавлена смена Seed при ручном выборе.
+ * @fileOverview Music Control Hook V37.1 — "Feedback Cleanup".
+ * #ЗАЧЕМ: ПЛАН №2410 — Удаление дублирующих тостов при лайке.
  */
 'use client';
 
@@ -729,7 +729,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleSaveMasterpiece: () => { 
         if (isInitialized) { 
             saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }); 
-            toast({ title: t('toast_masterpiece_saved'), description: t('toast_masterpiece_desc') });
+            // #ЗАЧЕМ: Уведомление теперь только через HUD в плеере.
         } 
     },
     drumSettings, setDrumSettings, instrumentSettings, 
@@ -759,7 +759,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const item = route.find(it => it.id === id); 
         if (item) {
             setActiveRouteItemId(id);
-            setCurrentSeed(Date.now()); // #ЗАЧЕМ: Форсированная регенерация при ручном выборе.
+            setCurrentSeed(Date.now()); 
         }
     },
     refreshRoute: () => { 
