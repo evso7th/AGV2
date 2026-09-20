@@ -3,37 +3,48 @@
 import { useState, useEffect } from 'react';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { toast } from '@/hooks/use-toast';
 
 /**
- * An invisible component that listens for globally emitted 'permission-error' events.
- * It throws any received error to be caught by Next.js's global-error.tsx.
+ * #ЗАЧЕМ: Профессиональный перехватчик ошибок Firestore.
+ * #ЧТО: ПЛАН №2405 — Защита от "Black Screen of Death" в Safari.
+ *       На localhost бросает ошибку для ИИ-агента, на проде — показывает деликатный Toast.
  */
 export function FirebaseErrorListener() {
-  // Use the specific error type for the state for type safety.
   const [error, setError] = useState<FirestorePermissionError | null>(null);
 
   useEffect(() => {
-    // The callback now expects a strongly-typed error, matching the event payload.
-    const handleError = (error: FirestorePermissionError) => {
-      // Set error in state to trigger a re-render.
-      setError(error);
+    const handleError = (incomingError: FirestorePermissionError) => {
+      // 1. Всегда логируем в консоль для дебага
+      console.error('[FirebaseErrorListener] Intercepted:', incomingError.message);
+      
+      // 2. Показываем уведомление пользователю (не блокирует UI)
+      toast({
+        variant: "destructive",
+        title: "Access Denied",
+        description: "Cloud write permission error. Check your connection or login status."
+      });
+
+      // 3. Сохраняем в стейт только если мы на localhost (для отладки ИИ-агентом)
+      const isDev = typeof window !== 'undefined' && 
+                   (window.location.hostname === 'localhost' || 
+                    window.location.hostname.includes('cloudworkstations.dev'));
+      
+      if (isDev) {
+        setError(incomingError);
+      }
     };
 
-    // The typed emitter will enforce that the callback for 'permission-error'
-    // matches the expected payload type (FirestorePermissionError).
     errorEmitter.on('permission-error', handleError);
-
-    // Unsubscribe on unmount to prevent memory leaks.
     return () => {
       errorEmitter.off('permission-error', handleError);
     };
   }, []);
 
-  // On re-render, if an error exists in state, throw it.
+  // Выбрасываем ошибку для срабатывания Next.js Error Boundary ТОЛЬКО в режиме разработки
   if (error) {
     throw error;
   }
 
-  // This component renders nothing.
   return null;
 }
