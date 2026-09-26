@@ -4,8 +4,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Yamaha Chords Sampler V1.3 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
+ * @fileOverview Yamaha Chords Sampler V1.4 — "The 150Hz Barrier".
  */
 export class YamahaChordsSampler {
     private audioContext: AudioContext;
@@ -15,6 +14,7 @@ export class YamahaChordsSampler {
     private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -23,8 +23,13 @@ export class YamahaChordsSampler {
         
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.0; 
-        this.preamp.connect(this.output);
-        
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.output);
         this.output.connect(destination);
     }
 
@@ -140,5 +145,5 @@ export class YamahaChordsSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.output.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.output.disconnect(); }
 }

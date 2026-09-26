@@ -7,8 +7,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Универсальный сэмплер V4.4 — "Null Buffer Guard".
- * #ЧТО: Безопасное декодирование данных из Vault.
+ * #ЗАЧЕМ: Универсальный сэмплер V4.5 — "The 150Hz Barrier".
  */
 export class SamplerPlayer {
     private audioContext: AudioContext;
@@ -17,6 +16,7 @@ export class SamplerPlayer {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode; 
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -25,7 +25,13 @@ export class SamplerPlayer {
         
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.6; 
-        this.preamp.connect(this.outputNode);
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+        
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.outputNode);
         
         this.outputNode.connect(destination);
     }
@@ -126,6 +132,7 @@ export class SamplerPlayer {
                 this.activeSources.delete(source);
                 try { gainNode.disconnect(); } catch(e) {}
                 try { source.disconnect(); } catch(e) {}
+                source.onended = null; // Break closure
             };
         });
     }
@@ -159,6 +166,7 @@ export class SamplerPlayer {
     public dispose() {
         this.stopAll();
         this.preamp.disconnect();
+        this.hpf.disconnect();
         this.outputNode.disconnect();
     }
 }

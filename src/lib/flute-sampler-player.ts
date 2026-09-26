@@ -11,8 +11,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты V4.5 — "Leak-Proof Logic".
- * #ЧТО: Очистка onended для освобождения ресурсов Audio Thread.
+ * #ЗАЧЕМ: Сэмплер флейты V4.6 — "The 150Hz Barrier".
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -20,6 +19,7 @@ export class FluteSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -27,7 +27,13 @@ export class FluteSamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.5;
-        this.preamp.connect(this.outputNode);
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
@@ -175,5 +181,5 @@ export class FluteSamplerPlayer {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
+    public dispose() { this.stopAll(); this.hpf.disconnect(); this.outputNode.disconnect(); }
 }

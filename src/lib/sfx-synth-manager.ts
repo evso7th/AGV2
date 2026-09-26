@@ -2,8 +2,7 @@ import type { FractalEvent, Mood, Genre } from '@/types/fractal';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Менеджер SFX V15.2 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
+ * @fileOverview Менеджер SFX V15.3 — "The 150Hz Barrier".
  */
 
 export class SfxSynthManager {
@@ -13,12 +12,19 @@ export class SfxSynthManager {
     private buffers: Map<string, AudioBuffer[]> = new Map();
     private activeSources: Set<AudioBufferSourceNode> = new Set();
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
 
     constructor(context: AudioContext, destination: GainNode) {
         this.context = context;
         this.preamp = this.context.createGain();
         this.preamp.gain.value = 0.325;
-        this.preamp.connect(destination);
+
+        this.hpf = this.context.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(destination);
     }
 
     public async init(limitPerCategory: number = -1): Promise<void> {
@@ -166,5 +172,11 @@ export class SfxSynthManager {
            } catch(e) {} 
        });
        this.activeSources.clear();
+    }
+
+    public dispose() {
+        this.allNotesOff();
+        this.preamp.disconnect();
+        this.hpf.disconnect();
     }
 }

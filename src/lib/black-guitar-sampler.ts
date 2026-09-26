@@ -5,8 +5,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.7 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для предотвращения утечек памяти через замыкания.
+ * @fileOverview Сэмплер Black Acoustic V5.8 — "The 150Hz Barrier".
  */
 
 function makeAcousticWarmthCurve() {
@@ -69,18 +68,7 @@ const BLACK_GUITAR_MANIFEST = {
         { m: 84, key: 'c6', layers: { f: [1, 2, 4], mf: [1, 2, 3, 4], p: [1, 2] } },
         { m: 85, key: 'db6', layers: { f: [2, 4], mf: [1, 4], p: [] } },
         { m: 86, key: 'd6', layers: { f: [1, 4], mf: [1], p: [2] } },
-        { m: 87, key: 'eb6', layers: { f: [1, 3, 4], mf: [1, 2], p: [1, 2] } },
-        { m: 88, key: 'e6', layers: { f: [], mf: [1], p: [1] } },
-        { m: 89, key: 'f6', layers: { f: [1], mf: [1], p: [1, 2] } },
-        { m: 90, key: 'gb6', layers: { f: [2], mf: [2], p: [] } },
-        { m: 91, key: 'g6', layers: { f: [2], mf: [1, 2], p: [] } },
-        { m: 92, key: 'ab6', layers: { f: [1], mf: [], p: [1] } },
-        { m: 93, key: 'a6', layers: { f: [2], mf: [], p: [] } },
-        { m: 94, key: 'bb6', layers: { f: [2], mf: [2], p: [1, 2] } },
-        { m: 95, key: 'b6', layers: { f: [], mf: [2], p: [2] } },
-        { m: 96, key: 'c7', layers: { f: [1], mf: [], p: [1, 2] } },
         { m: 97, key: 'db7', layers: { f: [1, 2], mf: [1, 2], p: [1, 2] } },
-        { m: 98, key: 'd7', layers: { f: [2], mf: [2], p: [] } },
     ]
 };
 
@@ -93,6 +81,7 @@ export class BlackGuitarSampler {
     private isLoading = false;
 
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private bodyFilter: BiquadFilterNode;
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
@@ -105,6 +94,10 @@ export class BlackGuitarSampler {
 
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.2; 
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
 
         this.bodyFilter = this.audioContext.createBiquadFilter();
         this.bodyFilter.type = 'peaking';
@@ -123,7 +116,8 @@ export class BlackGuitarSampler {
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
-        this.preamp.connect(this.bodyFilter);
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.bodyFilter);
         this.bodyFilter.connect(this.saturation);
         this.saturation.connect(this.toneFilter);
         this.toneFilter.connect(this.outputTrim);
@@ -277,7 +271,7 @@ export class BlackGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e) {} 
-            source.onended = null; // FIX: Break closure cycle
+            source.onended = null; // Break closure
         };
     }
 
@@ -286,5 +280,5 @@ export class BlackGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.bodyFilter.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.bodyFilter.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
 }

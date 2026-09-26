@@ -2,13 +2,13 @@ import type { Genre, Mood } from '@/types/music';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Плеер текстур V15.2 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
+ * @fileOverview Плеер текстур V15.3 — "The 150Hz Barrier".
  */
 
 export class SparklePlayer {
     private audioContext: AudioContext;
     private gainNode: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private preamp: GainNode;
     private melodicBuffers: AudioBuffer[] = [];
     private organicBuffers: AudioBuffer[] = [];
@@ -19,9 +19,16 @@ export class SparklePlayer {
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
         this.gainNode = this.audioContext.createGain();
+        
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.225; 
-        this.preamp.connect(this.gainNode);
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.gainNode);
         this.gainNode.connect(destination);
     }
 
@@ -122,6 +129,7 @@ export class SparklePlayer {
     public dispose() { 
         this.stopAll(); 
         this.gainNode.disconnect(); 
+        this.hpf.disconnect();
         this.preamp.disconnect();
     }
 }

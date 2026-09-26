@@ -1,6 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.0 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Устранение утечки LFO-осцилляторов и очистка onended.
+ * @fileOverview Центральная фабрика инструментов V12.1 — "Crystal Low End".
+ * #ЗАЧЕМ: 1. Пункт 4 плана: Гарантированный старт с фазы 0 для идентичности баса.
+ *         2. Пункт 5 плана: Установка HPF барьера 150 Гц для всех не-басовых синтов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -191,8 +192,9 @@ const createIndependentVoice = (
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
 
+    // #ЗАЧЕМ: Пункт 4. Принудительный старт с 0.
     const voiceGain = ctx.createGain();
-    voiceGain.gain.value = 0;
+    voiceGain.gain.setValueAtTime(0, now);
     const nodes: AudioNode[] = [voiceGain];
 
     const noteOffTime = now + duration;
@@ -259,7 +261,7 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
-    // #ЗАЧЕМ: ПЛАН №2285. Поддержка LFO с принудительной остановкой.
+    // #ЗАЧЕМ: LFO с принудительной остановкой.
     if (preset.lfo && preset.lfo.amount > 0) {
         const lfo = ctx.createOscillator();
         lfo.type = preset.lfo.shape || 'sine';
@@ -277,7 +279,7 @@ const createIndependentVoice = (
         }
         
         lfo.start(now);
-        lfo.stop(expirationTime); // FIX: Explicit LFO stop
+        lfo.stop(expirationTime);
         nodes.push(lfo, lfoGain);
     }
 
@@ -288,8 +290,8 @@ const createIndependentVoice = (
     chainHead.connect(output);
 
     const peak = velocity * 0.45;
-    voiceGain.gain.setValueAtTime(0.0001, now);
-    voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
+    voiceGain.gain.setValueAtTime(0, now);
+    voiceGain.gain.linearRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
@@ -332,8 +334,9 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const bus = ctx.createGain();
     const panner = ctx.createStereoPanner();
     
+    // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     const hpf = ctx.createBiquadFilter();
-    hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 30 : 180;
+    hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 30 : 150;
 
     const boxyCut = ctx.createBiquadFilter();
     boxyCut.type = 'peaking'; boxyCut.frequency.value = 500; boxyCut.gain.value = type === 'guitar' ? -3.5 : 0;

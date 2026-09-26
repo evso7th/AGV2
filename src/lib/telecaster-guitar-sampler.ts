@@ -5,8 +5,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.5 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов Audio Thread.
+ * @fileOverview Сэмплер Telecaster V5.6 — "The 150Hz Barrier".
  */
 
 function makeWarmthCurve() {
@@ -59,6 +58,7 @@ export class TelecasterGuitarSampler {
     private isLoading = false;
 
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
     private outputTrim: GainNode;
@@ -70,6 +70,10 @@ export class TelecasterGuitarSampler {
 
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.075;
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();
@@ -83,7 +87,8 @@ export class TelecasterGuitarSampler {
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
-        this.preamp.connect(this.saturation);
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.saturation);
         this.saturation.connect(this.toneFilter);
         this.toneFilter.connect(this.outputTrim);
         this.outputTrim.connect(this.destination);
@@ -207,7 +212,7 @@ export class TelecasterGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e){}
-            source.onended = null; // FIX: Nullify closure
+            source.onended = null; // Break closure cycle
         };
     }
 
@@ -234,5 +239,5 @@ export class TelecasterGuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
 }

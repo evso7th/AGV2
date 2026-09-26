@@ -5,8 +5,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Dark Telecaster V5.5 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
+ * @fileOverview Сэмплер Dark Telecaster V5.6 — "The 150Hz Barrier".
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -63,6 +62,7 @@ export class DarkTelecasterSampler {
     private isLoading = false;
 
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private overdrive: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
     private delay: DelayNode;
@@ -77,6 +77,10 @@ export class DarkTelecasterSampler {
 
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.02;
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
 
         this.overdrive = this.audioContext.createWaveShaper();
         this.overdrive.curve = makeOverdriveCurve(0.42);
@@ -97,7 +101,8 @@ export class DarkTelecasterSampler {
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
-        this.preamp.connect(this.overdrive);
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.overdrive);
         this.overdrive.connect(this.toneFilter);
         this.toneFilter.connect(this.outputTrim);
         this.toneFilter.connect(this.delay);
@@ -225,14 +230,14 @@ export class DarkTelecasterSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e) {}
-            source.onended = null; // FIX: Break closure
+            source.onended = null; // FIX: Nullify
         };
     }
 
     private findBestSample(instrument: SamplerInstrument, targetMidi: number): { buffer: AudioBuffer | null, midi: number } {
-        const availableMidiNotes = Array.from(instrument.buffers.keys());
-        if (availableMidiNotes.length === 0) return { buffer: null, midi: targetMidi };
-        const closestMidi = availableMidiNotes.reduce((prev, curr) => 
+        const availableMidis = Array.from(instrument.buffers.keys());
+        if (availableMidis.length === 0) return { buffer: null, midi: targetMidi };
+        const closestMidi = availableMidis.reduce((prev, curr) => 
             Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
         return { buffer: instrument.buffers.get(closestMidi) ?? null, midi: closestMidi };
@@ -257,6 +262,7 @@ export class DarkTelecasterSampler {
     public dispose() {
         this.stopAll();
         this.preamp.disconnect();
+        this.hpf.disconnect();
         this.delay.disconnect();
         this.feedbackGain.disconnect();
         this.delayMix.disconnect();
