@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.5 — "Absolute Visual Peace".
- * #ЗАЧЕМ: Полное удаление системы пульсации (AG_CORE_PULSE) для визуального спокойствия.
+ * @fileOverview Audio Engine Context V77.6 — "Lookahead Expansion".
+ * #ЗАЧЕМ: Увеличение буфера безопасности до 0.35с для предотвращения заикания в тяжелых жанрах.
  */
 'use client';
 
@@ -550,7 +550,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (isFinite(payload.tension)) setTension(payload.tension); 
                 let scheduleTime = nextBarTimeRef.current;
                 const now = ctx.currentTime;
-                if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.15;
+                // #ЗАЧЕМ: Увеличение буфера безопасности (Lookahead) до 0.35с.
+                if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.35;
                 const tempo = payload.actualBpm || 75;
                 
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
@@ -562,7 +563,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         };
         
         if (dnaSourcePreference === 'network' && typeof navigator !== 'undefined' && navigator.onLine) await refreshCloudAxioms();
-        else { const c = await loadDnaFromCache(); if (!c) void refreshCloudAxioms(); }
+        else { const i = await loadDnaFromCache(); if (!i) void refreshCloudAxioms(); }
         
         applyCalibration(calibrationGainsRef.current);
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
