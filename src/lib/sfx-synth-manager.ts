@@ -2,8 +2,8 @@ import type { FractalEvent, Mood, Genre } from '@/types/fractal';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Менеджер SFX V15.1 — "TypeScript Fixes".
- * #ЗАЧЕМ: Исправление ошибок типизации после перехода на динамические манифесты.
+ * @fileOverview Менеджер SFX V15.2 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 
 export class SfxSynthManager {
@@ -45,7 +45,6 @@ export class SfxSynthManager {
             }
             this.isReady = true;
             if (limitPerCategory === -1) this.isFullyInitialized = true;
-            console.log(`[SfxSynthManager] Initialized with ${this.buffers.size} categories.`);
         } catch (e) {
             console.warn('[SfxSynthManager] Init error:', e);
         }
@@ -57,7 +56,6 @@ export class SfxSynthManager {
             if (!arrayBuffer) return null;
             return await this.context.decodeAudioData(arrayBuffer.slice(0));
         } catch (error) {
-            console.error(`Error loading SFX sample: ${url}`, error);
             return null;
         }
     }
@@ -80,8 +78,10 @@ export class SfxSynthManager {
         this.activeSources.add(source);
         source.onended = () => { 
             this.activeSources.delete(source); 
+            try { source.stop(); } catch(e) {}
             try { manualGain.disconnect(); } catch(e) {}
             try { source.disconnect(); } catch(e) {} 
+            source.onended = null; // FIX: Nullify
         };
     }
 
@@ -94,7 +94,6 @@ export class SfxSynthManager {
             const category = this.getCategoryForContext(mood, genre, rules);
             const samplePool = this.buffers.get(category);
             if (!samplePool || samplePool.length === 0) {
-                // Fallback if a specific category like 'voices_oga' doesn't exist in the new manifest
                 const fallbackPool = this.buffers.get('voices') || this.buffers.get('sfx_other');
                 if (!fallbackPool || fallbackPool.length === 0) return;
                 this.playSample(fallbackPool, barStartTime + (event.time * (60 / tempo)));
@@ -118,62 +117,54 @@ export class SfxSynthManager {
             this.activeSources.add(source);
             source.onended = () => { 
                 this.activeSources.delete(source); 
+                try { source.stop(); } catch(e) {}
                 try { source.disconnect(); } catch(e) {} 
+                source.onended = null; // FIX: Nullify
             };
         }
     }
 
     private getCategoryForContext(mood: Mood, genre: Genre, rules?: { categories: { name: string; weight: number }[] }): string {
-        // Note: The manifest keys are now directory-based: ['perc', 'sfx_other', 'tube', 'voices', 'vinyl']
-        // The old granular categories like 'sfx_glitch' or 'voices_oga' no longer exist as primary keys.
-        // The logic here needs to map the desired sound to the new, broader categories.
-
         if (rules && rules.categories && rules.categories.length > 0) {
             const totalWeight = rules.categories.reduce((sum: number, cat: { weight: number }) => sum + cat.weight, 0);
             let rand = Math.random() * totalWeight;
             for (const category of rules.categories) {
                 rand -= category.weight;
                 if (rand <= 0) {
-                    // Map old granular names to new broader categories
                     const name = category.name;
                     if (name.includes('voice')) return 'voices';
                     if (name.includes('glitch')) return 'sfx_other';
-                    if (this.buffers.has(name)) return name; // e.g. 'perc', 'tube'
-                    return 'sfx_other'; // Default fallback
+                    if (this.buffers.has(name)) return name;
+                    return 'sfx_other'; 
                 }
             }
         }
         
         const rand = Math.random();
-
-        if ((genre as string) === 'reggae') {
-            return rand < 0.7 ? 'tube' : 'perc';
-        }
-
-        if ((genre as string) === 'foundry') {
-            // 'sfx_glitch' was mapped to the 'SFX' directory, which is now 'sfx_other'
-            return 'sfx_other';
-        }
-
+        if ((genre as string) === 'reggae') return rand < 0.7 ? 'tube' : 'perc';
+        if ((genre as string) === 'foundry') return 'sfx_other';
         if ((genre as string) === 'ambient') {
             if (mood === 'dark' || mood === 'anxious' || mood === 'gloomy' || mood === 'melancholic') {
-                 if(rand < 0.6) return 'sfx_other'; // Formerly glitch/other
+                 if(rand < 0.6) return 'sfx_other';
                  return 'perc';
             }
-            if (rand < 0.5) return 'sfx_other'; // Formerly sfx_common
-            return 'voices'; // Formerly voices_oga
+            if (rand < 0.5) return 'sfx_other';
+            return 'voices';
         }
-        
         if ((genre as string) === 'blues') {
             if (rand < 0.8) return 'perc';
             return 'vinyl';
         }
-
-        return 'sfx_other'; // Default fallback, formerly 'sfx_common'
+        return 'sfx_other';
     }
     
     public allNotesOff() {
-       this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
+       this.activeSources.forEach(source => { 
+           try { 
+               source.stop(); 
+               source.disconnect();
+           } catch(e) {} 
+       });
        this.activeSources.clear();
     }
 }

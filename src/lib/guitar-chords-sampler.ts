@@ -5,8 +5,8 @@ import { vault } from './audio-cache';
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.6 — "Pure Disconnect".
- * #ЧТО: Оптимизация кэша и принудительное разъединение нод.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.7 — "Leak-Proof Logic".
+ * #ЧТО: Очистка onended для освобождения ресурсов.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -18,7 +18,7 @@ export class GuitarChordsSampler {
     private isLoading: boolean = false;
     private preamp: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
-    private readonly MAX_CACHED_CHORDS = 24; // Lowered for memory safety
+    private readonly MAX_CACHED_CHORDS = 24; 
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -106,6 +106,7 @@ export class GuitarChordsSampler {
                     try { source.stop(); } catch(e) {}
                     source.disconnect();
                     noteGain.disconnect();
+                    source.onended = null; // FIX: Nullify
                 };
             }
         });

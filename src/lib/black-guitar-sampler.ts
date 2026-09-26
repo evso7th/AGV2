@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.6 — "Extreme Cleanup".
- * #ЗАЧЕМ: Принудительная очистка связей графа в onended.
+ * @fileOverview Сэмплер Black Acoustic V5.7 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для предотвращения утечек памяти через замыкания.
  */
 
 function makeAcousticWarmthCurve() {
@@ -277,6 +277,7 @@ export class BlackGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e) {} 
+            source.onended = null; // FIX: Break closure cycle
         };
     }
 

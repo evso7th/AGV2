@@ -2,8 +2,8 @@ import type { Genre, Mood } from '@/types/music';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Плеер текстур V15.1 — "TypeScript Fixes".
- * #ЗАЧЕМ: Исправление ошибок типизации, аналогичных SfxSynthManager.
+ * @fileOverview Плеер текстур V15.2 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 
 export class SparklePlayer {
@@ -52,7 +52,6 @@ export class SparklePlayer {
             await Promise.all(loadTasks);
             this.isInitialized = true;
             if (limitPerCategory === -1) this.isFullyInitialized = true;
-            console.log(`[SparklePlayer] Initialized with ${this.melodicBuffers.length} melodic and ${this.organicBuffers.length} organic samples.`);
         } catch (e) {
             console.warn('[SparklePlayer] Init error:', e);
         }
@@ -96,7 +95,11 @@ export class SparklePlayer {
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);
-            try { source.disconnect(); } catch(e) {}
+            try { 
+                source.stop(); 
+                source.disconnect();
+            } catch(e) {}
+            source.onended = null; // FIX: Break closure
         };
     }
     
@@ -107,7 +110,12 @@ export class SparklePlayer {
     }
     
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
+        this.activeSources.forEach(source => { 
+            try { 
+                source.stop(); 
+                source.disconnect();
+            } catch(e) {} 
+        });
         this.activeSources.clear();
     }
 

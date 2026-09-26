@@ -1,10 +1,11 @@
 import type { Note as NoteEvent } from "@/types/music";
 import { YAMAHA_CHORD_SAMPLES } from "./assets/yamaha-chord-samples";
+import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Yamaha Chords Sampler V1.2 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Yamaha Chords Sampler V1.3 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 export class YamahaChordsSampler {
     private audioContext: AudioContext;
@@ -106,7 +107,10 @@ export class YamahaChordsSampler {
                 this.activeSources.add(source);
                 source.onended = () => {
                     this.activeSources.delete(source);
+                    try { source.stop(); } catch(e) {}
+                    source.disconnect();
                     noteGain.disconnect();
+                    source.onended = null; // FIX: Break closure
                 };
             }
         });

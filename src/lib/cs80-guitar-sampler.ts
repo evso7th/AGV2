@@ -3,8 +3,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Yamaha CS-80 V4.7 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Сэмплер Yamaha CS-80 V4.8 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -107,13 +107,14 @@ export class CS80GuitarSampler {
         const keys = Array.from(this.buffers.keys());
         if (keys.length === 0) return;
         const closestMidi = keys.reduce((prev, curr) => 
-            Math.abs(curr - note.midi) < Math.abs(prev - note.midi) ? curr : prev
-        );
+            Math.abs(curr - note.midi) < Math.abs(prev - targetMidi) ? curr : prev
+        , targetMidi); // targetMidi fixed
+        const targetMidi = note.midi;
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
         const buffer = isLong ? layer.long : layer.norm;
-        this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7);
+        this.playSample(buffer, closestMidi, targetMidi, time + note.time, note.velocity || 0.7, tempo);
     }
 
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, tempo: number = 72) {
@@ -139,8 +140,10 @@ export class CS80GuitarSampler {
 
         source.onended = () => {
             this.activeSources.delete(source);
+            try { source.stop(); } catch(e) {}
             try { source.disconnect(); } catch(e) {}
             try { gainNode.disconnect(); } catch(e) {}
+            source.onended = null; // FIX: Break closure
         };
     }
 

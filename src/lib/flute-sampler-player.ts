@@ -11,8 +11,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты V4.4 — "Vault Integration".
- * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * #ЗАЧЕМ: Сэмплер флейты V4.5 — "Leak-Proof Logic".
+ * #ЧТО: Очистка onended для освобождения ресурсов Audio Thread.
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -119,7 +119,10 @@ export class FluteSamplerPlayer {
 
             source.onended = () => {
                 this.activeSources.delete(source);
+                try { source.stop(); } catch(e) {}
+                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e) {}
+                source.onended = null; // FIX: Nullify
             };
         });
     }
@@ -167,6 +170,7 @@ export class FluteSamplerPlayer {
     public stopAll() {
         this.activeSources.forEach(source => {
             try { source.stop(0); } catch(e) {}
+            try { source.disconnect(); } catch(e) {}
         });
         this.activeSources.clear();
     }

@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.4 — "Pure Cleanup".
- * #ЗАЧЕМ: Принудительный разрыв связей AudioNode при завершении ноты.
+ * @fileOverview Сэмплер Telecaster V5.5 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов Audio Thread.
  */
 
 function makeWarmthCurve() {
@@ -207,6 +207,7 @@ export class TelecasterGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e){}
+            source.onended = null; // FIX: Nullify closure
         };
     }
 

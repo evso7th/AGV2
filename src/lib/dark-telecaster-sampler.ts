@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Dark Telecaster V5.4 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Сэмплер Dark Telecaster V5.5 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 
 const TELECASTER_SAMPLES: Record<string, string> = {
@@ -220,7 +220,12 @@ export class DarkTelecasterSampler {
         this.activeSources.add(source);
         source.onended = () => {
             this.activeSources.delete(source);
-            try { gainNode.disconnect(); } catch(e) {}
+            try { 
+                source.stop();
+                source.disconnect();
+                gainNode.disconnect(); 
+            } catch(e) {}
+            source.onended = null; // FIX: Break closure
         };
     }
 

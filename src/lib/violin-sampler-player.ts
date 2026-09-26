@@ -11,8 +11,8 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.5 — "Vault Integration".
- * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * #ЗАЧЕМ: Сэмплер скрипки V4.6 — "Leak-Proof Logic".
+ * #ЧТО: Очистка onended для освобождения ресурсов Audio Thread.
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -117,7 +117,10 @@ export class ViolinSamplerPlayer {
 
             source.onended = () => { 
                 this.activeSources.delete(source);
+                try { source.stop(); } catch(e) {}
+                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e){} 
+                source.onended = null; // FIX: Nullify
             };
         });
     }
@@ -146,6 +149,7 @@ export class ViolinSamplerPlayer {
     public stopAll() {
         this.activeSources.forEach(source => {
             try { source.stop(0); } catch(e) {}
+            try { source.disconnect(); } catch(e) {}
         });
         this.activeSources.clear();
     }

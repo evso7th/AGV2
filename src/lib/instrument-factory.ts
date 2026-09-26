@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V11.0 — "Strict Leak Guard".
- * #ЗАЧЕМ: Устранение утечки осцилляторов через детерминированный stop() и точечная очистка через instrumentId.
+ * @fileOverview Центральная фабрика инструментов V12.0 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Устранение утечки LFO-осцилляторов и очистка onended.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -199,14 +199,17 @@ const createIndependentVoice = (
     const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
     const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
 
+    const mainOscillators: OscillatorNode[] = [];
+
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getGuitarWave(ctx, preset.osc?.width || 0.45));
         osc.frequency.setValueAtTime(f0, now);
         osc.connect(voiceGain);
         osc.start(now);
-        osc.stop(expirationTime); // #ЗАЧЕМ: Предотвращение утечки в Audio Thread
+        osc.stop(expirationTime);
         nodes.push(osc);
+        mainOscillators.push(osc);
     } else if (type === 'organ') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getOrganWave(ctx, preset.drawbars || [8,0,8,0,0,0,0,0,0]));
@@ -215,6 +218,7 @@ const createIndependentVoice = (
         osc.start(now);
         osc.stop(expirationTime);
         nodes.push(osc);
+        mainOscillators.push(osc);
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
         oscConfigs.forEach((o: any) => {
@@ -228,6 +232,7 @@ const createIndependentVoice = (
             osc.start(now);
             osc.stop(expirationTime);
             nodes.push(osc, g);
+            mainOscillators.push(osc);
         });
     }
 
@@ -254,6 +259,28 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
+    // #ЗАЧЕМ: ПЛАН №2285. Поддержка LFO с принудительной остановкой.
+    if (preset.lfo && preset.lfo.amount > 0) {
+        const lfo = ctx.createOscillator();
+        lfo.type = preset.lfo.shape || 'sine';
+        lfo.frequency.setValueAtTime(preset.lfo.rate || 5, now);
+        
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.setValueAtTime(preset.lfo.amount, now);
+        
+        lfo.connect(lfoGain);
+        
+        if (preset.lfo.target === 'pitch') {
+            mainOscillators.forEach(osc => lfoGain.connect(osc.detune));
+        } else {
+            lfoGain.connect(filter.frequency);
+        }
+        
+        lfo.start(now);
+        lfo.stop(expirationTime); // FIX: Explicit LFO stop
+        nodes.push(lfo, lfoGain);
+    }
+
     if (sharedDelayNode && preset.delay?.mix > 0.01) {
         chainHead.connect(sharedDelayNode);
     }
@@ -272,7 +299,7 @@ const createIndependentVoice = (
         voiceState: { node: voiceGain, startTime: now }, 
         disposed: false, 
         type, 
-        instrumentId, // #ЗАЧЕМ: Точечная очистка конкретного инстанса
+        instrumentId, 
         expirationTime 
     };
     globalActiveVoices.add(record);
