@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V10.0 — "Pure Graph Protocol".
- * #ЗАЧЕМ: Устранение утечки узлов в системе Voice Stealing и консолидация фильтров.
+ * @fileOverview Центральная фабрика инструментов V11.0 — "Strict Leak Guard".
+ * #ЗАЧЕМ: Устранение утечки осцилляторов через детерминированный stop() и точечная очистка через instrumentId.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -80,7 +80,6 @@ const enforceVoiceLimit = () => {
     const toKillCount = currentLength - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
     
-    // Сортировка только при реальном перегрузе
     allVoices.sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.type] ?? 1;
@@ -96,7 +95,6 @@ const enforceVoiceLimit = () => {
             try {
                 voiceNode.gain.cancelScheduledValues(now);
                 voiceNode.gain.setTargetAtTime(0, now, 0.015);
-                // Принудительная смерть через 100мс
                 oldest.expirationTime = now + 0.1;
             } catch (e) {
                 deepCleanup(oldest);
@@ -184,6 +182,7 @@ const createIndependentVoice = (
     when: number,
     velocity: number,
     duration: number,
+    instrumentId: string,
     sharedDelayNode: AudioNode | null = null,
     eventParams: any = null,
     tempo: number = 72
@@ -195,7 +194,10 @@ const createIndependentVoice = (
     const voiceGain = ctx.createGain();
     voiceGain.gain.value = 0;
     const nodes: AudioNode[] = [voiceGain];
-    let mainOsc: OscillatorNode | null = null;
+
+    const noteOffTime = now + duration;
+    const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
+    const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
 
     if (type === 'guitar') {
         const osc = ctx.createOscillator();
@@ -203,19 +205,19 @@ const createIndependentVoice = (
         osc.frequency.setValueAtTime(f0, now);
         osc.connect(voiceGain);
         osc.start(now);
+        osc.stop(expirationTime); // #ЗАЧЕМ: Предотвращение утечки в Audio Thread
         nodes.push(osc);
-        mainOsc = osc;
     } else if (type === 'organ') {
         const osc = ctx.createOscillator();
         osc.setPeriodicWave(getOrganWave(ctx, preset.drawbars || [8,0,8,0,0,0,0,0,0]));
         osc.frequency.setValueAtTime(f0, now);
         osc.connect(voiceGain);
         osc.start(now);
+        osc.stop(expirationTime);
         nodes.push(osc);
-        mainOsc = osc;
     } else {
         const oscConfigs = preset.osc || [{ type: 'sawtooth', gain: 0.5 }];
-        oscConfigs.forEach((o: any, idx: number) => {
+        oscConfigs.forEach((o: any) => {
             const osc = ctx.createOscillator();
             osc.type = o.type;
             osc.frequency.setValueAtTime(f0 * Math.pow(2, o.octave || 0), now);
@@ -224,8 +226,8 @@ const createIndependentVoice = (
             g.gain.value = o.gain ?? 0.5;
             osc.connect(g).connect(voiceGain);
             osc.start(now);
+            osc.stop(expirationTime);
             nodes.push(osc, g);
-            if (idx === 0) mainOsc = osc;
         });
     }
 
@@ -263,12 +265,16 @@ const createIndependentVoice = (
     voiceGain.gain.exponentialRampToValueAtTime(peak, now + adsr.a);
     voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
 
-    const noteOffTime = now + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
-    const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
-    const record = { nodes, voiceState: { node: voiceGain, startTime: now }, disposed: false, type, expirationTime };
+    const record = { 
+        nodes, 
+        voiceState: { node: voiceGain, startTime: now }, 
+        disposed: false, 
+        type, 
+        instrumentId, // #ЗАЧЕМ: Точечная очистка конкретного инстанса
+        expirationTime 
+    };
     globalActiveVoices.add(record);
     enforceVoiceLimit();
 
@@ -291,6 +297,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     output = ctx.destination
 }: { type?: string, preset?: any, output?: AudioNode } = {}): Promise<InstrumentAPI> {
     
+    const instrumentId = `inst_${Math.random().toString(36).substr(2, 9)}`;
     let currentPreset = { ...preset };
     const instrumentGain = ctx.createGain();
     instrumentGain.gain.value = isFinite(currentPreset.volume) ? currentPreset.volume : 0.7;
@@ -298,7 +305,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const bus = ctx.createGain();
     const panner = ctx.createStereoPanner();
     
-    // #ЗАЧЕМ: Студийная коррекция на уровне ШИНЫ, а не голоса.
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 30 : 180;
 
@@ -332,10 +338,10 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         preset: currentPreset,
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             if (!isFinite(midi) || midi < 0 || midi > 127) return;
-            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, sharedDelay, params, params?.tempo || 72);
+            createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, instrumentId, sharedDelay, params, params?.tempo || 72);
         },
         allNotesOff: () => {
-            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
+            [...globalActiveVoices].filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v));
         },
         setPreset: (p) => {
             currentPreset = { ...p };
@@ -346,7 +352,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
         },
         disconnect: () => {
-            [...globalActiveVoices].filter(v => v.type === type).forEach(v => deepCleanup(v));
+            [...globalActiveVoices].filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v));
             [instrumentGain, hpf, boxyCut, presence, panner, sharedDelay, feedback, delayMix].forEach(n => n.disconnect());
         },
         connect: (dest) => panner.connect(dest || output)
