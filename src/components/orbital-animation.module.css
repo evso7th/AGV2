@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Orbital Animation Styles V8.6 — "Ether Calibration".
- * #ЗАЧЕМ: Восстановление динамики масштаба и свечения при минимальной яркости вспышек.
+ * @fileOverview Orbital Animation Styles V8.7 — "Pure Smoothness".
+ * #ЗАЧЕМ: Полное удаление стилей пульсации. Оставлена только плавная анимация.
  */
 
 .view {
@@ -78,15 +77,6 @@
               background-color 2s ease-in-out;
   will-change: transform, filter, box-shadow;
   opacity: 0.5;
-}
-
-/* --- ETHER CALIBRATION (FULL POWER PULSE, LOW BRIGHTNESS) --- */
-.view[data-pulsing="true"] .circle::before,
-.view[data-pulsing="true"] .circle::after {
-  transform: translateZ(var(--z-offset)) scale(1.35); /* Restored high amplitude */
-  filter: blur(10px) brightness(1.15) saturate(1.1); /* Minimal brightness (+15%) */
-  box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color); /* Restored heavy glow */
-  opacity: 0.9;
 }
 
 .circle::before {

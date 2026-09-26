@@ -1,8 +1,7 @@
 "use client";
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import styles from './orbital-animation.module.css';
 import { cn } from '@/lib/utils';
-import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
@@ -16,8 +15,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V8.4 — "Sync Guard".
- * #ЗАЧЕМ: Устранение наложения таймеров пульсации через pulseOffTimerRef.
+ * @fileOverview Orbital Animation V8.5 — "Pulse Removal".
+ * #ЗАЧЕМ: Полное удаление привязки к музыкальному пульсу. Только плавное вращение.
  */
 export function OrbitalAnimation({ 
     isPlaying = false, 
@@ -28,13 +27,7 @@ export function OrbitalAnimation({
     size 
 }: OrbitalAnimationProps) {
   const planeRef = useRef<HTMLDivElement>(null);
-  const { analyser } = useAudioEngine();
   const isMobile = useIsMobile();
-  const [isPulsing, setIsPulsing] = useState(false);
-
-  const pulseStartTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const pulseOffTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const lastPulseTimeRef = useRef<number>(0);
 
   // 1. Определение базового тона (Hue) по жанру
   const hue = useMemo(() => {
@@ -68,46 +61,6 @@ export function OrbitalAnimation({
       } as React.CSSProperties;
   }, [hue, saturation, lightness, tension, size, isMobile]);
 
-  // --- UNIFIED PULSE LISTENER ---
-  useEffect(() => {
-    const onPulse = (e: any) => {
-        if (!isPlaying) return;
-        
-        // --- 30 FPS THROTTLE ---
-        const now = Date.now();
-        if (now - lastPulseTimeRef.current < 33) return;
-        lastPulseTimeRef.current = now;
-
-        const hitTime = e.detail.time;
-        const audioContext = analyser?.context;
-        if (!audioContext) return;
-
-        const audioNow = audioContext.currentTime;
-        const delay = (hitTime - audioNow) * 1000;
-        
-        if (delay > -50) {
-            // Сбрасываем старые таймеры перед запуском новых
-            if (pulseStartTimerRef.current) clearTimeout(pulseStartTimerRef.current);
-
-            pulseStartTimerRef.current = setTimeout(() => {
-                setIsPulsing(true);
-                
-                if (pulseOffTimerRef.current) clearTimeout(pulseOffTimerRef.current);
-                pulseOffTimerRef.current = setTimeout(() => {
-                    setIsPulsing(false);
-                }, 120);
-            }, Math.max(0, delay));
-        }
-    };
-    
-    window.addEventListener('AG_CORE_PULSE', onPulse);
-    return () => {
-        window.removeEventListener('AG_CORE_PULSE', onPulse);
-        if (pulseStartTimerRef.current) clearTimeout(pulseStartTimerRef.current);
-        if (pulseOffTimerRef.current) clearTimeout(pulseOffTimerRef.current);
-    };
-  }, [isPlaying, analyser]);
-
   useEffect(() => {
     if (planeRef.current) {
         planeRef.current.style.animationDuration = rotationDuration;
@@ -118,7 +71,6 @@ export function OrbitalAnimation({
     <div 
         className={cn(styles.view, className)} 
         style={dynamicStyles}
-        data-pulsing={isPulsing}
         data-mobile={isMobile}
     >
       <div ref={planeRef} className={cn(styles.plane, styles.main)}>

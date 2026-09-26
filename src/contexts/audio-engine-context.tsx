@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.4 — "Pulse Throttle Protocol".
- * #ЗАЧЕМ: Ограничение частоты событий AG_CORE_PULSE (100мс) для разгрузки шины данных.
+ * @fileOverview Audio Engine Context V77.5 — "Absolute Visual Peace".
+ * #ЗАЧЕМ: Полное удаление системы пульсации (AG_CORE_PULSE) для визуального спокойствия.
  */
 'use client';
 
@@ -192,7 +192,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const transitionGainRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
-  const lastPulseDispatchTimeRef = useRef<number>(0); // #ЗАЧЕМ: Троттлинг пульса
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
   const previewTimeoutRef = useRef<any>(null);
   const loopingRef = useRef(false);
@@ -554,17 +553,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.15;
                 const tempo = payload.actualBpm || 75;
                 
-                payload.events.forEach((e: any) => {
-                    const et = Array.isArray(e.type) ? e.type[0] : e.type;
-                    if (et === 'drum_kick_reso' || (et === 'bass' && Math.abs(e.time % 2) < 0.01)) {
-                        // #ЗАЧЕМ: Троттлинг пульса (не чаще 100мс). Разгрузка шины данных.
-                        const realHitTime = (scheduleTime + (e.time * (60/tempo))) * 1000;
-                        if (realHitTime - lastPulseDispatchTimeRef.current >= 100) {
-                            lastPulseDispatchTimeRef.current = realHitTime;
-                            window.dispatchEvent(new CustomEvent('AG_CORE_PULSE', { detail: { time: scheduleTime + (e.time * (60/tempo)) } }));
-                        }
-                    }
-                });
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
