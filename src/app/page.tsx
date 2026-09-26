@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Welcome Page V3.7 — "Visual Cleanup".
- * #ЗАЧЕМ: ПЛАН №2500. Удаление орбиталей для чистоты входа.
+ * @fileOverview Welcome Page V3.8 — "Atmospheric Background".
+ * #ЗАЧЕМ: Возврат орбиталей с блюром в качестве фона для стартового экрана.
  */
 'use client';
 
@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { useAuraGroove } from '@/hooks/use-aura-groove';
 import { useFirestore } from '@/firebase';
 import { logAnonymousSession } from '@/lib/telemetry';
+import { OrbitalAnimation } from '@/components/orbital-animation';
 
 export default function Home() {
   const router = useRouter();
@@ -33,6 +34,16 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background text-foreground overflow-hidden">
       
+      {/* Background Orbitals Layer */}
+      <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
+        <OrbitalAnimation 
+          isPlaying={true} 
+          genre="ambient" 
+          tension={0.5} 
+          size="600px" 
+        />
+      </div>
+
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes marquee {
           0% { left: 100%; }

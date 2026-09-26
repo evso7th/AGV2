@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Orbital Animation Styles V9.0 — "Zero Blur & GPU Optimized".
- * #ЗАЧЕМ: ПЛАН №2115. Полное обнуление блюра и оптимизация слоев.
+ * @fileOverview Orbital Animation Styles V10.0 — "Blur & Glow Restored".
+ * #ЗАЧЕМ: Возврат визуальной глубины для стартового экрана.
  */
 
 .view {
@@ -43,7 +44,7 @@
   will-change: transform;
 }
 
-/* #ЗАЧЕМ: Обнуление теней и блюра для разгрузки GPU */
+/* #ЗАЧЕМ: Возврат свечения и блюра */
 .circle::before,
 .circle::after {
   content: '';
@@ -60,11 +61,12 @@
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  filter: none !important;
-  box-shadow: none !important;
+  /* Эффект свечения */
+  filter: blur(var(--orbital-glow, 15px));
+  box-shadow: 0 0 calc(var(--orbital-glow) * 2) var(--orbital-color);
   
   will-change: transform;
-  opacity: 0.4;
+  opacity: 0.7;
 }
 
 .circle::before {
