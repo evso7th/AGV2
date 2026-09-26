@@ -2,13 +2,14 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
+import Image from 'next/image';
 import { OrbitalAnimation } from './orbital-animation';
 import { LiquidNebula } from './liquid-nebula';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
-type ViewMode = 'orbital' | 'ether' | 'nebula';
+type ViewMode = 'orbital' | 'ether' | 'nebula' | 'cover';
 
 interface AuraVisualizerProps {
     genre: Genre;
@@ -20,8 +21,8 @@ interface AuraVisualizerProps {
 }
 
 /**
- * @fileOverview Aura Visualizer V17.2 — "Default Mode Update".
- * #ЗАЧЕМ: ПЛАН №1485. Установка Nebula как основного режима по умолчанию.
+ * @fileOverview Aura Visualizer V18.0 — "Static Cover Mode".
+ * #ЗАЧЕМ: ПЛАН №1510. Добавление 4-го режима: статическая обложка.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const isMobile = useIsMobile();
@@ -31,8 +32,8 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
     // Initial load and auto-fallback for mobile
     useEffect(() => {
         const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-        // #ЗАЧЕМ: ПЛАН №1485. Теперь дефолт — nebula.
-        let initialMode: ViewMode = (['orbital', 'ether', 'nebula'].includes(saved)) ? saved : 'nebula';
+        // Проверка валидности сохраненного режима, теперь включая 'cover'
+        let initialMode: ViewMode = (['orbital', 'ether', 'nebula', 'cover'].includes(saved)) ? saved : 'nebula';
 
         if (isMobile && initialMode === 'ether') {
             initialMode = 'orbital';
@@ -44,8 +45,8 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
         
-        // Define effective modes based on device performance capability
-        const effectiveModes: ViewMode[] = isMobile ? ['orbital', 'nebula'] : ['ether', 'orbital', 'nebula'];
+        // Определение доступных режимов в зависимости от устройства
+        const effectiveModes: ViewMode[] = isMobile ? ['orbital', 'nebula', 'cover'] : ['ether', 'orbital', 'nebula', 'cover'];
         
         setMode(prev => {
             const currentIdx = effectiveModes.indexOf(prev);
@@ -67,11 +68,11 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
 
     return (
         <div 
-            className={cn("relative cursor-pointer select-none overflow-visible", className)} 
+            className={cn("relative cursor-pointer select-none overflow-visible flex items-center justify-center", className)} 
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%', background: 'transparent' }}
         >
-            {/* BACKGROUND LAYER: NEBULA FOG */}
+            {/* 1. BACKGROUND LAYER: NEBULA FOG */}
             {(mode === 'ether' || mode === 'nebula') && (
                 <LiquidNebula 
                     genre={genre} 
@@ -86,7 +87,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                 />
             )}
 
-            {/* FOREGROUND LAYER: ORBITAL RINGS */}
+            {/* 2. FOREGROUND LAYER: ORBITAL RINGS */}
             {(mode === 'ether' || mode === 'orbital') && (
                 <OrbitalAnimation 
                     genre={genre} 
@@ -96,6 +97,23 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                     size="100%"
                     className="relative z-10"
                 />
+            )}
+
+            {/* 3. STATIC COVER MODE */}
+            {mode === 'cover' && (
+                <div className="absolute inset-0 flex items-center justify-center p-4 animate-in zoom-in-95 duration-700">
+                    <div className="relative w-full h-full shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden border border-white/10 bg-black/40">
+                        <Image 
+                            src="/assets/cover.jpg" 
+                            alt="AuraGroove Cover" 
+                            fill
+                            className="object-cover opacity-90 transition-opacity duration-1000"
+                            priority
+                        />
+                        {/* Тонкий виньеточный градиент поверх для глубины */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30" />
+                    </div>
+                </div>
             )}
 
             {/* Mode Feedback Overlay */}
