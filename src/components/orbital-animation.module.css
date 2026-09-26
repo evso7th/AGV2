@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Orbital Animation Styles V10.0 — "Blur & Glow Restored".
- * #ЗАЧЕМ: Возврат визуальной глубины для стартового экрана.
+ * @fileOverview Orbital Animation Styles V10.5 — "Maximum Glow".
+ * #ЗАЧЕМ: ПЛАН №2515. Усиление эффекта свечения и добавление блюра для линий орбит.
  */
 
 .view {
@@ -40,11 +39,14 @@
   border-radius: 100%;
   box-sizing: border-box;
   
-  border: 1px solid hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.2);
+  /* #ЗАЧЕМ: Линии теперь тоже светятся и слегка размыты */
+  border: 2px solid hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.3);
+  filter: blur(2px);
+  box-shadow: 0 0 15px hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.1);
+  
   will-change: transform;
 }
 
-/* #ЗАЧЕМ: Возврат свечения и блюра */
 .circle::before,
 .circle::after {
   content: '';
@@ -55,18 +57,18 @@
   right: 0;
   bottom: 0;
   margin: auto;
-  width: 6%;
-  height: 6%;
+  width: 8%; /* Слегка увеличили размер частиц */
+  height: 8%;
   border-radius: 100%;
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  /* Эффект свечения */
-  filter: blur(var(--orbital-glow, 15px));
-  box-shadow: 0 0 calc(var(--orbital-glow) * 2) var(--orbital-color);
+  /* #ЗАЧЕМ: Ультра-свечение */
+  filter: blur(var(--orbital-glow, 20px));
+  box-shadow: 0 0 calc(var(--orbital-glow) * 3) var(--orbital-color);
   
   will-change: transform;
-  opacity: 0.7;
+  opacity: 0.9; /* Больше плотности */
 }
 
 .circle::before {

@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Welcome Page V3.9 — "Internal Orbital Layering".
- * #ЗАЧЕМ: Перенос орбиталей внутрь карточки для создания эффекта глубины.
+ * @fileOverview Welcome Page V4.0 — "Neon Card Depth".
+ * #ЗАЧЕМ: Усиление видимости орбиталей внутри карточки.
  */
 'use client';
 
@@ -49,7 +48,7 @@ export default function Home() {
       <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
         
         {/* Internal Orbital Animation Layer - Bottom-most */}
-        <div className="absolute inset-0 z-0 opacity-50 pointer-events-none flex items-center justify-center">
+        <div className="absolute inset-0 z-0 opacity-80 pointer-events-none flex items-center justify-center">
           <OrbitalAnimation 
             isPlaying={true} 
             genre="ambient" 

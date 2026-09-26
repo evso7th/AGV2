@@ -9,14 +9,14 @@ interface OrbitalAnimationProps {
     isPlaying?: boolean;
     tempo?: number;
     tension?: number; // 0.1 - 1.0
-    genre?: Genre;    // #ЗАЧЕМ: Управление жанровой палитрой
+    genre?: Genre;    
     className?: string;
     size?: string;
 }
 
 /**
- * @fileOverview Orbital Animation V8.5 — "Pulse Removal".
- * #ЗАЧЕМ: Полное удаление привязки к музыкальному пульсу. Только плавное вращение.
+ * @fileOverview Orbital Animation V9.0 — "Radiant Core".
+ * #ЗАЧЕМ: Усиление параметров свечения для визуальной глубины.
  */
 export function OrbitalAnimation({ 
     isPlaying = false, 
@@ -29,7 +29,6 @@ export function OrbitalAnimation({
   const planeRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
-  // 1. Определение базового тона (Hue) по жанру
   const hue = useMemo(() => {
     const genreHues: Record<string, number> = {
         ambient: 260,
@@ -40,8 +39,8 @@ export function OrbitalAnimation({
     return genreHues[genre as string] || 260;
   }, [genre]);
 
-  const saturation = useMemo(() => 25 + (tension * 10), [tension]);
-  const lightness = useMemo(() => 40 + (tension * 15), [tension]);
+  const saturation = useMemo(() => 40 + (tension * 20), [tension]); // Больше насыщенности
+  const lightness = useMemo(() => 50 + (tension * 20), [tension]);   // Больше яркости
 
   const rotationDuration = useMemo(() => {
       const base = isPlaying ? 40 : 60;
@@ -49,7 +48,8 @@ export function OrbitalAnimation({
   }, [isPlaying, tension]);
 
   const dynamicStyles = useMemo(() => {
-      const glow = isMobile ? 8 + (tension * 20) : 15 + (tension * 60);       
+      // #ЗАЧЕМ: ПЛАН №2515. Радикальное увеличение радиуса блюра.
+      const glow = isMobile ? 12 + (tension * 30) : 25 + (tension * 80);       
       
       return {
           '--aura-hue': hue,
