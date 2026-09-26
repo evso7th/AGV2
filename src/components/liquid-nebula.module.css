@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Liquid Nebula CSS V7.0 — "Zero Blur Performance".
- * #ЗАЧЕМ: ПЛАН №2115 — Полное обнуление блюра для разгрузки GPU и устранения дерганья.
+ * @fileOverview Liquid Nebula CSS V8.0 — "Blur Restoration".
+ * #ЗАЧЕМ: ПЛАН №2500 — Возврат эффекта размытия для мягкой органической формы.
  */
 
 .container {
@@ -39,7 +40,6 @@
   --current-scale: 0.65;
 }
 
-/* --- CENTRAL CORE --- */
 .centralCore {
   position: absolute;
   inset: 0;
@@ -52,7 +52,7 @@
 .soft {
   position: absolute;
   inset: -100%; 
-  filter: none !important; /* #ЗАЧЕМ: Обнуление блюра */
+  filter: blur(80px); /* #ЗАЧЕМ: Возврат глубокого блюра контейнера */
   overflow: visible;
   animation: global-rotate 180s linear infinite;
   will-change: transform;
@@ -84,7 +84,7 @@
 .blob {
   position: absolute;
   border-radius: 50%;
-  filter: none !important; /* #ЗАЧЕМ: Обнуление блюра блобов */
+  filter: blur(40px); /* #ЗАЧЕМ: Возврат блюра для каждого блоба */
   width: var(--s);
   height: var(--s);
   left: var(--x);
@@ -92,7 +92,7 @@
   margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
   transition: background-color 3s ease-in-out;
   will-change: transform, background-color;
-  opacity: 0.2; /* Снижаем прозрачность, так как края теперь резкие */
+  opacity: 0.35;
 }
 
 /* COLORS: REFERENCE */
@@ -136,7 +136,7 @@
 
 .corA {
   opacity: .2;
-  filter: none !important;
+  filter: blur(20px);
   -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 44%, #000 52% 62%, transparent 80%);
   mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 44%, #000 52% 62%, transparent 80%);
   background: conic-gradient(from 0deg at 50% 46%,
@@ -160,7 +160,7 @@
 
 .corB {
   opacity: .15;
-  filter: none !important;
+  filter: blur(30px);
   -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 40%, #000 50% 64%, transparent 84%);
   mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 40%, #000 50% 64%, transparent 84%);
   background: conic-gradient(from 40deg at 50% 46%,
@@ -176,7 +176,7 @@
 
 .whisk {
   opacity: .1;
-  filter: none !important;
+  filter: blur(15px);
   -webkit-mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 30%, #000 45% 70%, transparent 92%);
   mask-image: radial-gradient(closest-side at 50% 46%, transparent 0 30%, #000 45% 70%, transparent 92%);
   background: conic-gradient(from 100deg at 50% 46%,

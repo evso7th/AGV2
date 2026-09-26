@@ -1,13 +1,14 @@
+
 /**
- * @fileOverview Navigator Gateway Page V2.1 — "Scroll Warning Fix".
- * #ЗАЧЕМ: Устранение предупреждения Next.js об авто-скролле fixed элементов.
+ * @fileOverview Navigator Gateway Page V2.2 — "Orbital Removal".
+ * #ЗАЧЕМ: ПЛАН №2500. Очистка загрузочного экрана от орбиталей.
  */
 'use client';
 
 import { useState, useEffect } from 'react';
 import { AuraGrooveRoute } from '@/components/AuraGrooveRoute';
 import { useAuraGroove } from '@/hooks/use-aura-groove';
-import { OrbitalAnimation } from '@/components/orbital-animation';
+import { LiquidNebula } from '@/components/liquid-nebula';
 import { Dna } from 'lucide-react';
 
 export default function NavigatorPage() {
@@ -16,7 +17,6 @@ export default function NavigatorPage() {
   const [isWarmingUp, setIsWarmingUp] = useState(true);
 
   useEffect(() => {
-    // #ЗАЧЕМ: Эстетическая задержка для анализа очереди (2.5 сек)
     const timer = setTimeout(() => {
       setIsWarmingUp(false);
     }, 2500);
@@ -25,7 +25,6 @@ export default function NavigatorPage() {
 
   useEffect(() => {
     return () => {
-      // Остановка происходит строго при размонтировании страницы
       if (isPlaying) {
         setIsPlaying(false);
         stopAllSounds();
@@ -37,8 +36,8 @@ export default function NavigatorPage() {
     return (
       <div className="min-h-screen w-full bg-black">
         <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center overflow-hidden">
-          <div className="absolute inset-0 opacity-20 filter blur-3xl">
-            <OrbitalAnimation isPlaying={true} tempo={60} tension={0.3} size="500px" />
+          <div className="absolute inset-0 opacity-40">
+            <LiquidNebula isPlaying={true} genre="ambient" tension={0.3} />
           </div>
           <div className="relative z-10 flex flex-col items-center gap-6">
             <div className="w-16 h-16 rounded-full border-2 border-primary/20 flex items-center justify-center animate-pulse">
