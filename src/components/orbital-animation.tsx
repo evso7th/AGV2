@@ -16,8 +16,8 @@ interface OrbitalAnimationProps {
 }
 
 /**
- * @fileOverview Orbital Animation V8.3 — "30 FPS Update".
- * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты обновления до 30 FPS для всех жанров.
+ * @fileOverview Orbital Animation V8.4 — "Sync Guard".
+ * #ЗАЧЕМ: Устранение наложения таймеров пульсации через pulseOffTimerRef.
  */
 export function OrbitalAnimation({ 
     isPlaying = false, 
@@ -31,7 +31,9 @@ export function OrbitalAnimation({
   const { analyser } = useAudioEngine();
   const isMobile = useIsMobile();
   const [isPulsing, setIsPulsing] = useState(false);
-  const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
+
+  const pulseStartTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pulseOffTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastPulseTimeRef = useRef<number>(0);
 
   // 1. Определение базового тона (Hue) по жанру
@@ -84,20 +86,25 @@ export function OrbitalAnimation({
         const delay = (hitTime - audioNow) * 1000;
         
         if (delay > -50) {
-            const t = setTimeout(() => {
+            // Сбрасываем старые таймеры перед запуском новых
+            if (pulseStartTimerRef.current) clearTimeout(pulseStartTimerRef.current);
+
+            pulseStartTimerRef.current = setTimeout(() => {
                 setIsPulsing(true);
-                const t2 = setTimeout(() => setIsPulsing(false), 120);
-                pulseTimeoutsRef.current.push(t2);
+                
+                if (pulseOffTimerRef.current) clearTimeout(pulseOffTimerRef.current);
+                pulseOffTimerRef.current = setTimeout(() => {
+                    setIsPulsing(false);
+                }, 120);
             }, Math.max(0, delay));
-            pulseTimeoutsRef.current.push(t);
         }
     };
     
     window.addEventListener('AG_CORE_PULSE', onPulse);
     return () => {
         window.removeEventListener('AG_CORE_PULSE', onPulse);
-        pulseTimeoutsRef.current.forEach(clearTimeout);
-        pulseTimeoutsRef.current = [];
+        if (pulseStartTimerRef.current) clearTimeout(pulseStartTimerRef.current);
+        if (pulseOffTimerRef.current) clearTimeout(pulseOffTimerRef.current);
     };
   }, [isPlaying, analyser]);
 
