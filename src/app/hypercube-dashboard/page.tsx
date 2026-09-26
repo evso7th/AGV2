@@ -1,9 +1,8 @@
-
 'use client';
 
 /**
  * @fileOverview DNA Auditor V7.0.3 — "Accessibility Polish".
- * #ЗАЧЕМ: Устранение ворнингов "Missing Description".
+ * #ЗАЧЕМ: Устранение ворнингов "Missing Description" через sr-only описания.
  */
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -658,7 +657,7 @@ function AuditorContent() {
                 <ShieldCheck className="h-3.5 w-3.5" /> Root Access: Full Control
              </Badge>
           </div>
-          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Terminal | Ver 7.0.2</p>
+          <p className="text-muted-foreground uppercase text-[10px] font-black tracking-widest opacity-60">Masterforge Root Terminal | Ver 7.0.2</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handlePushRootToCloud} disabled={isProcessing} className="gap-2 text-primary border-primary/30"><RefreshCw className="h-4 w-4" /> Push Manifests</Button>
@@ -750,7 +749,10 @@ function AuditorContent() {
           <Card className="border-border/50 shadow-xl bg-card/50 flex-grow flex flex-col overflow-hidden">
             <CardHeader className="pb-4 shrink-0">
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                <div className="flex flex-col gap-1"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle><CardDescription className="text-[10px] uppercase font-bold tracking-widest">Axiom Search: Track Name or UID Match</CardDescription></div>
+                <div className="flex flex-col gap-1">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Search className="h-5 w-5" /> Cloud Inventory</CardTitle>
+                    <CardDescription className="text-[10px] uppercase font-bold tracking-widest">Axiom Search: Track Name or UID Match</CardDescription>
+                </div>
                 <div className="flex wrap items-center gap-2">
                   <Input placeholder="Search tracks or UIDs..." className="h-9 w-[240px] text-xs" value={explorerSearch} onChange={(e) => setFilterSearchText(e.target.value)} />
                   <MultiSelector options={AVAILABLE_GENRES} values={selectedFilterGenres} onValuesChange={setSelectedFilterGenres} placeholder="Genre" className="w-[120px]" />
@@ -871,13 +873,13 @@ function AuditorContent() {
                                         <div className="flex justify-end gap-1">
                                           {editingAxiomId === ax.id ? (
                                               <>
-                                                <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-3.5 w-3.5" /></Button>
-                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-3.5 w-3.5" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={handleSaveAxiomEdits} className="h-7 w-7 text-primary" disabled={isProcessing}><Check className="h-4 w-4" /></Button>
+                                                <Button size="icon" variant="ghost" onClick={() => { setEditingAxiomId(null); setEditAxiomData(null); }} className="h-7 w-7 text-muted-foreground"><X className="h-4 w-4" /></Button>
                                               </>
                                           ) : (
                                               <>
                                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-primary" onClick={() => { setEditingAxiomId(ax.id); setEditAxiomData({...ax}); }}><Edit2 className="h-3.5 w-3.5" /></Button>
-                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-4 w-4 fill-current text-destructive animate-pulse" /> : <Play className="h-4 w-4 fill-current" />}</Button>
+                                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => handlePlayAxiom(ax)}>{playingAxiomId === ax.id ? <Square className="h-3.5 w-3.5 fill-current text-destructive animate-pulse" /> : <Play className="h-3.5 w-3.5 fill-current" />}</Button>
                                                 <Button size="icon" variant="ghost" onClick={() => handleToggleIgnore(ax)} className={cn("h-7 w-7", ax.ignored ? "text-destructive" : "text-muted-foreground")}>{ax.ignored ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}</Button>
                                                 <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDeleteAxiom(ax.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                                               </>
@@ -901,7 +903,10 @@ function AuditorContent() {
         <TabsContent value="genetic" className="flex-grow space-y-6 m-0 overflow-hidden flex flex-col">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow overflow-hidden">
                 <Card className="lg:col-span-2 border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
-                    <CardHeader className="pb-2 shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle></CardHeader>
+                    <CardHeader className="pb-2 shrink-0">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><TrendingUp className="h-5 w-5" /> Genetic Spectrum</CardTitle>
+                        <CardDescription className="sr-only">Multi-dimensional radar chart of heritage dynasties.</CardDescription>
+                    </CardHeader>
                     <CardContent className="flex-grow p-4 pt-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
@@ -916,7 +921,10 @@ function AuditorContent() {
                     </CardContent>
                 </Card>
                 <Card className="border-border/50 shadow-xl bg-card/50 flex flex-col overflow-hidden">
-                    <CardHeader className="pb-2 shrink-0"><CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle></CardHeader>
+                    <CardHeader className="pb-2 shrink-0">
+                        <CardTitle className="text-xs font-black uppercase tracking-tighter text-muted-foreground">Genotype Distribution</CardTitle>
+                        <CardDescription className="sr-only">Bar progress chart of dynasty presence in pool.</CardDescription>
+                    </CardHeader>
                     <CardContent className="flex-grow overflow-hidden"><ScrollArea className="h-full px-4"><div className="space-y-3 pb-4">{radarData.map(dyn => (<div key={dyn.id} className="space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full" style={{ backgroundColor: dyn.color }} /><span className="text-[10px] font-black uppercase">{dyn.label}</span></div><span className="text-[10px] font-mono opacity-60">{dyn.count}</span></div><Progress value={(dyn.count / (globalStats.total || 1)) * 100} className="h-1 bg-muted" style={{ "--progress-color": dyn.color } as any} /></div>))}</div></ScrollArea></CardContent>
                 </Card>
             </div>
@@ -924,7 +932,10 @@ function AuditorContent() {
 
         <TabsContent value="masterpieces" className="flex-grow m-0 overflow-hidden flex flex-col">
           <Card className="border-border/50 shadow-xl bg-card/50 flex-grow overflow-hidden flex flex-col">
-              <CardHeader className="shrink-0"><CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Collection</CardTitle></CardHeader>
+              <CardHeader className="shrink-0">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-primary"><Heart className="h-5 w-5" /> Masterpieces Collection</CardTitle>
+                  <CardDescription className="sr-only">Gallery of user-saved and arbiter-found musical states.</CardDescription>
+              </CardHeader>
               <CardContent className="flex-grow overflow-hidden p-6"><ScrollArea className="h-full">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-1">
                   {globalMasterpieces?.map((m: any) => (
@@ -1027,7 +1038,10 @@ function AuditorContent() {
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="border-primary/20 bg-card">
-          <AlertDialogHeader><AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Confirm Execution"}</AlertDialogTitle><AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and permanent."}</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogHeader>
+              <AlertDialogTitle className="text-primary font-black uppercase tracking-tight">{confirmConfig?.title || "Confirm Execution"}</AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground font-bold">{confirmConfig?.desc || "This action is critical and permanent."}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter><AlertDialogCancel className="uppercase text-[10px] font-black">Abort</AlertDialogCancel><AlertDialogAction onClick={() => { confirmConfig?.action(); setConfirmOpen(false); }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 uppercase text-[10px] font-black">Execute Purge</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

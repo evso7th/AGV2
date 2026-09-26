@@ -5,8 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.5 — "Pure Cleanup".
- * #ЗАЧЕМ: Принудительный разрыв связей AudioNode при завершении ноты.
+ * @fileOverview Сэмплер Black Acoustic V5.6 — "Extreme Cleanup".
+ * #ЗАЧЕМ: Принудительная очистка связей графа в onended.
  */
 
 function makeAcousticWarmthCurve() {
@@ -273,6 +273,7 @@ export class BlackGuitarSampler {
         source.onended = () => { 
             this.activeSources.delete(source); 
             try { 
+                source.stop();
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e) {} 
@@ -280,9 +281,9 @@ export class BlackGuitarSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(0); source.disconnect(); } catch(e) {} });
+        this.activeSources.forEach(source => { try { source.stop(); source.disconnect(); } catch(e) {} });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.bodyFilter.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
 }

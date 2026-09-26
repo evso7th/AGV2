@@ -5,7 +5,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.3 — "Pure Cleanup".
+ * @fileOverview Сэмплер Telecaster V5.4 — "Pure Cleanup".
  * #ЗАЧЕМ: Принудительный разрыв связей AudioNode при завершении ноты.
  */
 
@@ -203,6 +203,7 @@ export class TelecasterGuitarSampler {
         source.onended = () => {
             this.activeSources.delete(source);
             try { 
+                source.stop();
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e){}
@@ -228,9 +229,9 @@ export class TelecasterGuitarSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(0); source.disconnect(); } catch(e) {} });
+        this.activeSources.forEach(source => { try { source.stop(); source.disconnect(); } catch(e) {} });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
 }

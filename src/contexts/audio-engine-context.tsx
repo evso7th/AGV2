@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.6 — "Lookahead Expansion".
- * #ЗАЧЕМ: Увеличение буфера безопасности до 0.35с для предотвращения заикания в тяжелых жанрах.
+ * @fileOverview Audio Engine Context V77.7 — "Hardened Scheduling".
+ * #ЗАЧЕМ: Устранение "фантомных" звуков при регенерации и оптимизация ресурсов.
  */
 'use client';
 
@@ -88,6 +88,7 @@ interface AudioEngineContextType {
   calculateMasterFade: (target: number, duration: number) => void;
   calculateMasterFadeOut: (target: number, duration: number) => void;
   calculateMasterFadeOutFixed: (target: number, duration: number) => void;
+  calculateMasterFadeOutAdaptive: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -594,12 +595,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       dnaSourcePreference, setDnaSourcePreference,
       setIsPlaying: handleTogglePlay,
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
-      refreshCloudAxioms, syncDna: refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => { setCurrentBar(0); workerRef.current?.postMessage({ command: 'reset' }); },
+      refreshCloudAxioms, syncDna: refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => { 
+          stopAllSounds(); 
+          if(audioContextRef.current) nextBarTimeRef.current = audioContextRef.current.currentTime + 0.1;
+          setCurrentBar(0); 
+          workerRef.current?.postMessage({ command: 'reset' }); 
+      },
       setVolume: setVolumeCallback, 
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const p = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(p || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(p || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(p || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(p || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
-      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {},
+      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {}, calculateMasterFadeOutAdaptive: () => {},
       startRecording: (prefix?: string) => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${prefix ? prefix + '_' : ''}AuraGroove_${new Date().toISOString().split('T')[0]}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecordingState(true); }, 
       stopRecording: () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); setIsRecordingState(false); } },
       toggleBroadcast: toggleBroadcastCallback, triggerVinyl,

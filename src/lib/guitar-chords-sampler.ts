@@ -5,8 +5,8 @@ import { vault } from './audio-cache';
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * #ЗАЧЕМ: Сэмплер аккордов V4.5 — "Vault Integration".
- * #ЧТО: ПЛАН №2220 — Подключение оффлайн-кэша.
+ * #ЗАЧЕМ: Сэмплер аккордов V4.6 — "Pure Disconnect".
+ * #ЧТО: Оптимизация кэша и принудительное разъединение нод.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -17,7 +17,8 @@ export class GuitarChordsSampler {
     private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
-    private readonly MAX_CACHED_CHORDS = 50;
+    private activeSources: Set<AudioBufferSourceNode> = new Set();
+    private readonly MAX_CACHED_CHORDS = 24; // Lowered for memory safety
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -41,19 +42,14 @@ export class GuitarChordsSampler {
         if (minimal && this.isInitialized) return;
         
         this.isLoading = true;
-        
         const coreChords = ['C', 'Cm', 'G', 'D', 'Dm', 'A', 'Am', 'E', 'Em', 'F', 'Bm'];
-        
         const loadTasks: Promise<void>[] = [];
         for (const chordName in CHORD_SAMPLE_MAP) {
             if (minimal && !coreChords.includes(chordName)) continue;
-            
             const urls = CHORD_SAMPLE_MAP[chordName];
             const targetUrls = minimal ? [urls[0]] : urls;
-            
             loadTasks.push(this.loadChordBuffers(chordName, targetUrls));
         }
-
         await Promise.all(loadTasks);
         this.isInitialized = true;
         if (!minimal) this.isFullyInitialized = true;
@@ -69,43 +65,34 @@ export class GuitarChordsSampler {
             this.samples.set(chordName, []);
         }
         const bufferList = this.samples.get(chordName)!;
-        
         for (const url of urls) {
             if (this.loadedUrls.has(url)) continue;
             try {
                 const arrayBuffer = await vault.fetch(url);
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
-                bufferList.push(audioBuffer);
-                this.loadedUrls.add(url);
-            } catch (e) {
-                console.warn(`[GuitarChordsSampler] Failed to load: ${url}`);
-            }
+                if (arrayBuffer) {
+                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+                    bufferList.push(audioBuffer);
+                    this.loadedUrls.add(url);
+                }
+            } catch (e) {}
         }
     }
     
     public schedule(notes: (NoteEvent & { chordName?: string })[], startTime: number) {
         if (!this.isInitialized || notes.length === 0) return;
-
         notes.forEach(note => {
             const matchedName = this.findBestChordMatch(note.chordName || '');
             if (!matchedName) return;
-
             const buffers = this.samples.get(matchedName);
             if (buffers && buffers.length > 0) {
                 const buffer = buffers[Math.floor(Math.random() * buffers.length)];
-                
                 const source = this.audioContext.createBufferSource();
                 source.buffer = buffer;
-                
                 const noteGain = this.audioContext.createGain();
                 noteGain.gain.value = note.velocity ?? 0.7;
-                
-                source.connect(noteGain);
-                noteGain.connect(this.preamp);
-
+                source.connect(noteGain).connect(this.preamp);
                 const t0 = startTime + note.time;
                 source.start(t0);
-
                 const CAP = 5.0, FADE = 0.6;
                 if (buffer.duration > CAP) {
                     const vel = Math.max(note.velocity ?? 0.7, 0.0001);
@@ -113,9 +100,12 @@ export class GuitarChordsSampler {
                     noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + CAP);
                     source.stop(t0 + CAP + 0.05);
                 }
-
+                this.activeSources.add(source);
                 source.onended = () => {
-                    try { noteGain.disconnect(); } catch(e) {}
+                    this.activeSources.delete(source);
+                    try { source.stop(); } catch(e) {}
+                    source.disconnect();
+                    noteGain.disconnect();
                 };
             }
         });
@@ -124,32 +114,26 @@ export class GuitarChordsSampler {
     private findBestChordMatch(requestedChord: string): string | null {
         if (!requestedChord) return null;
         const target = requestedChord.trim();
-        
         if (this.samples.has(target)) return target;
-
         let simplified = target.replace(/(m?)(maj|dim|aug|sus|add|dim)?\d+$/, '$1');
         if (this.samples.has(simplified)) return simplified;
-
         if (target.includes('m') && !simplified.endsWith('m')) {
             const minorBase = simplified + 'm';
             if (this.samples.has(minorBase)) return minorBase;
         }
-
         const root = target.match(/^[A-G][#b]?/)?.[0];
         if (root && this.samples.has(root)) return root;
-
         return null;
     }
 
     public setVolume(volume: number) {
-        const now = this.audioContext.currentTime;
-        this.output.gain.setTargetAtTime(volume, now, 0.02);
+        this.output.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.02);
     }
 
-    public stopAll() {}
-
-    public dispose() {
-        this.preamp.disconnect();
-        this.output.disconnect();
+    public stopAll() {
+        this.activeSources.forEach(source => { try { source.stop(); } catch(e) {} source.disconnect(); });
+        this.activeSources.clear();
     }
+
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.output.disconnect(); }
 }

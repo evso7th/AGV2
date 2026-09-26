@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview UI AuraGroove V5.5 — "Accessibility Fix".
  * #ЗАЧЕМ: Устранение ворнингов "Missing Description".
