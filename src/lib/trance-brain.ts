@@ -1,6 +1,6 @@
 /**
-@fileOverview Trance Brain V28.0 — "Hard Golden Filter".
-#ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Полный пропуск ghost-нот для экономии ресурсов CPU.
+@fileOverview Trance Brain V29.0 — "Strict Golden Filter".
+#ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Принудительный пропуск нот вне сетки [0,3,6,9] при высокой плотности.
 */
 import {
   FractalEvent,
@@ -99,6 +99,7 @@ export class TranceBrain {
   };
 
   private readonly MELODY_CEILING = 71;
+  private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
   constructor(
     seed: number,
@@ -148,8 +149,8 @@ export class TranceBrain {
   private createSeededRandom(seed: number) {
     let state = seed;
     const next = () => {
-      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
-      return state / Math.pow(2, 32);
+      state = (state * 1664525 + 1013904223) % 2 ** 32;
+      return state / 2 ** 32;
     };
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
@@ -506,17 +507,17 @@ export class TranceBrain {
     const barOffset = mosaicBar * (TICKS_PER_BAR / timeScale);
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
     const goldenTicks = [0, 3, 6, 9];
-    const useNarrativeFilter = barNotes.length > 3;
-
-    // #ЗАЧЕМ: Экономия ресурсов в Нейроспейс. Пропускаем ghost-ноты.
-    const finalNotes = useNarrativeFilter 
+    
+    // #ЗАЧЕМ: Экономия ресурсов в Нейроспейс. Принудительный фильтр при плотности > 3.
+    const useGoldenFilter = barNotes.length > 3;
+    const finalNotes = useGoldenFilter 
         ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
         : barNotes;
 
     return finalNotes.map((n) => {
       const relativeTick = n.t - barOffset;
       let weight = 0.8;
-      let durationScale = useNarrativeFilter ? 1.5 : 1.0;
+      let durationScale = useGoldenFilter ? 1.5 : 1.0;
       
       const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
       return {
@@ -535,7 +536,16 @@ export class TranceBrain {
   private renderGapArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
     const scale = [0, 3, 7, 10, 12];
-    return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.random.next() < 0.4).map(t => ({
+    const goldenTicks = [0, 3, 6, 9];
+    
+    const rawEvents = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.random.next() < 0.4);
+    
+    // #ЗАЧЕМ: Золотая сетка для арпеджио при высокой плотности.
+    const filteredTicks = rawEvents.length > 3 
+        ? rawEvents.filter(t => goldenTicks.some(gt => Math.abs(t - gt) < 0.1))
+        : rawEvents;
+
+    return filteredTicks.map(t => ({
         type: 'melody',
         note: this.wrapMelody(root + scale[this.random.nextInt(scale.length)]),
         time: t * TICK_TO_BEAT,
@@ -554,10 +564,9 @@ export class TranceBrain {
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
     
     const goldenTicks = [0, 3, 6, 9];
-    const useNarrativeFilter = barNotes.length > 3;
-    
-    // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе.
-    const finalNotes = useNarrativeFilter 
+    // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе при высокой плотности.
+    const useGoldenFilter = barNotes.length > 3;
+    const finalNotes = useGoldenFilter 
         ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
         : barNotes;
 
