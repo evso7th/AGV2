@@ -1,7 +1,7 @@
 
 /**
- * @fileOverview Welcome Page V3.8 — "Atmospheric Background".
- * #ЗАЧЕМ: Возврат орбиталей с блюром в качестве фона для стартового экрана.
+ * @fileOverview Welcome Page V3.9 — "Internal Orbital Layering".
+ * #ЗАЧЕМ: Перенос орбиталей внутрь карточки для создания эффекта глубины.
  */
 'use client';
 
@@ -34,16 +34,6 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background text-foreground overflow-hidden">
       
-      {/* Background Orbitals Layer */}
-      <div className="absolute inset-0 z-0 opacity-40 pointer-events-none">
-        <OrbitalAnimation 
-          isPlaying={true} 
-          genre="ambient" 
-          tension={0.5} 
-          size="600px" 
-        />
-      </div>
-
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes marquee {
           0% { left: 100%; }
@@ -58,8 +48,18 @@ export default function Home() {
 
       <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
         
-        {/* Subtle Background Glow */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none z-0" />
+        {/* Internal Orbital Animation Layer - Bottom-most */}
+        <div className="absolute inset-0 z-0 opacity-50 pointer-events-none flex items-center justify-center">
+          <OrbitalAnimation 
+            isPlaying={true} 
+            genre="ambient" 
+            tension={0.5} 
+            size="450px" 
+          />
+        </div>
+
+        {/* Subtle Background Glow Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none z-1" />
 
         <CardHeader className="space-y-1 relative z-10 pt-8">
           <div className="mx-auto mb-4">
