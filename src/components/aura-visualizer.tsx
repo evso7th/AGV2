@@ -20,19 +20,30 @@ interface AuraVisualizerProps {
     className?: string;
 }
 
+const COVER_IMAGES = [
+  "/assets/cover.jpg",
+  "/assets/images/cover_reggae_2.png",
+  "/assets/images/cover_reggae.png",
+  "/assets/images/cyber_blues.png",
+  "/assets/images/dark_trance.png"
+];
+
 /**
- * @fileOverview Aura Visualizer V18.0 — "Static Cover Mode".
- * #ЗАЧЕМ: ПЛАН №1510. Добавление 4-го режима: статическая обложка.
+ * @fileOverview Aura Visualizer V19.0 — "Cinematic Cover Rotation".
+ * #ЗАЧЕМ: ПЛАН №1520. Внедрение ротации обложек с эффектом плавного кроссфейда и зума.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const isMobile = useIsMobile();
     const [mode, setMode] = useState<ViewMode>('nebula');
     const [feedback, setFeedback] = useState<string | null>(null);
 
+    // Rotation State
+    const [imageIndex, setImageIndex] = useState(0);
+    const [isFading, setIsFading] = useState(false);
+
     // Initial load and auto-fallback for mobile
     useEffect(() => {
         const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-        // Проверка валидности сохраненного режима, теперь включая 'cover'
         let initialMode: ViewMode = (['orbital', 'ether', 'nebula', 'cover'].includes(saved)) ? saved : 'nebula';
 
         if (isMobile && initialMode === 'ether') {
@@ -42,10 +53,23 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
         setMode(initialMode);
     }, [isMobile]);
 
+    // Rotation Logic: 1 minute interval
+    useEffect(() => {
+        if (mode !== 'cover' || !isPlaying) return;
+
+        const interval = setInterval(() => {
+            setIsFading(true);
+            setTimeout(() => {
+                setImageIndex(prev => (prev + 1) % COVER_IMAGES.length);
+                setIsFading(false);
+            }, 1000); // Wait for fade out
+        }, 60000); // 1 minute rotation
+
+        return () => clearInterval(interval);
+    }, [mode, isPlaying]);
+
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        
-        // Определение доступных режимов в зависимости от устройства
         const effectiveModes: ViewMode[] = isMobile ? ['orbital', 'nebula', 'cover'] : ['ether', 'orbital', 'nebula', 'cover'];
         
         setMode(prev => {
@@ -99,19 +123,29 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                 />
             )}
 
-            {/* 3. STATIC COVER MODE */}
+            {/* 3. CINEMATIC COVER ROTATION MODE */}
             {mode === 'cover' && (
                 <div className="absolute inset-0 flex items-center justify-center p-4 animate-in zoom-in-95 duration-700">
                     <div className="relative w-full h-full shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden border border-white/10 bg-black/40">
-                        <Image 
-                            src="/assets/cover.jpg" 
-                            alt="AuraGroove Cover" 
-                            fill
-                            className="object-cover opacity-90 transition-opacity duration-1000"
-                            priority
-                        />
-                        {/* Тонкий виньеточный градиент поверх для глубины */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/30" />
+                        <div 
+                            className={cn(
+                                "relative w-full h-full transition-all duration-[1000ms] ease-in-out",
+                                isFading ? "opacity-0 scale-95 blur-sm" : "opacity-90 scale-100 blur-0"
+                            )}
+                        >
+                            <Image 
+                                src={COVER_IMAGES[imageIndex]} 
+                                alt="AuraGroove Cover" 
+                                fill
+                                className="object-cover transition-transform duration-[20000ms] ease-linear transform scale-100 hover:scale-110"
+                                style={{ 
+                                    animation: isPlaying ? 'slow-zoom 60s infinite alternate linear' : 'none'
+                                }}
+                                priority
+                            />
+                        </div>
+                        {/* Subtle vignette gradient */}
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 pointer-events-none" />
                     </div>
                 </div>
             )}
@@ -124,6 +158,13 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                     </span>
                 </div>
             )}
+
+            <style jsx global>{`
+                @keyframes slow-zoom {
+                    from { transform: scale(1); }
+                    to { transform: scale(1.15); }
+                }
+            `}</style>
         </div>
     );
 }
