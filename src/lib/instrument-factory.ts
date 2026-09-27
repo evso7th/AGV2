@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.1 — "Crystal Low End".
- * #ЗАЧЕМ: 1. Пункт 4 плана: Гарантированный старт с фазы 0 для идентичности баса.
+ * @fileOverview Центральная фабрика инструментов V12.2 — "Strict Bass Monophony".
+ * #ЗАЧЕМ: 1. Устранение гудения через принудительное прерывание старой ноты баса (Моно-режим).
  *         2. Пункт 5 плана: Установка HPF барьера 150 Гц для всех не-басовых синтов.
  */
 
@@ -192,7 +192,24 @@ const createIndependentVoice = (
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
 
-    // #ЗАЧЕМ: Пункт 4. Принудительный старт с 0.
+    // #ЗАЧЕМ: МОНОФОНИЧЕСКИЙ ДИКТАТ БАСА.
+    // Если это бас, убиваем все предыдущие голоса ЭТОГО инструмента перед запуском нового.
+    if (type === 'bass') {
+        globalActiveVoices.forEach(v => {
+            if (v.instrumentId === instrumentId && !v.disposed) {
+                const vNode = v.voiceState?.node;
+                if (vNode) {
+                    try {
+                        vNode.gain.cancelScheduledValues(now);
+                        // Экстренный фейд-аут за 20мс для устранения акустической интерференции
+                        vNode.gain.setTargetAtTime(0, now, 0.015);
+                        v.expirationTime = now + 0.1;
+                    } catch (e) {}
+                }
+            }
+        });
+    }
+
     const voiceGain = ctx.createGain();
     voiceGain.gain.setValueAtTime(0, now);
     const nodes: AudioNode[] = [voiceGain];
@@ -261,7 +278,6 @@ const createIndependentVoice = (
     chainHead = filter;
     nodes.push(filter);
 
-    // #ЗАЧЕМ: LFO с принудительной остановкой.
     if (preset.lfo && preset.lfo.amount > 0) {
         const lfo = ctx.createOscillator();
         lfo.type = preset.lfo.shape || 'sine';
@@ -334,7 +350,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const bus = ctx.createGain();
     const panner = ctx.createStereoPanner();
     
-    // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 30 : 150;
 
