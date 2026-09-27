@@ -1,7 +1,8 @@
 /**
- * @fileOverview Dark Foundry Brain V6.2 — "Tail Suppression Protocol".
- * #ЗАЧЕМ: 1. Разряжение аккомпанемента для устранения перегруза.
- *         2. Сокращение длительностей и релизов в канале Pad.
+ * @fileOverview Dark Foundry Brain V6.3 — "Restoration & Hardening".
+ * #ЗАЧЕМ: 1. Восстановление выпавшего метода selectNextAxiom.
+ *         2. Исправление опечаток в параметрах исполнения.
+ *         3. Сохранение протоколов разряжения аккомпанемента.
  */
 
 import type {
@@ -61,7 +62,6 @@ export class DarkFoundryBrain {
     private currentAxiomMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
-    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
@@ -118,15 +118,88 @@ export class DarkFoundryBrain {
         return Math.abs(barsElapsed + startOffset) % totalBars;
     }
 
+    /** #ЗАЧЕМ: Логика выбора аксиом для индустриального транса. */
+    private selectNextAxiom(navInfo: NavigationInfo, dna: SuiteDNA, epoch: number): number | undefined {
+        this.currentTheme = null;
+        this.currentBassTheme = null;
+        this.currentAccompAxioms = [];
+
+        if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
+
+        const poolToUse = this.cloudAxioms.filter(ax => ax.ignored !== true);
+        let effectiveAnchor = this.activeAnchorId ? normalizeStr(this.activeAnchorId) : this.sessionAnchorId;
+        
+        let filteredPool = effectiveAnchor 
+            ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
+            : poolToUse.filter(ax => {
+                const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
+                return axGenres.some(g => ['trance', 'psybient', 'foundry'].includes(g));
+            });
+
+        if (filteredPool.length > 0) {
+            let basePool = filteredPool.filter(ax => ax.role === 'melody');
+            if (basePool.length === 0) basePool = filteredPool.filter(ax => ax.role.toLowerCase().includes('accomp'));
+
+            if (basePool.length > 0) {
+                if (!effectiveAnchor) {
+                    const first = basePool[calculateMusiNum(this.seed, 13, 0, basePool.length)];
+                    if (first) {
+                        this.sessionAnchorId = normalizeStr(first.compositionId);
+                        effectiveAnchor = this.sessionAnchorId;
+                        filteredPool = poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor);
+                        basePool = filteredPool.filter(ax => ax.role === 'melody' || ax.role.toLowerCase().includes('accomp'));
+                    }
+                }
+
+                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                
+                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
+                
+                let selected = null;
+                if (freshLicks.length > 0) {
+                    selected = freshLicks[this.rng.nextInt(freshLicks.length)];
+                } else if (sameOffsetPool.length > 0) {
+                    selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
+                } else {
+                    selected = basePool[this.rng.nextInt(basePool.length)];
+                }
+
+                if (selected) {
+                    this.lickHistory.push(selected.id);
+                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+
+                    this.currentTrackName = selected.compositionId;
+                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
+                    const cid = normalizeStr(selected.compositionId);
+                    
+                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
+                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
+
+                    this.currentAccompAxioms = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset)
+                        .map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
+
+                    const baseBars = selected.bars || 4;
+                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
+                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
+                    this.soloistBusyUntilBar = epoch + baseBars;
+                    return selected.nativeBpm || undefined;
+                }
+            }
+        }
+        this.currentTrackName = 'Algorithmic';
+        this.soloistBusyUntilBar = epoch + 4;
+        return undefined;
+    }
+
     private applyMutationLogic(phrase: any[], tension: number, seed: number): any[] {
         let notes = [...phrase];
         if (this.currentMutationType === 'inversion') notes = invertPhrase(notes);
         else if (this.currentMutationType === 'retrograde') notes = retrogradePhrase(notes);
         else if (this.currentMutationType === 'jitter') notes = applyRhythmicJitter(notes, seed);
-        else if (this.currentMutationType === 'phase_shift') {
-            notes = notes.map(n => ({ ...n, t: n.t + 1.5 }));
-        }
-
+        
         if (this.currentMutationType === 'density_guard' && tension < 0.4) {
             notes = notes.filter((_, i) => i % 2 === 0);
         }
@@ -185,7 +258,7 @@ export class DarkFoundryBrain {
             events.push(...b); 
         }
 
-        // 3. SYNTHESIS: MELODY & ACCOMPANIMENT
+        // 3. SYNTHESIS
         let melodyEvents: FractalEvent[] = [];
         if (hints.melody) {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
@@ -205,12 +278,11 @@ export class DarkFoundryBrain {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
                 
                 if (target === 'pianoAccompaniment' || target === 'accompaniment') {
-                    // #ЗАЧЕМ: Принудительное разряжение наследия для предотвращения гула.
                     renders = renders.filter(n => n.duration / TICK_TO_BEAT > 1.5 || this.isGolden(n.time / TICK_TO_BEAT));
                     renders.forEach(n => {
                         n.note = this.wrapMelody(n.note);
-                        n.weight *= 0.75; // Снижение веса для Heritage пэдов
-                        n.duration = Math.min(n.duration, 2.5); // Лимит хвоста
+                        n.weight *= 0.75;
+                        n.duration = Math.min(n.duration, 2.5);
                     }); 
                 }
                 
@@ -240,7 +312,6 @@ export class DarkFoundryBrain {
             }
         }
 
-        // 4. ATMOSPHERIC
         events.push(...this.renderAtmosphericEvents(epoch, tension));
 
         return {
@@ -342,30 +413,28 @@ export class DarkFoundryBrain {
             : barNotes;
 
         return finalNotes.map(n => {
-            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
             const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
             return {
                 type, note: finalNote,
-                time: (n.t - offset) * TICK_TO_BEAT, duration: Math.min(n.d * TICK_TO_BEAT, 2.5), weight: 0.65, technique: 'swell', dynamics: 'p', phrasing: 'legate'
+                time: (n.t - offset) * TICK_TO_BEAT, duration: Math.min(n.d * TICK_TO_BEAT, 2.5), weight: 0.65, technique: 'swell', dynamics: 'p', phrasing: 'legato'
             };
         });
     }
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.microTransposition;
-        // #ЗАЧЕМ: ПЛАН №1951. Разряжение гармоники (только тоника и квинта).
         const intervals = [0, 7]; 
         const events: FractalEvent[] = [];
         
         this.GOLDEN_TICKS.forEach(t => {
-            // #ЗАЧЕМ: Снижение шанса удара для освобождения headroom.
             if (this.rng.chance(45 + tension * 40)) {
                 intervals.forEach(interval => {
                     events.push({
                         type: 'accompaniment',
                         note: this.constrainAccompanimentOctave(root + interval),
                         time: t * TICK_TO_BEAT,
-                        duration: 1.4 * TICK_TO_BEAT, // Сокращено с 2.2 для предотвращения наложений
+                        duration: 1.4 * TICK_TO_BEAT,
                         weight: 0.6 + (tension * 0.1),
                         technique: 'swell',
                         dynamics: 'p',
@@ -428,9 +497,7 @@ export class DarkFoundryBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = [0, 7, 12, 19];
-        
         const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40));
-        
         const filteredTicks = rawTicks.length > 3 
             ? rawTicks.filter(t => this.GOLDEN_TICKS.some(gt => Math.abs(t - gt) < 0.1))
             : rawTicks;
@@ -450,7 +517,8 @@ export class DarkFoundryBrain {
             });
         }
         
-        const currentTime = epoch * 3.0; 
+        const barDuration = (60 / 82) * 4;
+        const currentTime = epoch * barDuration; 
         if (currentTime - this.lastSparkleTime >= 16) {
             const sparkleChance = 34 + (tension * 22);
             if (this.rng.chance(sparkleChance)) {
