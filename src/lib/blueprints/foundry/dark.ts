@@ -2,8 +2,8 @@
 import type { MusicBlueprint } from '@/types/music';
 
 /**
- * @fileOverview Foundry Dark Blueprint V1.2 — "Sparkle Saturation".
- * #ЗАЧЕМ: ПЛАН №1986. Троекратное увеличение плотности текстур.
+ * @fileOverview Foundry Dark Blueprint V1.3 — "Texture Thinning".
+ * #ЗАЧЕМ: ПЛАН №1987. Разряжение плотности спарклов на 25% для прозрачности микса.
  */
 export const DarkFoundryBlueprint: MusicBlueprint = {
     id: 'dark_foundry',
@@ -33,7 +33,8 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.1, max: 0.3 } },
                     sfx: { eventProbability: 0.3, categories: [{ name: 'dark', weight: 1.0 }] },
-                    sparkles: { density: { min: 0.4, max: 0.6 } }
+                    // #ЗАЧЕМ: ПЛАН №1987. Снижено с 0.4/0.6.
+                    sparkles: { density: { min: 0.3, max: 0.45 } }
                 },
                 bundles: [{ id: 'FO_DARK_INTRO1', name: 'Start', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
@@ -50,7 +51,8 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.6, max: 0.8 }, kickVolume: 1.1 },
                     sfx: { eventProbability: 0.4, categories: [{ name: 'dark', weight: 0.8 }, { name: 'voice', weight: 0.2 }] },
-                    sparkles: { density: { min: 0.6, max: 0.8 } }
+                    // #ЗАЧЕМ: Снижено с 0.6/0.8.
+                    sparkles: { density: { min: 0.45, max: 0.6 } }
                 },
                 bundles: [{ id: 'BUILD_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: { type: 'roll', duration: 1, parameters: { crescendo: true } },
@@ -66,7 +68,8 @@ export const DarkFoundryBlueprint: MusicBlueprint = {
                 instrumentRules: { 
                     drums: { pattern: 'composer', density: { min: 0.7, max: 0.9 }, kickVolume: 1.2 },
                     sfx: { eventProbability: 0.5, categories: [{ name: 'dark', weight: 0.5 }, { name: 'voice', weight: 0.5 }] },
-                    sparkles: { density: { min: 0.8, max: 1.0 } }
+                    // #ЗАЧЕМ: Снижено с 0.8/1.0.
+                    sparkles: { density: { min: 0.6, max: 0.75 } }
                 },
                 bundles: [{ id: 'PEAK_BUNDLE_1', name: 'Main', duration: { percent: 100 }, characteristics: {}, phrases: {} }],
                 outroFill: null,
