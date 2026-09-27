@@ -2,13 +2,13 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { OrbitalAnimation } from './orbital-animation';
+import Image from 'next/image';
 import { LiquidNebula } from './liquid-nebula';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
-type ViewMode = 'orbital' | 'ether' | 'nebula';
+type ViewMode = 'nebula' | 'cover';
 
 interface AuraVisualizerProps {
     genre: Genre;
@@ -19,44 +19,58 @@ interface AuraVisualizerProps {
     className?: string;
 }
 
+const COVER_IMAGES = [
+  "/assets/cover.jpg",
+  "/assets/images/cover_reggae_2.png",
+  "/assets/images/cover_reggae.png",
+  "/assets/images/cyber_blues.png",
+  "/assets/images/dark_trance.png"
+];
+
 /**
- * @fileOverview Aura Visualizer V17.2 — "Default Mode Update".
- * #ЗАЧЕМ: ПЛАН №1485. Установка Nebula как основного режима по умолчанию.
+ * @fileOverview Aura Visualizer V20.0 — "Nebula & Cover Only".
+ * #ЗАЧЕМ: ПЛАН №2500. Удаление орбиталей, возврат блюра в туманность и ротация обложек.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const isMobile = useIsMobile();
     const [mode, setMode] = useState<ViewMode>('nebula');
     const [feedback, setFeedback] = useState<string | null>(null);
 
-    // Initial load and auto-fallback for mobile
+    // Rotation State
+    const [imageIndex, setImageIndex] = useState(0);
+    const [isFading, setIsFading] = useState(false);
+
+    // Initial load
     useEffect(() => {
         const saved = localStorage.getItem('AG_ViewMode') as ViewMode;
-        // #ЗАЧЕМ: ПЛАН №1485. Теперь дефолт — nebula.
-        let initialMode: ViewMode = (['orbital', 'ether', 'nebula'].includes(saved)) ? saved : 'nebula';
-
-        if (isMobile && initialMode === 'ether') {
-            initialMode = 'orbital';
-        }
-        
+        const initialMode: ViewMode = (['nebula', 'cover'].includes(saved)) ? saved : 'nebula';
         setMode(initialMode);
-    }, [isMobile]);
+    }, []);
+
+    // Rotation Logic: 1 minute interval
+    useEffect(() => {
+        if (mode !== 'cover' || !isPlaying) return;
+
+        const interval = setInterval(() => {
+            setIsFading(true);
+            setTimeout(() => {
+                setImageIndex(prev => (prev + 1) % COVER_IMAGES.length);
+                setIsFading(false);
+            }, 1000); 
+        }, 60000); 
+
+        return () => clearInterval(interval);
+    }, [mode, isPlaying]);
 
     const handleCycleMode = useCallback((e: React.MouseEvent | React.TouchEvent) => {
         e.stopPropagation();
-        
-        // Define effective modes based on device performance capability
-        const effectiveModes: ViewMode[] = isMobile ? ['orbital', 'nebula'] : ['ether', 'orbital', 'nebula'];
-        
         setMode(prev => {
-            const currentIdx = effectiveModes.indexOf(prev);
-            const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % effectiveModes.length;
-            const next = effectiveModes[nextIdx];
-            
+            const next: ViewMode = prev === 'nebula' ? 'cover' : 'nebula';
             localStorage.setItem('AG_ViewMode', next);
             setFeedback(next.toUpperCase());
             return next;
         });
-    }, [isMobile]);
+    }, []);
 
     useEffect(() => {
         if (feedback) {
@@ -67,35 +81,46 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
 
     return (
         <div 
-            className={cn("relative cursor-pointer select-none overflow-visible", className)} 
+            className={cn("relative cursor-pointer select-none overflow-visible flex items-center justify-center", className)} 
             onDoubleClick={handleCycleMode}
             style={{ width: size || '100%', height: size || '100%', background: 'transparent' }}
         >
-            {/* BACKGROUND LAYER: NEBULA FOG */}
-            {(mode === 'ether' || mode === 'nebula') && (
+            {/* 1. NEBULA MODE */}
+            {mode === 'nebula' && (
                 <LiquidNebula 
                     genre={genre} 
                     tension={tension} 
                     isPlaying={isPlaying}
                     tempo={tempo}
-                    isReference={mode === 'nebula'} 
-                    className={cn(
-                        "animate-in fade-in duration-1000",
-                        mode === 'ether' ? "opacity-40" : "opacity-100"
-                    )}
+                    isReference={false} 
+                    className="animate-in fade-in duration-1000 opacity-100"
                 />
             )}
 
-            {/* FOREGROUND LAYER: ORBITAL RINGS */}
-            {(mode === 'ether' || mode === 'orbital') && (
-                <OrbitalAnimation 
-                    genre={genre} 
-                    tension={tension} 
-                    isPlaying={isPlaying} 
-                    tempo={tempo}
-                    size="100%"
-                    className="relative z-10"
-                />
+            {/* 2. CINEMATIC COVER ROTATION MODE */}
+            {mode === 'cover' && (
+                <div className="absolute inset-0 flex items-center justify-center p-4 animate-in zoom-in-95 duration-700">
+                    <div className="relative w-full h-full shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden border border-white/10 bg-black/40">
+                        <div 
+                            className={cn(
+                                "relative w-full h-full transition-all duration-[1000ms] ease-in-out",
+                                isFading ? "opacity-0 scale-95 blur-sm" : "opacity-90 scale-100 blur-0"
+                            )}
+                        >
+                            <Image 
+                                src={COVER_IMAGES[imageIndex]} 
+                                alt="AuraGroove Cover" 
+                                fill
+                                className="object-cover"
+                                style={{ 
+                                    animation: isPlaying ? 'slow-zoom 60s infinite alternate linear' : 'none'
+                                }}
+                                priority
+                            />
+                        </div>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 pointer-events-none" />
+                    </div>
+                </div>
             )}
 
             {/* Mode Feedback Overlay */}
@@ -106,6 +131,13 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                     </span>
                 </div>
             )}
+
+            <style jsx global>{`
+                @keyframes slow-zoom {
+                    from { transform: scale(1); }
+                    to { transform: scale(1.15); }
+                }
+            `}</style>
         </div>
     );
 }

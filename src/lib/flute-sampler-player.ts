@@ -11,8 +11,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер флейты V4.4 — "Vault Integration".
- * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * #ЗАЧЕМ: Сэмплер флейты V4.6 — "The 150Hz Barrier".
  */
 export class FluteSamplerPlayer {
     private audioContext: AudioContext;
@@ -20,6 +19,7 @@ export class FluteSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -27,7 +27,13 @@ export class FluteSamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 1.5;
-        this.preamp.connect(this.outputNode);
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
@@ -119,7 +125,10 @@ export class FluteSamplerPlayer {
 
             source.onended = () => {
                 this.activeSources.delete(source);
+                try { source.stop(); } catch(e) {}
+                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e) {}
+                source.onended = null; // FIX: Nullify
             };
         });
     }
@@ -167,9 +176,10 @@ export class FluteSamplerPlayer {
     public stopAll() {
         this.activeSources.forEach(source => {
             try { source.stop(0); } catch(e) {}
+            try { source.disconnect(); } catch(e) {}
         });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
+    public dispose() { this.stopAll(); this.hpf.disconnect(); this.outputNode.disconnect(); }
 }

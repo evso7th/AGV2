@@ -35,58 +35,63 @@ interface SecurityRuleRequest {
 }
 
 /**
+ * #ЗАЧЕМ: Безопасная сериализация объектов для Safari.
+ * Предотвращает крах при попытке stringify объектов с круговыми ссылками или спец. типами Firebase.
+ */
+function safeStringify(obj: any): string {
+    const cache = new Set();
+    return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) return '[Circular]';
+            // Обход FieldValue и прочих несериализуемых типов SDK
+            if (value.constructor?.name === 'n' || value.constructor?.name === 'FieldValue') {
+                return '[Firestore.FieldValue]';
+            }
+            cache.add(value);
+        }
+        return value;
+    }, 2);
+}
+
+/**
  * Builds a security-rule-compliant auth object from the Firebase User.
- * @param currentUser The currently authenticated Firebase user.
- * @returns An object that mirrors request.auth in security rules, or null.
  */
 function buildAuthObject(currentUser: User | null): FirebaseAuthObject | null {
-  if (!currentUser) {
+  if (!currentUser) return null;
+
+  try {
+    const token: FirebaseAuthToken = {
+      name: currentUser.displayName,
+      email: currentUser.email,
+      email_verified: currentUser.emailVerified,
+      phone_number: currentUser.phoneNumber,
+      sub: currentUser.uid,
+      firebase: {
+        identities: (currentUser.providerData || []).reduce((acc, p) => {
+          if (p.providerId) acc[p.providerId] = [p.uid];
+          return acc;
+        }, {} as Record<string, string[]>),
+        sign_in_provider: currentUser.providerData[0]?.providerId || 'custom',
+        tenant: currentUser.tenantId,
+      },
+    };
+    return { uid: currentUser.uid, token };
+  } catch (e) {
     return null;
   }
-
-  const token: FirebaseAuthToken = {
-    name: currentUser.displayName,
-    email: currentUser.email,
-    email_verified: currentUser.emailVerified,
-    phone_number: currentUser.phoneNumber,
-    sub: currentUser.uid,
-    firebase: {
-      identities: currentUser.providerData.reduce((acc, p) => {
-        if (p.providerId) {
-          acc[p.providerId] = [p.uid];
-        }
-        return acc;
-      }, {} as Record<string, string[]>),
-      sign_in_provider: currentUser.providerData[0]?.providerId || 'custom',
-      tenant: currentUser.tenantId,
-    },
-  };
-
-  return {
-    uid: currentUser.uid,
-    token: token,
-  };
 }
 
 /**
  * Builds the complete, simulated request object for the error message.
- * It safely tries to get the current authenticated user.
- * @param context The context of the failed Firestore operation.
- * @returns A structured request object.
  */
 function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
   let authObject: FirebaseAuthObject | null = null;
   try {
-    // Safely attempt to get the current user.
     const firebaseAuth = getAuth();
-    const currentUser = firebaseAuth.currentUser;
-    if (currentUser) {
-      authObject = buildAuthObject(currentUser);
+    if (firebaseAuth?.currentUser) {
+      authObject = buildAuthObject(firebaseAuth.currentUser);
     }
-  } catch {
-    // This will catch errors if the Firebase app is not yet initialized.
-    // In this case, we'll proceed without auth information.
-  }
+  } catch {}
 
   return {
     auth: authObject,
@@ -98,18 +103,13 @@ function buildRequestObject(context: SecurityRuleContext): SecurityRuleRequest {
 
 /**
  * Builds the final, formatted error message for the LLM.
- * @param requestObject The simulated request object.
- * @returns A string containing the error message and the JSON payload.
  */
 function buildErrorMessage(requestObject: SecurityRuleRequest): string {
-  return `Missing or insufficient permissions: The following request was denied by Firestore Security Rules:
-${JSON.stringify(requestObject, null, 2)}`;
+  return `Missing or insufficient permissions: The following request was denied by Firestore Security Rules:\n${safeStringify(requestObject)}`;
 }
 
 /**
  * A custom error class designed to be consumed by an LLM for debugging.
- * It structures the error information to mimic the request object
- * available in Firestore Security Rules.
  */
 export class FirestorePermissionError extends Error {
   public readonly request: SecurityRuleRequest;
@@ -119,5 +119,10 @@ export class FirestorePermissionError extends Error {
     super(buildErrorMessage(requestObject));
     this.name = 'FirebaseError';
     this.request = requestObject;
+    
+    // Сохраняем стек вызовов
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, FirestorePermissionError);
+    }
   }
 }

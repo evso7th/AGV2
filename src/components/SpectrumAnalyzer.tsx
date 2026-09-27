@@ -8,8 +8,8 @@ interface SpectrumAnalyzerProps {
 }
 
 /**
- * @fileOverview Spectrum Analyzer V1.1 — "30 FPS Update".
- * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты отрисовки до 30 FPS для всех жанров.
+ * @fileOverview Spectrum Analyzer V1.2 — "Strict 30 FPS".
+ * #ЗАЧЕМ: ПЛАН №1805. Принудительное ограничение частоты отрисовки для экономии ресурсов Main Thread.
  */
 export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
     const { analyser, isPlaying } = useAudioEngine();
@@ -27,7 +27,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
         const dataArray = new Uint8Array(bufferLength);
         
         let lastTime = 0;
-        const interval = 1000 / 30; // 30 FPS target
+        const interval = 1000 / 30; // Цель: строго 30 FPS
 
         const draw = (currentTime: number) => {
             requestRef.current = requestAnimationFrame(draw);
@@ -66,12 +66,7 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
                 ctx.roundRect(x, y, barWidth, barHeight, [4, 4, 0, 0]);
                 ctx.fill();
                 
-                if (dataArray[dataIdx] > 200) {
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = 'rgba(168, 85, 247, 0.5)';
-                } else {
-                    ctx.shadowBlur = 0;
-                }
+                // #ЗАЧЕМ: Убраны тени Canvas для производительности
             }
         };
 
@@ -84,10 +79,9 @@ export const SpectrumAnalyzer: React.FC<SpectrumAnalyzerProps> = ({ info }) => {
 
     return (
         <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 rounded-lg p-4 border border-primary/10 relative overflow-hidden">
-            {/* Информационная панель текущего трека */}
             {info && isPlaying && (
                 <div className="absolute top-4 left-4 z-50 pointer-events-none">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/90 bg-black/60 px-2.5 py-1.5 rounded-md border border-primary/20 backdrop-blur-md shadow-xl">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary/90 bg-black/60 px-2.5 py-1.5 rounded-md border border-primary/20 backdrop-blur-md">
                         {info}
                     </p>
                 </div>

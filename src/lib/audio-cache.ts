@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Audio Asset Vault V2.1 — "Robustness Update".
- * #ЗАЧЕМ: Улучшенная поддержка режима Инкогнито и предотвращение ошибок итерации.
+ * @fileOverview Audio Asset Vault V2.5 — "Zero Crash Protocol".
+ * #ЗАЧЕМ: Предотвращение падения инициализации при отсутствии сети и кэша.
  */
 
 import { openDB, type IDBPDatabase } from 'idb';
@@ -26,17 +25,18 @@ class AudioVault {
       });
     } catch (e) {
       this.isBlocked = true;
-      console.warn('[Vault] Storage restricted (Incognito mode?). Offline caching disabled.');
+      console.warn('[Vault] Storage restricted. Caching disabled.');
     }
   }
 
   /**
-   * Умный Fetch Прокси: БД -> Сеть -> БД.
+   * Умный прокси. НИКОГДА не выбрасывает исключение. 
+   * Если файла нет в кэше и нет сети — возвращает null.
    */
-  public async fetch(url: string): Promise<ArrayBuffer> {
+  public async fetch(url: string): Promise<ArrayBuffer | null> {
     await this.init();
     
-    // 1. Пытаемся взять из кэша (если не заблокировано)
+    // 1. Поиск в Vault (IndexedDB)
     if (this.db && !this.isBlocked) {
       try {
         const cached = await this.db.get(STORE_NAME, url);
@@ -44,42 +44,37 @@ class AudioVault {
       } catch (e) {}
     }
 
-    // 2. Если нет в кэше или база недоступна — качаем из сети
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status} fetching ${url}`);
-    
-    const buffer = await response.arrayBuffer();
-    
-    // 3. Сохраняем в фоне (если база доступна)
-    if (this.db && !this.isBlocked) {
-      try {
-        // Используем копию буфера, так как оригинал будет "поглощен" Web Audio API
-        await this.db.put(STORE_NAME, buffer.slice(0), url);
-      } catch (e) {}
+    // 2. Попытка сетевого запроса
+    try {
+        const response = await fetch(url);
+        if (!response.ok) return null;
+        
+        const buffer = await response.arrayBuffer();
+        
+        // 3. Асинхронное сохранение
+        if (this.db && !this.isBlocked) {
+            try {
+                await this.db.put(STORE_NAME, buffer.slice(0), url);
+            } catch (e) {}
+        }
+        return buffer;
+    } catch (networkError) {
+        // Ошибка сети — возвращаем null, чтобы позволить системе работать без этого файла
+        console.warn(`[Vault] Resource unavailable (Offline?): ${url}`);
+        return null;
     }
-
-    return buffer;
   }
 
   public async getCachedCount(): Promise<number> {
     await this.init();
     if (!this.db || this.isBlocked) return 0;
-    try {
-        return await this.db.count(STORE_NAME);
-    } catch (e) {
-        return 0;
-    }
+    try { return await this.db.count(STORE_NAME); } catch (e) { return 0; }
   }
 
   public async get(url: string): Promise<ArrayBuffer | null> {
     await this.init();
     if (!this.db || this.isBlocked) return null;
-    try {
-        const data = await this.db.get(STORE_NAME, url);
-        return data || null;
-    } catch (e) {
-        return null;
-    }
+    try { return await this.db.get(STORE_NAME, url) || null; } catch (e) { return null; }
   }
 
   public async clear(): Promise<void> {

@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Orbital Animation Styles V8.6 — "Ether Calibration".
- * #ЗАЧЕМ: Восстановление динамики масштаба и свечения при минимальной яркости вспышек.
+ * @fileOverview Orbital Animation Styles V10.5 — "Maximum Glow".
+ * #ЗАЧЕМ: ПЛАН №2515. Усиление эффекта свечения и добавление блюра для линий орбит.
  */
 
 .view {
@@ -24,6 +23,7 @@
   height: var(--orbital-size, 300px);
   transform-style: preserve-3d;
   margin: auto;
+  will-change: transform;
 }
 
 .plane.main {
@@ -39,18 +39,13 @@
   border-radius: 100%;
   box-sizing: border-box;
   
-  transition: border-color 2s ease-in-out, box-shadow 2s ease-in-out;
+  /* #ЗАЧЕМ: Линии теперь тоже светятся и слегка размыты */
+  border: 2px solid hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.3);
+  filter: blur(2px);
+  box-shadow: 0 0 15px hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.1);
   
-  border: 1px solid hsla(var(--aura-hue), var(--aura-sat), var(--aura-light), 0.3);
-  box-shadow: 0 0 var(--orbital-glow) var(--orbital-color), inset 0 0 var(--orbital-glow) var(--orbital-color);
+  will-change: transform;
 }
-
-.circle:nth-child(1) { transition-delay: 0s; }
-.circle:nth-child(2) { transition-delay: 0.3s; }
-.circle:nth-child(3) { transition-delay: 0.6s; }
-.circle:nth-child(4) { transition-delay: 0.9s; }
-.circle:nth-child(5) { transition-delay: 1.2s; }
-.circle:nth-child(6) { transition-delay: 1.5s; }
 
 .circle::before,
 .circle::after {
@@ -62,31 +57,18 @@
   right: 0;
   bottom: 0;
   margin: auto;
-  width: 10%;
-  height: 10%;
+  width: 8%; /* Слегка увеличили размер частиц */
+  height: 8%;
   border-radius: 100%;
   background: var(--orbital-color);
   box-sizing: border-box;
   
-  filter: blur(12px);
-  box-shadow: 0 0 calc(var(--orbital-glow) * 2.5) var(--orbital-color);
+  /* #ЗАЧЕМ: Ультра-свечение */
+  filter: blur(var(--orbital-glow, 20px));
+  box-shadow: 0 0 calc(var(--orbital-glow) * 3) var(--orbital-color);
   
-  transition: transform 0.1s cubic-bezier(0.25, 1, 0.5, 1), 
-              filter 0.1s ease-out, 
-              box-shadow 0.1s ease-out,
-              opacity 0.2s ease-in-out,
-              background-color 2s ease-in-out;
-  will-change: transform, filter, box-shadow;
-  opacity: 0.5;
-}
-
-/* --- ETHER CALIBRATION (FULL POWER PULSE, LOW BRIGHTNESS) --- */
-.view[data-pulsing="true"] .circle::before,
-.view[data-pulsing="true"] .circle::after {
-  transform: translateZ(var(--z-offset)) scale(1.35); /* Restored high amplitude */
-  filter: blur(10px) brightness(1.15) saturate(1.1); /* Minimal brightness (+15%) */
-  box-shadow: 0 0 calc(var(--orbital-glow) * 4.5) var(--orbital-color); /* Restored heavy glow */
-  opacity: 0.9;
+  will-change: transform;
+  opacity: 0.9; /* Больше плотности */
 }
 
 .circle::before {

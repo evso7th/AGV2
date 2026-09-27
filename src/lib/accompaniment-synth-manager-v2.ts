@@ -57,12 +57,14 @@ export class AccompanimentSynthManagerV2 {
         const controller = new AbortController();
         this.cleanupControllers.set(id, controller);
 
-        setTimeout(() => {
-            if (!controller.signal.aborted) {
-                try { inst.disconnect(); } catch (e) {}
-                this.cleanupControllers.delete(id);
-            }
-        }, delayMs, controller.signal);
+        const timeoutId = setTimeout(() => {
+            try { inst.disconnect(); } catch (e) {}
+            this.cleanupControllers.delete(id);
+        }, delayMs);
+
+        controller.signal.addEventListener('abort', () => {
+            clearTimeout(timeoutId);
+        }, { once: true });
     }
     
     private async loadInstrument(presetName: string, instrumentType: 'synth' | 'organ' | 'guitar' = 'synth') {

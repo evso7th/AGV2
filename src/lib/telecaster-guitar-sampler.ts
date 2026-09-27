@@ -5,8 +5,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Telecaster V5.2 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Сэмплер Telecaster V5.6 — "The 150Hz Barrier".
  */
 
 function makeWarmthCurve() {
@@ -59,6 +58,7 @@ export class TelecasterGuitarSampler {
     private isLoading = false;
 
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
     private outputTrim: GainNode;
@@ -70,6 +70,10 @@ export class TelecasterGuitarSampler {
 
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.075;
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
 
         this.saturation = this.audioContext.createWaveShaper();
         this.saturation.curve = makeWarmthCurve();
@@ -83,7 +87,8 @@ export class TelecasterGuitarSampler {
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
-        this.preamp.connect(this.saturation);
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.saturation);
         this.saturation.connect(this.toneFilter);
         this.toneFilter.connect(this.outputTrim);
         this.outputTrim.connect(this.destination);
@@ -110,6 +115,7 @@ export class TelecasterGuitarSampler {
             const loadedBuffers = new Map<number, AudioBuffer>();
             const loadSample = async (url: string) => {
                 const arrayBuffer = await vault.fetch(url);
+                if (!arrayBuffer) return null;
                 return await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
             };
             
@@ -117,7 +123,7 @@ export class TelecasterGuitarSampler {
                 const midi = this.keyToMidi(key);
                 if (midi) {
                     const buffer = await loadSample(url);
-                    loadedBuffers.set(midi, buffer);
+                    if (buffer) loadedBuffers.set(midi, buffer);
                 }
             });
             await Promise.all(notePromises);
@@ -201,7 +207,12 @@ export class TelecasterGuitarSampler {
         
         source.onended = () => {
             this.activeSources.delete(source);
-            try { gainNode.disconnect(); } catch(e){}
+            try { 
+                source.stop();
+                source.disconnect();
+                gainNode.disconnect(); 
+            } catch(e){}
+            source.onended = null; // Break closure cycle
         };
     }
 
@@ -224,9 +235,9 @@ export class TelecasterGuitarSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(0); } catch(e) {} });
+        this.activeSources.forEach(source => { try { source.stop(); source.disconnect(); } catch(e) {} });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.saturation.disconnect(); this.toneFilter.disconnect(); this.outputTrim.disconnect(); }
 }

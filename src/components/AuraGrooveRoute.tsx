@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.1.6 — "HUD Typography Patch".
- * #ЗАЧЕМ: Увеличение шрифта индикатора шагов в HUD для лучшей читаемости.
+ * @fileOverview UI AuraGroove V17.2.2 — "Accessibility Fix".
+ * #ЗАЧЕМ: ПЛАН №1211 — Устранение ворнингов "Missing Description" через sr-only.
  */
 'use client';
 
@@ -34,12 +34,13 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AuraGrooveProps, PresetItem } from "@/hooks/use-aura-groove";
-import type { RouteItem, TextureSettings, InstrumentSettings } from "@/types/music";
+import type { RouteItem, TextureSettings, InstrumentSettings, Genre } from "@/types/music";
 import { cn, formatTime } from "@/lib/utils";
 import { SpectrumAnalyzer } from "./SpectrumAnalyzer";
 import { GUIDE_RU, GUIDE_EN, DISCLAIMER_RU, DISCLAIMER_EN, CREDITS_HTML } from '@/lib/info-docs';
 import { AuraVisualizer } from "./aura-visualizer";
 import { OfflineSyncCenter } from "./OfflineSyncCenter";
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // DND Kit Core
 import {
@@ -65,7 +66,7 @@ import {
 // DND Kit Utilities
 import { CSS } from '@dnd-kit/utilities';
 
-const GENRE_IDS = ['ambient', 'psybient', 'blues', 'reggae', 'foundry'];
+const GENRE_IDS: Genre[] = ['ambient', 'psybient', 'blues', 'cyber_blues', 'reggae', 'foundry'];
 const MOOD_IDS = ['melancholic', 'dreamy', 'calm', 'joyful', 'dark'];
 
 const MIXER_CHANNELS = [
@@ -172,7 +173,7 @@ function PresetManager({
                                     </SelectTrigger>
                                     <SelectContent className="bg-card">
                                         <SelectItem value="none" className="text-[10px] uppercase font-black">---</SelectItem>
-                                        {['ambient', 'psybient', 'blues', 'reggae', 'foundry'].map(g => (
+                                        {['ambient', 'psybient', 'blues', 'cyber_blues', 'reggae', 'foundry'].map(g => (
                                             <SelectItem key={g} value={g} className="text-[10px] uppercase font-black">{t(`g_${g}` as any)}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -196,6 +197,7 @@ function SimpleRouteItem({
     onRemove,
     onSelect,
     isDarkTheme,
+    isMobile,
     t,
     dragAttributes,
     dragListeners,
@@ -208,19 +210,20 @@ function SimpleRouteItem({
     onRemove: (id: string) => void,
     onSelect: (id: string) => void,
     isDarkTheme: boolean,
+    isMobile: boolean,
     t: (k: any) => string,
     dragAttributes?: any,
     dragListeners?: any,
     isDragging?: boolean
 }) {
-    const getGenreLabel = (id: string) => t(`g_${id}` as any);
-    const getMoodLabel = (id: string) => t(`m_${id}` as any);
+    const getGenreLabel = (id: string) => isMobile ? t(`short_g_${id}` as any) : t(`g_${id}` as any);
+    const getMoodLabel = (id: string) => isMobile ? t(`short_m_${id}` as any) : t(`m_${id}` as any);
 
     return (
         <div
             onClick={() => !isActive && onSelect(item.id)}
             className={cn(
-                "flex items-center justify-between p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
+                "flex items-center justify-between p-1.5 sm:p-2 rounded-lg border transition-all group relative overflow-hidden cursor-pointer",
                 isActive ? "bg-primary/10 border-primary/40 shadow-inner" : "bg-muted/30 border-transparent hover:border-primary/20",
                 isDragging && "opacity-50 border-primary scale-[1.02] shadow-xl z-50"
             )}
@@ -234,22 +237,22 @@ function SimpleRouteItem({
                 </div>
             )}
 
-            <div className="flex items-center gap-3 overflow-hidden z-10">
+            <div className="flex items-center gap-2 sm:gap-3 overflow-hidden z-10 flex-grow">
                 <div 
                     {...dragAttributes} 
                     {...dragListeners}
-                    className="p-1 text-muted-foreground hover:text-primary transition-colors touch-none cursor-grab active:cursor-grabbing"
+                    className="p-1 text-muted-foreground hover:text-primary transition-colors touch-none cursor-grab active:cursor-grabbing shrink-0"
                 >
                     <GripVertical className="h-4 w-4" />
                 </div>
-                <div className="truncate pointer-events-none">
+                <div className="truncate pointer-events-none flex-grow min-w-0 pr-2">
                     <div className="flex flex-col gap-0.5">
-                        <div className="text-[11px] font-black uppercase tracking-tight">
+                        <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-tight truncate">
                             {getGenreLabel(item.genre)} / {getMoodLabel(item.mood)}
                         </div>
                         {isActive && trackName && (
                             <div className="text-[8px] font-mono opacity-60 normal-case tracking-normal truncate">
-                                DNA: {trackName.replace(/_/g, ' ')}
+                                {trackName.replace(/_/g, ' ')}
                             </div>
                         )}
                     </div>
@@ -258,7 +261,7 @@ function SimpleRouteItem({
             <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-7 v-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10" 
+                className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity z-10 shrink-0" 
                 onClick={(e) => { e.stopPropagation(); onRemove(item.id); }} 
             >
                 <X className="h-4 w-4" />
@@ -297,6 +300,7 @@ function SortableRouteItem({ id, ...props }: any) {
 export function AuraGrooveRoute(props: AuraGrooveProps) {
     const { t } = props;
     const router = useRouter();
+    const isMobile = useIsMobile();
     const [selectedGenre, setSelectedGenre] = useState<any>('ambient');
     const [selectedMood, setSelectedMood] = useState<any>('melancholic');
     const [isSpectrumOpen, setIsSpectrumOpen] = useState(false);
@@ -331,15 +335,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         }
     };
 
-    // --- SMART STOP LOGIC (PLAN №1456) ---
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
     const [longPressActive, setLongPressActive] = useState(false);
 
-    // --- OPTIMISTIC HUD STATE ---
     const [optimisticIsPlaying, setOptimisticIsPlaying] = useState(props.isPlaying);
     useEffect(() => { setOptimisticIsPlaying(props.isPlaying); }, [props.isPlaying]);
 
-    // --- SMART HUD LOGIC (PLAN №1460) ---
     const [isAmbientMode, setIsAmbientMode] = useState(false);
 
     useEffect(() => {
@@ -348,7 +349,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
         }
     }, []);
 
-    // DND Sensors
+    // DND Kit Sensors
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
@@ -399,7 +400,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     const handleAdd = () => props.addToRoute(selectedGenre, selectedMood);
     const handleSave = () => { if (!routeName.trim()) return; props.saveRoute(routeName); setRouteName(""); setIsSaveRouteOpen(false); };
 
-    // --- Unified Long Press & Tap Handler ---
     const handleRecordDown = () => {
         setLongPressActive(false); 
         if (props.isRecording || props.isAlbumMode) return; 
@@ -413,15 +413,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
     const handleRecordUp = () => {
         if (longPressTimer.current) {
-            // Short click detected while idle
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
             props.handleToggleRecording();
         } else if (!longPressActive) {
-            // We were already recording or holding, but not just triggered long-press
             props.handleToggleRecording();
         }
-        // longPressActive will reset on next Down
     };
 
     const bgClass = isDarkTheme ? 'bg-neutral-950' : 'bg-white';
@@ -435,11 +432,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
     return (
         <div className={cn("w-full h-full flex flex-col overflow-hidden transition-colors duration-200", bgClass, textClass)}>
             
-            {/* Ambient Overlay - THE PURE TERMINAL */}
+            {/* Ambient Overlay */}
             {isAmbientMode && (
                 <div className="fixed inset-0 z-[45] backdrop-blur-3xl bg-black/80 animate-in fade-in duration-1000 cursor-default">
-                    
-                    {/* Top Controls Stack - Axis Symmetry with Bottom Stack */}
                     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); props.handleRegenerate(); showFeedback(t('toast_next_desc')); }}
@@ -458,7 +453,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Top Status - THREE LINES (AURAGROOVE, INFINITE TAKE, ORCHESTRA) - NOW ACTIVE */}
                     <div className="absolute top-10 left-0 right-0 text-center select-none z-20">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsInfoOpen(true); }}
@@ -471,7 +465,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Focused Core with Axis Alignment - PERFECT SQUARE */}
                     <div 
                         className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 flex items-center justify-center overflow-visible"
                         style={{ width: '90vw', height: '90vw', maxWidth: '400px', maxHeight: '400px' }}
@@ -486,7 +479,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
 
-                    {/* Feedback Message */}
                     {feedbackMessage && (
                         <div className="absolute top-[65%] left-1/2 -translate-x-1/2 z-[10000] animate-in fade-in zoom-in duration-300">
                             <Badge 
@@ -499,7 +491,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </div>
                     )}
 
-                    {/* Progress Bar - UPDATED (PLAN №1482) - Moved up to top-[71%] to avoid overlap */}
                     <div className="absolute top-[71%] left-1/2 -translate-x-1/2 w-[85vw] max-w-[340px] h-[1px] bg-white/10 overflow-hidden z-10 rounded-full">
                         <div 
                             className="h-full transition-all duration-1000 ease-linear"
@@ -510,7 +501,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         />
                     </div>
                     
-                    {/* Control Pill - UPDATED (PLAN №1482) - Shifted down to top-[82%] and height reduced with py-3.5 */}
                     <div 
                         className="absolute top-[82%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex items-center justify-between gap-0.5 px-2 py-3.5 rounded-full bg-black/50 border border-white/10 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,0,0,0.6)] w-[92vw] max-w-[380px] transition-all active:scale-95"
                         onClick={(e) => e.stopPropagation()}
@@ -587,7 +577,6 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                         </button>
                     </div>
 
-                    {/* Bottom Info Stack - Axis Symmetry 90vw */}
                     <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-[400px] flex items-center justify-between">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setIsStudioOpen(true); }}
@@ -599,19 +588,19 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
                         <div className="flex flex-col items-center select-none pointer-events-none gap-0.5 flex-1">
                             <div 
-                                className="text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
+                                className="text-[11px] sm:text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
                                 style={{ color: hudColor }}
                             >
                                 {t(`g_${props.genre}` as any)}
                             </div>
                             <div 
-                                className="text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
+                                className="text-[11px] sm:text-[12px] font-black uppercase tracking-tight transition-colors duration-500 opacity-50"
                                 style={{ color: hudColor }}
                             >
                                 {t(`m_${props.mood}` as any)}
                             </div>
                             <div 
-                                className="text-[13px] font-mono font-black uppercase tracking-tighter opacity-90 transition-colors duration-500 mt-1" 
+                                className="text-[13px] sm:text-[14px] font-mono font-black uppercase tracking-tighter opacity-90 transition-colors duration-500 mt-1" 
                                 style={{ color: hudColor }}
                             >
                                 STEP {props.activeRouteIndex + 1} / {props.route.length}
@@ -759,25 +748,38 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </div>
             </div>
 
-            {/* BOTTOM: Route List */}
             <div className={cn("flex-1 min-0 flex flex-col relative overflow-hidden transition-colors", isDarkTheme ? 'bg-neutral-900' : 'bg-gray-50')}>
-                <div className={cn("p-2 flex gap-2 shrink-0 transition-colors", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
+                <div className={cn("p-2 flex gap-1.5 shrink-0 transition-colors items-center", isDarkTheme ? 'bg-neutral-800/50' : 'bg-gray-100/50')}>
                     <Button onClick={handleAdd} className="flex-grow font-black uppercase text-[10px] tracking-tight h-10 shadow-lg px-1.5">
                         <Plus className="h-4 w-4 mr-1" /> {t('btn_add_to_route')}
                     </Button>
                     <div className="flex gap-1">
+                        <Button 
+                            variant="outline" 
+                            size="icon" 
+                            style={outlineStyle} 
+                            onClick={props.clearRoute} 
+                            disabled={props.route.length === 0}
+                            className="h-10 w-10 text-destructive hover:bg-destructive/10"
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
                         <Dialog open={isSaveRouteOpen} onOpenChange={setIsSaveRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><Save className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20">
-                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle></DialogHeader>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Store your current sequence to the library.</DialogDescription>
+                                <DialogHeader>
+                                    <DialogTitle className="font-black uppercase text-primary">{t('dialog_capture_title')}</DialogTitle>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Store your current sequence to the library.</DialogDescription>
+                                </DialogHeader>
                                 <div className="py-4"><Input placeholder={t('dialog_capture_name')} value={routeName} onChange={e => setRouteName(e.target.value)} className="bg-background" /></div><DialogFooter><Button onClick={handleSave} className="w-full font-black uppercase tracking-widest">{t('btn_capture_save')}</Button></DialogFooter></DialogContent>
                         </Dialog>
                         <Dialog open={isLoadRouteOpen} onOpenChange={setIsLoadRouteOpen}>
                             <DialogTrigger asChild><Button variant="outline" size="icon" style={outlineStyle} className="h-10 w-10"><FolderOpen className="h-4 w-4" /></Button></DialogTrigger>
                             <DialogContent className="bg-card border-primary/20">
-                                <DialogHeader><DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle></DialogHeader>
-                                <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Select and load a previously stored journey.</DialogDescription>
+                                <DialogHeader>
+                                    <DialogTitle className="font-black uppercase text-primary">{t('dialog_library_title')}</DialogTitle>
+                                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Select and load a previously stored journey.</DialogDescription>
+                                </DialogHeader>
                                 <ScrollAreaUI className="h-64 pr-3">{props.savedRoutes?.map(saved => (<div key={saved.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:border-primary/20 border border-transparent group mb-1"><div className="cursor-pointer flex-grow" onClick={() => { props.loadRoute(saved); setIsLoadRouteOpen(false); }}><div className="text-xs font-black uppercase">{saved.name}</div><div className="text-[9px] font-bold opacity-40 uppercase">{saved.items.length} {t('steps_count')}</div></div><Button variant="ghost" size="icon" onClick={() => props.deleteSavedRoute(saved.id)} className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button></div>))}</ScrollAreaUI></DialogContent>
                         </Dialog>
                     </div>
@@ -810,6 +812,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                                                 onRemove={props.removeFromRoute}
                                                 onSelect={props.selectRouteItem}
                                                 isDarkTheme={isDarkTheme}
+                                                isMobile={isMobile}
                                                 t={t}
                                             />
                                         );
@@ -929,14 +932,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </footer>
             </div>
 
-            {/* Mixer & EQ - FORCED Frosted Glass Style */}
+            {/* Mixer & EQ */}
             <Dialog open={isStudioOpen} onOpenChange={setIsStudioOpen}>
                 <DialogContent 
-                    className="sm:max-w-xl !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
+                    className="w-[98vw] sm:max-w-xl px-[1%] !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Adjust gain levels for each individual instrument channel.</DialogDescription>
-                    <div className="flex justify-between items-end h-48 gap-2 py-4">{MIXER_CHANNELS.map(ch => {
+                    <DialogHeader className="pt-4">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Mic2 className="h-5 w-5"/> {t('dialog_mixer_title')}</DialogTitle>
+                        <DialogDescription className="sr-only">Mixer controls for individual channels</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-between items-end h-48 gap-1 sm:gap-2 py-4">{MIXER_CHANNELS.map(ch => {
                         const vol = ch.key === 'master' 
                             ? (props.calibrationGains?.master ?? 1.0)
                             : (ch.key === 'drums' 
@@ -970,10 +975,12 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <Dialog open={isEqOpen} onOpenChange={setIsEqOpen}>
                 <DialogContent 
-                    className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50]"
+                    className="sm:max-w-md !bg-neutral-950/20 !backdrop-blur border-primary/20 shadow-2xl z-[50] top-[55%] sm:top-[50%] [&>button:last-child]:top-8"
                 >
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Spectral shaping for the final output signal.</DialogDescription>
+                    <DialogHeader className="pt-4">
+                        <DialogTitle className="font-black uppercase text-primary flex items-center gap-2"><Sliders className="h-5 w-5" /> {t('dialog_eq_title')}</DialogTitle>
+                        <DialogDescription className="sr-only">Equalizer band adjustments</DialogDescription>
+                    </DialogHeader>
                     <div className="flex justify-around items-end pt-4 h-48">{EQ_BANDS.map((band, index) => (<div key={index} className="flex flex-col items-center justify-end space-y-2 flex-1 h-full group"><span className="text-[10px] font-mono text-muted-foreground">{props.eqSettings && props.eqSettings[index] !== undefined ? (props.eqSettings[index] > 0 ? '+' : '') + props.eqSettings[index].toFixed(1) : '0.0'}</span><Slider value={[props.eqSettings && props.eqSettings[index] !== undefined ? props.eqSettings[index] : 0]} min={-10} max={10} step={0.5} onValueChange={v => props.handleEqChange(index, v[0])} orientation="vertical" className="h-32" /><Label className="text-[10px] font-black uppercase opacity-50 group-hover:text-primary">{band.label}</Label></div>))}</div>
                     <PresetManager 
                         title="EQ" 
@@ -991,8 +998,10 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
 
             <Dialog open={isSpectrumOpen} onOpenChange={setIsSpectrumOpen}>
                 <DialogContent className="sm:max-w-2xl bg-card border-primary/20">
-                    <DialogHeader><DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle></DialogHeader>
-                    <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Real-time frequency distribution analyzer.</DialogDescription>
+                    <DialogHeader>
+                        <DialogTitle className="font-black uppercase text-primary">Spectrum Monitor</DialogTitle>
+                        <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-widest">Real-time frequency distribution analyzer.</DialogDescription>
+                    </DialogHeader>
                     <div className="h-64">
                         <SpectrumAnalyzer info={props.isPlaying ? `[DNA: ${props.currentTrackName.replace(/_/g, ' ')}] ${props.genre}/${props.mood}` : `${props.genre}/${props.mood}`} />
                     </div>
@@ -1039,16 +1048,16 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                 </DialogContent>
             </Dialog>
 
-            {/* --- ONBOARDING TIPS DIALOG --- */}
             <Dialog open={isTipsOpen} onOpenChange={setIsTipsOpen}>
                 <DialogContent className="sm:max-w-md bg-neutral-950/80 backdrop-blur-xl border-primary/30 shadow-2xl p-6">
                     <DialogHeader>
                         <div className="mx-auto bg-primary/20 h-12 w-12 rounded-full flex items-center justify-center text-primary mb-4">
-                            <Sparkles className="h-6 w-6 animate-pulse" />
+                            <Sparkles className="h-6 x-6 animate-pulse" />
                         </div>
                         <DialogTitle className="font-black uppercase text-primary text-center tracking-tight">
                             {t('tips_title')}
                         </DialogTitle>
+                        <DialogDescription className="sr-only">How to use AuraGroove to start generating music.</DialogDescription>
                     </DialogHeader>
                     
                     <div className="py-6">

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V5.5 — "Foundry Universal Standard".
- * #ЗАЧЕМ: Укрепление связи Trance и Foundry для стабильности.
+ * @fileOverview Universal Music Theory Utilities V6.0 — "Deployment Hardening".
+ * #ЗАЧЕМ: Фикс синтаксиса и подтверждение маршрутизации Neuro Space на V2.
  */
 
 import type { 
@@ -17,6 +17,7 @@ import { getChordNameForBar, getDynastyForMood } from './blues-theory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP, BASS_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import { FOUNDRY_PRESETS } from './foundry-presets';
+import { SB_PRESETS } from './sb_presets';
 
 // ───── GLOBAL CHRONOS CONSTANTS ─────
 export const TICKS_PER_BAR = 12;
@@ -46,10 +47,6 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
 
-/**
- * #ЗАЧЕМ: Резолвер тембров с абсолютным приоритетом для Аксиом.
- * #ОБНОВЛЕНО (ПЛАН №1990): Принудительный переход Trance на Foundry-реестр.
- */
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {
         if (!hint || hint === 'none') return 'none';
@@ -66,21 +63,22 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         
         const clean = String(targetHint).toLowerCase().replace(/[^a-z0-9]/g, '');
 
-        // ─── REGISTRY SELECTION ───
-        // ПЛАН №1990: psybient (Trance) теперь ВСЕГДА использует высокопроизводительные пресеты Foundry.
-        const isHighPerformance = genre === 'foundry' || genre === 'psybient';
-        const registry = isHighPerformance ? (FOUNDRY_PRESETS || V2_PRESETS) : V2_PRESETS;
+        let registry = V2_PRESETS;
+        if (genre === 'foundry') {
+            registry = FOUNDRY_PRESETS;
+        } else if (genre === 'cyber_blues') {
+            registry = SB_PRESETS;
+        }
 
-        // ─── Safety Guard ───
         if (clean === 'violin' || clean === 'flute') return 'guitarChords';
 
-        // ─── Piano Channel Specific ───
         if (part === 'pianoAccompaniment') {
-            if (clean === 'piano' || clean === 'acousticpiano') return 'piano';
+            if (clean === 'piano' || clean === 'acousticpiano' || clean === 'dynamicpianodual') {
+                 return tension < 0.6 ? 'ep_rhodes_warm' : 'piano';
+            }
             if (clean === 'rhodes' || clean === 'eprhodeswarm') return 'ep_rhodes_warm';
         }
 
-        // ─── Dynamic Groups (Pads & Organs) ───
         if (clean === 'dynamicorgan') {
             if (tension < 0.4) return 'organ_prog';
             if (tension < 0.75) return 'organ_soft_jazz';
@@ -92,21 +90,20 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             return 'synth_cave_pad';
         }
 
-        // ─── Dynamic Groups (Guitars) ───
-        if (clean === 'dynteledark') {
+        if (clean === 'dynteledark' || clean === 'dyn_tele_dark') {
             return tension < 0.6 ? 'telecaster' : 'darkTelecaster';
         }
-        if (clean === 'dynblackteledark') {
+        if (clean === 'dynblackteledark' || clean === 'dynamicblackshine') {
             if (tension < 0.4) return 'blackAcoustic';
             if (tension < 0.75) return 'telecaster';
             return 'darkTelecaster';
         }
-        if (clean === 'dyntelecs80black') {
+        if (clean === 'dyntelecs80black' || clean === 'dynamichybrid1') {
             if (tension < 0.4) return 'telecaster';
             if (tension < 0.75) return 'cs80';
             return 'blackAcoustic';
         }
-        if (clean === 'dynblackcs80tele') {
+        if (clean === 'dynblackcs80tele' || clean === 'dynamichybrid2') {
             if (tension < 0.4) return 'blackAcoustic';
             if (tension < 0.75) return 'cs80';
             return 'telecaster';
@@ -131,11 +128,10 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             if (tension < 0.75) return 'cs80';
             return 'guitar_muffLead';
         }
-        if (clean === 'dynshinemuff') {
+        if (clean === 'dynshinemuff' || clean === 'dynamiclead') {
             return tension < 0.7 ? 'guitar_shineOn' : 'guitar_muffLead';
         }
 
-        // ─── Dynamic Groups (Bass) ───
         if (clean === 'dynbassjazzstandard') return tension < 0.6 ? 'bass_jazz_warm' : 'bass_jazz_fretless';
         if (clean === 'dynbassbluespower') {
             if (tension < 0.4) return 'bass_jazz_warm';
@@ -173,7 +169,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         if (part === 'accompaniment') {
             const isPianoTimbre = clean === 'piano' || clean === 'rhodes' || clean === 'eprhodeswarm' || clean === 'pianoaccompaniment';
-            if (isPianoTimbre) return genre === 'blues' ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
+            if (isPianoTimbre) return (genre === 'blues' || genre === 'cyber_blues') ? 'organ_soft_jazz' : 'synth_ambient_pad_lush';
         }
 
         if (clean === 'guitar' || clean === 'electricguitar' || clean === 'melody') {
@@ -186,7 +182,7 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
-        return 'synth'; // Universal fallback
+        return 'synth'; 
     }
 }
 
@@ -292,12 +288,6 @@ export function normalizePhraseGroup(phrases: any[][]): void {
         phrases.forEach(p => p.forEach(n => { n.t -= minT; }));
     }
 }
-
-export const GEO_ATLAS: Record<string, { fog: number, depth: number, reg: number }> = {
-    HARBOR: { fog: 0.6, depth: 0.3, reg: -12 },
-    MOUNTAIN: { fog: 0.2, depth: 0.5, reg: 12 },
-    VOID: { fog: 0.9, depth: 0.8, reg: 0 }
-};
 
 export function calculateMusiNum(step: number, base: number = 2, start: number = 0, modulo: number = 8): number {
     if (!isFinite(step) || modulo <= 0) return 0;

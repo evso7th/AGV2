@@ -1,6 +1,6 @@
 /**
- * @fileOverview Dark Foundry Brain V4.8 — "Reference Stability Patch".
- * #ЗАЧЕМ: Исправление TypeError (this.random is undefined).
+ * @fileOverview Dark Foundry Brain V4.9 — "Strict Golden Filter".
+ * #ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Принудительный пропуск нот вне сетки [0,3,6,9] при высокой плотности (>3 нот).
  */
 
 import type {
@@ -387,10 +387,17 @@ export class DarkFoundryBrain {
 
         const localBar = Math.abs(mosaicBar) % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
-        const goldenTicks = [0, 3, 6, 9];
-        return phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+        const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+
+        // #ЗАЧЕМ: ПЛАН №2305. Жесткий фильтр при высокой плотности (>3 нот).
+        const useGoldenFilter = barNotes.length > 3;
+        const finalNotes = useGoldenFilter 
+            ? barNotes.filter(n => this.GOLDEN_TICKS.some(gt => Math.abs((n.t - offset) - gt) < 0.1))
+            : barNotes;
+
+        return finalNotes.map(n => {
             const relT = n.t - offset;
-            const isGold = goldenTicks.some(gt => Math.abs(relT - gt) < 0.1);
+            const isGold = this.GOLDEN_TICKS.some(gt => Math.abs(relT - gt) < 0.1);
             const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             return {
                 type: 'melody', note: this.wrapMelody(rawNote),
@@ -406,7 +413,15 @@ export class DarkFoundryBrain {
         let mutated = this.applyMutationLogic(phrase, tension, this.seed + epoch + 1);
         const localBar = Math.abs(mosaicBar) % this.phraseBarCount(mutated);
         const offset = localBar * TICKS_PER_BAR;
-        return mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).map(n => {
+        const barNotes = mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
+
+        // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе при высокой плотности.
+        const useGoldenFilter = barNotes.length > 3;
+        const finalNotes = useGoldenFilter 
+            ? barNotes.filter(n => this.GOLDEN_TICKS.some(gt => Math.abs((n.t - offset) - gt) < 0.1))
+            : barNotes;
+
+        return finalNotes.map(n => {
             const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition;
             const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
             return {
@@ -472,7 +487,15 @@ export class DarkFoundryBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
-        return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40)).map(t => ({
+        
+        const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40));
+        
+        // #ЗАЧЕМ: Золотая сетка для арпеджио при высокой плотности.
+        const filteredTicks = rawTicks.length > 3 
+            ? rawTicks.filter(t => this.GOLDEN_TICKS.some(gt => Math.abs(t - gt) < 0.1))
+            : rawTicks;
+
+        return filteredTicks.map(t => ({
             type: 'melody', note: this.wrapMelody(root + scale[calculateMusiNum(epoch + t, 7, this.seed, scale.length)]),
             time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.8, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));

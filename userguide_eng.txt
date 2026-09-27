@@ -27,6 +27,7 @@ Each session is a unique organism. With "Heritage" enabled, the current seed is 
 6. Technical Recommendations
 * Voice Limit (ARP): 50-120 voices recommended for mobile, up to 256 for desktop.
 * Battery Saver: Mobile power-saving modes may distort audio. Use Broadcast Bridge for a stable experience.
+* Stay Awake: While music is playing, your device screen will stay on. This prevents the OS from throttling browser resources, ensuring glitch-free audio.
 * Velvet Standard: Melodic ceiling at MIDI 71 ensures warm and comfortable tonality.
 
 Enjoy listening! Let mathematics create the perfect soundtrack for your day.

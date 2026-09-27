@@ -3,8 +3,7 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Yamaha CS-80 V4.7 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Сэмплер Yamaha CS-80 V4.9 — "The 150Hz Barrier".
  */
 
 const CS80_NOTE_NAMES = ["c", "c", "d", "eb", "e", "f", "f", "g", "g", "a", "bb", "b"];
@@ -28,6 +27,7 @@ export class CS80GuitarSampler {
     public isInitialized = false;
     private isLoading = false;
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private outputTrim: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
@@ -37,10 +37,15 @@ export class CS80GuitarSampler {
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.4; 
 
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
         this.outputTrim = this.audioContext.createGain();
         this.outputTrim.gain.value = 1.0;
 
-        this.preamp.connect(this.outputTrim);
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.outputTrim);
         this.outputTrim.connect(this.destination);
     }
 
@@ -106,14 +111,15 @@ export class CS80GuitarSampler {
     private playClosest(note: Note, time: number, isLong: boolean, tempo: number = 72) {
         const keys = Array.from(this.buffers.keys());
         if (keys.length === 0) return;
+        const targetMidi = note.midi;
         const closestMidi = keys.reduce((prev, curr) => 
-            Math.abs(curr - note.midi) < Math.abs(prev - note.midi) ? curr : prev
+            Math.abs(curr - targetMidi) < Math.abs(prev - targetMidi) ? curr : prev
         );
         const layer = this.buffers.get(closestMidi);
         if (!layer) return;
 
         const buffer = isLong ? layer.long : layer.norm;
-        this.playSample(buffer, closestMidi, note.midi, time + note.time, note.velocity || 0.7);
+        this.playSample(buffer, closestMidi, targetMidi, time + note.time, note.velocity || 0.7, tempo);
     }
 
     private playSample(buffer: AudioBuffer, sampleMidi: number, targetMidi: number, startTime: number, velocity: number, tempo: number = 72) {
@@ -139,8 +145,10 @@ export class CS80GuitarSampler {
 
         source.onended = () => {
             this.activeSources.delete(source);
+            try { source.stop(); } catch(e) {}
             try { source.disconnect(); } catch(e) {}
             try { gainNode.disconnect(); } catch(e) {}
+            source.onended = null; // Break closure
         };
     }
 
@@ -151,5 +159,5 @@ export class CS80GuitarSampler {
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.outputTrim.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.outputTrim.disconnect(); }
 }
