@@ -3,7 +3,7 @@
  * #ЗАЧЕМ: Реализация ПЛАНА №1401 — Линейное нарастание громкости на старте трека для пэдов.
  */
 import type { FractalEvent } from '@/types/fractal';
-import type { Note } from "@/types/music";
+import type { PlayableNote as Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { normalizeEventType } from './music-theory';
@@ -116,7 +116,7 @@ export class AccompanimentSynthManagerV2 {
             ? (0.3 + (barCount / 6) * 0.7) 
             : 1.0;
 
-        const notesToPlay = filtered.map(e => {
+        const notesToPlay: Note[] = filtered.map(e => {
             const extraDuration = 1.5; 
             return {
                 midi: e.note,
