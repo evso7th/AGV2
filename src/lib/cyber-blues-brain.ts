@@ -2,6 +2,7 @@
 @fileOverview Cyber Blues Brain V1.5 — "Bass Stability Guard".
 #ЗАЧЕМ: 1. Исправление исчезающего баса (принудительный fallback на рифф при пустых тактах аксиом).
       2. Полная активация слоев гармонии и атмосферных событий.
+#ОБНОВЛЕНО (V1.6): Разряжение плотности спарклов на четверть (ПЛАН №1990).
 */
 import {
   FractalEvent,
@@ -532,9 +533,10 @@ export class CyberBluesBrain {
       });
     }
 
-    const sparkleChance = 0.3 + (tension * 0.4);
+    // #ЗАЧЕМ: ПЛАН №1990. Разряжение спарклов на четверть.
+    const sparkleChance = 0.225 + (tension * 0.3); 
     if (this.random.next() < sparkleChance) {
-      const count = tension > 0.6 ? this.random.nextInt(3) + 1 : 1;
+      const count = tension > 0.7 ? this.random.nextInt(2) + 1 : 1;
       for (let i = 0; i < count; i++) {
         events.push({
           type: 'sparkle',
@@ -704,8 +706,6 @@ export class CyberBluesBrain {
   }
 
   private renderSymbioticBass(chord: GhostChord, epoch: number, tension: number, dna: SuiteDNA): FractalEvent[] {
-    // #ЗАЧЕМ: ПЛАН №2280. Исправление исчезающего баса.
-    // Если есть аксиомы баса, пытаемся отрендерить их. 
     if (this.currentBassAxiom.length > 0) {
       const totalBars = Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR);
       const startEpoch = this.soloistBusyUntilBar - totalBars;
@@ -713,7 +713,6 @@ export class CyberBluesBrain {
       const barOffset = mosaicBar * TICKS_PER_BAR;
       let notes = this.currentBassAxiom.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
       
-      // Если в текущем такте мозаики нет нот аксиомы, принудительно падаем в генеративный рифф
       if (notes.length > 0) {
         notes = this.applyMutationLogic(notes, tension, this.seed + epoch);
         return notes.map(n => ({
@@ -728,7 +727,6 @@ export class CyberBluesBrain {
       }
     }
     
-    // Fallback: Если аксиом нет или такт в аксиоме пустой — играем тяжелый рифф
     return this.renderHeavyRiffBass(chord, epoch, tension);
   }
 
@@ -817,7 +815,6 @@ export class CyberBluesBrain {
   private constrainBassOctave(note: number): number { 
       let n = note; 
       if(!isFinite(n)) return 36; 
-      // #ЗАЧЕМ: ПЛАН №2280. Расширение диапазона до MIDI 28 для суб-низа.
       while (n > 47) n -= 12; 
       while (n < 28) n += 12; 
       return n; 
