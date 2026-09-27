@@ -1,5 +1,5 @@
 
-# DNA Rules: The Heritage Codex (v1.7 "Velvet Sovereignty")
+# DNA Rules: The Heritage Codex (v1.8 "Total Stabilization")
 
 1.  **Dual Mode Operation**: The engine exclusively uses 'DNA Anchor' (manual selection) and 'Composer' (heritage-enabled free play) modes.
 2.  **Strict Channel Routing**: In Anchor mode, axioms must play exactly as recorded through their assigned channels: Bass, Melody, Accompaniment, Harmony, and Rhodes.
@@ -22,7 +22,8 @@
 19. **DNA INTERFACE SANCTITY**: КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ ТРОГАТЬ СИСТЕМУ ЛОГИРОВАНИЯ И ИНТЕРФЕЙС DNA.
 20. **ANCHOR PERSISTENCE**: The active DNA Anchor must remain strictly locked during Pause/Play cycles.
 21. **NARRATIVE SCALING**: The engine supports `timeScale` parameter. For Solo/Melody, this expands the reading window of the Axiom while slowing down the playback, creating 'laid-back' feel.
-22. **GOLDEN NOTE SUPREMACY**: In high-density passages (Trance, Foundry), notes on strong beats (0, 3, 6, 9) must be preserved and enhanced.
+22. **GOLDEN NOTE SUPREMACY (HARD FILTER)**: In high-density passages (Trance, Foundry), the engine MUST enforce a hard culling filter. Only notes on strong beats (0, 3, 6, 9) are rendered when note count per bar exceeds 3.
 23. **Infinite Journey Loop (MUST HAVE)**: The playback queue (Route) is required to operate in a continuous cycle. Upon reaching the end of the sequence, the engine must automatically restart from the first item.
-24. **PROACTIVE BALANCE**: All mixer and instrument settings associated with the starting genre must be applied instantly upon the first "Play" click, before the first note is rendered. These initial settings serve as a "Factory Balance" subject to user-specific hardware calibration.
-25. **AXIOM ROTATION (The Law of Internal Rotation)**: When playing a donor track, the engine must not stick to the first axiom index. It must maintain a session history of played licks and prioritize "fresh" components within the active track to ensure varied performance upon repeated visits.
+24. **PROACTIVE BALANCE**: All mixer and instrument settings associated with the starting genre must be applied instantly upon the first "Play" click.
+25. **AXIOM ROTATION (The Law of Internal Rotation)**: The engine maintains a session history of played licks and prioritizes "fresh" components within the active track.
+26. **SCHEDULER LOOKAHEAD**: The engine operates with a mandatory **0.35s safety buffer** (Lookahead) to ensure glitch-free audio processing under heavy load.

@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * AuraGroove V2 Security Rules: "OPEN FORGE" (V7.0)
-     * #ЗАЧЕМ: Обеспечение записи аксиом для авторизованных операторов.
+     * AuraGroove V2 Security Rules: "OPEN FORGE" (V7.1)
+     * #ЗАЧЕМ: Обеспечение публичной записи шедевров при сохранении контроля над Наследием.
      */
 
     function isAuthenticated() {
@@ -15,16 +15,20 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == 'ER24LvlifBafiYPf5sLRkYW0aUD3';
     }
 
+    // --- ЗОЛОТАЯ БАЗА (НАСЛЕДИЕ) ---
     match /heritage_axioms/{id} {
       allow read: if true;
-      allow write: if isAuthenticated();
+      allow write: if isAuthenticated(); // Только для авторизованных операторов
     }
     
+    // --- ШЕДЕВРЫ (ЛАЙКИ ПОЛЬЗОВАТЕЛЕЙ) ---
     match /masterpieces/{id} {
       allow read: if true;
-      allow create, update, delete: if isAuthenticated();
+      allow create: if true; // РАЗРЕШЕНО ВСЕМ: любой аноним может сохранить шедевр
+      allow update, delete: if isAuthenticated(); // Модерация только для своих
     }
 
+    // --- СИСТЕМНЫЕ СЕРВИСЫ ---
     match /telemetry_daily/{id} {
       allow read: if isAuthenticated();
       allow create, update: if true;
@@ -43,6 +47,7 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // --- ГЛОБАЛЬНЫЙ ЗАЛОН ---
     match /{document=**} {
       allow read: if true;
       allow write: if isAuthenticated();

@@ -11,8 +11,7 @@ type SamplerInstrument = {
 };
 
 /**
- * #ЗАЧЕМ: Сэмплер скрипки V4.5 — "Vault Integration".
- * #ЧТО: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * #ЗАЧЕМ: Сэмплер скрипки V4.7 — "The 150Hz Barrier".
  */
 export class ViolinSamplerPlayer {
     private audioContext: AudioContext;
@@ -20,6 +19,7 @@ export class ViolinSamplerPlayer {
     private instruments = new Map<string, SamplerInstrument>();
     public isInitialized = false;
     private preamp: GainNode;
+    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
     private activeSources: Set<AudioBufferSourceNode> = new Set();
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
@@ -27,7 +27,13 @@ export class ViolinSamplerPlayer {
         this.outputNode = this.audioContext.createGain();
         this.preamp = this.audioContext.createGain();
         this.preamp.gain.value = 0.0725; 
-        this.preamp.connect(this.outputNode);
+
+        this.hpf = this.audioContext.createBiquadFilter();
+        this.hpf.type = 'highpass';
+        this.hpf.frequency.value = 150;
+
+        this.preamp.connect(this.hpf);
+        this.hpf.connect(this.outputNode);
         this.outputNode.connect(destination);
     }
     
@@ -117,7 +123,10 @@ export class ViolinSamplerPlayer {
 
             source.onended = () => { 
                 this.activeSources.delete(source);
+                try { source.stop(); } catch(e) {}
+                try { source.disconnect(); } catch(e) {}
                 try { gainNode.disconnect(); } catch(e){} 
+                source.onended = null; // FIX: Nullify
             };
         });
     }
@@ -146,9 +155,10 @@ export class ViolinSamplerPlayer {
     public stopAll() {
         this.activeSources.forEach(source => {
             try { source.stop(0); } catch(e) {}
+            try { source.disconnect(); } catch(e) {}
         });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.outputNode.disconnect(); }
+    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.outputNode.disconnect(); }
 }

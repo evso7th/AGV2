@@ -1,4 +1,5 @@
 
+
 # AuraGroove Info Center
 
 **Application Version: 3.7.1**
@@ -17,8 +18,9 @@ The application is fully optimized for standalone operation.
 ## 3. Key Technologies
 
 1. **Suite DNA Creation**: A harmonic and emotional plan is built from a single seed number.
-2. **Velvet Standard**: Melodic ceiling at MIDI 71 for a warm, dense timbral profile.
-3. **Fractal Mutations**: Algorithmic transformations of Heritage axioms (inversion, retrograde).
+2. **Stay Awake**: Screen Wake Lock API integration to keep the device active, ensuring uninterrupted background audio processing.
+3. **Velvet Standard**: Melodic ceiling at MIDI 71 for a warm, dense timbral profile.
+4. **Fractal Mutations**: Algorithmic transformations of Heritage axioms (inversion, retrograde).
 
 ## 4. Your Privacy is Our Priority
 

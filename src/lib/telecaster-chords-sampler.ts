@@ -4,8 +4,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Telecaster Chords Sampler V3.2 — "Vault Integration".
- * #ЗАЧЕМ: Перевод на оффлайн-кэш (ПЛАН №2220).
+ * @fileOverview Telecaster Chords Sampler V3.3 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -109,7 +109,10 @@ export class TelecasterChordsSampler {
                 this.activeSources.add(source);
                 source.onended = () => {
                     this.activeSources.delete(source);
+                    try { source.stop(); } catch(e) {}
+                    source.disconnect();
                     noteGain.disconnect();
+                    source.onended = null; // FIX: Break closure
                 };
             }
         });

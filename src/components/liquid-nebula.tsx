@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import styles from './liquid-nebula.module.css';
 import { cn } from '@/lib/utils';
-import { useAudioEngine } from '@/contexts/audio-engine-context';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { Genre } from '@/types/music';
 
@@ -17,52 +16,13 @@ interface LiquidNebulaProps {
 }
 
 /**
- * @fileOverview Liquid Nebula V6.3 — "30 FPS Update".
- * #ЗАЧЕМ: ПЛАН №1800. Ограничение частоты обновления до 30 FPS для всех жанров.
+ * @fileOverview Liquid Nebula V6.5 — "Pulse Removal".
+ * #ЗАЧЕМ: Полное удаление привязки к музыкальному пульсу.
  */
 export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, className, isReference = false }: LiquidNebulaProps) {
-  const { analyser } = useAudioEngine();
   const isMobile = useIsMobile();
-  const [isPulsing, setIsPulsing] = useState(false);
-  const pulseTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
-  const lastPulseTimeRef = useRef<number>(0);
 
-  // 1. Музыкальная пульсация (Event Listener)
-  useEffect(() => {
-    const onPulse = (e: any) => {
-        if (!isPlaying) return;
-        
-        // --- 30 FPS THROTTLE ---
-        const now = Date.now();
-        if (now - lastPulseTimeRef.current < 33) return;
-        lastPulseTimeRef.current = now;
-
-        const hitTime = e.detail.time;
-        const audioContext = analyser?.context;
-        if (!audioContext) return;
-
-        const audioNow = audioContext.currentTime;
-        const delay = (hitTime - audioNow) * 1000;
-        
-        if (delay > -50) {
-            const t = setTimeout(() => {
-                setIsPulsing(true);
-                const t2 = setTimeout(() => setIsPulsing(false), 120);
-                pulseTimeoutsRef.current.push(t2);
-            }, Math.max(0, delay));
-            pulseTimeoutsRef.current.push(t);
-        }
-    };
-    
-    window.addEventListener('AG_CORE_PULSE', onPulse);
-    return () => {
-        window.removeEventListener('AG_CORE_PULSE', onPulse);
-        pulseTimeoutsRef.current.forEach(clearTimeout);
-        pulseTimeoutsRef.current = [];
-    };
-  }, [isPlaying, analyser]);
-
-  // 2. Цвета и динамические переменные
+  // 1. Цвета и динамические переменные
   const dynamicStyles = useMemo(() => {
     if (!isReference) {
       const genreHues: Record<string, number> = {
@@ -90,7 +50,6 @@ export function LiquidNebula({ genre, tension, isPlaying = false, tempo = 75, cl
       className={cn(styles.container, className)}
       style={dynamicStyles}
       data-mode={isReference ? "reference" : "pastel"}
-      data-pulsing={isPulsing}
       data-mobile={isMobile}
     >
       <div className={styles.scaler}>

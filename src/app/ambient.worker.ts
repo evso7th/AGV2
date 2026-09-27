@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.0 — "Absolute Transition Recovery".
- * #ЗАЧЕМ: Устранение "застревания" на 3-й/4-й позициях очереди путем жесткого сброса barCount.
+ * @file AuraGroove Music Worker V7.4 — "Production Silence".
+ * #ЗАЧЕМ: Отключение по-тактовых логов для продакшена.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -35,7 +35,7 @@ const Scheduler = {
         genre: 'ambient' as Genre,
         drumSettings: { pattern: 'composer', enabled: true, kickVolume: 1.0, volume: 0.5 },
         instrumentSettings: { 
-            bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'walking' },
+            bass: { name: "bass_jazz_warm", volume: 0.5, technique: 'walking' as any },
             melody: { name: "blackAcoustic", volume: 0.5 },
             accompaniment: { name: "organ_soft_jazz", volume: 0.5 },
             harmony: { name: "violin", volume: 0.5 },
@@ -79,8 +79,13 @@ const Scheduler = {
             const matchingAxioms = this.cloudAxiomPool.filter(ax => {
                 const genres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const moods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                const isTranceMatch = genres.includes('trance') || genres.includes('psybient') || genres.includes('foundry');
-                const genreMatch = (uiGenre === 'psybient' || uiGenre === 'foundry') ? isTranceMatch : genres.includes(uiGenre);
+                
+                let allowedGenres = [uiGenre];
+                if (uiGenre === 'cyber_blues') {
+                    allowedGenres = ['blues', 'trance', 'psybient', 'foundry'];
+                }
+                
+                const genreMatch = genres.some(g => allowedGenres.includes(g));
                 return genreMatch && (moods.length === 0 || moods.includes(uiMood));
             });
 
@@ -106,7 +111,7 @@ const Scheduler = {
             }
 
             const anchorAxiom = this.cloudAxiomPool.find(ax => 
-                normalizeStr(ax.compositionId) === normalizedId && ax.nativeKey
+                normalizeStr(ax.compositionId) === normalizedId && ax.nativeBpm
             );
             
             if (anchorAxiom) {
@@ -192,7 +197,6 @@ const Scheduler = {
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
        
-       // #ЗАЧЕМ: Принудительный сброс, если UI переключил трек, пока воркер был в ожидании.
        const forceReset = this.awaitingDirective && routeIndexChanged;
        
        this.settings = { ...this.settings, ...newSettings };
@@ -235,7 +239,6 @@ const Scheduler = {
                  this.awaitingSince = Date.now();
                  return 500;
              }
-             // #ЗАЧЕМ: Авто-регенерация, если UI не ответил за 4 секунды (защита от зависаний).
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.settings.seed = generateTrueSeed();
@@ -249,7 +252,6 @@ const Scheduler = {
         try {
             payload = fractalMusicEngine.evolve(this.barDuration, this.barCount);
         } catch (e) {
-            // console.error("[Worker] Engine crash during tick. Re-initializing...");
             this.initializeEngine(this.settings);
             return 1000;
         }
@@ -261,6 +263,28 @@ const Scheduler = {
             this.settings.genre,
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
+
+        /*
+        const getTimestamp = () => new Date().toLocaleTimeString();
+        const getHash = (id: string) => id?.split('_').pop() || 'none';
+        
+        const hints = payload.instrumentHints || {};
+        const ax = payload.activeAxioms || {};
+        const sectionName = payload.sectionName || 'Sequence';
+        const t = (payload.tension || 0.5).toFixed(2);
+        const track = payload.trackName || 'Generative';
+        const trackHash = getHash(track);
+        const mut = payload.mutationType || 'none';
+
+        console.log(
+            `%c[${getTimestamp()}] [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} Axioms: [MEL: ${getHash(ax.melody)}] [ACC: ${getHash(ax.accompaniment)}]\n` +
+            `%c  ↳ Narrative: ${payload.narrative || 'Algorithmic Evolution'}\n` +
+            `%c  | Timbres: [MELODY: ${hints.melody || 'none'}] [ACCOMP: ${hints.accompaniment || 'none'}]`,
+            'color: #888;',
+            'color: #c084fc;', 
+            'color: #888;'
+        );
+        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
@@ -274,7 +298,7 @@ const Scheduler = {
                 seed: this.settings.seed,
                 beautyScore: payload.beautyScore,
                 trackName: payload.trackName || 'Generative',
-                sectionName: payload.navInfo?.currentPart.name || 'Unknown',
+                sectionName: payload.sectionName || 'Sequence',
                 tension: payload.tension
             }
         });

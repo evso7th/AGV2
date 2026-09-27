@@ -1,10 +1,9 @@
-
 import type { FractalEvent, InstrumentType } from "@/types/fractal";
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Drum Machine V7.0 — "Asset Parity Sync".
- * #ЗАЧЕМ: Унификация путей к сэмплам. Переход на .ogg для всех киков.
+ * @fileOverview Drum Machine V7.1 — "Leak-Proof Logic".
+ * #ЗАЧЕМ: Очистка onended для освобождения ресурсов Audio Thread.
  */
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -73,7 +72,6 @@ const DRUM_SAMPLES: Record<string, string> = {
     'Sonor_Classix_Low_Tom': '/assets/drums/Sonor_Classix_Low_Tom.ogg',
     'Sonor_Classix_Mid_Tom': '/assets/drums/Sonor_Classix_Mid_Tom.ogg',
     
-    // #ЗАЧЕМ: ПЛАН №2100. Унификация — все тех-кики переведены на .ogg из папки /kick/
     'drum_edm_kick': '/assets/drums/kick/381825__waveplaysfx__kick-edm-kick.ogg',
     'drum_prog_house_kick': '/assets/drums/kick/385874__waveplaysfx__kick-prog-house-kick.ogg',
     'drum_deep_tech_kick': '/assets/drums/kick/386966__waveplaysfx__kick-deep-tech-kick.ogg',
@@ -107,8 +105,10 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
             if (buffers.has(note)) return;
             try {
                 const arrayBuffer = await vault.fetch(url);
-                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
-                buffers.set(note, audioBuffer);
+                if (arrayBuffer) {
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+                    buffers.set(note, audioBuffer);
+                }
             } catch (error) {}
         });
         await Promise.all(promises);
@@ -129,10 +129,12 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
         source.start(time);
         source.onended = () => {
             try {
+                source.stop();
                 gainNode.disconnect();
                 panner.disconnect();
                 source.disconnect();
             } catch(e) {}
+            source.onended = null; // FIX: Nullify
         };
     };
 

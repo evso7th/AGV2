@@ -1,7 +1,9 @@
+
 /**
- * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.5 — "Hard Activation Protocol".
- * #ЧТО: 1. Установка начальной громкости 0.01 для предотвращения игнорирования медиа-сессии.
- *       2. Удаление логики плавного нарастания (Fade-in) по запросу пользователя.
+ * #ЗАЧЕМ: Реализация "Direct Stream Bridge" V7.7 — "Mobile Resiliency".
+ * #ЧТО: 1. Добавлены атрибуты playsinline для iOS.
+ *       2. Улучшена логика активации через громкость.
+ *       3. Добавлен метод poke() для ре-активации жестом.
  */
 
 export class BroadcastEngine {
@@ -19,31 +21,42 @@ export class BroadcastEngine {
         if (this.isRunning) return;
         this.isRunning = true;
 
-        console.log('%c[Broadcast] Initializing Direct Stream Bridge (Hard Link Active)', 'color: #4ade80; font-weight: bold;');
+        console.log('%c[Broadcast] Activating Mobile-Resilient Stream Bridge', 'color: #4ade80; font-weight: bold;');
 
         // 1. Создаем системный аудио-элемент
         this.audioElement = new Audio();
         this.audioElement.srcObject = this.stream;
         
-        // #ЗАЧЕМ: Принудительное монтирование в DOM для iOS.
+        // #ЗАЧЕМ: ПЛАН №203. Критично для мобильных браузеров.
+        this.audioElement.setAttribute('playsinline', 'true');
+        this.audioElement.setAttribute('webkit-playsinline', 'true');
         this.audioElement.style.display = 'none';
         this.audioElement.id = 'ag-broadcast-bridge';
+        this.audioElement.preload = 'auto';
         document.body.appendChild(this.audioElement);
         
-        // #ЗАЧЕМ: ПЛАН №202.2. Устанавливаем 0.01 ПЕРЕД стартом, чтобы браузер считал поток активным.
+        // #ЗАЧЕМ: "Зацепка" для Media Session API.
         this.audioElement.volume = 0.01; 
         this.audioElement.autoplay = true;
 
         try {
             await this.audioElement.play();
-            
-            // #ЗАЧЕМ: Мгновенный переход на полную громкость (Fade-in удален по ТЗ).
             this.audioElement.volume = 1.0;
-            
-            console.log('%c[Broadcast] Stream Bridge Connected. Ready for background playback.', 'color: #32CD32; font-weight: bold;');
+            console.log('%c[Broadcast] Stream Bridge Connected.', 'color: #32CD32; font-weight: bold;');
         } catch (e) {
-            console.warn('[Broadcast] Play failed. Interaction required?', e);
-            this.stop();
+            console.warn('[Broadcast] Play deferred (User gesture needed?)', e);
+        }
+    }
+
+    /**
+     * #ЗАЧЕМ: Ре-активация потока через свежий жест пользователя.
+     * Используется при нажатии Play, если мост уже был "прогрет".
+     */
+    public poke() {
+        if (this.isRunning && this.audioElement) {
+            this.audioElement.play().catch(() => {
+                console.warn('[Broadcast] Poke failed - background stall detected.');
+            });
         }
     }
 

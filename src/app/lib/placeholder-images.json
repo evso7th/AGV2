@@ -1,3 +1,4 @@
+
 {
   "placeholderImages": [
     {
@@ -11,6 +12,36 @@
       "description": "Mobile PWA Screenshot",
       "imageUrl": "/assets/icons/screenshot-mobile.png",
       "imageHint": "music app"
+    },
+    {
+      "id": "cover-default",
+      "description": "Default AuraGroove Cover",
+      "imageUrl": "/assets/cover.jpg",
+      "imageHint": "album cover"
+    },
+    {
+      "id": "cover-reggae-2",
+      "description": "Reggae Spirit Cover 2",
+      "imageUrl": "/assets/images/cover_reggae_2.png",
+      "imageHint": "reggae art"
+    },
+    {
+      "id": "cover-reggae-1",
+      "description": "Reggae Spirit Cover 1",
+      "imageUrl": "/assets/images/cover_reggae.png",
+      "imageHint": "roots art"
+    },
+    {
+      "id": "cover-cyber-blues",
+      "description": "Cyber Blues Core",
+      "imageUrl": "/assets/images/cyber_blues.png",
+      "imageHint": "cyber blues"
+    },
+    {
+      "id": "cover-dark-trance",
+      "description": "Dark Trance Industry",
+      "imageUrl": "/assets/images/dark_trance.png",
+      "imageHint": "foundry art"
     }
   ]
 }

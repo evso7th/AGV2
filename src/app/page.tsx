@@ -1,6 +1,6 @@
 /**
- * @fileOverview Welcome Page V3.6 — "Telemetry Integrated".
- * #ЗАЧЕМ: Внедрение анонимного счетчика посещений.
+ * @fileOverview Welcome Page V4.0 — "Neon Card Depth".
+ * #ЗАЧЕМ: Усиление видимости орбиталей внутри карточки.
  */
 'use client';
 
@@ -11,9 +11,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Play } from 'lucide-react';
 import Image from 'next/image';
 import { useAuraGroove } from '@/hooks/use-aura-groove';
-import { OrbitalAnimation } from '@/components/orbital-animation';
 import { useFirestore } from '@/firebase';
 import { logAnonymousSession } from '@/lib/telemetry';
+import { OrbitalAnimation } from '@/components/orbital-animation';
 
 export default function Home() {
   const router = useRouter();
@@ -26,7 +26,6 @@ export default function Home() {
   }, []);
 
   const handleStart = () => {
-    // #ЗАЧЕМ: Анонимный лог сессии. Non-blocking.
     logAnonymousSession(db);
     router.push('/home');
   };
@@ -34,7 +33,6 @@ export default function Home() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 bg-background text-foreground overflow-hidden">
       
-      {/* Marquee Animation Styles */}
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes marquee {
           0% { left: 100%; }
@@ -49,13 +47,18 @@ export default function Home() {
 
       <Card className="w-full max-w-sm shadow-2xl text-center border-primary/10 bg-card/80 backdrop-blur-sm relative z-10 overflow-hidden min-h-[500px] flex flex-col justify-center">
         
-        {/* Анимация "Живое Ядро" */}
-        <div 
-          className="absolute inset-0 pointer-events-none opacity-40 z-0 flex items-center justify-center"
-          style={{ '--orbital-size': '320px' } as React.CSSProperties}
-        >
-           <OrbitalAnimation isPlaying={false} tempo={60} />
+        {/* Internal Orbital Animation Layer - Bottom-most */}
+        <div className="absolute inset-0 z-0 opacity-80 pointer-events-none flex items-center justify-center">
+          <OrbitalAnimation 
+            isPlaying={true} 
+            genre="ambient" 
+            tension={0.5} 
+            size="450px" 
+          />
         </div>
+
+        {/* Subtle Background Glow Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none z-1" />
 
         <CardHeader className="space-y-1 relative z-10 pt-8">
           <div className="mx-auto mb-4">

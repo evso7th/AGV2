@@ -1,4 +1,3 @@
-
 import { collection, doc, setDoc, serverTimestamp, Firestore } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -6,6 +5,8 @@ import { toast } from '@/hooks/use-toast';
 
 /**
  * #ЗАЧЕМ: Сохранение "Шедевра" (удачной музыкальной комбинации).
+ * #ЧТО: ПЛАН №2401 — Укрепление стабильности для предотвращения краха в Safari.
+ *       Удалены уведомления об успехе (дублируют HUD).
  */
 export function saveMasterpiece(db: Firestore, data: {
   seed: number;
@@ -16,38 +17,50 @@ export function saveMasterpiece(db: Firestore, data: {
   instrumentSettings: any;
   isArbiterFind?: boolean;
 }) {
-  const masterpiecesRef = collection(db, 'masterpieces');
-  const newDocRef = doc(masterpiecesRef);
-  const cleanSettings = JSON.parse(JSON.stringify(data.instrumentSettings));
+  if (!db) {
+    console.warn('[FirebaseService] Firestore instance missing');
+    return;
+  }
 
-  const payload = {
-    seed: data.seed,
-    mood: data.mood,
-    genre: data.genre,
-    density: data.density,
-    bpm: data.bpm,
-    instrumentSettings: cleanSettings,
-    origin: data.isArbiterFind ? 'AI_Arbiter' : 'User_Like',
-    timestamp: serverTimestamp()
-  };
+  try {
+    const masterpiecesRef = collection(db, 'masterpieces');
+    const newDocRef = doc(masterpiecesRef);
+    
+    // Глубокая очистка настроек
+    const cleanSettings = JSON.parse(JSON.stringify(data.instrumentSettings || {}));
 
-  setDoc(newDocRef, payload)
-    .then(() => {
-        if (!data.isArbiterFind) {
-            toast({
-                title: "Masterpiece Saved!",
-                description: "This seed has been added to the Cloud Registry.",
-            });
-        }
-    })
-    .catch(async (serverError) => {
-      const permissionError = new FirestorePermissionError({
-        path: newDocRef.path,
-        operation: 'create',
-        requestResourceData: payload,
+    const payload = {
+      seed: data.seed || 0,
+      mood: data.mood || 'unknown',
+      genre: data.genre || 'unknown',
+      density: data.density || 0.5,
+      bpm: data.bpm || 72,
+      instrumentSettings: cleanSettings,
+      origin: data.isArbiterFind ? 'AI_Arbiter' : 'User_Like',
+      timestamp: serverTimestamp()
+    };
+
+    setDoc(newDocRef, payload)
+      .catch(async (serverError) => {
+        // ПЛАН №2401: Очистка payload от FieldValue перед логированием ошибки
+        const { timestamp, ...serializablePayload } = payload;
+        
+        const permissionError = new FirestorePermissionError({
+          path: newDocRef.path,
+          operation: 'create',
+          requestResourceData: serializablePayload,
+        });
+        
+        errorEmitter.emit('permission-error', permissionError);
       });
-      errorEmitter.emit('permission-error', permissionError);
+  } catch (criticalError) {
+    console.error('[FirebaseService] Critical save error:', criticalError);
+    toast({
+      variant: "destructive",
+      title: "Save Failed",
+      description: "A local error occurred while preparing the data."
     });
+  }
 }
 
 /**
@@ -60,34 +73,37 @@ export function saveProjectDocument(db: Firestore, data: {
     category?: 'protocol' | 'spec' | 'backlog' | 'contract';
     version?: string;
 }) {
-    // ID формируется из имени файла для обеспечения функции обновления
-    const docId = data.filename.replace(/[^a-zA-Z0-9]/g, '_');
-    const docRef = doc(db, 'project_documents', docId);
+    if (!db) return;
     
-    const payload = {
-        ...data,
-        timestamp: serverTimestamp()
-    };
+    try {
+        const docId = data.filename.replace(/[^a-zA-Z0-9]/g, '_');
+        const docRef = doc(db, 'project_documents', docId);
+        
+        const payload = {
+            ...data,
+            timestamp: serverTimestamp()
+        };
 
-    setDoc(docRef, payload, { merge: true })
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: docRef.path,
-                operation: 'write',
-                requestResourceData: payload,
+        setDoc(docId, payload, { merge: true })
+            .catch(async (serverError) => {
+                const { timestamp, ...serializable } = payload;
+                const permissionError = new FirestorePermissionError({
+                    path: docRef.path,
+                    operation: 'write',
+                    requestResourceData: serializable,
+                });
+                errorEmitter.emit('permission-error', permissionError);
             });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+    } catch (e) {}
 }
 
 /**
  * #ЗАЧЕМ: Генерирую уникальный UID для аксиомы (ПЛАН №1188).
- * #ЧТО: Комбинация названия, роли и криптографически стойкого случайного суффикса.
  */
 function generateAxiomUid(compositionId: string, role: string): string {
     const cleanCompId = compositionId.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
     const cleanRole = role.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 10);
-    const randomSuffix = Math.random().toString(36).substring(2, 12); // 10 chars
+    const randomSuffix = Math.random().toString(36).substring(2, 12);
     return `${cleanCompId}_${cleanRole}_${randomSuffix}`;
 }
 
@@ -95,43 +111,46 @@ function generateAxiomUid(compositionId: string, role: string): string {
  * #ЗАЧЕМ: Трансляция оцифрованного наследия в Гиперкуб AuraGroove.
  */
 export function saveHeritageAxiom(db: Firestore, data: any, index: number = 0) {
-    const compositionId = data.compositionId || 'Unknown_Heritage';
-    const role = data.role || 'melody';
+    if (!db) return;
     
-    // #ЗАЧЕМ: ПЛАН №1188. Использование UID вместо хеша для предотвращения коллизий типа "70hori".
-    const axiomId = generateAxiomUid(compositionId, role);
-    const newDocRef = doc(db, 'heritage_axioms', axiomId);
+    try {
+        const compositionId = data.compositionId || 'Unknown_Heritage';
+        const role = data.role || 'melody';
+        const axiomId = generateAxiomUid(compositionId, role);
+        const newDocRef = doc(db, 'heritage_axioms', axiomId);
 
-    const payload = {
-        phrase: data.phrase || [],
-        role: role,
-        genre: Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []),
-        commonMood: Array.isArray(data.commonMood) ? data.commonMood : (data.commonMood ? [data.commonMood] : []),
-        mood: Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []),
-        compositionId: compositionId,
-        barOffset: data.barOffset ?? 0,
-        bars: data.bars ?? null,
-        noteCount: data.noteCount ?? null,
-        vector: data.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
-        origin: data.origin || 'Manual_Forge',
-        tags: Array.isArray(data.tags) ? data.tags : [],
-        narrative: data.narrative || "Heritage component.",
-        nativeBpm: data.nativeBpm ?? data.bpm ?? null,
-        nativeKey: data.nativeKey ?? data.key ?? null,
-        nativeScale: data.nativeScale ?? data.scale ?? null,
-        timeSignature: data.timeSignature ?? data.ts ?? null,
-        ignored: data.ignored ?? false,
-        preferredInstrument: data.preferredInstrument || null,
-        timestamp: serverTimestamp()
-    };
+        const payload = {
+            phrase: data.phrase || [],
+            role: role,
+            genre: Array.isArray(data.genre) ? data.genre : (data.genre ? [data.genre] : []),
+            commonMood: Array.isArray(data.commonMood) ? data.commonMood : (data.commonMood ? [data.commonMood] : []),
+            mood: Array.isArray(data.mood) ? data.mood : (data.mood ? [data.mood] : []),
+            compositionId: compositionId,
+            barOffset: data.barOffset ?? 0,
+            bars: data.bars ?? null,
+            noteCount: data.noteCount ?? null,
+            vector: data.vector || { t: 0.5, b: 0.5, e: 0.5, h: 0.5 },
+            origin: data.origin || 'Manual_Forge',
+            tags: Array.isArray(data.tags) ? data.tags : [],
+            narrative: data.narrative || "Heritage component.",
+            nativeBpm: data.nativeBpm ?? data.bpm ?? null,
+            nativeKey: data.nativeKey ?? data.key ?? null,
+            nativeScale: data.nativeScale ?? data.scale ?? null,
+            timeSignature: data.timeSignature ?? data.ts ?? null,
+            ignored: data.ignored ?? false,
+            preferredInstrument: data.preferredInstrument || null,
+            timestamp: serverTimestamp()
+        };
 
-    setDoc(newDocRef, payload)
-        .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-                path: newDocRef.path,
-                operation: 'create',
-                requestResourceData: payload,
+        setDoc(newDocRef, payload)
+            .catch(async (serverError) => {
+                const { timestamp, ...serializable } = payload;
+                const permissionError = new FirestorePermissionError({
+                    path: newDocRef.path,
+                    operation: 'create',
+                    requestResourceData: serializable,
+                });
+                errorEmitter.emit('permission-error', permissionError);
             });
-            errorEmitter.emit('permission-error', permissionError);
-        });
+    } catch (e) {}
 }

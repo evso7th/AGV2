@@ -1,6 +1,6 @@
 /**
- * @fileOverview Offline Sync Center V2.0 — "App Code Warm-up".
- * #ЗАЧЕМ: Реализация ПЛАНА №2207 — Принудительное кэширование JS/HTML бандлов приложения.
+ * @fileOverview Offline Sync Center V2.1 — "Source Intel Toggle".
+ * #ЗАЧЕМ: ПЛАН №2300 — Добавлен переключатель Cloud-First vs Vault-First.
  */
 'use client';
 
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { 
   Dialog, 
   DialogContent, 
@@ -55,7 +56,7 @@ export function OfflineSyncCenter() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { toast } = useToast();
-  const { syncDna } = useAudioEngine();
+  const { syncDna, dnaSourcePreference, setDnaSourcePreference } = useAudioEngine();
 
   const refreshStats = useCallback(async () => {
     try {
@@ -199,7 +200,7 @@ export function OfflineSyncCenter() {
               <Zap className="h-6 w-6 fill-current" /> Masterforge Vault
             </DialogTitle>
             <DialogDescription className="text-[10px] uppercase font-bold opacity-50 tracking-[0.2em]">
-              Asset & DNA Synchronization Unit v2.0
+              Asset & DNA Synchronization Unit v2.1
             </DialogDescription>
           </DialogHeader>
 
@@ -234,7 +235,23 @@ export function OfflineSyncCenter() {
                     </Badge>
                   </div>
                 </AccordionTrigger>
-                <AccordionContent className="pt-4 pb-0 space-y-6">
+                <AccordionContent className="pt-4 pb-0 space-y-4">
+                    {/* SOURCE INTEL MODE TOGGLE */}
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                        <div className="space-y-0.5">
+                            <Label className="text-[10px] font-black uppercase text-primary/70 flex items-center gap-1.5 cursor-pointer">
+                                <CloudLightning className="h-3 w-3" /> Cloud-First DNA
+                            </Label>
+                            <p className="text-[8px] text-muted-foreground uppercase opacity-60 font-bold">
+                                Bypass local vault and pull live data
+                            </p>
+                        </div>
+                        <Switch 
+                            checked={dnaSourcePreference === 'network'} 
+                            onCheckedChange={(checked) => setDnaSourcePreference(checked ? 'network' : 'cache')}
+                        />
+                    </div>
+
                     {/* DNA STATS */}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-1">
@@ -270,9 +287,6 @@ export function OfflineSyncCenter() {
                             <RotateCcw className="h-4 w-4" /> 
                             Maintenance: Wipe & Resync
                         </Button>
-                        <p className="text-[8px] text-muted-foreground uppercase text-center leading-relaxed max-w-[240px] opacity-60 font-bold">
-                            Clears all atoms and DNA. Use if the orchestra sounds broken.
-                        </p>
                     </div>
                 </AccordionContent>
               </AccordionItem>
