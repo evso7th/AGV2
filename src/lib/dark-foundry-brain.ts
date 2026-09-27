@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Dark Foundry Brain V4.9 — "Strict Golden Filter".
- * #ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Принудительный пропуск нот вне сетки [0,3,6,9] при высокой плотности (>3 нот).
+ * @fileOverview Dark Foundry Brain V5.0 — "Sparse Atmospheres".
+ * #ЗАЧЕМ: ПЛАН №1987 — Разряжение случайных спарклов на 25% (45->34).
  */
 
 import type {
@@ -426,7 +427,7 @@ export class DarkFoundryBrain {
             const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
             return {
                 type, note: finalNote,
-                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legato'
+                time: (n.t - offset) * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT, weight: 0.85, technique: 'swell', dynamics: 'p', phrasing: 'legate'
             };
         });
     }
@@ -509,9 +510,10 @@ export class DarkFoundryBrain {
                 params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } }
             });
         }
-        const sparkleChance = 45 + (tension * 30);
+        // #ЗАЧЕМ: ПЛАН №1987. Разряжение спарклов на четверть (45->34).
+        const sparkleChance = 34 + (tension * 22);
         if (this.rng.chance(sparkleChance)) {
-            const count = tension > 0.6 ? this.rng.nextInt(3) + 1 : 1;
+            const count = tension > 0.6 ? this.rng.nextInt(2) + 1 : 1;
             for (let i = 0; i < count; i++) {
                 events.push({
                     type: 'sparkle', note: 64 + (this.rng.nextInt(12)), 
