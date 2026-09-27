@@ -1,7 +1,8 @@
-
 /**
- * @fileOverview Dark Foundry Brain V5.0 — "Sparse Atmospheres".
- * #ЗАЧЕМ: ПЛАН №1987 — Разряжение случайных спарклов на 25% (45->34).
+ * @fileOverview Dark Foundry Brain V6.0 — "Rhythmic Pulse Engine".
+ * #ЗАЧЕМ: 1. Протокол "Золотой Ноты" для аккомпанемента и Shimmer Arp.
+ *         2. Sparkle Lock-out: окно 16 секунд для освобождения ресурсов.
+ *         3. Принудительные Power Chords для чистоты индустриального дисторшна.
  */
 
 import type {
@@ -70,6 +71,9 @@ export class DarkFoundryBrain {
     private currentMutationType: string = 'none';
     private microTransposition: number = 0;
     private lickHistory: string[] = [];
+    
+    // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур.
+    private lastSparkleTime = -999;
 
     private readonly MELODY_CEILING = 71;
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
@@ -131,7 +135,7 @@ export class DarkFoundryBrain {
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
                 const axMoods = (Array.isArray(ax.mood) ? ax.mood : [ax.mood]).filter((m: any) => m != null && m !== '');
-                const isFoundryMatch = axGenres.includes('trance') || axGenres.includes('psybient') || axGenres.includes('foundry');
+                const isFoundryMatch = axGenres.some(g => ['trance', 'psybient', 'foundry'].includes(g));
                 return (this.genre === 'foundry' ? isFoundryMatch : axGenres.includes(this.genre)) && (axMoods.length === 0 || axMoods.includes(this.mood));
             });
 
@@ -390,7 +394,6 @@ export class DarkFoundryBrain {
         const offset = localBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
 
-        // #ЗАЧЕМ: ПЛАН №2305. Жесткий фильтр при высокой плотности (>3 нот).
         const useGoldenFilter = barNotes.length > 3;
         const finalNotes = useGoldenFilter 
             ? barNotes.filter(n => this.GOLDEN_TICKS.some(gt => Math.abs((n.t - offset) - gt) < 0.1))
@@ -416,7 +419,7 @@ export class DarkFoundryBrain {
         const offset = localBar * TICKS_PER_BAR;
         const barNotes = mutated.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
 
-        // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе при высокой плотности.
+        // #ЗАЧЕМ: Пропуск ghost-нот и "Золотая Сетка" для аккомпанемента.
         const useGoldenFilter = barNotes.length > 3;
         const finalNotes = useGoldenFilter 
             ? barNotes.filter(n => this.GOLDEN_TICKS.some(gt => Math.abs((n.t - offset) - gt) < 0.1))
@@ -434,16 +437,38 @@ export class DarkFoundryBrain {
 
     private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.microTransposition;
-        const intervals = chord.chordType === 'minor' ? [0, 3, 7] : [0, 4, 7];
-        return intervals.map((interval) => ({ type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval), time: 0, duration: 4.0, weight: 0.7, technique: 'swell', dynamics: 'p', phrasing: 'legato' }));
+        // #ЗАЧЕМ: Power Chords (без терций) и Золотая Сетка.
+        const intervals = [0, 7, 12];
+        const events: FractalEvent[] = [];
+        
+        this.GOLDEN_TICKS.forEach(t => {
+            // #ЗАЧЕМ: "Не постоянно" — вероятностный фильтр.
+            if (this.rng.chance(60 + tension * 40)) {
+                intervals.forEach(interval => {
+                    events.push({
+                        type: 'accompaniment',
+                        note: this.constrainAccompanimentOctave(root + interval),
+                        time: t * TICK_TO_BEAT,
+                        duration: 2.2 * TICK_TO_BEAT,
+                        weight: 0.7 + (tension * 0.1),
+                        technique: 'swell',
+                        dynamics: 'p',
+                        phrasing: 'legato'
+                    });
+                });
+            }
+        });
+        
+        return events;
     }
 
     private renderGenerativeHarmony(chord: GhostChord, epoch: number, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.microTransposition;
         const isMinor = chord.chordType === 'minor';
-        const intervals = isMinor ? [0, 3, 7] : [0, 4, 7];
+        // #ЗАЧЕМ: Power Chords для гармонии.
+        const intervals = [0, 7, 12];
         const events: FractalEvent[] = [];
-        const grid = [4.5, 10.5]; 
+        const grid = [0, 3, 6, 9]; 
         const gate = 40 + tension * 40; 
 
         grid.forEach(t => {
@@ -487,7 +512,7 @@ export class DarkFoundryBrain {
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
-        const scale = chord.chordType === 'minor' ? [0, 3, 7, 10, 14] : [0, 4, 7, 11, 14];
+        const scale = chord.chordType === 'minor' ? [0, 7, 12, 19] : [0, 7, 12, 19]; // Power Arp
         
         const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40 + tension * 40));
         
@@ -510,11 +535,13 @@ export class DarkFoundryBrain {
                 params: { mood: this.mood, genre: this.genre, rules: { categories: [{ name: 'dark', weight: 0.6 }, { name: 'voice', weight: 0.4 }] } }
             });
         }
-        // #ЗАЧЕМ: ПЛАН №1987. Разряжение спарклов на четверть (45->34).
-        const sparkleChance = 34 + (tension * 22);
-        if (this.rng.chance(sparkleChance)) {
-            const count = tension > 0.6 ? this.rng.nextInt(2) + 1 : 1;
-            for (let i = 0; i < count; i++) {
+        
+        // #ЗАЧЕМ: ПЛАН №1600. Sparkle Lock-out (16 секунд).
+        const currentTime = epoch * 3.0; // Estimate for ~80 BPM (Foundry standard)
+        if (currentTime - this.lastSparkleTime >= 16) {
+            const sparkleChance = 34 + (tension * 22);
+            if (this.rng.chance(sparkleChance)) {
+                this.lastSparkleTime = currentTime;
                 events.push({
                     type: 'sparkle', note: 64 + (this.rng.nextInt(12)), 
                     time: this.rng.next() * 3.8, duration: 4.0,
