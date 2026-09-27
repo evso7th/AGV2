@@ -71,7 +71,11 @@ export class MelodySynthManagerV2 {
         this.cleanupControllers.set(id, controller);
 
         const timeoutId = setTimeout(() => {
-            try { inst.disconnect(); } catch (e) {}
+            try { 
+                if (inst.dispose) {
+                    inst.dispose();
+                }
+            } catch (e) {}
             this.cleanupControllers.delete(id);
         }, delayMs);
 
@@ -243,7 +247,9 @@ export class MelodySynthManagerV2 {
             controller.abort();
         }
         this.cleanupControllers.clear();
-        if (this.synth) this.synth.disconnect();
+        if (this.synth && this.synth.dispose) {
+            this.synth.dispose();
+        }
         this.preamp.disconnect();
     }
 }

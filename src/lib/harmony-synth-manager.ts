@@ -69,7 +69,11 @@ export class HarmonySynthManager {
 
         const timeoutId = setTimeout(() => {
             if (!signal.aborted) {
-                try { inst.disconnect(); } catch(e) {}
+                try {
+                    if (inst.dispose) {
+                        inst.dispose();
+                    }
+                } catch(e) {}
             }
         }, delayMs);
 
@@ -175,6 +179,8 @@ export class HarmonySynthManager {
         this.guitarChords.dispose();
         this.yamahaChords.dispose();
         this.violin.dispose();
-        if (this.synth) this.synth.disconnect();
+        if (this.synth && this.synth.dispose) {
+            this.synth.dispose();
+        }
     }
 }

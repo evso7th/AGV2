@@ -58,7 +58,11 @@ export class AccompanimentSynthManagerV2 {
         this.cleanupControllers.set(id, controller);
 
         const timeoutId = setTimeout(() => {
-            try { inst.disconnect(); } catch (e) {}
+            try { 
+                if (inst.dispose) {
+                    inst.dispose();
+                }
+            } catch (e) {}
             this.cleanupControllers.delete(id);
         }, delayMs);
 
@@ -196,7 +200,9 @@ export class AccompanimentSynthManagerV2 {
             controller.abort();
         }
         this.cleanupControllers.clear();
-        if (this.instrument) this.instrument.disconnect();
+        if (this.instrument && this.instrument.dispose) {
+            this.instrument.dispose();
+        }
         this.preamp.disconnect();
     }
 }
