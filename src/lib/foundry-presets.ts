@@ -1,18 +1,19 @@
 /**
- * @fileOverview Foundry Presets Library V1.7 — "Guitar Hardening".
+ * @fileOverview Foundry Presets Library V1.8 — "Pad Energy Management".
+ * #ЗАЧЕМ: Устранение перегруза через сокращение релизов и снижение уровней.
  */
 
 export const FOUNDRY_PRESETS = {
   synth: { 
     type: 'synth',
     name: 'Industrial Pulse Pad',
-    volume: 0.65,
+    volume: 0.50, // Снижено с 0.65
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
       { type: 'sine', detune: 0, octave: -1, gain: 0.15 }
     ],
     noise: { on: false },
-    adsr: { a: 0.4, d: 1.0, s: 0.7, r: 1.0 }, 
+    adsr: { a: 0.4, d: 0.8, s: 0.6, r: 0.6 }, // Релиз сокращен до 0.6с
     lpf: { cutoff: 1400, q: 2.0 }, 
     lfo: { rate: 0.2, amount: 400, target: 'filter' },
     drive: { type: 'soft', amount: 0.25 },
@@ -22,12 +23,12 @@ export const FOUNDRY_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Stable Steel Pad',
-    volume: 0.62,
+    volume: 0.45, // Снижено с 0.62
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.2 }
     ],
-    adsr: { a: 1.2, d: 2.0, s: 0.8, r: 2.0 },
+    adsr: { a: 1.2, d: 1.5, s: 0.7, r: 0.8 }, // Релиз сокращен до 0.8с
     lpf: { cutoff: 850, q: 1.5 }, 
     lfo: { rate: 0.1, amount: 200, target: 'filter' },
     drive: { type: 'soft', amount: 0.15 },
