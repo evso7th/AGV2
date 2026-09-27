@@ -1,6 +1,8 @@
 /**
-@fileOverview Trance Brain V29.0 — "Strict Golden Filter".
-#ЗАЧЕМ: ПЛАН №2305 — Шаг 4: Принудительный пропуск нот вне сетки [0,3,6,9] при высокой плотности.
+@fileOverview Trance Brain V30.0 — "Neuro Hardening".
+#ЗАЧЕМ: 1. Протокол "Золотой Ноты" для аккомпанемента (0,3,6,9).
+      2. Sparkle Lock-out: окно 16 секунд для предотвращения перегрузки CPU.
+      3. Принудительные Power Chords для чистоты синтеза.
 */
 import {
   FractalEvent,
@@ -33,6 +35,12 @@ import {
   TICKS_PER_BAR,
   TICK_TO_BEAT
 } from './music-theory';
+
+const MOOD_TO_COMMON: Record<Mood, CommonMood> = {
+  epic: 'light', joyful: 'light', enthusiastic: 'light',
+  dreamy: 'neutral', contemplative: 'neutral', calm: 'neutral',
+  melancholic: 'dark', dark: 'dark', anxious: 'dark', gloomy: 'dark'
+};
 
 const MIDI_NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
@@ -91,6 +99,10 @@ export class TranceBrain {
   private lickHistory: string[] = [];
   private cloudAxioms: any[] = [];
   private activeAnchorId: string | null = null;
+
+  // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур.
+  private lastSparkleTime = -999;
+
   private state: BluesCognitiveState & {
     lastMutationType: string,
     lastTension: number,
@@ -421,7 +433,7 @@ export class TranceBrain {
       });
 
       if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-        const softPads = this.renderSidechainedPad(epoch, resChord, tension);
+        const softPads = this.renderPowerChordAccompaniment(epoch, resChord, tension);
         events.push(...softPads);
         usedTargetLayers.add('accompaniment');
       }
@@ -484,20 +496,36 @@ export class TranceBrain {
     return events;
   }
 
-  private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+  private renderPowerChordAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
-    const isMinor = chord.chordType === 'minor';
-    const intervals = isMinor ? [0, 3, 7, 10] : [0, 4, 7, 11];
-    return intervals.map((interval, i) => ({
-      type: 'accompaniment',
-      note: this.constrainAccompanimentOctave(root + interval),
-      time: 0,
-      duration: 3.9,
-      weight: 0.35 + (tension * 0.1),
-      technique: 'swell',
-      dynamics: 'p',
-      params: { attack: 1.5, release: 2.0, sidechain: true }
-    }));
+    // #ЗАЧЕМ: Power Chords [0, 7, 12] и Золотая Сетка для Транса.
+    const intervals = [0, 7, 12];
+    const events: FractalEvent[] = [];
+    
+    this.GOLDEN_TICKS.forEach(t => {
+        // #ЗАЧЕМ: "Не постоянно" — вероятностный фильтр.
+        if (this.random.next() < (0.5 + tension * 0.4)) {
+            intervals.forEach(interval => {
+                events.push({
+                    type: 'accompaniment',
+                    note: this.constrainAccompanimentOctave(root + interval),
+                    time: t * TICK_TO_BEAT,
+                    duration: 2.2 * TICK_TO_BEAT,
+                    weight: 0.4 + (tension * 0.1),
+                    technique: 'swell',
+                    dynamics: 'p',
+                    params: { attack: 0.2, release: 1.5 }
+                });
+            });
+        }
+    });
+    
+    return events;
+  }
+
+  private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+      // #ЗАЧЕМ: Устаревшая функция, перенаправляем на PowerChordAccompaniment для унификации.
+      return this.renderPowerChordAccompaniment(epoch, chord, tension);
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
@@ -508,7 +536,6 @@ export class TranceBrain {
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + (TICKS_PER_BAR / timeScale));
     const goldenTicks = [0, 3, 6, 9];
     
-    // #ЗАЧЕМ: Экономия ресурсов в Нейроспейс. Принудительный фильтр при плотности > 3.
     const useGoldenFilter = barNotes.length > 3;
     const finalNotes = useGoldenFilter 
         ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
@@ -535,12 +562,11 @@ export class TranceBrain {
 
   private renderGapArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
-    const scale = [0, 3, 7, 10, 12];
+    const scale = [0, 7, 12, 19]; // Power Arp
     const goldenTicks = [0, 3, 6, 9];
     
     const rawEvents = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.random.next() < 0.4);
     
-    // #ЗАЧЕМ: Золотая сетка для арпеджио при высокой плотности.
     const filteredTicks = rawEvents.length > 3 
         ? rawEvents.filter(t => goldenTicks.some(gt => Math.abs(t - gt) < 0.1))
         : rawEvents;
@@ -564,7 +590,6 @@ export class TranceBrain {
     const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
     
     const goldenTicks = [0, 3, 6, 9];
-    // #ЗАЧЕМ: Пропуск ghost-нот в аккомпанементе при высокой плотности.
     const useGoldenFilter = barNotes.length > 3;
     const finalNotes = useGoldenFilter 
         ? barNotes.filter(n => goldenTicks.some(gt => Math.abs((n.t - barOffset) - gt) < 0.1))
@@ -629,19 +654,26 @@ export class TranceBrain {
       });
     }
 
-    const sparkleChance = 0.16; 
-    if (this.random.next() < sparkleChance) {
-      events.push({
-        type: 'sparkle',
-        note: 60 + this.random.nextInt(12),
-        time: this.random.next() * 3.8,
-        duration: 4.0,
-        weight: 0.8 + (this.random.next() * 0.2),
-        technique: 'hit',
-        dynamics: 'p',
-        phrasing: 'legato',
-        params: { category: this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC' }
-      });
+    // #ЗАЧЕМ: ПЛАН №1600. Sparkle Lock-out (16 секунд).
+    const barDuration = (60 / (this.config.tempo || 124)) * 4;
+    const currentTime = epoch * barDuration;
+    
+    if (currentTime - this.lastSparkleTime >= 16) {
+        const sparkleChance = 0.16; 
+        if (this.random.next() < sparkleChance) {
+            this.lastSparkleTime = currentTime;
+            events.push({
+                type: 'sparkle',
+                note: 60 + this.random.nextInt(12),
+                time: this.random.next() * 3.8,
+                duration: 4.0,
+                weight: 0.8 + (this.random.next() * 0.2),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { category: this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC' }
+            });
+        }
     }
 
     return events;
