@@ -1,8 +1,8 @@
 /**
-@fileOverview Cyber Blues Brain V1.5 — "Bass Stability Guard".
-#ЗАЧЕМ: 1. Исправление исчезающего баса (принудительный fallback на рифф при пустых тактах аксиом).
-      2. Полная активация слоев гармонии и атмосферных событий.
-#ОБНОВЛЕНО (V1.6): Разряжение плотности спарклов на четверть (ПЛАН №1990).
+@fileOverview Cyber Blues Brain V1.6 — "Rhythmic Power Protocol".
+#ЗАЧЕМ: 1. Протокол "Золотой Ноты" для аккомпанемента (0,3,6,9).
+      2. Sparkle Lock-out: окно 16 секунд для предотвращения наложений.
+      3. Принудительные Power Chords для чистоты дисторшна.
 */
 import {
   FractalEvent,
@@ -76,8 +76,6 @@ export const DEFAULT_CONFIG: BluesBrainConfig = {
   }
 };
 
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-
 export class CyberBluesBrain {
   private config: BluesBrainConfig;
   private seed: number;
@@ -99,6 +97,10 @@ export class CyberBluesBrain {
   private currentTransposition: number = 0;
   private microTransposition: number = 0;
   private lickHistory: string[] = [];
+  
+  // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур.
+  private lastSparkleTime = -999;
+
   private state: BluesCognitiveState & {
     lastMutationType: string,
     lastTension: number,
@@ -533,23 +535,26 @@ export class CyberBluesBrain {
       });
     }
 
-    // #ЗАЧЕМ: ПЛАН №1990. Разряжение спарклов на четверть.
-    const sparkleChance = 0.225 + (tension * 0.3); 
-    if (this.random.next() < sparkleChance) {
-      const count = tension > 0.7 ? this.random.nextInt(2) + 1 : 1;
-      for (let i = 0; i < count; i++) {
-        events.push({
-          type: 'sparkle',
-          note: 60 + this.random.nextInt(12),
-          time: this.random.next() * 3.8,
-          duration: 4.0,
-          weight: 0.8 + (this.random.next() * 0.2),
-          technique: 'hit',
-          dynamics: 'p',
-          phrasing: 'legato',
-          params: { category: this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC' }
-        });
-      }
+    // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур (16с окно).
+    const barDuration = (60 / this.config.tempo) * 4;
+    const currentTime = epoch * barDuration;
+    
+    if (currentTime - this.lastSparkleTime >= 16) {
+        const sparkleChance = 0.225 + (tension * 0.3); 
+        if (this.random.next() < sparkleChance) {
+            this.lastSparkleTime = currentTime;
+            events.push({
+                type: 'sparkle',
+                note: 60 + this.random.nextInt(12),
+                time: this.random.next() * 3.8,
+                duration: 4.0,
+                weight: 0.8 + (this.random.next() * 0.2),
+                technique: 'hit',
+                dynamics: 'p',
+                phrasing: 'legato',
+                params: { category: this.random.next() < 0.5 ? 'ORGANIC' : 'MELODIC' }
+            });
+        }
     }
 
     return events;
@@ -558,42 +563,31 @@ export class CyberBluesBrain {
   private renderPowerChordAccompaniment(epoch: number, chord: GhostChord, tension: number, melodyEvents: FractalEvent[]): FractalEvent[] {
     const events: FractalEvent[] = [];
     const root = chord.rootNote + this.currentTransposition + this.microTransposition;
+    
+    // #ЗАЧЕМ: Протокол Золотой Ноты и Power Chords (без терций).
     const intervals = [0, 7, 12];
-    const isSoloistBusy = melodyEvents.length > 3;
-
-    if (isSoloistBusy) {
-      [0, 3, 6, 9].forEach(t => {
-        intervals.forEach(interval => {
-          events.push({
-            type: 'accompaniment',
-            note: this.constrainAccompanimentOctave(root + interval),
-            time: t * TICK_TO_BEAT,
-            duration: 2.6 * TICK_TO_BEAT,
-            weight: 0.75 + (tension * 0.15),
-            technique: 'hit',
-            dynamics: 'f',
-            phrasing: 'staccato',
-            params: { attack: 0.005, release: 0.35, drive: 0.7 }
+    const goldenTicks = [0, 3, 6, 9];
+    
+    goldenTicks.forEach(t => {
+      // #ЗАЧЕМ: "Не постоянно" — вероятностный затвор.
+      const hitChance = 0.4 + (tension * 0.45);
+      if (this.random.next() < hitChance) {
+          intervals.forEach(interval => {
+            events.push({
+                type: 'accompaniment',
+                note: this.constrainAccompanimentOctave(root + interval),
+                time: t * TICK_TO_BEAT,
+                duration: 2.4 * TICK_TO_BEAT,
+                weight: 0.7 + (tension * 0.2),
+                technique: 'hit',
+                dynamics: 'f',
+                phrasing: 'staccato',
+                params: { attack: 0.005, release: 0.4, drive: 0.75 }
+            });
           });
-        });
-      });
-    } else {
-      [0, 6].forEach(t => {
-        intervals.forEach(interval => {
-          events.push({
-            type: 'accompaniment',
-            note: this.constrainAccompanimentOctave(root + interval),
-            time: t * TICK_TO_BEAT,
-            duration: 5.5 * TICK_TO_BEAT,
-            weight: 0.6 + (tension * 0.2),
-            technique: 'swell',
-            dynamics: 'mf',
-            phrasing: 'legato',
-            params: { attack: 0.8, release: 2.0, drive: 0.55 }
-          });
-        });
-      });
-    }
+      }
+    });
+    
     return events;
   }
 
