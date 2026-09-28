@@ -1,7 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.2 — "Strict Bass Monophony".
- * #ЗАЧЕМ: 1. Устранение гудения через принудительное прерывание старой ноты баса (Моно-режим).
- *         2. Пункт 5 плана: Установка HPF барьера 150 Гц для всех не-басовых синтов.
+ * @fileOverview Центральная фабрика инструментов V12.3 — "Silent Slap Attack".
+ * #ЗАЧЕМ: 1. Устранение щелчков в технике slap через подавление атаки до 0.0001%.
+ *         2. Оптимизация огибающих баса для предотвращения клиппинга.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -193,7 +193,6 @@ const createIndependentVoice = (
     const now = Math.max(when, ctx.currentTime);
 
     // #ЗАЧЕМ: МОНОФОНИЧЕСКИЙ ДИКТАТ БАСА.
-    // Если это бас, убиваем все предыдущие голоса ЭТОГО инструмента перед запуском нового.
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
             if (v.instrumentId === instrumentId && !v.disposed) {
@@ -201,8 +200,7 @@ const createIndependentVoice = (
                 if (vNode) {
                     try {
                         vNode.gain.cancelScheduledValues(now);
-                        // Экстренный фейд-аут за 20мс для устранения акустической интерференции
-                        vNode.gain.setTargetAtTime(0, now, 0.015);
+                        vNode.gain.setTargetAtTime(0, now, 0.005);
                         v.expirationTime = now + 0.1;
                     } catch (e) {}
                 }
@@ -282,33 +280,35 @@ const createIndependentVoice = (
         const lfo = ctx.createOscillator();
         lfo.type = preset.lfo.shape || 'sine';
         lfo.frequency.setValueAtTime(preset.lfo.rate || 5, now);
-        
         const lfoGain = ctx.createGain();
         lfoGain.gain.setValueAtTime(preset.lfo.amount, now);
-        
         lfo.connect(lfoGain);
-        
-        if (preset.lfo.target === 'pitch') {
-            mainOscillators.forEach(osc => lfoGain.connect(osc.detune));
-        } else {
-            lfoGain.connect(filter.frequency);
-        }
-        
+        if (preset.lfo.target === 'pitch') mainOscillators.forEach(osc => lfoGain.connect(osc.detune));
+        else lfoGain.connect(filter.frequency);
         lfo.start(now);
         lfo.stop(expirationTime);
         nodes.push(lfo, lfoGain);
     }
 
-    if (sharedDelayNode && preset.delay?.mix > 0.01) {
-        chainHead.connect(sharedDelayNode);
-    }
-
+    if (sharedDelayNode && preset.delay?.mix > 0.01) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
 
     const peak = velocity * 0.45;
     voiceGain.gain.setValueAtTime(0, now);
-    voiceGain.gain.linearRampToValueAtTime(peak, now + adsr.a);
-    voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
+
+    // #ЗАЧЕМ: ПЛАН №1280. Slap Ultra-Soft Protocol (V2.4.2).
+    // Почти полное обнуление перкуссионного щелчка (0.0001% от пика).
+    const technique = eventParams?.technique;
+    if (type === 'bass' && technique === 'slap') {
+        const percVolume = peak * 0.000001; 
+        voiceGain.gain.setValueAtTime(percVolume, now);
+        const effectiveAttack = Math.max(adsr.a, 0.045); 
+        voiceGain.gain.linearRampToValueAtTime(peak, now + effectiveAttack);
+        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + effectiveAttack, Math.max(adsr.d / 3, 0.001));
+    } else {
+        voiceGain.gain.linearRampToValueAtTime(peak, now + adsr.a);
+        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
+    }
 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);
 
@@ -351,7 +351,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const panner = ctx.createStereoPanner();
     
     const hpf = ctx.createBiquadFilter();
-    hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 30 : 150;
+    hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 45 : 150;
 
     const boxyCut = ctx.createBiquadFilter();
     boxyCut.type = 'peaking'; boxyCut.frequency.value = 500; boxyCut.gain.value = type === 'guitar' ? -3.5 : 0;

@@ -141,7 +141,8 @@ export class MelodySynthManagerV2 {
                 velocity: e.weight * entranceMultiplier, // Применение множителя входа
                 technique: e.technique, 
                 pan: e.pan, 
-                params: { ...e.params, tempo: boundedTempo }
+                // #ЗАЧЕМ: ПЛАН №1280. Проброс техники в параметры голоса.
+                params: { ...e.params, tempo: boundedTempo, technique: e.technique }
             };
         });
         
