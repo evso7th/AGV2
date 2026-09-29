@@ -12,12 +12,11 @@ import {
   SuiteDNA,
   NavigationInfo,
   BluesCognitiveState,
-  CommonMood,
   InstrumentPart,
   Technique,
-  Dynamics,
-  Phrasing
+  Genre
 } from '@/types/music';
+import type { CommonMood, Dynamics, Phrasing } from '@/types/fractal';
 import {
   DEGREE_TO_SEMITONE,
   decompressCompactPhrase,
@@ -417,7 +416,7 @@ export class CyberBluesBrain {
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre);
+      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre as Genre);
     }
 
     let melodyEvents: FractalEvent[] = [];
@@ -435,11 +434,11 @@ export class CyberBluesBrain {
       this.currentAccompAxioms.forEach((ax) => {
         const rawRole = ax.role.toLowerCase();
         let target: InstrumentPart | null = rawRole.includes('piano') ? 'pianoAccompaniment' : (rawRole.includes('accomp') ? 'accompaniment' : null);
-        if (target && hints[target] && !usedTargetLayers.has(target)) {
+        if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
           let p = this.applyMutationLogic(ax.phrase, tension, this.seed + epoch + 1);
           const rendered = this.renderHeritageAccompaniment(resChord, epoch, p, target, dna, tension);
           if (rendered.length > 0) {
-            if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre);
+            if (ax.preferredInstrument) (instrumentOverrides as any)[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre as Genre);
             events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add(target);
           }
@@ -600,7 +599,7 @@ export class CyberBluesBrain {
     ticks.forEach(t => {
       const degIdx = calculateMusiNum(epoch + t, 11, this.seed, scale.length);
       const rawNote = root + scale[degIdx] + this.currentTransposition + this.microTransposition;
-      const tech: Technique = tension > 0.4 ? 'bn' : 'pick';
+      const tech: Technique = tension > 0.4 ? 'bend' : 'pick';
       events.push({
         type: 'melody',
         note: this.wrapMelody(rawNote),
@@ -617,13 +616,13 @@ export class CyberBluesBrain {
 
   private renderHybridDrums(epoch: number, tension: number, isSoloistResting: boolean): FractalEvent[] {
     const events: FractalEvent[] = [];
-    events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.2, technique: 'hit', dynamics: 'ff', phrasing: 'staccato' });
+    events.push({ type: 'drum_kick_reso', note: 36, time: 0, duration: 0.1, weight: 1.2, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
     events.push({ type: 'drum_kick_reso', note: 36, time: 4.5 * TICK_TO_BEAT, duration: 0.1, weight: 1.0, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
     events.push({ type: 'drum_kick_reso', note: 36, time: 9 * TICK_TO_BEAT, duration: 0.1, weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato' });
 
     [3, 9].forEach(t => events.push({
       type: 'drum_snare', note: 38, time: t * TICK_TO_BEAT, duration: 0.1,
-      weight: 1.1, technique: 'hit', dynamics: 'ff', phrasing: 'staccato'
+      weight: 1.1, technique: 'hit', dynamics: 'f', phrasing: 'staccato'
     }));
 
     [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
@@ -634,7 +633,9 @@ export class CyberBluesBrain {
         time: t * TICK_TO_BEAT,
         duration: isCrash ? 1.5 : 0.1,
         weight: isCrash ? 0.9 : 0.45,
-        technique: 'hit'
+        technique: 'hit',
+        dynamics: 'mf',
+        phrasing: 'staccato'
       });
     });
 
@@ -643,7 +644,8 @@ export class CyberBluesBrain {
       const tomSequence = ['drum_Sonor_Classix_High_Tom', 'drum_Sonor_Classix_Mid_Tom', 'drum_Sonor_Classix_Low_Tom'];
       [9, 10, 11].forEach((t, i) => events.push({
         type: tomSequence[i] as any, note: 40, time: t * TICK_TO_BEAT, duration: 0.5,
-        weight: (0.8 + i * 0.1), technique: 'hit', pan: -0.8 + (i * 0.8)
+        weight: (0.8 + i * 0.1), technique: 'hit', pan: -0.8 + (i * 0.8),
+        dynamics: 'mf', phrasing: 'staccato'
       }));
     }
 
@@ -665,15 +667,14 @@ export class CyberBluesBrain {
       let weight = 0.85;
       let durationScale = 1.0;
       let tech: Technique = 'pick';
-      if (n.tech === 'bn' || n.tech === 'vb') tech = 'bn';
-      else if (n.tech === 'ds') tech = 'ds';
-      else if (n.tech === 'sl') tech = 'sl';
+      if (n.tech === 'bn' || n.tech === 'vb') tech = 'bend';
+      else if (n.tech === 'ds' || n.tech === 'sl') tech = 'slide';
 
       if (useNarrativeFilter) {
         if (isGolden) {
           weight = 1.0;
           durationScale = 2.5;
-          tech = 'bn';
+          tech = 'bend';
         } else {
           weight = 0.35;
           durationScale = 0.5;
@@ -682,7 +683,7 @@ export class CyberBluesBrain {
       } else {
         weight = isGolden ? 1.0 : 0.75;
         durationScale = isGolden ? 2.0 : 1.0;
-        if (isGolden) tech = 'bn';
+        if (isGolden) tech = 'bend';
       }
 
       const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
@@ -694,6 +695,7 @@ export class CyberBluesBrain {
         weight,
         technique: tech,
         phrasing: (useNarrativeFilter && !isGolden) ? 'staccato' : (n.phrasing || 'legato'),
+        dynamics: 'mf',
         params: { attack: n.params?.attack, release: n.params?.release }
       };
     });
@@ -715,7 +717,9 @@ export class CyberBluesBrain {
           time: (n.t - barOffset) * TICK_TO_BEAT,
           duration: n.d * TICK_TO_BEAT,
           weight: 0.9,
-          technique: 'pick',
+          technique: 'slap',
+          dynamics: 'f',
+          phrasing: 'legato',
           params: { drive: 0.6 }
         }));
       }
@@ -739,7 +743,9 @@ export class CyberBluesBrain {
       time: p.t * TICK_TO_BEAT,
       duration: 2.5 * TICK_TO_BEAT,
       weight: 0.95,
-      technique: 'pick',
+      technique: 'slap',
+      dynamics: 'f',
+      phrasing: 'legato',
       params: { drive: 0.65 }
     }));
   }
@@ -759,6 +765,8 @@ export class CyberBluesBrain {
         duration: Math.min(n.d, 6) * TICK_TO_BEAT,
         weight: 0.7,
         technique: 'hit',
+        dynamics: 'mf',
+        phrasing: 'legato',
         params: { attack: n.params?.attack, release: n.params?.release, drive: 0.5 }
       };
     });
@@ -773,7 +781,9 @@ export class CyberBluesBrain {
           type: 'pianoAccompaniment',
           note: this.wrapMelody(m.note + (chord.chordType === 'minor' ? 3 : 4)),
           weight: 0.65,
-          technique: 'hit'
+          technique: 'hit',
+          dynamics: 'mf',
+          phrasing: 'legato'
         });
       });
       return { events, style: 'Shadow Support' };
@@ -792,6 +802,8 @@ export class CyberBluesBrain {
       duration: 3.0 * TICK_TO_BEAT,
       weight: 0.7,
       technique: 'pick',
+      dynamics: 'mf',
+      phrasing: 'legato',
       params: { drive: 0.5 }
     }));
     events.push({
@@ -801,6 +813,8 @@ export class CyberBluesBrain {
       duration: 4.0,
       weight: 0.4,
       technique: 'hit',
+      dynamics: 'mf',
+      phrasing: 'legato',
       params: { drive: 0.6 }
     });
     return events;

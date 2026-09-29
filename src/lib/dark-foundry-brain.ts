@@ -14,9 +14,9 @@ import type {
     InstrumentHints,
     InstrumentPart,
     Genre,
-    CommonMood,
     Technique
 } from '@/types/music';
+import type { CommonMood } from '@/types/fractal';
 import {
     calculateMusiNum,
     DEGREE_TO_SEMITONE,
@@ -99,7 +99,7 @@ export class DarkFoundryBrain {
         this.cloudAxioms = axioms || [];
         if (activeAnchorId !== undefined) this.activeAnchorId = activeAnchorId;
         if (useHeritage !== undefined) this.useHeritage = useHeritage;
-        if (this.isImprovising !== undefined) this.isImprovising = isImprovising;
+        if (isImprovising !== undefined) this.isImprovising = isImprovising;
         if (this.cloudAxioms.length > 0 && this.useHeritage) this.soloistBusyUntilBar = -1;
     }
 
@@ -133,7 +133,7 @@ export class DarkFoundryBrain {
             ? poolToUse.filter(ax => normalizeStr(ax.compositionId) === effectiveAnchor)
             : poolToUse.filter(ax => {
                 const axGenres = Array.isArray(ax.genre) ? ax.genre : [ax.genre];
-                return axGenres.some(g => ['trance', 'psybient', 'foundry'].includes(g));
+                return axGenres.some((g: string) => ['trance', 'psybient', 'foundry'].includes(g));
             });
 
         if (filteredPool.length > 0) {
@@ -274,7 +274,7 @@ export class DarkFoundryBrain {
         this.currentAccompAxioms.forEach(ax => {
             const role = ax.role.toLowerCase();
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
-            if (target && hints[target] && !usedTargetLayers.has(target)) {
+            if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
                 
                 if (target === 'pianoAccompaniment' || target === 'accompaniment') {
@@ -394,7 +394,7 @@ export class DarkFoundryBrain {
             return {
                 type: 'melody', note: this.wrapMelody(rawNote),
                 time: relT * TICK_TO_BEAT, duration: n.d * TICK_TO_BEAT * (isGold ? 1.5 : 1.0),
-                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vb' : 'pick', dynamics: 'mf', 
+                weight: isGold ? 0.95 : 0.75, technique: isGold ? 'vibrato' : 'pick', dynamics: 'mf', 
                 phrasing: n.phrasing || 'legato',
                 params: { attack: n.params?.attack, release: n.params?.release }
             };
@@ -413,7 +413,7 @@ export class DarkFoundryBrain {
             : barNotes;
 
         return finalNotes.map(n => {
-            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.currentTransposition + this.microTransposition;
+            const rawNote = chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition + this.microTransposition;
             const finalNote = type === 'pianoAccompaniment' ? this.wrapMelody(rawNote) : this.constrainAccompanimentOctave(rawNote);
             return {
                 type, note: finalNote,
@@ -535,5 +535,5 @@ export class DarkFoundryBrain {
     }
 
     private constrainBassOctave(n: number): number { let v = n; while (v > 47) v -= 12; while (v < 31) v += 12; return v; }
-    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return n; }
+    private constrainAccompanimentOctave(n: number): number { let v = n; while (v > 83) v -= 12; while (v < 48) v += 12; return v; }
 }
