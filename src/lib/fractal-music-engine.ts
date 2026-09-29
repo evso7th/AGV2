@@ -57,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.0 — "Per-Bar Timbre Resolution".
- * #ЗАЧЕМ: Динамическое разрешение инструментов внутри групп на каждом такте.
+ * @fileOverview Fractal Music Engine V47.1 — "Bass Lockdown Protocol".
+ * #ЗАЧЕМ: Жесткое закрепление Warm Blues Bass для тяжелых жанров.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -338,6 +338,11 @@ export class FractalMusicEngine {
 
     if (result.instrumentOverrides) {
         Object.assign(instrumentHints, result.instrumentOverrides);
+    }
+
+    // #ЗАЧЕМ: Протокол "Bass Lockdown". Принудительная установка Warm Blues для тяжелых жанров.
+    if (this.config.genre === 'cyber_blues' || this.config.genre === 'foundry') {
+        instrumentHints.bass = 'bass_jazz_warm';
     }
 
     this.lastEvents = [...result.events];
