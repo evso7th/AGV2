@@ -16,7 +16,7 @@ export const BASS_PRESET_INFO: Record<string, { description: string; color: stri
   bass_808: { description: 'Classic 808 sub-bass with long decay.', color: '#DC143C' },
   bass_deep_house: { description: 'Warm and groovy bass for deep house.', color: '#9932CC' },
   bass_rock_pick: { description: 'Aggressive picked bass for rock music.', color: '#B22222' },
-  bass_slap: { description: 'Bright, percussive slap bass for funk.', color: '#FF4500' },
+  bass_slap: { description: 'Soft, round jazz-style bass (replaces harsh slap).', color: '#A0522D' },
   bass_cs80: { description: 'Legendary CS80 pitched down for deep synth bass.', color: '#00ced1' },
   classicBass: { description: 'Classic rock bass sound.', color: '#8B4513' },
   glideBass: { description: 'Substituted with Ambient Bass for purity.', color: '#2F4F4F' },
@@ -37,7 +37,6 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
             { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
         ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
-        // #ЗАЧЕМ: ПЛАН №1276. Увеличен релиз для естественного затухания.
         adsr: { a: 0.03, d: 2.8, s: 0.05, r: 1.5 },
         filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
         filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
@@ -188,11 +187,21 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_slap: {
         type: 'bass' as const,
         name: 'Slap Bass',
-        volume: 0.65,
-        osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.45 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.45 } ],
-        adsr: { attack: 0.001, decay: 0.15, sustain: 0.4, release: 0.12 },
-        filter: { type: 'lowpass' as const, cutoff: 2000, q: 1.5 },
-        lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.15, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        volume: 0.55, 
+        osc: [ 
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, 
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
+        ],
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
+        adsr: { a: 0.03, d: 2.8, s: 0.05, r: 1.5 },
+        filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
+        filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
+        drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
+        comp: { threshold: -22, ratio: 2, attack: 0.01, release: 0.2, makeup: 2 },
+        eq: { lowShelf: { freq: 80, gain: 2 }, mid: { freq: 800, q: 1.2, gain: -4 }, highShelf: { freq: 2500, gain: -8 } },
+        stringNoise: { on: true, type: 'finger' as const, amount: 0.05 },
+        chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
+        delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
+        reverbMix: 0.05
     }
 };
