@@ -45,7 +45,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
     acoustic: 0.05, // #ЗАЧЕМ: Понижение громкости Black Acoustic в 2 раза (было 0.1)
     electric: 0.825, 
-    piano: 0.8,
+    piano: 0.4, // #ЗАЧЕМ: Понижение громкости акустического пианино в 2 раза (было 0.8)
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
