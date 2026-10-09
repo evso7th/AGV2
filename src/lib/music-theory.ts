@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.2 — "Memory Extension".
- * #ЗАЧЕМ: Добавлен метод поиска филлеров для гипнотической памяти.
+ * @fileOverview Universal Music Theory Utilities V6.3 — "Ambient Bass Purity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1250. Строгий запрет перкуссионных басов в амбиенте.
  */
 
 import type { 
@@ -201,7 +201,16 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
             return 'guitar_shineOn';
         }
 
-        if (part === 'bass') return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+        if (part === 'bass') {
+            // #ЗАЧЕМ: ПЛАН №1250. Вето на перкуссионные басы в Ambient.
+            if (genre === 'ambient') {
+                if (clean.includes('808')) return 'bass_808';
+                if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
+                if (clean.includes('dark')) return 'bass_ambient_dark';
+                return 'bass_ambient'; // Универсальный дефолт для амбиента
+            }
+            return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
+        }
 
         return V1_TO_V2_PRESET_MAP[targetHint] || V1_TO_V2_PRESET_MAP[clean] || String(targetHint);
     } catch (e) {
