@@ -1,5 +1,5 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.1 — "Memory Extension".
+ * @fileOverview Universal Music Theory Utilities V6.2 — "Memory Extension".
  * #ЗАЧЕМ: Добавлен метод поиска филлеров для гипнотической памяти.
  */
 
@@ -53,7 +53,8 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     const rolePool = pool.filter(ax => {
         if (ax.ignored) return false;
         const axRole = (ax.role || '').toLowerCase();
-        if (role === 'pianoAccompaniment') return axRole.includes('piano');
+        if (role === 'pianoAccompaniment') return axRole.includes('piano') || axRole.includes('accomp');
+        if (role === 'melody') return axRole === 'melody';
         return false;
     });
     if (rolePool.length === 0) return null;

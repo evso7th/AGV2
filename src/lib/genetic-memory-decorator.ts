@@ -1,6 +1,6 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.0 — "Hypnotic Loop".
- * #ЗАЧЕМ: Реализация ПЛАНА №1210. Заполнение пауз пианиста в блюзе.
+ * @fileOverview Genetic Memory Decorator V2.1 — "Neuro Spiral".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1210. Заполнение пауз в Блюзе и Трансе (Breakdowns).
  * #ЧТО: Перехватчик партитуры, внедряющий "воспоминания" (мастерписы) в пустоты.
  */
 import { FractalEvent } from '@/types/music';
@@ -14,11 +14,12 @@ import {
 
 interface FillerState {
     axiom: any;
-    iteration: number; // 0 or 1 (Double pass)
+    iteration: number; // 0 or 1 (Double pass loop)
     currentBar: number; // relative to axiom
 }
 
 let pianoFillerState: FillerState | null = null;
+let melodyFillerState: FillerState | null = null;
 
 export class GeneticMemoryDecorator {
     public static fillGaps(
@@ -28,71 +29,109 @@ export class GeneticMemoryDecorator {
         cloudAxioms: any[],
         rootNote: number
     ): FractalEvent[] {
-        // ОГРАНИЧЕНИЕ: Только Блюз и только Пианино (согласно ТЗ)
-        if (genre !== 'blues' && genre !== 'cyber_blues') {
-            pianoFillerState = null;
-            return events;
-        }
+        // --- 1. BLUES LOGIC (Piano Only) ---
+        if (genre === 'blues' || genre === 'cyber_blues') {
+            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+            if (hasPiano) {
+                pianoFillerState = null;
+                return events;
+            }
 
-        // Проверяем наличие оригинальной партии пианино в текущем такте
-        const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+            if (!pianoFillerState) {
+                const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+            }
 
-        // Heritage Supremacy: Если в оригинале есть ноты — сбрасываем филлер
-        if (hasPiano) {
-            pianoFillerState = null;
-            return events;
-        }
-
-        // Если нет активного воспоминания — ищем новое
-        if (!pianoFillerState) {
-            const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-            if (best) {
-                pianoFillerState = {
-                    axiom: best,
-                    iteration: 0,
-                    currentBar: 0
-                };
+            if (pianoFillerState) {
+                const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
+                this.advanceState(pianoFillerState);
+                if (pianoFillerState.iteration > 1) pianoFillerState = null;
+                return [...events, ...filler];
             }
         }
 
-        if (!pianoFillerState) return events;
+        // --- 2. PSYBIENT LOGIC (Breakdown Interception) ---
+        // #ЗАЧЕМ: В трансе память активируется в моменты тишины ритм-секции.
+        if (genre === 'psybient') {
+            const hasDrums = events.some(e => String(e.type).toLowerCase().includes('drum') || String(e.type).toLowerCase().includes('kick'));
+            const hasBass = events.some(e => e.type === 'bass');
+            const isBreakdown = !hasDrums && !hasBass;
 
-        // Рендерим текущий такт филлера
-        const phrase = decompressCompactPhrase(pianoFillerState.axiom.phrase);
-        const barOffset = pianoFillerState.currentBar * TICKS_PER_BAR;
+            if (isBreakdown) {
+                const newEvents = [...events];
+                
+                // Перехват Мелодии
+                const hasMelody = events.some(e => e.type === 'melody');
+                if (!hasMelody) {
+                    if (!melodyFillerState) {
+                        const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                        if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                    }
+                    if (melodyFillerState) {
+                        const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true);
+                        this.advanceState(melodyFillerState);
+                        if (melodyFillerState.iteration > 1) melodyFillerState = null;
+                        newEvents.push(...filler);
+                    }
+                } else { melodyFillerState = null; }
+
+                // Перехват Пианино (Rhodes)
+                const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+                if (!hasPiano) {
+                    if (!pianoFillerState) {
+                        const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                        if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                    }
+                    if (pianoFillerState) {
+                        const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, true);
+                        this.advanceState(pianoFillerState);
+                        if (pianoFillerState.iteration > 1) pianoFillerState = null;
+                        newEvents.push(...filler);
+                    }
+                } else { pianoFillerState = null; }
+
+                return newEvents;
+            } else {
+                pianoFillerState = null;
+                melodyFillerState = null;
+            }
+        }
+
+        return events;
+    }
+
+    private static renderCurrentBar(state: FillerState, type: string, root: number, octShift: number, isTrance: boolean = false): FractalEvent[] {
+        const phrase = decompressCompactPhrase(state.axiom.phrase);
+        const barOffset = state.currentBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR);
 
-        const fillerEvents: FractalEvent[] = barNotes.map(n => ({
-            type: 'pianoAccompaniment',
-            note: rootNote + 24 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+        return barNotes.map(n => ({
+            type: type as any,
+            note: root + octShift + (DEGREE_TO_SEMITONE[n.deg] || 0),
             time: (n.t - barOffset) * TICK_TO_BEAT,
             duration: n.d * TICK_TO_BEAT,
-            weight: 0.65,
+            weight: 0.6,
             technique: 'hit',
             dynamics: 'p',
             phrasing: 'legato',
-            params: { isEcho: true } // Флаг для "призрачного" звука
-        }));
-
-        // Продвигаем жизненный цикл воспоминания
-        pianoFillerState.currentBar++;
-        
-        // Считаем общую длину бандла в тактах
-        let maxT = 0;
-        phrase.forEach(note => { if (note.t > maxT) maxT = note.t; });
-        const totalBars = pianoFillerState.axiom.bars || Math.ceil((maxT + 1) / TICKS_PER_BAR);
-
-        if (pianoFillerState.currentBar >= totalBars) {
-            if (pianoFillerState.iteration === 0) {
-                // ПЕРВЫЙ ПОВТОР (Закон Двойного Круга)
-                pianoFillerState.iteration = 1;
-                pianoFillerState.currentBar = 0;
-            } else {
-                // ВТОРОЙ ПОВТОР ЗАВЕРШЕН — сброс для поиска нового воспоминания
-                pianoFillerState = null;
+            params: { 
+                isEcho: true, 
+                hpCutoff: isTrance ? 800 : undefined // #ЗАЧЕМ: ПЛАН №1211. Фильтрация для транса.
             }
-        }
+        }));
+    }
 
-        return [...events, ...fillerEvents];
+    private static advanceState(state: FillerState) {
+        state.currentBar++;
+        // Определяем длину аксиомы
+        const phrase = decompressCompactPhrase(state.axiom.phrase);
+        let maxT = 0;
+        phrase.forEach(n => { if (n.t > maxT) maxT = n.t; });
+        const totalBars = state.axiom.bars || Math.ceil((maxT + 1) / TICKS_PER_BAR);
+
+        if (state.currentBar >= totalBars) {
+            state.iteration++;
+            state.currentBar = 0;
+        }
     }
 }

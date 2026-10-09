@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.4 — "Memory Echo Profile".
- * #ЗАЧЕМ: Реализация звукового профиля "Echo" для генетической памяти.
+ * @fileOverview Центральная фабрика инструментов V12.5 — "Radiant Filter".
+ * #ЗАЧЕМ: Реализация динамического HPF для эха и мастерписов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -195,9 +195,8 @@ const createIndependentVoice = (
     const isEcho = eventParams?.isEcho === true;
     const attackTime = isEcho ? 1.8 : adsr.a;
     const releaseTime = isEcho ? 4.5 : adsr.r;
-    const peak = velocity * (isEcho ? 0.35 : 0.45);
+    const peak = velocity * (isEcho ? 0.65 : 0.45); // #ЗАЧЕМ: V2.1. Слышимость в трансе.
 
-    // #ЗАЧЕМ: МОНОФОНИЧЕСКИЙ ДИКТАТ БАСА.
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
             if (v.instrumentId === instrumentId && !v.disposed) {
@@ -267,6 +266,16 @@ const createIndependentVoice = (
         chainHead.connect(shaper);
         chainHead = shaper;
         nodes.push(shaper);
+    }
+
+    // #ЗАЧЕМ: ПЛАН №1211. Поддержка High-Pass для трансовых воспоминаний.
+    if (eventParams?.hpCutoff) {
+        const hpFilter = ctx.createBiquadFilter();
+        hpFilter.type = 'highpass';
+        hpFilter.frequency.value = eventParams.hpCutoff;
+        chainHead.connect(hpFilter);
+        chainHead = hpFilter;
+        nodes.push(hpFilter);
     }
 
     const filter = ctx.createBiquadFilter();
