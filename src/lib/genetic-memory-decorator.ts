@@ -1,8 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.3 — "Reggae Dub Interceptor".
- * #ЗАЧЕМ: Реализация ПЛАНА №1220. Внедрение Dub-эха в Регги и поддержка пианиста.
- * #ЧТО: 1. Добавлен блок Reggae: перехват мелодии (isDub) и пианино.
- *       2. Shout Logic: берет только первую ноту из фразы мастерписа для эффекта выкрика.
+ * @fileOverview Genetic Memory Decorator V2.4 — "Ambient Resonance Expansion".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1230. Заполнение пауз в Амбиенте (Melody, Harmony, Piano) мастерписами.
+ * #ЧТО: Добавлен блок Ambient: перехват Мелодии, Гармонии и Пианино.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -145,7 +144,6 @@ export class GeneticMemoryDecorator {
         }
 
         // --- 4. REGGAE LOGIC (Dub Shout) ---
-        // #ЗАЧЕМ: ПЛАН №1220. Эхо-гитара и пианист-собеседник.
         if (genre === 'reggae') {
             const newEvents = [...events];
             
@@ -172,7 +170,6 @@ export class GeneticMemoryDecorator {
                     if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
                 }
                 if (melodyFillerState) {
-                    // "Выкрик": берем только первую ноту фразы мастерписа
                     const phrase = decompressCompactPhrase(melodyFillerState.axiom.phrase);
                     if (phrase.length > 0) {
                         const n = phrase[0];
@@ -197,6 +194,59 @@ export class GeneticMemoryDecorator {
                 }
             } else { melodyFillerState = null; }
             
+            return newEvents;
+        }
+
+        // --- 5. AMBIENT LOGIC (Resonance Memory) ---
+        // #ЗАЧЕМ: ПЛАН №1230. Поддержка парящих воспоминаний в Slow Fusion.
+        if (genre === 'ambient') {
+            const newEvents = [...events];
+            
+            // 1. Piano (Rhodes Reflections)
+            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+            if (!hasPiano) {
+                if (!pianoFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                    if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (pianoFillerState) {
+                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, false, 0.4);
+                    newEvents.push(...filler);
+                    this.advanceState(pianoFillerState);
+                    if (pianoFillerState.iteration > 1) pianoFillerState = null;
+                }
+            } else { pianoFillerState = null; }
+
+            // 2. Harmony (Violin/Guitars Reflections)
+            const hasHarmony = events.some(e => e.type === 'harmony');
+            if (!hasHarmony) {
+                if (!harmonyFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
+                    if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (harmonyFillerState) {
+                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.35);
+                    newEvents.push(...filler);
+                    this.advanceState(harmonyFillerState);
+                    if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
+                }
+            } else { harmonyFillerState = null; }
+
+            // 3. Melody (Ghost Reflections)
+            const hasMelody = events.some(e => e.type === 'melody');
+            if (!hasMelody) {
+                if (!melodyFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (melodyFillerState) {
+                    const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, false, 0.4);
+                    newEvents.push(...filler);
+                    this.advanceState(melodyFillerState);
+                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
+                }
+            } else { melodyFillerState = null; }
+
             return newEvents;
         }
 
