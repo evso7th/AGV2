@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.6 — "Parametric Interception".
- * #ЗАЧЕМ: Поддержка внешнего управления Drive для "Гипнотической Памяти".
+ * @fileOverview Центральная фабрика инструментов V12.7 — "Anti-Mud Precision".
+ * #ЗАЧЕМ: ПЛАН №2550. Удаление гудения через Mud-Cut фильтрацию на 300 Гц.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -194,7 +194,7 @@ const createIndependentVoice = (
     const isEcho = eventParams?.isEcho === true;
     const attackTime = isEcho ? 1.8 : adsr.a;
     const releaseTime = isEcho ? 4.5 : adsr.r;
-    const peak = velocity * (isEcho ? 0.65 : 0.45); 
+    const peak = velocity * (isEcho ? 0.75 : 0.45); 
 
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
@@ -258,7 +258,6 @@ const createIndependentVoice = (
 
     let chainHead: AudioNode = voiceGain;
 
-    // #ЗАЧЕМ: Динамический перегруз для "Гипнотической Памяти".
     const driveAmount = eventParams?.drive ?? preset.drive?.amount ?? 0;
     const driveType = preset.drive?.type || 'soft';
 
@@ -366,6 +365,13 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 45 : 150;
 
+    // #ЗАЧЕМ: Mud-Cut Filter (300Hz). Удаление гудения для пэдов и аккомпанемента.
+    const mudCut = ctx.createBiquadFilter();
+    mudCut.type = 'peaking'; 
+    mudCut.frequency.value = 300; 
+    mudCut.gain.value = (type === 'bass') ? 0 : -3.5; 
+    mudCut.Q.value = 1.0;
+
     const boxyCut = ctx.createBiquadFilter();
     boxyCut.type = 'peaking'; boxyCut.frequency.value = 500; boxyCut.gain.value = type === 'guitar' ? -3.5 : 0;
 
@@ -373,7 +379,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     presence.type = 'peaking'; presence.frequency.value = 2500; presence.gain.value = type === 'guitar' ? 2.5 : 0;
 
     instrumentGain.connect(hpf);
-    hpf.connect(boxyCut);
+    hpf.connect(mudCut);
+    mudCut.connect(boxyCut);
     boxyCut.connect(presence);
     presence.connect(panner);
     panner.connect(output);
@@ -411,7 +418,7 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         },
         disconnect: () => {
             [...globalActiveVoices].filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v));
-            [instrumentGain, hpf, boxyCut, presence, panner, sharedDelay, feedback, delayMix].forEach(n => n.disconnect());
+            [instrumentGain, hpf, mudCut, boxyCut, presence, panner, sharedDelay, feedback, delayMix].forEach(n => n.disconnect());
         },
         connect: (dest) => panner.connect(dest || output)
     };

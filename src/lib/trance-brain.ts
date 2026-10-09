@@ -1,8 +1,6 @@
 /**
-@fileOverview Trance Brain V30.0 — "Neuro Hardening".
-#ЗАЧЕМ: 1. Протокол "Золотой Ноты" для аккомпанемента (0,3,6,9).
-      2. Sparkle Lock-out: окно 16 секунд для предотвращения перегрузки CPU.
-      3. Принудительные Power Chords для чистоты синтеза.
+@fileOverview Trance Brain V30.1 — "Neuro Clarity Enhancement".
+#ЗАЧЕМ: ПЛАН №2550. Устранение гудения через сокращение релизов и длительностей аккордов.
 */
 import {
   FractalEvent,
@@ -100,7 +98,6 @@ export class TranceBrain {
   private cloudAxioms: any[] = [];
   private activeAnchorId: string | null = null;
 
-  // #ЗАЧЕМ: ПЛАН №1600. Герметизация текстур.
   private lastSparkleTime = -999;
 
   private state: BluesCognitiveState & {
@@ -198,6 +195,13 @@ export class TranceBrain {
     }
     const barsElapsed = epoch - startEpoch;
     return (barsElapsed + startOffset) % totalBars;
+  }
+
+  private phraseBarCount(phrase: any[]): number {
+    if (!phrase || phrase.length === 0) return 1;
+    let maxT = 0;
+    for (const n of phrase) if (n.t > maxT) maxT = n.t;
+    return Math.max(1, Math.floor(maxT / TICKS_PER_BAR) + 1);
   }
 
   private rippleLongNote(e: FractalEvent, chord: GhostChord): FractalEvent[] {
@@ -404,7 +408,7 @@ export class TranceBrain {
     const instrumentOverrides: Partial<InstrumentHints> = {};
 
     if (this.currentPreferredInstrument && hints.melody && !isSoloistResting) {
-      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre);
+      instrumentOverrides.melody = resolveSemanticTimbre(this.currentPreferredInstrument, tension, 'melody', this.config.genre as Genre);
     }
 
     let melodyEvents: FractalEvent[] = [];
@@ -421,11 +425,11 @@ export class TranceBrain {
       this.currentAccompAxioms.forEach((ax) => {
         const rawRole = ax.role.toLowerCase();
         let target: InstrumentPart | null = rawRole.includes('piano') ? 'pianoAccompaniment' : (rawRole.includes('accomp') ? 'accompaniment' : null);
-        if (target && hints[target] && !usedTargetLayers.has(target)) {
+        if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
           let p = this.applyMutationLogic(ax.phrase, tension, this.seed + epoch + 1);
           const rendered = this.renderHeritageAccompaniment(resChord, epoch, p, target, dna, tension);
           if (rendered.length > 0) {
-            if (ax.preferredInstrument) instrumentOverrides[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre);
+            if (ax.preferredInstrument) (instrumentOverrides as any)[target] = resolveSemanticTimbre(ax.preferredInstrument, tension, target, this.config.genre as Genre);
             events.push(...rendered.flatMap(e => this.rippleLongNote(e, resChord)));
             usedTargetLayers.add(target);
           }
@@ -498,23 +502,21 @@ export class TranceBrain {
 
   private renderPowerChordAccompaniment(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
-    // #ЗАЧЕМ: Power Chords [0, 7, 12] и Золотая Сетка для Транса.
     const intervals = [0, 7, 12];
     const events: FractalEvent[] = [];
     
     this.GOLDEN_TICKS.forEach(t => {
-        // #ЗАЧЕМ: "Не постоянно" — вероятностный фильтр.
         if (this.random.next() < (0.5 + tension * 0.4)) {
             intervals.forEach(interval => {
                 events.push({
                     type: 'accompaniment',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 2.2 * TICK_TO_BEAT,
+                    duration: 1.8 * TICK_TO_BEAT, // Сокращено с 2.2 для чистоты
                     weight: 0.4 + (tension * 0.1),
                     technique: 'swell',
                     dynamics: 'p',
-                    params: { attack: 0.2, release: 1.5 }
+                    params: { attack: 0.2, release: 0.8 } // Релиз сокращен с 1.5
                 });
             });
         }
@@ -524,7 +526,6 @@ export class TranceBrain {
   }
 
   private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-      // #ЗАЧЕМ: Устаревшая функция, перенаправляем на PowerChordAccompaniment для унификации.
       return this.renderPowerChordAccompaniment(epoch, chord, tension);
   }
 
@@ -562,7 +563,7 @@ export class TranceBrain {
 
   private renderGapArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
     const root = chord.rootNote + 12;
-    const scale = [0, 7, 12, 19]; // Power Arp
+    const scale = [0, 7, 12, 19]; 
     const goldenTicks = [0, 3, 6, 9];
     
     const rawEvents = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.random.next() < 0.4);
@@ -654,7 +655,6 @@ export class TranceBrain {
       });
     }
 
-    // #ЗАЧЕМ: ПЛАН №1600. Sparkle Lock-out (16 секунд).
     const barDuration = (60 / (this.config.tempo || 124)) * 4;
     const currentTime = epoch * barDuration;
     

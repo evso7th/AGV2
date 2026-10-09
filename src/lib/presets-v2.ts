@@ -1,5 +1,6 @@
 // V2 Presets — Compatible with buildMultiInstrument()
 // #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
+// #ОБНОВЛЕНО (ПЛАН №2550): Очистка пэдов от гудения (меньше саба, короче релиз).
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -10,14 +11,14 @@ export const V2_PRESETS = {
 
   synth: { 
     type: 'synth',
-    volume: 0.65,
+    volume: 0.55,
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.8 }
+      { type: 'sine', detune: 0, octave: -1, gain: 0.3 } // Уменьшено с 0.8
     ],
     noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 1.2 },
+    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 0.7 }, // Релиз сокращен
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
   },
@@ -25,13 +26,13 @@ export const V2_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Velvet Lush Pad',
-    volume: 0.6,
+    volume: 0.55,
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.6 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.9 }
+      { type: 'sine', detune: 0, octave: -1, gain: 0.4 } // Уменьшено с 0.9
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 1.8 },
+    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 0.9 }, // Релиз сокращен
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
   },
@@ -73,8 +74,8 @@ export const V2_PRESETS = {
     name: 'Clean Guitar',
     volume: 0.7,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, // Sustain 0.6 for natural decay
-    lpf: 5000, // Higher ceiling for physical model
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 }, 
+    lpf: 5000, 
     pluckBrightness: 0.8,
     reverbMix: 0
   },
@@ -85,8 +86,8 @@ export const V2_PRESETS = {
     volume: 0.10,
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
-    post: { lpf: 5000 }, // Refined LPF
-    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 }, // Sustain 0.65
+    post: { lpf: 5000 }, 
+    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 }, 
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0,
     attackTransient: 0.15,
@@ -102,7 +103,7 @@ export const V2_PRESETS = {
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },
-    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 }, // Sustain 0.55
+    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 }, 
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0,
     attackTransient: 0.10,
