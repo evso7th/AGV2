@@ -1,7 +1,6 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.4 — "Ambient Resonance Expansion".
- * #ЗАЧЕМ: Реализация ПЛАНА №1230. Заполнение пауз в Амбиенте (Melody, Harmony, Piano) мастерписами.
- * #ЧТО: Добавлен блок Ambient: перехват Мелодии, Гармонии и Пианино.
+ * @fileOverview Genetic Memory Decorator V2.5 — "Acoustic Sealing".
+ * #ЗАЧЕМ: Снижение плотности и громкости эхо-событий в Foundry.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -110,7 +109,7 @@ export class GeneticMemoryDecorator {
                     if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
                 }
                 if (harmonyFillerState) {
-                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.4);
+                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.30); // Тише
                     filler.forEach(f => {
                         if (!f.params) f.params = {};
                         f.params.isEcho = true;
@@ -126,7 +125,7 @@ export class GeneticMemoryDecorator {
                     if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
                 }
                 if (pianoFillerState) {
-                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, false, 0.45);
+                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, false, 0.35); // Тише
                     filler.forEach(f => {
                         if (!f.params) f.params = {};
                         f.params.isEcho = true;
@@ -198,7 +197,6 @@ export class GeneticMemoryDecorator {
         }
 
         // --- 5. AMBIENT LOGIC (Resonance Memory) ---
-        // #ЗАЧЕМ: ПЛАН №1230. Поддержка парящих воспоминаний в Slow Fusion.
         if (genre === 'ambient') {
             const newEvents = [...events];
             

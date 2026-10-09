@@ -1,19 +1,19 @@
 /**
- * @fileOverview Foundry Presets Library V1.8 — "Pad Energy Management".
- * #ЗАЧЕМ: Устранение перегруза через сокращение релизов и снижение уровней.
+ * @fileOverview Foundry Presets Library V1.9 — "Acoustic Sealing".
+ * #ЗАЧЕМ: Устранение утечек через радикальное сокращение релизов.
  */
 
 export const FOUNDRY_PRESETS = {
   synth: { 
     type: 'synth',
     name: 'Industrial Pulse Pad',
-    volume: 0.50, // Снижено с 0.65
+    volume: 0.42, // Снижено
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.8 }, 
       { type: 'sine', detune: 0, octave: -1, gain: 0.15 }
     ],
     noise: { on: false },
-    adsr: { a: 0.4, d: 0.8, s: 0.6, r: 0.6 }, // Релиз сокращен до 0.6с
+    adsr: { a: 0.4, d: 0.8, s: 0.6, r: 0.35 }, // Релиз сокращен до 0.35с
     lpf: { cutoff: 1400, q: 2.0 }, 
     lfo: { rate: 0.2, amount: 400, target: 'filter' },
     drive: { type: 'soft', amount: 0.25 },
@@ -23,12 +23,12 @@ export const FOUNDRY_PRESETS = {
   synth_ambient_pad_lush: {
     type: 'synth',
     name: 'Stable Steel Pad',
-    volume: 0.45, // Снижено с 0.62
+    volume: 0.40, // Снижено
     osc: [
       { type: 'sawtooth', detune: 0, octave: 0, gain: 0.7 },
       { type: 'sine', detune: 0, octave: -1, gain: 0.2 }
     ],
-    adsr: { a: 1.2, d: 1.5, s: 0.7, r: 0.8 }, // Релиз сокращен до 0.8с
+    adsr: { a: 1.2, d: 1.5, s: 0.7, r: 0.5 }, // Релиз сокращен до 0.5с
     lpf: { cutoff: 850, q: 1.5 }, 
     lfo: { rate: 0.1, amount: 200, target: 'filter' },
     drive: { type: 'soft', amount: 0.15 },
@@ -38,9 +38,9 @@ export const FOUNDRY_PRESETS = {
   organ: {
     type: 'organ',
     name: 'Industrial B3 (Dirty)',
-    volume: 0.45,
+    volume: 0.40,
     drawbars: [8, 8, 8, 5, 0, 0, 0, 0, 0],
-    adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.8 },
+    adsr: { a: 0.05, d: 0.1, s: 0.85, r: 0.35 }, // Релиз сокращен
     lpf: 2400,
     reverbMix: 0,
     drive: { type: 'soft', amount: 0.45 },
@@ -51,10 +51,10 @@ export const FOUNDRY_PRESETS = {
   organ_soft_jazz: {
     type: 'organ',
     name: 'Gritty Jazz B3',
-    volume: 0.42,
+    volume: 0.38,
     drawbars: [8, 0, 8, 4, 2, 0, 0, 0, 0],
     lpf: 1800,
-    adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.6 },
+    adsr: { a: 0.03, d: 0.1, s: 0.8, r: 0.3 }, // Релиз сокращен
     reverbMix: 0,
     drive: { type: 'soft', amount: 0.22 },
     leslie: { rate: 5.2, pitchDepth: 0.00005, ampDepth: 0.04, driftPct: 0.15, driftRate: 0.15 },
@@ -64,9 +64,9 @@ export const FOUNDRY_PRESETS = {
   guitar_clean: {
     type: 'guitar',
     name: 'Clean Guitar',
-    volume: 0.7,
+    volume: 0.65,
     osc: { width: 0.42 },
-    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.6 },
+    adsr: { a: 0.005, d: 0.25, s: 0.6, r: 0.4 },
     lpf: 5000,
     pluckBrightness: 0.8,
     reverbMix: 0
@@ -75,11 +75,11 @@ export const FOUNDRY_PRESETS = {
   guitar_shineOn: {
     type: 'guitar',
     name: 'Shine On Lead',
-    volume: 0.10,
+    volume: 0.09,
     osc: { width: 0.46 },
     drive: { type: 'soft', amount: 0.25 },
     post: { lpf: 5000 },
-    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 1.8 },
+    adsr: { a: 0.020, d: 0.35, s: 0.65, r: 0.8 }, // Релиз сокращен
     delay: { time: 0.42, fb: 0.32, mix: 0.24 },
     reverbMix: 0,
     attackTransient: 0.15,
@@ -91,11 +91,11 @@ export const FOUNDRY_PRESETS = {
   guitar_muffLead: {
     type: 'guitar',
     name: 'Muff Lead (Warm Grit)',
-    volume: 0.06,
+    volume: 0.05,
     osc: { width: 0.45 },
     drive: { type: 'muff', amount: 0.4 },
     post: { lpf: 4000 },
-    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 1.0 },
+    adsr: { a: 0.020, d: 0.5, s: 0.55, r: 0.6 }, // Релиз сокращен
     delay: { time: 0.30, fb: 0.18, mix: 0.12 },
     reverbMix: 0,
     attackTransient: 0.10,
@@ -107,12 +107,12 @@ export const FOUNDRY_PRESETS = {
   ep_rhodes_warm: {
     type: 'synth',
     name: 'Warm Rhodes',
-    volume: 0.68,
+    volume: 0.62,
     osc: [
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 0.4 },
+    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 0.3 }, 
     lpf: { cutoff: 2400, q: 0.7 }, 
     reverbMix: 0
   }
