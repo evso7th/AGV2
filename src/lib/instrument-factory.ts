@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.5 — "Radiant Filter".
- * #ЗАЧЕМ: Реализация динамического HPF для эха и мастерписов.
+ * @fileOverview Центральная фабрика инструментов V12.6 — "Parametric Interception".
+ * #ЗАЧЕМ: Поддержка внешнего управления Drive для "Гипнотической Памяти".
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -191,11 +191,10 @@ const createIndependentVoice = (
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
 
-    // #ЗАЧЕМ: ПЛАН №1210. Звуковой дизайн для "эха воспоминаний".
     const isEcho = eventParams?.isEcho === true;
     const attackTime = isEcho ? 1.8 : adsr.a;
     const releaseTime = isEcho ? 4.5 : adsr.r;
-    const peak = velocity * (isEcho ? 0.65 : 0.45); // #ЗАЧЕМ: V2.1. Слышимость в трансе.
+    const peak = velocity * (isEcho ? 0.65 : 0.45); 
 
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
@@ -259,16 +258,19 @@ const createIndependentVoice = (
 
     let chainHead: AudioNode = voiceGain;
 
-    if (preset.drive?.amount > 0.01) {
+    // #ЗАЧЕМ: Динамический перегруз для "Гипнотической Памяти".
+    const driveAmount = eventParams?.drive ?? preset.drive?.amount ?? 0;
+    const driveType = preset.drive?.type || 'soft';
+
+    if (driveAmount > 0.01) {
         const shaper = ctx.createWaveShaper();
-        shaper.curve = getDriveCurve(preset.drive.type, preset.drive.amount);
+        shaper.curve = getDriveCurve(driveType, driveAmount);
         shaper.oversample = '2x';
         chainHead.connect(shaper);
         chainHead = shaper;
         nodes.push(shaper);
     }
 
-    // #ЗАЧЕМ: ПЛАН №1211. Поддержка High-Pass для трансовых воспоминаний.
     if (eventParams?.hpCutoff) {
         const hpFilter = ctx.createBiquadFilter();
         hpFilter.type = 'highpass';
