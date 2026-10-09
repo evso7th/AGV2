@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.7 — "Anti-Mud Precision".
- * #ЗАЧЕМ: ПЛАН №2550. Удаление гудения через Mud-Cut фильтрацию на 300 Гц.
+ * @fileOverview Центральная фабрика инструментов V12.8 — "Dub Echo Protocol".
+ * #ЗАЧЕМ: ПЛАН №1225. Поддержка флага isDub для динамического управления дилеем.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -33,9 +33,6 @@ export const globalAllNotesOff = () => {
     allVoices.forEach(v => deepCleanup(v));
 };
 
-/**
- * #ЗАЧЕМ: Гарантированное уничтожение всех связей в графе.
- */
 export const deepCleanup = (voiceRecord: any) => {
     if (!voiceRecord || voiceRecord.disposed) return;
     voiceRecord.disposed = true;
@@ -70,9 +67,6 @@ export const collectExpiredVoices = (audioCtxTime: number) => {
     }
 };
 
-/**
- * #ЗАЧЕМ: Быстрая очистка при перегрузе.
- */
 const enforceVoiceLimit = () => {
     const currentLength = globalActiveVoices.size;
     if (currentLength <= globalVoiceLimit) return;
@@ -192,8 +186,12 @@ const createIndependentVoice = (
     const now = Math.max(when, ctx.currentTime);
 
     const isEcho = eventParams?.isEcho === true;
-    const attackTime = isEcho ? 1.8 : adsr.a;
+    const isDub = eventParams?.isDub === true;
+
+    // #ЗАЧЕМ: ПЛАН №1225. Dub-артикуляция: быстрая атака + длинное затухание.
+    const attackTime = isDub ? 0.01 : (isEcho ? 1.8 : adsr.a);
     const releaseTime = isEcho ? 4.5 : adsr.r;
+    
     const peak = velocity * (isEcho ? 0.75 : 0.45); 
 
     if (type === 'bass') {
@@ -305,7 +303,7 @@ const createIndependentVoice = (
         nodes.push(lfo, lfoGain);
     }
 
-    if (sharedDelayNode && preset.delay?.mix > 0.01) chainHead.connect(sharedDelayNode);
+    if (sharedDelayNode && (preset.delay?.mix > 0.01 || isDub)) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
 
     voiceGain.gain.setValueAtTime(0, now);
@@ -365,7 +363,6 @@ export async function buildMultiInstrument(ctx: AudioContext, {
     const hpf = ctx.createBiquadFilter();
     hpf.type = 'highpass'; hpf.frequency.value = type === 'bass' ? 45 : 150;
 
-    // #ЗАЧЕМ: Mud-Cut Filter (300Hz). Удаление гудения для пэдов и аккомпанемента.
     const mudCut = ctx.createBiquadFilter();
     mudCut.type = 'peaking'; 
     mudCut.frequency.value = 300; 
@@ -403,6 +400,19 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         preset: currentPreset,
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             if (!isFinite(midi) || midi < 0 || midi > 127) return;
+
+            // #ЗАЧЕМ: ПЛАН №1225. Dub Echo Logic.
+            if (params?.isDub) {
+                feedback.gain.cancelScheduledValues(when);
+                delayMix.gain.cancelScheduledValues(when);
+                feedback.gain.setTargetAtTime(0.82, when, 0.01);
+                delayMix.gain.setTargetAtTime(0.65, when, 0.01);
+                // Плавный возврат к дефолту через 4 секунды
+                const recoveryTime = when + 4.0;
+                feedback.gain.setTargetAtTime(currentPreset.delay?.fb || 0.3, recoveryTime, 1.5);
+                delayMix.gain.setTargetAtTime(currentPreset.delay?.mix || 0, recoveryTime, 1.5);
+            }
+
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, instrumentId, sharedDelay, params, params?.tempo || 72);
         },
         allNotesOff: () => {

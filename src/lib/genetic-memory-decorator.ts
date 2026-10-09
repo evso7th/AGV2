@@ -1,7 +1,8 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.2 — "Foundry Stagnation Interceptor".
- * #ЗАЧЕМ: Реализация ПЛАНА №1211. Заполнение пауз в Блюзе, Трансе и Дарк-Трансе (Foundry).
- * #ЧТО: Перехватчик партитуры, внедряющий "воспоминания" (мастерписы) в пустоты.
+ * @fileOverview Genetic Memory Decorator V2.3 — "Reggae Dub Interceptor".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1220. Внедрение Dub-эха в Регги и поддержка пианиста.
+ * #ЧТО: 1. Добавлен блок Reggae: перехват мелодии (isDub) и пианино.
+ *       2. Shout Logic: берет только первую ноту из фразы мастерписа для эффекта выкрика.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -98,16 +99,13 @@ export class GeneticMemoryDecorator {
         }
 
         // --- 3. FOUNDRY LOGIC (Sinister Stagnation) ---
-        // #ЗАЧЕМ: ПЛАН №1215. Внедрение памяти при остановке индустриального лида.
         if (genre === 'foundry') {
             const melodyEvents = events.filter(e => e.type === 'melody');
-            // Стагнация: лид молчит или играет одну длинную ноту (дрон)
             const isStagnant = melodyEvents.length <= 1;
 
             if (isStagnant) {
                 const newEvents = [...events];
                 
-                // 1. Harmony Memory (Dirty Mellotron)
                 if (!harmonyFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
                     if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
@@ -117,14 +115,13 @@ export class GeneticMemoryDecorator {
                     filler.forEach(f => {
                         if (!f.params) f.params = {};
                         f.params.isEcho = true;
-                        f.params.drive = 0.85; // Принудительный Fuzz для зловещности
+                        f.params.drive = 0.85; 
                     });
                     newEvents.push(...filler);
                     this.advanceState(harmonyFillerState);
                     if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
                 }
 
-                // 2. Piano Memory (Harmonic Rhodes)
                 if (!pianoFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
                     if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
@@ -134,7 +131,7 @@ export class GeneticMemoryDecorator {
                     filler.forEach(f => {
                         if (!f.params) f.params = {};
                         f.params.isEcho = true;
-                        f.params.drive = 0.65; // Подгруженный Родос
+                        f.params.drive = 0.65; 
                     });
                     newEvents.push(...filler);
                     this.advanceState(pianoFillerState);
@@ -145,6 +142,62 @@ export class GeneticMemoryDecorator {
                 harmonyFillerState = null;
                 pianoFillerState = null;
             }
+        }
+
+        // --- 4. REGGAE LOGIC (Dub Shout) ---
+        // #ЗАЧЕМ: ПЛАН №1220. Эхо-гитара и пианист-собеседник.
+        if (genre === 'reggae') {
+            const newEvents = [...events];
+            
+            // 1. Piano (Riddim Support)
+            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+            if (!hasPiano) {
+                if (!pianoFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                    if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (pianoFillerState) {
+                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
+                    this.advanceState(pianoFillerState);
+                    if (pianoFillerState.iteration > 1) pianoFillerState = null;
+                    newEvents.push(...filler);
+                }
+            } else { pianoFillerState = null; }
+
+            // 2. Melody (Dub Memory Shout)
+            const hasMelody = events.some(e => e.type === 'melody');
+            if (!hasMelody) {
+                if (!melodyFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (melodyFillerState) {
+                    // "Выкрик": берем только первую ноту фразы мастерписа
+                    const phrase = decompressCompactPhrase(melodyFillerState.axiom.phrase);
+                    if (phrase.length > 0) {
+                        const n = phrase[0];
+                        newEvents.push({
+                            type: 'melody' as any,
+                            note: rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
+                            time: (n.t % 12) * TICK_TO_BEAT,
+                            duration: 0.5,
+                            weight: 0.95,
+                            technique: 'pick',
+                            dynamics: 'f',
+                            phrasing: 'staccato',
+                            params: { 
+                                isDub: true, 
+                                isEcho: true,
+                                drive: 0.45 
+                            }
+                        });
+                    }
+                    this.advanceState(melodyFillerState);
+                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
+                }
+            } else { melodyFillerState = null; }
+            
+            return newEvents;
         }
 
         return events;
