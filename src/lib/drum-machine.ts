@@ -2,8 +2,8 @@ import type { FractalEvent, InstrumentType } from "@/types/fractal";
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Drum Machine V7.1 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов Audio Thread.
+ * @fileOverview Drum Machine V7.2 — "Strict Source Tracking".
+ * #ЗАЧЕМ: Ликвидация утечек памяти через реестр активных источников.
  */
 
 const DRUM_SAMPLES: Record<string, string> = {
@@ -93,12 +93,14 @@ const BLUES_KIT_CORE = [
 
 type Sampler = {
     buffers: Map<string, AudioBuffer>;
+    activeSources: Set<AudioBufferSourceNode>;
     load: (samples: Record<string, string>) => Promise<void>;
     triggerAttack: (note: string, time: number, velocity?: number, pan?: number) => void;
 }
 
 function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
     const buffers = new Map<string, AudioBuffer>();
+    const activeSources = new Set<AudioBufferSourceNode>();
 
     const load = async (samples: Record<string, string>) => {
         const promises = Object.entries(samples).map(async ([note, url]) => {
@@ -127,18 +129,21 @@ function createSampler(audioContext: AudioContext, output: AudioNode): Sampler {
 
         source.connect(gainNode).connect(panner).connect(output);
         source.start(time);
+        
+        activeSources.add(source);
         source.onended = () => {
+            activeSources.delete(source);
             try {
+                source.onended = null;
                 source.stop();
                 gainNode.disconnect();
                 panner.disconnect();
                 source.disconnect();
             } catch(e) {}
-            source.onended = null; // FIX: Nullify
         };
     };
 
-    return { buffers, load, triggerAttack };
+    return { buffers, activeSources, load, triggerAttack };
 }
 
 export class DrumMachine {
@@ -207,7 +212,6 @@ export class DrumMachine {
             if (!isFinite(absoluteTime)) continue;
             
             let velocity = event.weight;
-            
             const isFill = event.params?.isFill === true;
             if (sampleName.startsWith('perc-')) {
                 velocity *= isFill ? 1.0 : 0.8;
@@ -220,5 +224,16 @@ export class DrumMachine {
         }
     }
 
-    public stop() {}
+    public stop() {
+        if (this.sampler) {
+            this.sampler.activeSources.forEach(source => {
+                try {
+                    source.onended = null;
+                    source.stop();
+                    source.disconnect();
+                } catch(e) {}
+            });
+            this.sampler.activeSources.clear();
+        }
+    }
 }

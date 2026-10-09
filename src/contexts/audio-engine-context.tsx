@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.7 — "Hardened Scheduling".
- * #ЗАЧЕМ: Устранение "фантомных" звуков при регенерации и оптимизация ресурсов.
+ * @fileOverview Audio Engine Context V77.8 — "Clean Cycle Protocol".
+ * #ЗАЧЕМ: Устранение утечек памяти и хрипов при смене треков.
  */
 'use client';
 
@@ -32,7 +32,7 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.5,
-  melody: 0.15,
+  melody: 0.45, // #ЗАЧЕМ: Поднято для слышимости.
   accompaniment: 0.15,
   drums: 0.65,
   sparkles: 0.65,
@@ -43,7 +43,7 @@ const VOICE_BALANCE: Record<string, number> = {
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.1, // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.2)
+    acoustic: 0.1, 
     electric: 0.825, 
     piano: 0.8,
     orchecial: 0.5, 
@@ -190,7 +190,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const samplersMasterGainRef = useRef<GainNode | null>(null);
   const speakerGainNodeRef = useRef<GainNode | null>(null);
   const broadcastEngineRef = useRef<BroadcastEngine | null>(null);
-  const transitionGainRef = useRef<GainNode | null>(null);
   const gainNodesRef = useRef<Record<string, GainNode>>({});
   const nextBarTimeRef = useRef<number>(0);
   const previewInstrumentRef = useRef<InstrumentAPI | null>(null);
@@ -199,7 +198,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
   const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 0.75, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 };
+      const defaults = { master: 0.70, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 };
       if (typeof window !== 'undefined') {
           const saved = localStorage.getItem('AuraGroove_Calibration');
           if (saved) {
@@ -232,48 +231,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, []);
 
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && isPlaying) {
-        await requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [isPlaying, requestWakeLock]);
-
-  useEffect(() => {
-    return () => {
-      if (garbageCollectorIntervalRef.current) {
-        clearInterval(garbageCollectorIntervalRef.current);
-        garbageCollectorIntervalRef.current = null;
-      }
-      if (workerRef.current) {
-        workerRef.current.terminate();
-        workerRef.current = null;
-      }
-      if (audioContextRef.current) {
-        globalAllNotesOff();
-        audioContextRef.current.close();
-        audioContextRef.current = null;
-      }
-      releaseWakeLock();
-    };
-  }, [releaseWakeLock]);
-
-  const getEffectivePreset = useCallback((presetName: string) => {
-      const isFoundry = settingsRef.current?.genre === 'foundry';
-      const registry = isFoundry ? FOUNDRY_PRESETS : V2_PRESETS;
-      const base = (registry as any)[presetName] || (BASS_PRESETS as any)[presetName];
-      if (!base) return null;
-      const override = timbreOverridesRef.current[presetName];
-      return override ? { ...base, ...override } : base;
+  const stopAllSounds = useCallback(() => {
+    globalAllNotesOff();
+    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
+    drumMachineRef.current?.stop(); 
+    foundryDrumMachineRef.current?.stop();
+    sparklePlayerRef.current?.stopAll(); 
+    sfxSynthManagerRef.current?.allNotesOff();
+    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
   const applyCalibration = useCallback((gains: Record<string, number>) => {
       if (!audioContextRef.current) return;
       const now = audioContextRef.current.currentTime;
-      const m = gains.master ?? 0.75;
+      const m = gains.master ?? 0.70;
       
       if (masterGainNodeRef.current) {
           masterGainNodeRef.current.gain.cancelScheduledValues(now);
@@ -296,16 +267,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (foundryDrumsGainNodeRef.current) {
           foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.57, now, 0.1); 
       }
-  }, []);
-
-  const stopAllSounds = useCallback(() => {
-    globalAllNotesOff();
-    [melodyManagerV2Ref, bassManagerV2Ref, accompanimentManagerV2Ref, harmonyManagerRef, pianoAccompanimentManagerRef].forEach(r => r.current?.allNotesOff());
-    drumMachineRef.current?.stop(); 
-    foundryDrumMachineRef.current?.stop();
-    sparklePlayerRef.current?.stopAll(); 
-    sfxSynthManagerRef.current?.allNotesOff();
-    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
   const triggerStreamPulse = useCallback(() => {
@@ -489,8 +450,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         samplersMasterGainRef.current = context.createGain(); 
         speakerGainNodeRef.current = context.createGain();
         speakerGainNodeRef.current.gain.value = 1.0; 
-        transitionGainRef.current = context.createGain();
-        transitionGainRef.current.gain.value = 0.6;
         analyserNodeRef.current = context.createAnalyser(); 
         analyserNodeRef.current.fftSize = 512;
 
@@ -499,11 +458,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         samplersMasterGainRef.current.connect(masterGainNodeRef.current); 
         masterGainNodeRef.current.connect(masterHPF);
         masterHPF.connect(analyserNodeRef.current);
-        transitionGainRef.current.connect(analyserNodeRef.current);
         analyserNodeRef.current.connect(speakerGainNodeRef.current); 
         speakerGainNodeRef.current.connect(context.destination);
         const recDest = context.createMediaStreamDestination(); 
-        masterGainNodeRef.current.connect(recDest); transitionGainRef.current.connect(recDest);
+        masterGainNodeRef.current.connect(recDest);
         recDestRef.current = recDest;
         broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
 
@@ -551,13 +509,14 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (isFinite(payload.tension)) setTension(payload.tension); 
                 let scheduleTime = nextBarTimeRef.current;
                 const now = ctx.currentTime;
-                // #ЗАЧЕМ: Увеличение буфера безопасности (Lookahead) до 0.35с.
                 if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.35;
                 const tempo = payload.actualBpm || 75;
                 
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
+                // #ЗАЧЕМ: Межтрековая очистка.
+                globalAllNotesOff();
                 triggerVinyl(); 
                 window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
             }

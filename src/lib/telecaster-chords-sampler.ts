@@ -4,8 +4,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Telecaster Chords Sampler V3.3 — "Leak-Proof Logic".
- * #ЗАЧЕМ: Очистка onended для освобождения ресурсов.
+ * @fileOverview Telecaster Chords Sampler V3.4 — "Memory Guarded".
+ * #ЗАЧЕМ: Лимит кэша аккордов для предотвращения переполнения памяти.
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -16,6 +16,7 @@ export class TelecasterChordsSampler {
     private isLoading: boolean = false;
     private preamp: GainNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
+    private readonly MAX_CACHED_CHORDS = 24; // Лимит памяти
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -58,6 +59,11 @@ export class TelecasterChordsSampler {
 
     private async loadChordBuffers(chordName: string, urls: string[]) {
         if (!this.samples.has(chordName)) {
+            // Реализация LRU-вытеснения
+            if (this.samples.size >= this.MAX_CACHED_CHORDS) {
+                const firstKey = this.samples.keys().next().value;
+                if (firstKey) this.samples.delete(firstKey);
+            }
             this.samples.set(chordName, []);
         }
         const bufferList = this.samples.get(chordName)!;
@@ -65,8 +71,10 @@ export class TelecasterChordsSampler {
         for (const url of urls) {
             try {
                 const arrayBuffer = await vault.fetch(url);
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
-                bufferList.push(audioBuffer);
+                if (arrayBuffer) {
+                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+                    bufferList.push(audioBuffer);
+                }
             } catch (e) {}
         }
     }
@@ -109,10 +117,12 @@ export class TelecasterChordsSampler {
                 this.activeSources.add(source);
                 source.onended = () => {
                     this.activeSources.delete(source);
-                    try { source.stop(); } catch(e) {}
-                    source.disconnect();
-                    noteGain.disconnect();
-                    source.onended = null; // FIX: Break closure
+                    try { 
+                        source.onended = null;
+                        source.stop(); 
+                        source.disconnect();
+                        noteGain.disconnect();
+                    } catch(e) {}
                 };
             }
         });
@@ -142,8 +152,11 @@ export class TelecasterChordsSampler {
 
     public stopAll() {
         this.activeSources.forEach(source => {
-            try { source.stop(); } catch(e) {}
-            source.disconnect();
+            try { 
+                source.onended = null;
+                source.stop(); 
+                source.disconnect();
+            } catch(e) {}
         });
         this.activeSources.clear();
     }

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.8 — "Dub Echo Protocol".
- * #ЗАЧЕМ: ПЛАН №1225. Поддержка флага isDub для динамического управления дилеем.
+ * @fileOverview Центральная фабрика инструментов V13.0 — "Absolute Memory Purity".
+ * #ЗАЧЕМ: Ликвидация утечек через немедленную очистку и разрыв замыканий.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -29,8 +29,10 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 export const globalAllNotesOff = () => {
-    const allVoices = [...globalActiveVoices];
+    // #ЗАЧЕМ: Агрессивная очистка всех голосов.
+    const allVoices = Array.from(globalActiveVoices);
     allVoices.forEach(v => deepCleanup(v));
+    globalActiveVoices.clear();
 };
 
 export const deepCleanup = (voiceRecord: any) => {
@@ -41,8 +43,8 @@ export const deepCleanup = (voiceRecord: any) => {
         voiceRecord.nodes.forEach((n: any) => {
             try {
                 if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
+                    n.onended = null; // Рвем замыкание ПЕРЕД остановкой
                     n.stop();
-                    n.onended = null;
                 }
                 n.disconnect();
             } catch (e) {}
@@ -51,27 +53,24 @@ export const deepCleanup = (voiceRecord: any) => {
     
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
-    
     globalActiveVoices.delete(voiceRecord);
 };
 
 export const collectExpiredVoices = (audioCtxTime: number) => {
-    const voicesToCull: any[] = [];
+    if (globalActiveVoices.size === 0) return;
+    
+    const now = audioCtxTime;
     for (const voice of globalActiveVoices) {
-        if (voice.expirationTime < audioCtxTime) {
-            voicesToCull.push(voice);
+        if (voice.expirationTime < now || voice.disposed) {
+            deepCleanup(voice);
         }
-    }
-    for (const voice of voicesToCull) {
-        deepCleanup(voice);
     }
 };
 
 const enforceVoiceLimit = () => {
-    const currentLength = globalActiveVoices.size;
-    if (currentLength <= globalVoiceLimit) return;
+    if (globalActiveVoices.size <= globalVoiceLimit) return;
 
-    const toKillCount = currentLength - globalVoiceLimit;
+    const toKillCount = globalActiveVoices.size - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
     
     allVoices.sort((a, b) => {
@@ -82,20 +81,9 @@ const enforceVoiceLimit = () => {
     });
 
     const targets = allVoices.slice(0, toKillCount);
+    // #ЗАЧЕМ: ПЛАН №1285. Немедленное уничтожение.
     targets.forEach(oldest => {
-        const voiceNode = oldest.voiceState?.node;
-        if (voiceNode) {
-            const now = voiceNode.context.currentTime;
-            try {
-                voiceNode.gain.cancelScheduledValues(now);
-                voiceNode.gain.setTargetAtTime(0, now, 0.015);
-                oldest.expirationTime = now + 0.1;
-            } catch (e) {
-                deepCleanup(oldest);
-            }
-        } else {
-            deepCleanup(oldest);
-        }
+        deepCleanup(oldest);
     });
 };
 
@@ -165,8 +153,6 @@ const getDriveCurve = (type: string, amount: number): Float32Array => {
     return c;
 };
 
-// ───── VOICE INSTANTIATION ─────
-
 const createIndependentVoice = (
     ctx: AudioContext,
     type: string,
@@ -188,11 +174,10 @@ const createIndependentVoice = (
     const isEcho = eventParams?.isEcho === true;
     const isDub = eventParams?.isDub === true;
 
-    // #ЗАЧЕМ: ПЛАН №1225. Dub-артикуляция: быстрая атака + длинное затухание.
     const attackTime = isDub ? 0.01 : (isEcho ? 1.8 : adsr.a);
     const releaseTime = isEcho ? 4.5 : adsr.r;
     
-    const peak = velocity * (isEcho ? 0.75 : 0.45); 
+    const peak = velocity * (isEcho ? 0.65 : 0.45); 
 
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
@@ -401,13 +386,11 @@ export async function buildMultiInstrument(ctx: AudioContext, {
         noteOn: (midi, when = ctx.currentTime, velocity = 1.0, duration = 1.0, params = null) => {
             if (!isFinite(midi) || midi < 0 || midi > 127) return;
 
-            // #ЗАЧЕМ: ПЛАН №1225. Dub Echo Logic.
             if (params?.isDub) {
                 feedback.gain.cancelScheduledValues(when);
                 delayMix.gain.cancelScheduledValues(when);
                 feedback.gain.setTargetAtTime(0.82, when, 0.01);
                 delayMix.gain.setTargetAtTime(0.65, when, 0.01);
-                // Плавный возврат к дефолту через 4 секунды
                 const recoveryTime = when + 4.0;
                 feedback.gain.setTargetAtTime(currentPreset.delay?.fb || 0.3, recoveryTime, 1.5);
                 delayMix.gain.setTargetAtTime(currentPreset.delay?.mix || 0, recoveryTime, 1.5);
@@ -416,7 +399,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             createIndependentVoice(ctx, type, currentPreset, instrumentGain, midi, when, velocity, duration, instrumentId, sharedDelay, params, params?.tempo || 72);
         },
         allNotesOff: () => {
-            [...globalActiveVoices].filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v));
+            const voicesToKill = Array.from(globalActiveVoices).filter(v => v.instrumentId === instrumentId);
+            voicesToKill.forEach(v => deepCleanup(v));
         },
         setPreset: (p) => {
             currentPreset = { ...p };
@@ -427,7 +411,8 @@ export async function buildMultiInstrument(ctx: AudioContext, {
             instrumentGain.gain.setTargetAtTime(clamp(v, 0, 1), ctx.currentTime, 0.02);
         },
         disconnect: () => {
-            [...globalActiveVoices].filter(v => v.instrumentId === instrumentId).forEach(v => deepCleanup(v));
+            const voicesToKill = Array.from(globalActiveVoices).filter(v => v.instrumentId === instrumentId);
+            voicesToKill.forEach(v => deepCleanup(v));
             [instrumentGain, hpf, mudCut, boxyCut, presence, panner, sharedDelay, feedback, delayMix].forEach(n => n.disconnect());
         },
         connect: (dest) => panner.connect(dest || output)

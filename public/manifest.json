@@ -1,11 +1,11 @@
 {
   "name": "AuraGroove",
   "short_name": "AuraGroove",
-  "description": "Infinite Take Orchestra - Algorithmic Generative Music Engine",
-  "start_url": "/home",
+  "description": "AI-powered ambient music generator",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#8b5cf6",
+  "theme_color": "#a855f7",
   "icons": [
     {
       "src": "/assets/icons/icon_192.png",
@@ -15,25 +15,6 @@
     {
       "src": "/assets/icons/icon_512.png",
       "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/assets/icons/maskable-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/assets/icons/screenshot-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    },
-    {
-      "src": "/assets/icons/screenshot-mobile.png",
-      "sizes": "750x1334",
       "type": "image/png"
     }
   ]

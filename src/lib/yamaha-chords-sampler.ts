@@ -4,7 +4,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Yamaha Chords Sampler V1.4 — "The 150Hz Barrier".
+ * @fileOverview Yamaha Chords Sampler V1.5 — "Memory Guarded".
+ * #ЗАЧЕМ: Лимит кэша аккордов для предотвращения переполнения памяти.
  */
 export class YamahaChordsSampler {
     private audioContext: AudioContext;
@@ -14,8 +15,9 @@ export class YamahaChordsSampler {
     private isFullyInitialized: boolean = false;
     private isLoading: boolean = false;
     private preamp: GainNode;
-    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
+    private hpf: BiquadFilterNode;
     private activeSources: Set<AudioBufferSourceNode> = new Set();
+    private readonly MAX_CACHED_CHORDS = 24;
 
     constructor(audioContext: AudioContext, destination: AudioNode) {
         this.audioContext = audioContext;
@@ -63,6 +65,10 @@ export class YamahaChordsSampler {
 
     private async loadChordBuffers(chordName: string, urls: string[]) {
         if (!this.samples.has(chordName)) {
+            if (this.samples.size >= this.MAX_CACHED_CHORDS) {
+                const firstKey = this.samples.keys().next().value;
+                if (firstKey) this.samples.delete(firstKey);
+            }
             this.samples.set(chordName, []);
         }
         const bufferList = this.samples.get(chordName)!;
@@ -70,8 +76,10 @@ export class YamahaChordsSampler {
         for (const url of urls) {
             try {
                 const arrayBuffer = await vault.fetch(url);
-                const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
-                bufferList.push(audioBuffer);
+                if (arrayBuffer) {
+                    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice(0));
+                    bufferList.push(audioBuffer);
+                }
             } catch (e) {}
         }
     }
@@ -112,10 +120,12 @@ export class YamahaChordsSampler {
                 this.activeSources.add(source);
                 source.onended = () => {
                     this.activeSources.delete(source);
-                    try { source.stop(); } catch(e) {}
-                    source.disconnect();
-                    noteGain.disconnect();
-                    source.onended = null; // FIX: Break closure
+                    try { 
+                        source.onended = null;
+                        source.stop(); 
+                        source.disconnect();
+                        noteGain.disconnect();
+                    } catch(e) {}
                 };
             }
         });
@@ -141,9 +151,20 @@ export class YamahaChordsSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(); } catch(e) {} source.disconnect(); });
+        this.activeSources.forEach(source => {
+            try { 
+                source.onended = null;
+                source.stop(); 
+                source.disconnect();
+            } catch(e) {}
+        });
         this.activeSources.clear();
     }
 
-    public dispose() { this.stopAll(); this.preamp.disconnect(); this.hpf.disconnect(); this.output.disconnect(); }
+    public dispose() {
+        this.stopAll();
+        this.preamp.disconnect();
+        this.hpf.disconnect();
+        this.output.disconnect();
+    }
 }
