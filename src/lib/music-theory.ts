@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.0 — "Deployment Hardening".
- * #ЗАЧЕМ: Фикс синтаксиса и подтверждение маршрутизации Neuro Space на V2.
+ * @fileOverview Universal Music Theory Utilities V6.1 — "Memory Extension".
+ * #ЗАЧЕМ: Добавлен метод поиска филлеров для гипнотической памяти.
  */
 
 import type { 
@@ -46,6 +46,28 @@ export const SEMITONE_TO_DEGREE: Record<number, string> = {
     0: 'R', 1: 'b2', 2: '2', 3: 'b3', 4: '3', 5: '4', 6: '#4', 7: '5',
     8: 'b6', 9: '6', 10: 'b7', 11: '7', 12: 'R+8', 14: '9', 17: '11'
 };
+
+/** #ЗАЧЕМ: Поиск резонансного филлера для гипнотической памяти. */
+export function findGeneticFillerAxiom(pool: any[], role: string, tension: number): any | null {
+    if (!pool || pool.length === 0) return null;
+    const rolePool = pool.filter(ax => {
+        if (ax.ignored) return false;
+        const axRole = (ax.role || '').toLowerCase();
+        if (role === 'pianoAccompaniment') return axRole.includes('piano');
+        return false;
+    });
+    if (rolePool.length === 0) return null;
+    let best = rolePool[0];
+    let minDiff = Math.abs((best.vector?.t || 0.5) - tension);
+    for (const ax of rolePool) {
+        const diff = Math.abs((ax.vector?.t || 0.5) - tension);
+        if (diff < minDiff) {
+            minDiff = diff;
+            best = ax;
+        }
+    }
+    return best;
+}
 
 export function resolveSemanticTimbre(hint: any, tension: number, part: string, genre: Genre = 'ambient'): string {
     try {

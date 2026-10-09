@@ -1,7 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V12.3 — "Silent Slap Attack".
- * #ЗАЧЕМ: 1. Устранение щелчков в технике slap через подавление атаки до 0.0001%.
- *         2. Оптимизация огибающих баса для предотвращения клиппинга.
+ * @fileOverview Центральная фабрика инструментов V12.4 — "Memory Echo Profile".
+ * #ЗАЧЕМ: Реализация звукового профиля "Echo" для генетической памяти.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -192,6 +191,12 @@ const createIndependentVoice = (
     const adsr = getADSR(preset, eventParams);
     const now = Math.max(when, ctx.currentTime);
 
+    // #ЗАЧЕМ: ПЛАН №1210. Звуковой дизайн для "эха воспоминаний".
+    const isEcho = eventParams?.isEcho === true;
+    const attackTime = isEcho ? 1.8 : adsr.a;
+    const releaseTime = isEcho ? 4.5 : adsr.r;
+    const peak = velocity * (isEcho ? 0.35 : 0.45);
+
     // #ЗАЧЕМ: МОНОФОНИЧЕСКИЙ ДИКТАТ БАСА.
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
@@ -213,7 +218,7 @@ const createIndependentVoice = (
     const nodes: AudioNode[] = [voiceGain];
 
     const noteOffTime = now + duration;
-    const releaseTimeConstant = Math.max(adsr.r / 3, 0.08); 
+    const releaseTimeConstant = Math.max(releaseTime / 3, 0.08); 
     const expirationTime = now + duration + (releaseTimeConstant * 5) + 0.5;
 
     const mainOscillators: OscillatorNode[] = [];
@@ -293,21 +298,18 @@ const createIndependentVoice = (
     if (sharedDelayNode && preset.delay?.mix > 0.01) chainHead.connect(sharedDelayNode);
     chainHead.connect(output);
 
-    const peak = velocity * 0.45;
     voiceGain.gain.setValueAtTime(0, now);
 
-    // #ЗАЧЕМ: ПЛАН №1280. Slap Ultra-Soft Protocol (V2.4.2).
-    // Почти полное обнуление перкуссионного щелчка (0.0001% от пика).
     const technique = eventParams?.technique;
     if (type === 'bass' && technique === 'slap') {
         const percVolume = peak * 0.000001; 
         voiceGain.gain.setValueAtTime(percVolume, now);
-        const effectiveAttack = Math.max(adsr.a, 0.045); 
+        const effectiveAttack = Math.max(attackTime, 0.045); 
         voiceGain.gain.linearRampToValueAtTime(peak, now + effectiveAttack);
         voiceGain.gain.setTargetAtTime(peak * adsr.s, now + effectiveAttack, Math.max(adsr.d / 3, 0.001));
     } else {
-        voiceGain.gain.linearRampToValueAtTime(peak, now + adsr.a);
-        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + adsr.a, Math.max(adsr.d / 3, 0.001));
+        voiceGain.gain.linearRampToValueAtTime(peak, now + attackTime);
+        voiceGain.gain.setTargetAtTime(peak * adsr.s, now + attackTime, Math.max(adsr.d / 3, 0.001));
     }
 
     voiceGain.gain.setTargetAtTime(0.0001, noteOffTime, releaseTimeConstant);

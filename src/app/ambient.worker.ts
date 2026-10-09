@@ -1,6 +1,6 @@
 /**
- * @file AuraGroove Music Worker V7.4 — "Production Silence".
- * #ЗАЧЕМ: Отключение по-тактовых логов для продакшена.
+ * @file AuraGroove Music Worker V7.5 — "Genetic Interception".
+ * #ЗАЧЕМ: Интеграция декоратора гипнотической памяти.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -8,6 +8,7 @@ import type { FractalEvent, InstrumentHints, NavigationInfo } from '@/types/frac
 import { getBlueprint } from '@/lib/blueprints';
 import { normalizeStr, keyToMidiRoot } from '@/lib/music-theory';
 import { ShadowDrummer } from '@/lib/assets/drum-fill-registry';
+import { GeneticMemoryDecorator } from '@/lib/genetic-memory-decorator';
 
 let fractalMusicEngine: FractalMusicEngine | undefined;
 
@@ -256,35 +257,26 @@ const Scheduler = {
             return 1000;
         }
 
-        const decoratedEvents = ShadowDrummer.decorate(
+        // --- 🧠 HYPNOTIC MEMORY INTERCEPTION ---
+        // #ЗАЧЕМ: Заполнение пауз пианино в блюзе "музыкальными воспоминаниями".
+        const foundChord = fractalMusicEngine.suiteDNA?.harmonyTrack.find(chord => this.barCount >= chord.bar && this.barCount < chord.bar + chord.durationBars);
+        const currentRoot = foundChord?.rootNote || fractalMusicEngine.suiteDNA?.harmonyTrack[0].rootNote || 60;
+
+        const memorizedEvents = GeneticMemoryDecorator.fillGaps(
             payload.events,
+            this.settings.genre,
+            payload.tension,
+            this.cloudAxiomPool,
+            currentRoot
+        );
+
+        const decoratedEvents = ShadowDrummer.decorate(
+            memorizedEvents,
             this.barCount,
             payload.tension,
             this.settings.genre,
             fractalMusicEngine.suiteDNA?.rhythmicFeel || 'straight'
         );
-
-        /*
-        const getTimestamp = () => new Date().toLocaleTimeString();
-        const getHash = (id: string) => id?.split('_').pop() || 'none';
-        
-        const hints = payload.instrumentHints || {};
-        const ax = payload.activeAxioms || {};
-        const sectionName = payload.sectionName || 'Sequence';
-        const t = (payload.tension || 0.5).toFixed(2);
-        const track = payload.trackName || 'Generative';
-        const trackHash = getHash(track);
-        const mut = payload.mutationType || 'none';
-
-        console.log(
-            `%c[${getTimestamp()}] [Bar ${this.barCount}] [${sectionName}] [DNA: ${trackHash}] (Mut: ${mut}) T:${t} Axioms: [MEL: ${getHash(ax.melody)}] [ACC: ${getHash(ax.accompaniment)}]\n` +
-            `%c  ↳ Narrative: ${payload.narrative || 'Algorithmic Evolution'}\n` +
-            `%c  | Timbres: [MELODY: ${hints.melody || 'none'}] [ACCOMP: ${hints.accompaniment || 'none'}]`,
-            'color: #888;',
-            'color: #c084fc;', 
-            'color: #888;'
-        );
-        */
 
         self.postMessage({ 
             type: 'SCORE_READY', 
