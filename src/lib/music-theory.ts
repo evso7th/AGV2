@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.3 — "Ambient Bass Purity".
- * #ЗАЧЕМ: Реализация ПЛАНА №1250. Строгий запрет перкуссионных басов в амбиенте.
+ * @fileOverview Universal Music Theory Utilities V6.4 — "Foundry Bass Purity".
+ * #ЗАЧЕМ: Реализация ПЛАНА №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
  */
 
 import type { 
@@ -202,12 +202,14 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
 
         if (part === 'bass') {
-            // #ЗАЧЕМ: ПЛАН №1250. Вето на перкуссионные басы в Ambient.
-            if (genre === 'ambient') {
+            // #ЗАЧЕМ: ПЛАН №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
+            if (genre === 'ambient' || genre === 'foundry') {
                 if (clean.includes('808')) return 'bass_808';
                 if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
-                if (clean.includes('dark')) return 'bass_ambient_dark';
-                return 'bass_ambient'; // Универсальный дефолт для амбиента
+                if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
+                
+                // Дефолт для чистки звука: 808 для индустриала, амбиент для Slow Fusion
+                return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
             }
             return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
         }

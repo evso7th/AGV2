@@ -57,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.1 — "Bass Lockdown Protocol".
- * #ЗАЧЕМ: Жесткое закрепление Warm Blues Bass для тяжелых жанров.
+ * @fileOverview Fractal Music Engine V47.2 — "Foundry Bass Lockdown".
+ * #ЗАЧЕМ: Релаксация жесткого оверрайда баса для Foundry в пользу динамического резолвера.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -341,7 +341,8 @@ export class FractalMusicEngine {
     }
 
     // #ЗАЧЕМ: Протокол "Bass Lockdown". Принудительная установка Warm Blues для тяжелых жанров.
-    if (this.config.genre === 'cyber_blues' || this.config.genre === 'foundry') {
+    // #ОБНОВЛЕНО: Foundry теперь обрабатывается через resolveSemanticTimbre для поддержки warm/ambient/808.
+    if (this.config.genre === 'cyber_blues') {
         instrumentHints.bass = 'bass_jazz_warm';
     }
 
