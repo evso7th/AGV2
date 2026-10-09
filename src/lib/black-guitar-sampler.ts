@@ -93,7 +93,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.2; 
+        this.preamp.gain.value = 0.1; // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.2)
 
         this.hpf = this.audioContext.createBiquadFilter();
         this.hpf.type = 'highpass';
