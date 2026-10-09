@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.8 — "Clean Cycle Protocol".
- * #ЗАЧЕМ: Устранение утечек памяти и хрипов при смене треков.
+ * @fileOverview Audio Engine Context V77.9 — "Reference Fix".
+ * #ЗАЧЕМ: Исправление ReferenceError: getEffectivePreset и восстановление импортов.
  */
 'use client';
 
@@ -26,13 +26,13 @@ import type { FractalEvent } from '@/types/fractal';
 import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
-import { V2_PRESETS } from '@/lib/presets-v2';
+import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
 import { FOUNDRY_PRESETS } from '@/lib/foundry-presets';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.5,
-  melody: 0.45, // #ЗАЧЕМ: Поднято для слышимости.
+  melody: 0.45, 
   accompaniment: 0.15,
   drums: 0.65,
   sparkles: 0.65,
@@ -89,6 +89,7 @@ interface AudioEngineContextType {
   calculateMasterFadeOut: (target: number, duration: number) => void;
   calculateMasterFadeOutFixed: (target: number, duration: number) => void;
   calculateMasterFadeOutAdaptive: (target: number, duration: number) => void;
+  calculateMasterFadeOutFixed2: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -159,7 +160,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [totalBars, setTotalBars] = useState(144);
   const [currentTrackName, setCurrentTrackName] = useState('Generative Suite');
 
-  const timbreOverridesRef = useRef<Record<string, any>>({});
   const initializationInFlightRef = useRef(false);
   const workerRef = useRef<Worker | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -430,6 +430,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     return false;
   }, [applyAxiomsToEngine]);
 
+  const getEffectivePreset = useCallback((name: string) => {
+    return V1_TO_V2_PRESET_MAP[name as keyof typeof V1_TO_V2_PRESET_MAP] || name;
+  }, []);
+
   const initialize = useCallback(async () => {
     if (isInitialized || initializationInFlightRef.current) return true;
     initializationInFlightRef.current = true; setIsInitializing(true);
@@ -515,7 +519,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
-                // #ЗАЧЕМ: Межтрековая очистка.
                 globalAllNotesOff();
                 triggerVinyl(); 
                 window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
@@ -564,7 +567,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const p = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(p || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(p || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(p || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(p || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
-      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {}, calculateMasterFadeOutAdaptive: () => {},
+      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {}, calculateMasterFadeOutAdaptive: () => {}, calculateMasterFadeOutFixed2: () => {},
       startRecording: (prefix?: string) => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${prefix ? prefix + '_' : ''}AuraGroove_${new Date().toISOString().split('T')[0]}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecordingState(true); }, 
       stopRecording: () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); setIsRecordingState(false); } },
       toggleBroadcast: toggleBroadcastCallback, triggerVinyl,
