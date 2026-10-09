@@ -1,6 +1,7 @@
 /**
- * @file AuraGroove Music Worker V7.5 — "Genetic Interception".
- * #ЗАЧЕМ: Интеграция декоратора гипнотической памяти.
+ * @file AuraGroove Music Worker V7.6 — "Directive Enforcement".
+ * #ЗАЧЕМ: Исправление бага с зацикливанием очереди. 
+ * #ЧТО: Принудительный сброс при любом обновлении в состоянии ожидания.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -198,7 +199,8 @@ const Scheduler = {
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
        
-       const forceReset = this.awaitingDirective && routeIndexChanged;
+       // #ЗАЧЕМ: ПЛАН №1290. Любое обновление при ожидании директивы — это повод для ре-инициализации.
+       const forceReset = this.awaitingDirective && (routeIndexChanged || seedChanged);
        
        this.settings = { ...this.settings, ...newSettings };
        
@@ -240,6 +242,7 @@ const Scheduler = {
                  this.awaitingSince = Date.now();
                  return 500;
              }
+             // #ЗАЧЕМ: Авто-сброс если UI не отвечает 4 секунды.
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.settings.seed = generateTrueSeed();
@@ -257,8 +260,6 @@ const Scheduler = {
             return 1000;
         }
 
-        // --- 🧠 HYPNOTIC MEMORY INTERCEPTION ---
-        // #ЗАЧЕМ: Заполнение пауз пианино в блюзе "музыкальными воспоминаниями".
         const foundChord = fractalMusicEngine.suiteDNA?.harmonyTrack.find(chord => this.barCount >= chord.bar && this.barCount < chord.bar + chord.durationBars);
         const currentRoot = foundChord?.rootNote || fractalMusicEngine.suiteDNA?.harmonyTrack[0].rootNote || 60;
 

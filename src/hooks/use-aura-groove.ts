@@ -1,6 +1,7 @@
 /**
- * @fileOverview Music Control Hook V37.1 — "Feedback Cleanup".
- * #ЗАЧЕМ: ПЛАН №2410 — Удаление дублирующих тостов при лайке.
+ * @fileOverview Music Control Hook V38.0 — "Infinite Journey Stabilizer".
+ * #ЗАЧЕМ: Исправление бага с зацикливанием очереди на последнем треке.
+ * #ЧТО: Перевод обработчика событий на Refs для гарантированной актуальности состояния.
  */
 'use client';
 
@@ -195,8 +196,19 @@ export const useAuraGroove = (): AuraGrooveProps => {
 
   const [language, setLanguage] = useState<Language>('en');
 
+  // --- REFS FOR STABLE EVENT HANDLING ---
+  const routeRef = useRef(route);
+  const activeRouteIndexRef = useRef(0);
   const isAlbumModeRef = useRef(isAlbumMode);
+
+  useEffect(() => { routeRef.current = route; }, [route]);
   useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
+  
+  const activeRouteIndex = useMemo(() => {
+      const idx = route.findIndex(it => it.id === activeRouteItemId);
+      activeRouteIndexRef.current = idx;
+      return idx;
+  }, [route, activeRouteItemId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -224,7 +236,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     return entry[language] || String(key);
   }, [language]);
 
-  const activeRouteIndex = useMemo(() => route.findIndex(it => it.id === activeRouteItemId), [route, activeRouteItemId]);
   const sessionStartTimeRef = useRef<number>(0);
 
   const handleGoHome = useCallback(async () => {
@@ -598,6 +609,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
+  // #ЗАЧЕМ: ПЛАН №2311. Гарантированный бесконечный цикл через Refs.
   useEffect(() => {
     const onTransition = () => {
         if (isAlbumModeRef.current) {
@@ -609,9 +621,14 @@ export const useAuraGroove = (): AuraGrooveProps => {
             return;
         }
 
-        if (route.length > 0) {
-            const nextIndex = (activeRouteIndex + 1) % route.length;
-            setActiveRouteItemId(route[nextIndex].id);
+        const currentRoute = routeRef.current;
+        const currentIndex = activeRouteIndexRef.current;
+
+        if (currentRoute.length > 0) {
+            // #ЗАЧЕМ: Обеспечение циклического воспроизведения (Rule 23).
+            const nextIndex = (currentIndex + 1) % currentRoute.length;
+            setActiveRouteItemId(currentRoute[nextIndex].id);
+            // Принудительно меняем Seed для нового витка генерации
             setCurrentSeed(Date.now()); 
             return;
         }
@@ -620,7 +637,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     };
     window.addEventListener('AG_SUITE_TRANSITION', onTransition);
     return () => window.removeEventListener('AG_SUITE_TRANSITION', onTransition);
-  }, [route, activeRouteIndex, isRepeat, activeRouteItemId, stopRecording, stopAllSounds, setIsPlaying, t, toast]);
+  }, [stopRecording, stopAllSounds, setIsPlaying, t, toast]);
 
   const handlePlayPauseCallback = useCallback(async () => { 
     if (!isInitialized) {
@@ -729,7 +746,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     handleSaveMasterpiece: () => { 
         if (isInitialized) { 
             saveMasterpiece(db, { seed: currentSeed, mood, genre, density, bpm, instrumentSettings }); 
-            // #ЗАЧЕМ: Уведомление теперь только через HUD в плеере.
         } 
     },
     drumSettings, setDrumSettings, instrumentSettings, 
