@@ -5,7 +5,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Сэмплер Black Acoustic V5.8 — "The 150Hz Barrier".
+ * @fileOverview Сэмплер Black Acoustic V5.9 — "Velocity Restored".
+ * #ЗАЧЕМ: Исправление бага, при котором velocity игнорировалось (было hardcoded 1.0).
  */
 
 function makeAcousticWarmthCurve() {
@@ -81,7 +82,7 @@ export class BlackGuitarSampler {
     private isLoading = false;
 
     private preamp: GainNode;
-    private hpf: BiquadFilterNode; // #ЗАЧЕМ: Пункт 5. Барьер 150 Гц.
+    private hpf: BiquadFilterNode;
     private bodyFilter: BiquadFilterNode;
     private saturation: WaveShaperNode;
     private toneFilter: BiquadFilterNode;
@@ -93,7 +94,7 @@ export class BlackGuitarSampler {
         this.destination = destination;
 
         this.preamp = this.audioContext.createGain();
-        this.preamp.gain.value = 0.1; // #ЗАЧЕМ: Уменьшено в 2 раза (было 0.2)
+        this.preamp.gain.value = 0.1;
 
         this.hpf = this.audioContext.createBiquadFilter();
         this.hpf.type = 'highpass';
@@ -253,7 +254,9 @@ export class BlackGuitarSampler {
         const playbackRate = Math.pow(2, (targetMidi - sampleMidi) / 12);
         source.playbackRate.value = isFinite(playbackRate) ? playbackRate : 1.0;
         gainNode.gain.setValueAtTime(0, startTime);
-        gainNode.gain.linearRampToValueAtTime(1.0, startTime + 0.005);
+        
+        // #ЗАЧЕМ: Фикс ПЛАНА №2605. Использование реального velocity из параметра.
+        gainNode.gain.linearRampToValueAtTime(velocity, startTime + 0.005);
         
         if (isTransientMode) {
             gainNode.gain.setTargetAtTime(0.0001, startTime + 0.020, 0.005);
@@ -271,7 +274,7 @@ export class BlackGuitarSampler {
                 source.disconnect();
                 gainNode.disconnect(); 
             } catch(e) {} 
-            source.onended = null; // Break closure
+            source.onended = null; 
         };
     }
 

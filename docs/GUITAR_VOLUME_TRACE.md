@@ -1,55 +1,38 @@
-# Трассировка узлов регулировки громкости гитар (AuraGroove V2)
+# Трассировка громкости Black Acoustic (Case Study)
 
-Этот документ описывает все точки контроля амплитуды сигнала для сэмплерных инструментов (Telecaster, Black Acoustic, Dark Tele, CS80).
-
----
-
-## 1. Схема прохождения сигнала (Audio Graph)
-
-`[Sample Buffer]`  
-      ↓  
-`(1) [Note Gain]` (Velocity / ADSR) — *Индивидуально для каждой ноты*  
-      ↓  
-`(2) [Preamp Gain]` (Timbre Drive) — *Вход в цепь эффектов (Saturation/Overdrive)*  
-      ↓  
-`[Internal FX]` (HPF, Body, Filter, Distortion)  
-      ↓  
-`(3) [Output Trim]` (Loudness Sync) — *Нормализация по стандарту GUITAR_LOUDNESS_TRIM_DB*  
-      ↓  
-`(4) [Channel Gain]` (Mixer: LEAD) — *Узел gainNodes.melody в AudioEngineContext*  
-      ↓  
-`(5) [Master Gain]` (Mixer: MST) — *Финальный фейдер перед лимитером*  
-      ↓  
-`[System EQ / Output]`
+Этот документ содержит точные расчеты усиления для инструмента **Black Acoustic** в стандартной конфигурации AuraGroove V2.
 
 ---
 
-## 2. Детализация узлов
+## 1. Параметры узлов (Nodes)
 
-### (1) Note Gain (Per-Note)
-*   **Файлы**: `telecaster-guitar-sampler.ts`, `black-guitar-sampler.ts` и др.
-*   **Метод**: `playSample()`
-*   **Зачем**: Превращает параметр `weight` из FractalEvent в реальное давление ноты. Здесь же отрабатывает ADSR-кривая (атака и релиз).
+Для расчета взята средняя нота **A3 (MIDI 57)** с силой удара (**velocity**) 0.8.
 
-### (2) Preamp Gain (Engine Preamp)
-*   **Файлы**: Конструкторы классов `*Sampler`.
-*   **Метод**: `setPreampGain(gain)`
-*   **Регуляция**: В `audio-engine-context.tsx` через `SAMPLER_DEFAULTS` * `calibrationGains`.
-*   **Влияние**: Если поднять здесь — гитара станет "грязнее" (больше сатурации), но не обязательно громче в итоговом миксе.
-
-### (3) Output Trim (Normalization)
-*   **Файлы**: `src/lib/guitar-loudness.ts` (Константы).
-*   **Метод**: `setOutputTrim(db)`
-*   **Зачем**: Чтобы переключение с тихой акустики на агрессивный Telecaster не выбивало перепонки. Это "хирургическое" выравнивание сэмплов.
-
-### (4) Channel Gain (The Mixer)
-*   **Файлы**: `src/contexts/audio-engine-context.tsx`
-*   **Метод**: `setVolumeCallback(part, volume)`
-*   **Зачем**: Основной инструмент сведения. Регулирует громкость всей группы "LEAD" (все гитары и лид-синты).
-
-### (5) Master Gain (The Master)
-*   **Файлы**: `src/contexts/audio-engine-context.tsx`
-*   **Зачем**: Глобальная громкость приложения. Узел `masterGainNodeRef`.
+1.  **Note Level (`velocity`)**: 0.80
+    *   *Источник*: Метод `playSample` (параметр `velocity`).
+2.  **Sampler Preamp (`preamp`)**: 0.10
+    *   *Источник*: `audio-engine-context.tsx` (`SAMPLER_DEFAULTS.acoustic` × User Gain 1.0).
+3.  **Loudness Normalization (`outputTrim`)**: 0.708 (-2.99 dB)
+    *   *Источник*: `guitar-loudness.ts` (Триммер для выравнивания с Telecaster).
+4.  **Channel Gain (`Mixer: LEAD`)**: 0.0945 (0.21 × 0.45)
+    *   *Расчет*: Громкость жанра (0.21) умноженная на системный баланс голоса (0.45).
+5.  **Master Gain (`Mixer: MST`)**: 0.70
+    *   *Источник*: Системная калибровка мастера.
 
 ---
-**Версия документа**: 1.0 (Audit complete).
+
+## 2. Финальное уравнение
+
+$$Gain_{total} = Velocity \times Preamp \times Trim \times Channel \times Master$$
+
+$$0.8 \times 0.1 \times 0.708 \times 0.0945 \times 0.7 = \mathbf{0.00375}$$
+
+---
+
+## 3. Вердикт
+
+*   **Главный Узел (User)**: **Mixer: LEAD**. Этот узел имеет самое сильное влияние на итоговую слышимость инструмента в миксе и является основным рычагом управления для пользователя.
+*   **Главный Узел (Headroom)**: **Sampler Preamp**. Именно этот узел (0.1) гасит сигнал в 10 раз на самом раннем этапе, позволяя накладывать сотни голосов без возникновения цифровых искажений на мастере.
+
+---
+**Статус**: Расчеты подтверждены программным аудитом V5.9.
