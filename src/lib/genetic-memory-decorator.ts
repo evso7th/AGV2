@@ -1,6 +1,6 @@
 /**
- * @fileOverview Genetic Memory Decorator V3.0 — "Infinite Loop Protocol".
- * #ЗАЧЕМ: Гарантия непрерывного заполнения пауз мастерписами.
+ * @fileOverview Genetic Memory Decorator V3.1 — "Adaptive Spiral Filler".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2640. Адаптивное зацикливание (2+2) до 16 повторов.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -20,7 +20,6 @@ interface FillerState {
 
 let pianoFillerState: FillerState | null = null;
 let melodyFillerState: FillerState | null = null;
-let harmonyFillerState: FillerState | null = null;
 
 export class GeneticMemoryDecorator {
     public static fillGaps(
@@ -37,6 +36,14 @@ export class GeneticMemoryDecorator {
         if (hasPiano) {
             pianoFillerState = null;
         } else {
+            // #ЗАЧЕМ: ПЛАН №2640. Проверка на новый филлер каждые 2 итерации.
+            if (pianoFillerState && pianoFillerState.iteration > 0 && pianoFillerState.iteration % 2 === 0 && pianoFillerState.currentBar === 0) {
+                const candidate = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                if (candidate && candidate.id !== pianoFillerState.axiom.id) {
+                    pianoFillerState = this.createState(candidate);
+                }
+            }
+
             if (!pianoFillerState) {
                 const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
                 if (best) pianoFillerState = this.createState(best);
@@ -45,7 +52,7 @@ export class GeneticMemoryDecorator {
                 const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
                 if (filler.length > 0) events.push(...filler);
                 this.advanceState(pianoFillerState);
-                if (pianoFillerState.iteration > 16) pianoFillerState = null; // Увеличен лимит жизни филлера
+                if (pianoFillerState.iteration >= 16) pianoFillerState = null; // Max 16
             }
         }
 
@@ -55,6 +62,14 @@ export class GeneticMemoryDecorator {
             const isStagnant = isFoundry ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
 
             if (isStagnant) {
+                // #ЗАЧЕМ: ПЛАН №2640. Адаптивная ротация для сольной линии.
+                if (melodyFillerState && melodyFillerState.iteration > 0 && melodyFillerState.iteration % 2 === 0 && melodyFillerState.currentBar === 0) {
+                    const candidate = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    if (candidate && candidate.id !== melodyFillerState.axiom.id) {
+                        melodyFillerState = this.createState(candidate);
+                    }
+                }
+
                 if (!melodyFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
                     if (best) melodyFillerState = this.createState(best);
@@ -62,11 +77,11 @@ export class GeneticMemoryDecorator {
                 if (melodyFillerState) {
                     const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, isFoundry ? 0.65 : 0.5);
                     if (filler.length > 0) events.push(...filler);
-                    else melodyFillerState = null; // Если мастерпис пустой — сброс для поиска нового
+                    else melodyFillerState = null; // Сброс если мастерпис пуст
                     
                     if (melodyFillerState) {
                         this.advanceState(melodyFillerState);
-                        if (melodyFillerState.iteration > 16) melodyFillerState = null;
+                        if (melodyFillerState.iteration >= 16) melodyFillerState = null;
                     }
                 }
             } else {
