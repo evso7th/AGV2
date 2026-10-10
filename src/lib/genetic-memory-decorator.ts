@@ -1,7 +1,6 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.6 — "Foundry Memory Restoration".
- * #ЗАЧЕМ: Добавлена интерцепция Мелодии для Foundry при ее отсутствии.
- * #ЧТО: ПЛАН №2575 — Возвращение мастерписов в сольный слой Foundry.
+ * @fileOverview Genetic Memory Decorator V2.8 — "Aggressive Re-selection".
+ * #ЗАЧЕМ: Предотвращение тишины через немедленный выбор нового мастерписа.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -14,8 +13,8 @@ import {
 
 interface FillerState {
     axiom: any;
-    iteration: number; // 0 or 1 (Double pass loop)
-    currentBar: number; // relative to axiom
+    iteration: number; 
+    currentBar: number; 
 }
 
 let pianoFillerState: FillerState | null = null;
@@ -30,114 +29,14 @@ export class GeneticMemoryDecorator {
         cloudAxioms: any[],
         rootNote: number
     ): FractalEvent[] {
-        // --- 1. BLUES LOGIC (Piano Only) ---
-        if (genre === 'blues' || genre === 'cyber_blues') {
+        const isFoundry = genre === 'foundry';
+
+        // --- 1. BLUES & REGGAE (Piano Only) ---
+        if (genre === 'blues' || genre === 'cyber_blues' || genre === 'reggae') {
             const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
             if (hasPiano) {
                 pianoFillerState = null;
-                return events;
-            }
-
-            if (!pianoFillerState) {
-                const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-            }
-
-            if (pianoFillerState) {
-                const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
-                this.advanceState(pianoFillerState);
-                if (pianoFillerState.iteration > 1) pianoFillerState = null;
-                return [...events, ...filler];
-            }
-        }
-
-        // --- 2. PSYBIENT LOGIC (Breakdown Interception) ---
-        if (genre === 'psybient') {
-            const hasDrums = events.some(e => String(e.type).toLowerCase().includes('drum') || String(e.type).toLowerCase().includes('kick'));
-            const hasBass = events.some(e => e.type === 'bass');
-            const isBreakdown = !hasDrums && !hasBass;
-
-            if (isBreakdown) {
-                const newEvents = [...events];
-                
-                // Перехват Мелодии
-                const hasMelody = events.some(e => e.type === 'melody');
-                if (!hasMelody) {
-                    if (!melodyFillerState) {
-                        const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                        if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                    }
-                    if (melodyFillerState) {
-                        const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true);
-                        this.advanceState(melodyFillerState);
-                        if (melodyFillerState.iteration > 1) melodyFillerState = null;
-                        newEvents.push(...filler);
-                    }
-                } else { melodyFillerState = null; }
-
-                return newEvents;
             } else {
-                pianoFillerState = null;
-                melodyFillerState = null;
-            }
-        }
-
-        // --- 3. FOUNDRY LOGIC (Sinister Stagnation) ---
-        if (genre === 'foundry') {
-            const melodyEvents = events.filter(e => e.type === 'melody');
-            const isStagnant = melodyEvents.length <= 1;
-
-            if (isStagnant) {
-                const newEvents = [...events];
-                
-                // #ЗАЧЕМ: ПЛАН №2575. Возвращаем мастерписы в Мелодию.
-                if (!melodyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (melodyFillerState) {
-                    const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, 0.65); // Громче
-                    filler.forEach(f => {
-                        if (!f.params) f.params = {};
-                        f.params.isEcho = true;
-                        f.params.drive = 0.45; 
-                    });
-                    newEvents.push(...filler);
-                    this.advanceState(melodyFillerState);
-                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
-                }
-
-                if (!harmonyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
-                    if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (harmonyFillerState) {
-                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.55); // Слышимо
-                    filler.forEach(f => {
-                        if (!f.params) f.params = {};
-                        f.params.isEcho = true;
-                        f.params.drive = 0.85; 
-                    });
-                    newEvents.push(...filler);
-                    this.advanceState(harmonyFillerState);
-                    if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
-                }
-
-                return newEvents;
-            } else {
-                harmonyFillerState = null;
-                pianoFillerState = null;
-                melodyFillerState = null;
-            }
-        }
-
-        // --- 4. REGGAE LOGIC (Dub Shout) ---
-        if (genre === 'reggae') {
-            const newEvents = [...events];
-            
-            // 1. Piano (Riddim Support)
-            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
-            if (!hasPiano) {
                 if (!pianoFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
                     if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
@@ -146,31 +45,52 @@ export class GeneticMemoryDecorator {
                     const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
                     this.advanceState(pianoFillerState);
                     if (pianoFillerState.iteration > 1) pianoFillerState = null;
-                    newEvents.push(...filler);
+                    return [...events, ...filler];
                 }
-            } else { pianoFillerState = null; }
-            
-            return newEvents;
+            }
         }
 
-        // --- 5. AMBIENT LOGIC (Resonance Memory) ---
-        if (genre === 'ambient') {
+        // --- 2. FOUNDRY & PSYBIENT (Synthesis Interception) ---
+        if (genre === 'psybient' || isFoundry) {
             const newEvents = [...events];
+            const melodyEvents = events.filter(e => e.type === 'melody');
             
-            // 1. Piano (Rhodes Reflections)
-            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
-            if (!hasPiano) {
-                if (!pianoFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                    if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+            // #ЗАЧЕМ: Усиленный порог стагнации.
+            const isStagnant = isFoundry ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
+
+            if (isStagnant) {
+                if (!melodyFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
                 }
-                if (pianoFillerState) {
-                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, false, 0.4);
+                if (melodyFillerState) {
+                    const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, isFoundry ? 0.65 : 0.5);
                     newEvents.push(...filler);
-                    this.advanceState(pianoFillerState);
-                    if (pianoFillerState.iteration > 1) pianoFillerState = null;
+                    this.advanceState(melodyFillerState);
+                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
                 }
-            } else { pianoFillerState = null; }
+            } else {
+                melodyFillerState = null;
+            }
+
+            // Дополнительный слой гармонии для Foundry
+            if (isFoundry) {
+                const harmonyEvents = events.filter(e => e.type === 'harmony');
+                if (harmonyEvents.length === 0) {
+                    if (!harmonyFillerState) {
+                        const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
+                        if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                    }
+                    if (harmonyFillerState) {
+                        const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.55);
+                        newEvents.push(...filler);
+                        this.advanceState(harmonyFillerState);
+                        if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
+                    }
+                } else {
+                    harmonyFillerState = null;
+                }
+            }
 
             return newEvents;
         }
