@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V78.0 — "Mix Transparency Reform".
- * #ЗАЧЕМ: Системное понижение громкости пианино и гармонии в 2 раза.
+ * @fileOverview Audio Engine Context V79.1 — "Import Path Fix".
+ * #ЗАЧЕМ: Исправление ошибки "Module not found" для пресетов V2.
  */
 'use client';
 
@@ -37,7 +37,7 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.65,
   sparkles: 0.65,
   sfx: 0.65,
-  harmony: 0.15, // #ЗАЧЕМ: Понижение громкости гармонии в 2 раза (было 0.3)
+  harmony: 0.15, 
   pianoAccompaniment: 0.3,
 };
 
@@ -45,7 +45,7 @@ const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
     acoustic: 0.05, 
     electric: 0.825, 
-    piano: 0.2, // #ЗАЧЕМ: Понижение громкости акустического пианино еще в 2 раза (было 0.4)
+    piano: 0.2, 
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
@@ -263,10 +263,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           SAMPLER_DEFAULTS.orchecial * (gains.orchestral || 1.0),
           SAMPLER_DEFAULTS.chords * (gains.chords || 1.0)
       );
-
-      if (foundryDrumsGainNodeRef.current) {
-          foundryDrumsGainNodeRef.current.gain.setTargetAtTime(0.57, now, 0.1); 
-      }
   }, []);
 
   const triggerStreamPulse = useCallback(() => {
@@ -431,7 +427,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [applyAxiomsToEngine]);
 
   const getEffectivePreset = useCallback((name: string) => {
-    return V1_TO_V2_PRESET_MAP[name as keyof typeof V1_TO_V2_PRESET_MAP] || name;
+    return (V1_TO_V2_PRESET_MAP as any)[name] || name;
   }, []);
 
   const initialize = useCallback(async () => {
@@ -470,7 +466,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
 
         foundryDrumsGainNodeRef.current = context.createGain();
-        foundryDrumsGainNodeRef.current.gain.value = 0.57;
+        foundryDrumsGainNodeRef.current.gain.value = 0.0; 
         foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
 
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
@@ -574,7 +570,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const pi = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = pi; const ss = () => { const n = audioContextRef.current!.currentTime + 0.1; [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}].forEach(note => { pi.noteOn(note.m, n + note.t, 0.8, note.d); }); if (loopingRef.current) previewTimeoutRef.current = setTimeout(ss, 4000); else previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), 4000); }; ss(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
-      db, isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,
+      isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,
       setVolumeCallback, calibrationGains, setCalibrationGain, toggleBroadcastCallback, triggerVinyl,
       stopAllSounds, getEffectivePreset, currentBar, totalBars, currentTrackName, tension, scheduleEvents,
       dnaSourcePreference, setDnaSourcePreference, requestWakeLock, releaseWakeLock
