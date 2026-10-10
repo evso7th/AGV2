@@ -1,6 +1,6 @@
 // V2 Presets — Compatible with buildMultiInstrument()
 // #ОБНОВЛЕНО (ПЛАН №9.0): Внедрение физической модели гитары.
-// #ОБНОВЛЕНО (ПЛАН №2550): Очистка пэдов от гудения (меньше саба, короче релиз).
+// #ОБНОВЛЕНО (ПЛАН №2660): Восстановление длинных хвостов для Ambient.
 
 import { BASS_PRESETS } from './bass-presets';
 
@@ -15,10 +15,10 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sawtooth', detune: -5, octave: 0, gain: 0.4 },
       { type: 'sawtooth', detune: +5, octave: 0, gain: 0.4 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.3 } // Уменьшено с 0.8
+      { type: 'sine', detune: 0, octave: -1, gain: 0.3 }
     ],
     noise: { on: true, gain: 0.012 },
-    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 0.7 }, // Релиз сокращен
+    adsr: { a: 0.8, d: 1.2, s: 0.6, r: 2.5 }, // Релиз восстановлен до 2.5с
     lpf: { cutoff: 950, q: 0.8 }, 
     reverbMix: 0
   },
@@ -30,9 +30,9 @@ export const V2_PRESETS = {
     osc: [
       { type: 'sine', detune: -4, octave: 0, gain: 0.6 },
       { type: 'sawtooth', detune: +4, octave: 0, gain: 0.3 },
-      { type: 'sine', detune: 0, octave: -1, gain: 0.4 } // Уменьшено с 0.9
+      { type: 'sine', detune: 0, octave: -1, gain: 0.4 }
     ],
-    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 0.9 }, // Релиз сокращен
+    adsr: { a: 2.0, d: 2.5, s: 0.6, r: 4.0 }, // Релиз восстановлен до 4.0с
     lpf: { cutoff: 650, q: 0.7 }, 
     reverbMix: 0
   },
@@ -120,7 +120,7 @@ export const V2_PRESETS = {
       { type: 'sine', octave: 0, detune: 0, gain: 0.6 },
       { type: 'triangle', octave: 1, detune: 0, gain: 0.15 }
     ],
-    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 0.4 },
+    adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.2 }, // Релиз восстановлен до 1.2с
     lpf: { cutoff: 2400, q: 0.7 }, 
     reverbMix: 0
   }

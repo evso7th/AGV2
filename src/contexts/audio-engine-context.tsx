@@ -1,6 +1,6 @@
 /**
  * @fileOverview Audio Engine Context V79.2 — "Strict Polyphony & Cleanup".
- * #ЗАЧЕМ: Реализация ПЛАНА №2650. Жесткое ограничение 32 голоса и ликвидация "призрачного" звука.
+ * #ЗАЧЕМ: Реализация ПЛАНА №2650/2660. Баланс между защитой от перегруза и длинными хвостами.
  */
 'use client';
 
@@ -90,6 +90,7 @@ interface AudioEngineContextType {
   calculateMasterFadeOutFixed: (target: number, duration: number) => void;
   calculateMasterFadeOutAdaptive: (target: number, duration: number) => void;
   calculateMasterFadeOutFixed2: (target: number, duration: number) => void;
+  calculateMasterFadeOutFixed3: (target: number, duration: number) => void;
   cancelMasterFadeOut: () => void;
   startRecording: (prefix?: string) => void;
   stopRecording: () => void;
@@ -121,7 +122,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
-  const isPlayingRef = useRef(false); // #ЗАЧЕМ: Стабильный реф для worker.onmessage
+  const isPlayingRef = useRef(false); 
   
   const [isRecording, setIsRecordingState] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
@@ -135,9 +136,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        return saved ? parseInt(saved, 10) : 32; // #ЗАЧЕМ: Пониженный дефолт
+        // #ЗАЧЕМ: ПЛАН №2660. Стандарт поднят до 128 для длинных хвостов.
+        return saved ? parseInt(saved, 10) : 128; 
     }
-    return 32;
+    return 128;
   });
 
   const setVoiceLimit = useCallback((limit: number) => {
@@ -320,7 +322,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
-          // #ЗАЧЕМ: Физическая остановка аудио-движка для предотвращения призрачных звуков.
           if (context.state === 'running') await context.suspend();
       }
   }, [stopAllSounds, isBroadcastActive, triggerStreamPulse, requestWakeLock, releaseWakeLock]);
@@ -509,7 +510,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
-                // #ЗАЧЕМ: Ликвидация призрачного звука. Игнорируем сообщения, если мы в паузе.
                 if (!isPlayingRef.current) return;
 
                 const ctx = audioContextRef.current!;
@@ -572,7 +572,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       setInstrument: async (part: any, name: any) => { if (!isInitialized) return; const p = getEffectivePreset(name); if (part === 'bass' && bassManagerV2Ref.current) await bassManagerV2Ref.current.setInstrument(p || name); else if (part === 'melody' && melodyManagerV2Ref.current) await melodyManagerV2Ref.current.setInstrument(p || name); else if (part === 'accompaniment' && accompanimentManagerV2Ref.current) await accompanimentManagerV2Ref.current.setInstrument(p || name); else if (part === 'harmony' && harmonyManagerRef.current) await harmonyManagerRef.current.setInstrument(p || name); },
       setBassTechnique: () => {}, setTextureSettings: (s: any) => { setVolumeCallback('sparkles', s.sparkles.enabled ? s.sparkles.volume : 0); setVolumeCallback('sfx', s.sfx.enabled ? s.sfx.volume : 0); },
       setEQGain: () => {}, setCalibrationGain, calibrationGains, startMasterFadeOut: () => {}, cancelMasterFadeOut: () => {}, 
-      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {}, calculateMasterFadeOutAdaptive: () => {}, calculateMasterFadeOutFixed2: () => {},
+      calculateMasterFade: () => {}, calculateMasterFadeOut: () => {}, calculateMasterFadeOutFixed: () => {}, calculateMasterFadeOutAdaptive: () => {}, calculateMasterFadeOutFixed2: () => {}, calculateMasterFadeOutFixed3: () => {},
       startRecording: (prefix?: string) => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${prefix ? prefix + '_' : ''}AuraGroove_${new Date().toISOString().split('T')[0]}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecordingState(true); }, 
       stopRecording: () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); setIsRecordingState(false); } },
       toggleBroadcast: toggleBroadcastCallback, triggerVinyl,
@@ -587,3 +587,4 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
 };
+

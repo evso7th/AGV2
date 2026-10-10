@@ -1,7 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V14.0 — "The 32-Voice Barrier".
- * #ЗАЧЕМ: Реализация ПЛАНА №2650. Лимит 32 голоса для ликвидации перегруза и экономии CPU.
- * #ЧТО: Усиление "Voice Stealing" и разрыв всех замыканий при очистке.
+ * @fileOverview Центральная фабрика инструментов V15.0 — "Ambient Tail Restoration".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2660. Возврат длинных хвостов для Амбиента через расширение пула до 128 голосов.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -9,8 +8,8 @@ import { dbToGain } from './guitar-loudness';
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
-// #ЗАЧЕМ: ПЛАН №2650. Узаконенный лимит 32 голоса.
-let globalVoiceLimit = 32; 
+// #ЗАЧЕМ: ПЛАН №2660. Лимит поднят до 128. Этого достаточно для длинных релизов в Ambient.
+let globalVoiceLimit = 128; 
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -31,7 +30,6 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 export const globalAllNotesOff = () => {
-    // #ЗАЧЕМ: Тотальная зачистка реестра.
     const allVoices = Array.from(globalActiveVoices);
     allVoices.forEach(v => deepCleanup(v));
     globalActiveVoices.clear();
@@ -53,7 +51,6 @@ export const deepCleanup = (voiceRecord: any) => {
         });
     }
     
-    // Разрыв ссылок для GC
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
     voiceRecord.instrumentId = null;
@@ -77,7 +74,6 @@ const enforceVoiceLimit = () => {
     const toKillCount = globalActiveVoices.size - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
     
-    // Сортировка: сначала низкий приоритет (эффекты), затем самые старые
     allVoices.sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.type] ?? 1;
