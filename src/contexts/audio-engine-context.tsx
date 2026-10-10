@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V79.2 — "Strict Polyphony & Cleanup".
- * #ЗАЧЕМ: Реализация ПЛАНА №2650/2660. Баланс между защитой от перегруза и длинными хвостами.
+ * @fileOverview Audio Engine Context V80.0 — "Adaptive Polyphony Protocol".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2670. Динамический лимит голосов в зависимости от BPM.
  */
 'use client';
 
@@ -136,11 +136,16 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        // #ЗАЧЕМ: ПЛАН №2660. Стандарт поднят до 128 для длинных хвостов.
         return saved ? parseInt(saved, 10) : 128; 
     }
     return 128;
   });
+
+  // #ЗАЧЕМ: ПЛАН №2670. Стабильный доступ к лимиту внутри обработчика сообщений воркера.
+  const voiceLimitRef = useRef(voiceLimit);
+  useEffect(() => {
+    voiceLimitRef.current = voiceLimit;
+  }, [voiceLimit]);
 
   const setVoiceLimit = useCallback((limit: number) => {
     setVoiceLimitState(limit);
@@ -500,11 +505,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
         cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
-        await Promise.allSettled([
-            drumMachineRef.current.init(true), foundryDrumMachineRef.current.init(true),
-            blackGuitarSamplerRef.current.init(true), harmonyManagerRef.current.init(true),
-            pianoAccompanimentManagerRef.current.init(), sparklePlayerRef.current.init(), sfxSynthManagerRef.current.init()
-        ]);
+        await Promise.all(initPromises);
 
         workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
         workerRef.current.onmessage = (e) => {
@@ -520,7 +521,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 const now = ctx.currentTime;
                 if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.35;
                 const tempo = payload.actualBpm || 75;
+
+                // #ЗАЧЕМ: ПЛАН №2670. Адаптивный лимит полифонии в зависимости от BPM.
+                let effectiveLimit = voiceLimitRef.current;
+                if (tempo > 140) effectiveLimit = 32;
+                else if (tempo > 120) effectiveLimit = 64;
+                else if (tempo > 100) effectiveLimit = 128;
                 
+                setGlobalVoiceLimit(effectiveLimit);
+
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
@@ -537,7 +546,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { setIsInitializing(false); initializationInFlightRef.current = false; return false; }
-  }, [refreshCloudAxioms, loadDnaFromCache, applyCalibration, voiceLimit, triggerVinyl, dnaSourcePreference, scheduleEvents]);
+  }, [refreshCloudAxioms, loadDnaFromCache, applyCalibration, triggerVinyl, dnaSourcePreference, scheduleEvents]);
 
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) { const s = await initialize(); if (!s) return; }
@@ -587,4 +596,3 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   return <AudioEngineContext.Provider value={contextValue}>{children}</AudioEngineContext.Provider>;
 };
-
