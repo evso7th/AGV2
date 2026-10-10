@@ -1,6 +1,6 @@
 /**
- * @fileOverview Master Mix Registry V3.5 — "Neuro Clarity".
- * #ЗАЧЕМ: ПЛАН №2550. Очистка Neuro Space от гудения пэдов.
+ * @fileOverview Master Mix Registry V4.0 — "Foundry Suppression".
+ * #ЗАЧЕМ: Глобальное снижение уровней для предотвращения клиппинга в Dark Trance.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -19,15 +19,19 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.12 // Снижено с 0.20 для чистоты
+        accompaniment: 0.12 
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
-        ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.25,      
-        melody: 0.45,             
-        harmony: 0.04,           
-        pianoAccompaniment: 0.1375 
+        // #ЗАЧЕМ: ПЛАН №2570. Тотальное снижение уровней Foundry.
+        bass: 0.65,               
+        melody: 0.28,             
+        accompaniment: 0.18,      
+        harmony: 0.025,           
+        pianoAccompaniment: 0.09, 
+        drums: 0.1375,
+        sparkles: 0.40,
+        sfx: 0.35
     },
     blues: {
         bass: 0.68,
