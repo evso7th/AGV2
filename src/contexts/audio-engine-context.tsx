@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V81.0 — "Absolute Zero Start".
- * #ЗАЧЕМ: Реализация ПЛАНА №2700. Гарантия полной очистки памяти и фикс зависания генерации.
+ * @fileOverview Audio Engine Context V82.0 — "Dynamic Narrative Fades".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2715. Возврат Soft Entrance и внедрение Soft Exit.
  */
 'use client';
 
@@ -31,8 +31,8 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.5,
-  melody: 0.225, // Updated: 2x decrease
-  accompaniment: 0.30, // Updated: 2x increase
+  melody: 0.225, 
+  accompaniment: 0.30, 
   drums: 0.65,
   sparkles: 0.65,
   sfx: 0.65,
@@ -330,10 +330,20 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
   }, [setCalibrationGain]);
 
-  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHints?: InstrumentHints) => {
+  const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, totalBars: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events)) return;
     const isFoundry = settingsRef.current?.genre === 'foundry';
     
+    // #ЗАЧЕМ: ПЛАН №2715. Расчет множителя для Soft Entrance (0-5) и Soft Exit (last 2).
+    let fadeMultiplier = 1.0;
+    if (barCount < 6) {
+        fadeMultiplier = 0.3 + (barCount / 6) * 0.7;
+    } else if (barCount >= totalBars - 2) {
+        // Плавное затухание в последние 2 такта
+        const barsFromEnd = totalBars - barCount; // 2 или 1
+        fadeMultiplier = barsFromEnd === 2 ? 0.6 : 0.2;
+    }
+
     const duckBass = (hitTime: number) => {
         if (!audioContextRef.current || !gainNodesRef.current.bass || !settingsRef.current) return;
         const bassGain = gainNodesRef.current.bass.gain;
@@ -356,13 +366,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     else if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
-    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
-    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
+    
+    // Передаем fadeMultiplier в менеджеры, которые поддерживают Soft Entrance/Exit
+    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment, fadeMultiplier);
+    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount, fadeMultiplier);
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any, barCount);
+    
     if (pianoAccompanimentManagerRef.current) { 
         pianoAccompanimentManagerRef.current.setInstrumentType(instrumentHints?.pianoAccompaniment === 'piano' ? 'acoustic' : 'rhodes'); 
-        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo, barCount); 
+        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo, barCount, fadeMultiplier); 
     }
+    
     if (sparklePlayerRef.current) events.filter(e => e.type === 'sparkle').forEach(s => sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * (60/tempo)), s.params?.genre, s.params?.mood, s.params?.category)); 
     if (sfxSynthManagerRef.current) sfxSynthManagerRef.current.trigger(events, barStartTime, tempo);
   }, []);
@@ -513,7 +527,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 else if (tempo > 100) effectiveLimit = 128;
                 setGlobalVoiceLimit(effectiveLimit);
 
-                scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
+                scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.totalBars, payload.instrumentHints);
                 nextBarTimeRef.current = scheduleTime + payload.barDuration;
             } else if (type === 'SUITE_TRANSITION') { 
                 globalAllNotesOff();
@@ -569,7 +583,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       startRecording: (prefix?: string) => { if (!recDestRef.current || isRecording) return; recordedChunksRef.current = []; const mediaRecorder = new MediaRecorder(recDestRef.current.stream); mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunksRef.current.push(e.data); }; mediaRecorder.onstop = () => { const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `${prefix ? prefix + '_' : ''}AuraGroove_${new Date().toISOString().split('T')[0]}.webm`; a.click(); }; mediaRecorder.start(); mediaRecorderRef.current = mediaRecorder; setIsRecordingState(true); }, 
       stopRecording: () => { if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') { mediaRecorderRef.current.stop(); setIsRecordingState(false); } },
       toggleBroadcast: toggleBroadcastCallback, triggerVinyl,
-      playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, h); },
+      playRawEvents: (ev: any, h: any, t: any) => { if(audioContextRef.current) scheduleEvents(ev, audioContextRef.current.currentTime + 0.1, t || 72, 0, 144, h); },
       stopAllSounds, startPreview: async (p: any, t: any, l: any) => { if (!isInitialized) await initialize(); loopingRef.current = l; setIsPreviewPlaying(true); const pi = await buildMultiInstrument(audioContextRef.current!, { type: t, preset: p, output: masterGainNodeRef.current! }); previewInstrumentRef.current = pi; const ss = () => { const n = audioContextRef.current!.currentTime + 0.1; [{m:60,t:0,d:0.5},{m:64,t:0.5,d:0.5},{m:67,t:1,d:1},{m:72,t:2,d:2}].forEach(note => { pi.noteOn(note.m, n + note.t, 0.8, note.d); }); if (loopingRef.current) previewTimeoutRef.current = setTimeout(ss, 4000); else previewTimeoutRef.current = setTimeout(() => setIsPreviewPlaying(false), 4000); }; ss(); }, stopPreview: () => { if (previewTimeoutRef.current) clearTimeout(previewTimeoutRef.current); if (previewInstrumentRef.current) { previewInstrumentRef.current.allNotesOff(); previewInstrumentRef.current.disconnect(); previewInstrumentRef.current = null; } setIsPreviewPlaying(false); }, updatePreviewPreset: (p: any) => { previewInstrumentRef.current?.setPreset(p); }, togglePreviewLoop: () => { loopingRef.current = !loopingRef.current; setIsPreviewLooping(loopingRef.current); }
   }), [
       isInitialized, isInitializing, isPlaying, isRecording, isBroadcastActive, availableCompositions, initialize, voiceLimit, setVoiceLimit, handleTogglePlay, refreshCloudAxioms,

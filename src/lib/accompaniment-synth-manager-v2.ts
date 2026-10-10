@@ -1,6 +1,6 @@
 /**
- * @fileOverview Accompaniment Synth Manager V2.2 — "Absolute Start Protocol".
- * #ЗАЧЕМ: ПЛАН №2710 — Отключение динамических фейдов вступления.
+ * @fileOverview Accompaniment Synth Manager V2.3 — "Dynamic Fades".
+ * #ЗАЧЕМ: ПЛАН №2715 — Возврат Soft Entrance и внедрение Soft Exit.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -102,7 +102,7 @@ export class AccompanimentSynthManagerV2 {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string, fadeMultiplier: number = 1.0) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
             return;
@@ -111,8 +111,8 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
-        // #ЗАЧЕМ: ПЛАН №2710. Отмена динамического нарастания громкости.
-        const entranceMultiplier = 1.0;
+        // #ЗАЧЕМ: ПЛАН №2715. Применение переданного множителя.
+        const entranceMultiplier = fadeMultiplier;
 
         const notesToPlay: Note[] = filtered.map(e => {
             const extraDuration = 1.5; 

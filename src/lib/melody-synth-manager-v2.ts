@@ -1,9 +1,9 @@
 /**
- * @fileOverview Melody Synth Manager V2.2 — "Absolute Start Protocol".
- * #ЗАЧЕМ: ПЛАН №2710 — Отключение динамических фейдов вступления.
+ * @fileOverview Melody Synth Manager V2.3 — "Dynamic Fades".
+ * #ЗАЧЕМ: ПЛАН №2715 — Возврат Soft Entrance и внедрение Soft Exit.
  */
 import type { FractalEvent } from '@/types/fractal';
-import type { Note } from "@/types/music";
+import type { PlayableNote as Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
@@ -118,7 +118,7 @@ export class MelodySynthManagerV2 {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0, fadeMultiplier: number = 1.0) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
             return;
@@ -126,8 +126,8 @@ export class MelodySynthManagerV2 {
         const boundedTempo = Math.max(20, Math.min(300, tempo));
         const beatDuration = 60 / boundedTempo;
 
-        // #ЗАЧЕМ: ПЛАН №2710. Отмена динамического нарастания громкости.
-        const entranceMultiplier = 1.0;
+        // #ЗАЧЕМ: ПЛАН №2715. Применение переданного множителя.
+        const entranceMultiplier = fadeMultiplier;
 
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
             const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
