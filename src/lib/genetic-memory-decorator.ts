@@ -1,6 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V3.1 — "Adaptive Spiral Filler".
+ * @fileOverview Genetic Memory Decorator V3.2 — "Neuro Overlayer".
  * #ЗАЧЕМ: Реализация ПЛАНА №2640. Адаптивное зацикливание (2+2) до 16 повторов.
+ * #ОБНОВЛЕНО (V3.2): Порог стагнации для Trance (psybient) снижен до <= 1 для активации мастерписов.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -36,7 +37,6 @@ export class GeneticMemoryDecorator {
         if (hasPiano) {
             pianoFillerState = null;
         } else {
-            // #ЗАЧЕМ: ПЛАН №2640. Проверка на новый филлер каждые 2 итерации.
             if (pianoFillerState && pianoFillerState.iteration > 0 && pianoFillerState.iteration % 2 === 0 && pianoFillerState.currentBar === 0) {
                 const candidate = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
                 if (candidate && candidate.id !== pianoFillerState.axiom.id) {
@@ -52,17 +52,17 @@ export class GeneticMemoryDecorator {
                 const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
                 if (filler.length > 0) events.push(...filler);
                 this.advanceState(pianoFillerState);
-                if (pianoFillerState.iteration >= 16) pianoFillerState = null; // Max 16
+                if (pianoFillerState.iteration >= 16) pianoFillerState = null; 
             }
         }
 
         // --- 2. MELODY FILLER (Trance/Foundry) ---
         if (genre === 'psybient' || isFoundry) {
             const melodyEvents = events.filter(e => e.type === 'melody');
-            const isStagnant = isFoundry ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
+            // #ЗАЧЕМ: Порог <= 1 позволяет мастерписам звучать поверх редкого арпеджиатора.
+            const isStagnant = isFoundry || genre === 'psybient' ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
 
             if (isStagnant) {
-                // #ЗАЧЕМ: ПЛАН №2640. Адаптивная ротация для сольной линии.
                 if (melodyFillerState && melodyFillerState.iteration > 0 && melodyFillerState.iteration % 2 === 0 && melodyFillerState.currentBar === 0) {
                     const candidate = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
                     if (candidate && candidate.id !== melodyFillerState.axiom.id) {
@@ -77,7 +77,7 @@ export class GeneticMemoryDecorator {
                 if (melodyFillerState) {
                     const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, isFoundry ? 0.65 : 0.5);
                     if (filler.length > 0) events.push(...filler);
-                    else melodyFillerState = null; // Сброс если мастерпис пуст
+                    else melodyFillerState = null; 
                     
                     if (melodyFillerState) {
                         this.advanceState(melodyFillerState);

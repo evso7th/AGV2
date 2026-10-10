@@ -1,6 +1,8 @@
 /**
-@fileOverview Trance Brain V30.1 — "Neuro Clarity Enhancement".
-#ЗАЧЕМ: ПЛАН №2550. Устранение гудения через сокращение релизов и длительностей аккордов.
+@fileOverview Trance Brain V31.0 — "Neuro Space Heritage Recovery".
+#ЗАЧЕМ: 1. Внедрение Mincer Protocol (всеядность наследия).
+      2. Разрежение собственной активности для работы Генетического Декоратора.
+      3. Ускорение поиска аксиом (lockout 1 bar).
 */
 import {
   FractalEvent,
@@ -158,8 +160,8 @@ export class TranceBrain {
   private createSeededRandom(seed: number) {
     let state = seed;
     const next = () => {
-      state = (state * 1664525 + 1013904223) % 2 ** 32;
-      return state / 2 ** 32;
+      state = (state * 1664525 + 1013904223) % Math.pow(2, 32);
+      return state / Math.pow(2, 32);
     };
     return { next, nextInt: (max: number) => Math.floor(next() * max) };
   }
@@ -264,6 +266,11 @@ export class TranceBrain {
         const isTranceMatch = axGenres.some(g => ['trance', 'psybient', 'ambient', 'foundry'].includes(g));
         return isTranceMatch && (axMoods.length === 0 || axMoods.includes(this.mood));
       });
+      
+      // #ЗАЧЕМ: The Mincer Protocol. Если трансовых нет — берем любые.
+      if (filteredPool.length === 0) {
+          filteredPool = poolToUse;
+      }
     }
 
     if (filteredPool.length > 0) {
@@ -322,7 +329,8 @@ export class TranceBrain {
       }
     }
     this.currentTrackName = 'Generative';
-    this.soloistBusyUntilBar = epoch + 4;
+    // #ЗАЧЕМ: Ускорение поиска. Блокировка только на 1 такт.
+    this.soloistBusyUntilBar = epoch + 1;
     return undefined;
   }
 
@@ -417,7 +425,11 @@ export class TranceBrain {
         let activeAxiom = this.applyMutationLogic(this.currentAxiom, tension, this.seed + epoch);
         melodyEvents = this.renderMelodicSegment(epoch, resChord, dna, 'melody', activeAxiom, this.currentAxiomMaxTick, this.currentTimeScale, tension);
       }
-      if (melodyEvents.length === 0) melodyEvents = this.renderGapArp(epoch, resChord, tension);
+      
+      // #ЗАЧЕМ: Разрежение. Оставляем 70% тактов пустыми для работы Генетического Декоратора (мастерписов).
+      if (melodyEvents.length === 0 && this.random.next() < 0.3) {
+          melodyEvents = this.renderGapArp(epoch, resChord, tension);
+      }
       events.push(...melodyEvents.flatMap(e => this.rippleLongNote(e, resChord)));
     }
 
@@ -458,7 +470,7 @@ export class TranceBrain {
         drums: 'Foundry Hybrid',
         bass: 'Rolling Sub'
       },
-      narrative: `Soft Trance: ${this.currentTrackName} [Kicks: Foundry]`
+      narrative: `Soft Trance: ${this.currentTrackName} [Mincer: ON]`
     };
   }
 
@@ -512,21 +524,17 @@ export class TranceBrain {
                     type: 'accompaniment',
                     note: this.constrainAccompanimentOctave(root + interval),
                     time: t * TICK_TO_BEAT,
-                    duration: 1.8 * TICK_TO_BEAT, // Сокращено с 2.2 для чистоты
+                    duration: 1.8 * TICK_TO_BEAT, 
                     weight: 0.4 + (tension * 0.1),
                     technique: 'swell',
                     dynamics: 'p',
-                    params: { attack: 0.2, release: 0.8 } // Релиз сокращен с 1.5
+                    params: { attack: 0.2, release: 0.8 } 
                 });
             });
         }
     });
     
     return events;
-  }
-
-  private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-      return this.renderPowerChordAccompaniment(epoch, chord, tension);
   }
 
   private renderMelodicSegment(epoch: number, chord: GhostChord, dna: SuiteDNA, type: string, phrase: any[], maxTick: number, timeScale: number, tension: number): FractalEvent[] {
@@ -646,7 +654,7 @@ export class TranceBrain {
         weight: 0.7,
         technique: 'hit',
         dynamics: 'p',
-        phrasing: 'legato',
+        phrasing: 'legate',
         params: { 
           mood: this.mood, 
           genre: this.config.genre, 
@@ -679,6 +687,12 @@ export class TranceBrain {
     return events;
   }
 
-  private constrainBassOctave(note: number): number { let n = note; if(!isFinite(n)) return 36; while (n > 47) n -= 12; while (n < 28) n += 12; return n; }
+  private constrainBassOctave(note: number): number { 
+      let n = note; 
+      if(!isFinite(n)) return 36; 
+      while (n > 47) n -= 12; 
+      while (n < 28) n += 12; 
+      return n; 
+  }
   private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 71) n -= 12; while (n < 48) n += 12; return n; }
 }
