@@ -1,7 +1,7 @@
 /**
- * @fileOverview Master Mix Registry V4.1 — "Neuro & Foundry Focus".
- * #ЗАЧЕМ: Экстренная перебалансировка трансовых жанров. 
- * #ЧТО: Подъем LEAD и KEYB, подавление PIANO для Neuro Space и Dark Trance.
+ * @fileOverview Master Mix Registry V4.2 — "Blues Melody Correction".
+ * #ЗАЧЕМ: Корректировка избыточной громкости лид-инструментов в блюзе. 
+ * #ЧТО: ПЛАН №2730 — Снижение уровня melody для blues и cyber_blues.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -20,15 +20,13 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        // #ЗАЧЕМ: Компенсация системного затишья.
         melody: 0.75,
         accompaniment: 0.80,
-        pianoAccompaniment: 0.035, // Убираем доминирование пианиста
+        pianoAccompaniment: 0.035,
         drums: 0.12
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
-        // #ЗАЧЕМ: ПЛАН №2725. Насыщенный индустриальный микс.
         bass: 0.75,               
         melody: 0.70,             
         accompaniment: 0.75,      
@@ -40,7 +38,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     blues: {
         bass: 0.68,
-        melody: 0.50,
+        melody: 0.32, // Снижено с 0.50 для устранения резкости
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
@@ -50,7 +48,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     cyber_blues: {
         bass: 0.68,
-        melody: 0.50,
+        melody: 0.32, // Снижено с 0.50 для соответствия балансу
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
