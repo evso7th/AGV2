@@ -4,8 +4,8 @@ import { dbToGain } from './guitar-loudness';
 import { vault } from './audio-cache';
 
 /**
- * @fileOverview Telecaster Chords Sampler V3.4 — "Memory Guarded".
- * #ЗАЧЕМ: Лимит кэша аккордов для предотвращения переполнения памяти.
+ * @fileOverview Telecaster Chords Sampler V3.5 — "Velocity Precision Fix".
+ * #ЗАЧЕМ: Устранение прямого обращения к .value для гарантии динамики.
  */
 export class TelecasterChordsSampler {
     private audioContext: AudioContext;
@@ -95,12 +95,15 @@ export class TelecasterChordsSampler {
                 
                 const noteGain = this.audioContext.createGain();
                 const velocity = note.velocity ?? 0.7;
-                noteGain.gain.value = velocity;
                 
                 source.connect(noteGain);
                 noteGain.connect(this.preamp);
                 
                 const t0 = startTime + note.time;
+                
+                // #ЗАЧЕМ: Детерминированное управление громкостью.
+                noteGain.gain.setValueAtTime(0, t0);
+                noteGain.gain.linearRampToValueAtTime(velocity, t0 + 0.01);
                 
                 const CAP = 10.0;
                 const FADE = 1.0;

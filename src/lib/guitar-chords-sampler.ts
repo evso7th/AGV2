@@ -5,7 +5,8 @@ import { vault } from './audio-cache';
 const CHORD_SAMPLE_MAP = ACOUSTIC_GUITAR_CHORD_SAMPLES;
 
 /**
- * @fileOverview Сэмплер аккордов V4.8 — "The 150Hz Barrier".
+ * @fileOverview Сэмплер аккордов V4.9 — "Velocity Precision Fix".
+ * #ЗАЧЕМ: Устранение прямого обращения к .value для гарантии динамики.
  */
 export class GuitarChordsSampler {
     private audioContext: AudioContext;
@@ -94,24 +95,32 @@ export class GuitarChordsSampler {
                 const source = this.audioContext.createBufferSource();
                 source.buffer = buffer;
                 const noteGain = this.audioContext.createGain();
-                noteGain.gain.value = note.velocity ?? 0.7;
+                const velocity = note.velocity ?? 0.7;
+                
                 source.connect(noteGain).connect(this.preamp);
                 const t0 = startTime + note.time;
+
+                // #ЗАЧЕМ: Детерминированное управление громкостью.
+                noteGain.gain.setValueAtTime(0, t0);
+                noteGain.gain.linearRampToValueAtTime(velocity, t0 + 0.01);
+
                 source.start(t0);
                 const CAP = 5.0, FADE = 0.6;
                 if (buffer.duration > CAP) {
-                    const vel = Math.max(note.velocity ?? 0.7, 0.0001);
-                    noteGain.gain.setValueAtTime(vel, t0 + CAP - FADE);
+                    const safeVel = Math.max(velocity, 0.0001);
+                    noteGain.gain.setValueAtTime(safeVel, t0 + CAP - FADE);
                     noteGain.gain.exponentialRampToValueAtTime(0.0001, t0 + CAP);
                     source.stop(t0 + CAP + 0.05);
                 }
                 this.activeSources.add(source);
                 source.onended = () => {
                     this.activeSources.delete(source);
-                    try { source.stop(); } catch(e) {}
+                    try { 
+                        source.onended = null;
+                        source.stop(); 
+                    } catch(e) {}
                     source.disconnect();
                     noteGain.disconnect();
-                    source.onended = null; // FIX: Nullify
                 };
             }
         });
@@ -137,7 +146,7 @@ export class GuitarChordsSampler {
     }
 
     public stopAll() {
-        this.activeSources.forEach(source => { try { source.stop(); } catch(e) {} source.disconnect(); });
+        this.activeSources.forEach(source => { try { source.onended = null; source.stop(); } catch(e) {} source.disconnect(); });
         this.activeSources.clear();
     }
 
