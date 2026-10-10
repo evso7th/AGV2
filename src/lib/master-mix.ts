@@ -1,6 +1,7 @@
 /**
- * @fileOverview Master Mix Registry V4.0 — "Foundry Suppression".
- * #ЗАЧЕМ: Глобальное снижение уровней для предотвращения клиппинга в Dark Trance.
+ * @fileOverview Master Mix Registry V4.1 — "Neuro & Foundry Focus".
+ * #ЗАЧЕМ: Экстренная перебалансировка трансовых жанров. 
+ * #ЧТО: Подъем LEAD и KEYB, подавление PIANO для Neuro Space и Dark Trance.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -19,19 +20,23 @@ const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
 export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     psybient: { 
         ...UNIVERSAL_IMPERIAL_MIX,
-        accompaniment: 0.12 
+        // #ЗАЧЕМ: Компенсация системного затишья.
+        melody: 0.75,
+        accompaniment: 0.80,
+        pianoAccompaniment: 0.035, // Убираем доминирование пианиста
+        drums: 0.12
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
-        // #ЗАЧЕМ: ПЛАН №2570. Тотальное снижение уровней Foundry.
-        bass: 0.65,               
-        melody: 0.28,             
-        accompaniment: 0.18,      
-        harmony: 0.025,           
-        pianoAccompaniment: 0.09, 
-        drums: 0.1375,
-        sparkles: 0.40,
-        sfx: 0.35
+        // #ЗАЧЕМ: ПЛАН №2725. Насыщенный индустриальный микс.
+        bass: 0.75,               
+        melody: 0.70,             
+        accompaniment: 0.75,      
+        harmony: 0.035,           
+        pianoAccompaniment: 0.035, 
+        drums: 0.14,
+        sparkles: 0.45,
+        sfx: 0.40
     },
     blues: {
         bass: 0.68,
