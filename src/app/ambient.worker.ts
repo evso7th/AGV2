@@ -1,7 +1,7 @@
 /**
- * @file AuraGroove Music Worker V7.6 — "Directive Enforcement".
- * #ЗАЧЕМ: Исправление бага с зацикливанием очереди. 
- * #ЧТО: Принудительный сброс при любом обновлении в состоянии ожидания.
+ * @file AuraGroove Music Worker V7.7 — "Absolute Zero Start".
+ * #ЗАЧЕМ: Гарантия полной очистки памяти и 2с паузы между треками. 
+ * #ЧТО: ПЛАН №2700 — Межтрековое ожидание увеличено до 2000мс.
  */
 import type { WorkerSettings, Mood, Genre, InstrumentPart } from '@/types/music';
 import { FractalMusicEngine } from '@/lib/fractal-music-engine';
@@ -144,6 +144,8 @@ const Scheduler = {
             isImprovising: isImprovising
         };
 
+        // #ЗАЧЕМ: Рвем ссылки на старый движок для GC.
+        fractalMusicEngine = undefined;
         fractalMusicEngine = new FractalMusicEngine(finalSettings, blueprint);
         fractalMusicEngine.initialize(true); 
         
@@ -199,7 +201,6 @@ const Scheduler = {
        const useHeritageChanged = newSettings.useHeritage !== undefined && newSettings.useHeritage !== this.settings.useHeritage;
        const routeIndexChanged = newSettings.activeRouteIndex !== undefined && newSettings.activeRouteIndex !== this.settings.activeRouteIndex;
        
-       // #ЗАЧЕМ: ПЛАН №1290. Любое обновление при ожидании директивы — это повод для ре-инициализации.
        const forceReset = this.awaitingDirective && (routeIndexChanged || seedChanged);
        
        this.settings = { ...this.settings, ...newSettings };
@@ -240,16 +241,17 @@ const Scheduler = {
                  this.bpmLocked = false;
                  this.awaitingDirective = true;
                  this.awaitingSince = Date.now();
-                 return 500;
+                 // #ЗАЧЕМ: Пауза 2с для очистки памяти.
+                 return 2000;
              }
-             // #ЗАЧЕМ: Авто-сброс если UI не отвечает 4 секунды.
+             
              if (Date.now() - this.awaitingSince > 4000) {
                  this.filterRotationIndex++;
                  this.settings.seed = generateTrueSeed();
                  this.initializeEngine(this.settings);
                  return 2000;
              }
-             return 500; 
+             return 1000; 
         }
 
         let payload: any;

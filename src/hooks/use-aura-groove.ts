@@ -1,7 +1,6 @@
 /**
- * @fileOverview Music Control Hook V38.0 — "Infinite Journey Stabilizer".
- * #ЗАЧЕМ: Исправление бага с зацикливанием очереди на последнем треке.
- * #ЧТО: Перевод обработчика событий на Refs для гарантированной актуальности состояния.
+ * @fileOverview Music Control Hook V38.1 — "Version Bump".
+ * #ЗАЧЕМ: ПЛАН №2700. Обновление версии до 1.0.18.
  */
 'use client';
 
@@ -103,7 +102,7 @@ export interface AuraGrooveProps {
   clearRoute: () => void;
   selectRouteItem: (id: string) => void;
   refreshRoute: () => void;
-  moveRouteItem: (oldIdx: number, newIdx: number) => void;
+  moveRouteItem: () => void;
   reorderRoute: (activeId: string, overId: string) => void;
   saveRoute: (name: string) => void;
   loadRoute: (saved: SavedRoute) => void;
@@ -609,7 +608,6 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [activeRouteItemId, route, applyGenreMix, applyGenreEq]);
 
-  // #ЗАЧЕМ: ПЛАН №2311. Гарантированный бесконечный цикл через Refs.
   useEffect(() => {
     const onTransition = () => {
         if (isAlbumModeRef.current) {
@@ -625,10 +623,8 @@ export const useAuraGroove = (): AuraGrooveProps => {
         const currentIndex = activeRouteIndexRef.current;
 
         if (currentRoute.length > 0) {
-            // #ЗАЧЕМ: Обеспечение циклического воспроизведения (Rule 23).
             const nextIndex = (currentIndex + 1) % currentRoute.length;
             setActiveRouteItemId(currentRoute[nextIndex].id);
-            // Принудительно меняем Seed для нового витка генерации
             setCurrentSeed(Date.now()); 
             return;
         }
