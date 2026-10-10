@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V77.9 — "Reference Fix".
- * #ЗАЧЕМ: Исправление ReferenceError: getEffectivePreset и восстановление импортов.
+ * @fileOverview Audio Engine Context V78.0 — "Mix Transparency Reform".
+ * #ЗАЧЕМ: Системное понижение громкости пианино и гармонии в 2 раза.
  */
 'use client';
 
@@ -37,15 +37,15 @@ const VOICE_BALANCE: Record<string, number> = {
   drums: 0.65,
   sparkles: 0.65,
   sfx: 0.65,
-  harmony: 0.3,
+  harmony: 0.15, // #ЗАЧЕМ: Понижение громкости гармонии в 2 раза (было 0.3)
   pianoAccompaniment: 0.3,
 };
 
 const SAMPLER_DEFAULTS: Record<string, number> = {
     master: 0.75, 
-    acoustic: 0.05, // #ЗАЧЕМ: Понижение громкости Black Acoustic в 2 раза (было 0.1)
+    acoustic: 0.05, 
     electric: 0.825, 
-    piano: 0.4, // #ЗАЧЕМ: Понижение громкости акустического пианино в 2 раза (было 0.8)
+    piano: 0.2, // #ЗАЧЕМ: Понижение громкости акустического пианино еще в 2 раза (было 0.4)
     orchecial: 0.5, 
     chords: 1.2,
     bass: 1.0,
