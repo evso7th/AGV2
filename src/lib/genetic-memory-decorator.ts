@@ -1,6 +1,6 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.8 — "Aggressive Re-selection".
- * #ЗАЧЕМ: Предотвращение тишины через немедленный выбор нового мастерписа.
+ * @fileOverview Genetic Memory Decorator V3.0 — "Infinite Loop Protocol".
+ * #ЗАЧЕМ: Гарантия непрерывного заполнения пауз мастерписами.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -15,6 +15,7 @@ interface FillerState {
     axiom: any;
     iteration: number; 
     currentBar: number; 
+    maxBars: number;
 }
 
 let pianoFillerState: FillerState | null = null;
@@ -31,71 +32,63 @@ export class GeneticMemoryDecorator {
     ): FractalEvent[] {
         const isFoundry = genre === 'foundry';
 
-        // --- 1. BLUES & REGGAE (Piano Only) ---
-        if (genre === 'blues' || genre === 'cyber_blues' || genre === 'reggae') {
-            const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
-            if (hasPiano) {
-                pianoFillerState = null;
-            } else {
-                if (!pianoFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                    if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (pianoFillerState) {
-                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
-                    this.advanceState(pianoFillerState);
-                    if (pianoFillerState.iteration > 1) pianoFillerState = null;
-                    return [...events, ...filler];
-                }
+        // --- 1. PIANO FILLER (Blues/Reggae/Ambient) ---
+        const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
+        if (hasPiano) {
+            pianoFillerState = null;
+        } else {
+            if (!pianoFillerState) {
+                const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
+                if (best) pianoFillerState = this.createState(best);
+            }
+            if (pianoFillerState) {
+                const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
+                if (filler.length > 0) events.push(...filler);
+                this.advanceState(pianoFillerState);
+                if (pianoFillerState.iteration > 16) pianoFillerState = null; // Увеличен лимит жизни филлера
             }
         }
 
-        // --- 2. FOUNDRY & PSYBIENT (Synthesis Interception) ---
+        // --- 2. MELODY FILLER (Trance/Foundry) ---
         if (genre === 'psybient' || isFoundry) {
-            const newEvents = [...events];
             const melodyEvents = events.filter(e => e.type === 'melody');
-            
-            // #ЗАЧЕМ: Усиленный порог стагнации.
             const isStagnant = isFoundry ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
 
             if (isStagnant) {
                 if (!melodyFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                    if (best) melodyFillerState = this.createState(best);
                 }
                 if (melodyFillerState) {
                     const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, isFoundry ? 0.65 : 0.5);
-                    newEvents.push(...filler);
-                    this.advanceState(melodyFillerState);
-                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
+                    if (filler.length > 0) events.push(...filler);
+                    else melodyFillerState = null; // Если мастерпис пустой — сброс для поиска нового
+                    
+                    if (melodyFillerState) {
+                        this.advanceState(melodyFillerState);
+                        if (melodyFillerState.iteration > 16) melodyFillerState = null;
+                    }
                 }
             } else {
                 melodyFillerState = null;
             }
-
-            // Дополнительный слой гармонии для Foundry
-            if (isFoundry) {
-                const harmonyEvents = events.filter(e => e.type === 'harmony');
-                if (harmonyEvents.length === 0) {
-                    if (!harmonyFillerState) {
-                        const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
-                        if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                    }
-                    if (harmonyFillerState) {
-                        const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.55);
-                        newEvents.push(...filler);
-                        this.advanceState(harmonyFillerState);
-                        if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
-                    }
-                } else {
-                    harmonyFillerState = null;
-                }
-            }
-
-            return newEvents;
         }
 
         return events;
+    }
+
+    private static createState(axiom: any): FillerState {
+        const phrase = decompressCompactPhrase(axiom.phrase);
+        let maxT = 0;
+        phrase.forEach(n => { if (n.t > maxT) maxT = n.t; });
+        const maxBars = Math.max(1, Math.ceil((maxT + 1) / TICKS_PER_BAR));
+        
+        return {
+            axiom,
+            iteration: 0,
+            currentBar: 0,
+            maxBars: maxBars
+        };
     }
 
     private static renderCurrentBar(state: FillerState, type: string, root: number, octShift: number, isTrance: boolean = false, weightMult: number = 0.6): FractalEvent[] {
@@ -111,7 +104,7 @@ export class GeneticMemoryDecorator {
             weight: weightMult,
             technique: 'hit',
             dynamics: 'p',
-            phrasing: 'legato',
+            phrasing: 'legate',
             params: { 
                 isEcho: true, 
                 hpCutoff: isTrance ? 800 : undefined 
@@ -121,12 +114,7 @@ export class GeneticMemoryDecorator {
 
     private static advanceState(state: FillerState) {
         state.currentBar++;
-        const phrase = decompressCompactPhrase(state.axiom.phrase);
-        let maxT = 0;
-        phrase.forEach(n => { if (n.t > maxT) maxT = n.t; });
-        const totalBars = state.axiom.bars || Math.ceil((maxT + 1) / TICKS_PER_BAR);
-
-        if (state.currentBar >= totalBars) {
+        if (state.currentBar >= state.maxBars) {
             state.iteration++;
             state.currentBar = 0;
         }
