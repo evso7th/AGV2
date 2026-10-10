@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V80.0 — "Adaptive Polyphony Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №2670. Динамический лимит голосов в зависимости от BPM.
+ * @fileOverview Audio Engine Context V81.0 — "Absolute Zero Start".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2700. Гарантия полной очистки памяти и фикс зависания генерации.
  */
 'use client';
 
@@ -27,7 +27,6 @@ import { collection, getDocs, query } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from '@/lib/presets-v2';
-import { FOUNDRY_PRESETS } from '@/lib/foundry-presets';
 import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
@@ -133,15 +132,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [backgroundLoadComplete, setBackgroundLoadComplete] = useState(false);
   const [tension, setTension] = useState(0.5);
 
-  const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        return saved ? parseInt(saved, 10) : 128; 
-    }
-    return 128;
-  });
+  const [voiceLimit, setVoiceLimitState] = useState<number>(128);
 
-  // #ЗАЧЕМ: ПЛАН №2670. Стабильный доступ к лимиту внутри обработчика сообщений воркера.
   const voiceLimitRef = useRef(voiceLimit);
   useEffect(() => {
     voiceLimitRef.current = voiceLimit;
@@ -158,12 +150,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       localStorage.setItem('AG_DnaSourcePreference', pref);
   }, []);
 
-  const [dnaSourcePreference, setDnaSourcePreferenceState] = useState<'cache' | 'network'>(() => {
-    if (typeof window !== 'undefined') {
-        return (localStorage.getItem('AG_DnaSourcePreference') as 'cache' | 'network') || 'cache';
-    }
-    return 'cache';
-  });
+  const [dnaSourcePreference, setDnaSourcePreferenceState] = useState<'cache' | 'network'>('cache');
 
   const [currentBar, setCurrentBar] = useState(0);
   const [totalBars, setTotalBars] = useState(144);
@@ -206,19 +193,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const loopingRef = useRef(false);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
 
-  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>(() => {
-      const defaults = { master: 0.70, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 };
-      if (typeof window !== 'undefined') {
-          const saved = localStorage.getItem('AuraGroove_Calibration');
-          if (saved) {
-              try {
-                  const parsed = JSON.parse(saved);
-                  return { ...defaults, ...parsed };
-              } catch (e) { return defaults; }
-          }
-      }
-      return defaults;
-  });
+  const [calibrationGains, setCalibrationGains] = useState<Record<string, number>>({ master: 0.70, acoustic: 1.0, electric: 1.0, piano: 1.0, orchestral: 1.0, chords: 1.0, bass: 1.0, cs80: 1.0 });
 
   const calibrationGainsRef = useRef(calibrationGains);
   useEffect(() => {
@@ -315,7 +290,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
 
           stopAllSounds(); 
-          nextBarTimeRef.current = context.currentTime + 0.5; 
+          nextBarTimeRef.current = 0; // Hard Reset Time
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
@@ -352,12 +327,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         const now = audioContextRef.current.currentTime;
         gainNode.gain.cancelScheduledValues(now);
         gainNode.gain.setTargetAtTime(balancedVolume, now, 0.015);
-    }
-    
-    if (part === 'drums' && foundryDrumsGainNodeRef.current && audioContextRef.current) {
-        const now = audioContextRef.current.currentTime;
-        foundryDrumsGainNodeRef.current.gain.cancelScheduledValues(now);
-        foundryDrumsGainNodeRef.current.gain.setTargetAtTime(volume * 0.57, now, 0.015);
     }
   }, [setCalibrationGain]);
 
@@ -505,6 +474,22 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
         cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
+        const initPromises = [
+            drumMachineRef.current.init(true),
+            foundryDrumMachineRef.current.init(true),
+            blackGuitarSamplerRef.current.init(true),
+            telecasterSamplerRef.current.init(),
+            darkTelecasterSamplerRef.current.init(),
+            cs80SamplerRef.current.init(),
+            accompanimentManagerV2Ref.current.init(),
+            melodyManagerV2Ref.current.init(),
+            bassManagerV2Ref.current.init(),
+            harmonyManagerRef.current.init(true),
+            pianoAccompanimentManagerRef.current.init(),
+            sparklePlayerRef.current.init(5),
+            sfxSynthManagerRef.current.init(5)
+        ];
+
         await Promise.all(initPromises);
 
         workerRef.current = new Worker(new URL('@/app/ambient.worker.ts', import.meta.url), { type: 'module' });
@@ -519,15 +504,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
                 if (isFinite(payload.tension)) setTension(payload.tension); 
                 let scheduleTime = nextBarTimeRef.current;
                 const now = ctx.currentTime;
-                if (payload.barCount === 0 || scheduleTime < now + 0.03) scheduleTime = now + 0.35;
+                if (payload.barCount === 0 || scheduleTime < now + 0.05) scheduleTime = now + 0.35;
                 const tempo = payload.actualBpm || 75;
 
-                // #ЗАЧЕМ: ПЛАН №2670. Адаптивный лимит полифонии в зависимости от BPM.
                 let effectiveLimit = voiceLimitRef.current;
                 if (tempo > 140) effectiveLimit = 32;
                 else if (tempo > 120) effectiveLimit = 64;
                 else if (tempo > 100) effectiveLimit = 128;
-                
                 setGlobalVoiceLimit(effectiveLimit);
 
                 scheduleEvents(payload.events, scheduleTime, tempo, payload.barCount, payload.instrumentHints);
@@ -535,6 +518,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             } else if (type === 'SUITE_TRANSITION') { 
                 globalAllNotesOff();
                 triggerVinyl(); 
+                nextBarTimeRef.current = 0; // Prepare for fresh start
                 window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
             }
         };
@@ -546,7 +530,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         setIsInitialized(true); setIsInitializing(false); initializationInFlightRef.current = false;
         return true;
     } catch (e) { setIsInitializing(false); initializationInFlightRef.current = false; return false; }
-  }, [refreshCloudAxioms, loadDnaFromCache, applyCalibration, triggerVinyl, dnaSourcePreference, scheduleEvents]);
+  }, [refreshCloudAxioms, loadDnaFromCache, applyCalibration, triggerVinyl, dnaSourcePreference, scheduleEvents, voiceLimit]);
 
   const toggleBroadcastCallback = useCallback(async () => {
       if (!isInitialized) { const s = await initialize(); if (!s) return; }
@@ -573,7 +557,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       updateSettings: (s: any) => { if (workerRef.current) { settingsRef.current = { ...settingsRef.current, ...s }; workerRef.current.postMessage({ command: 'update_settings', data: s }); } },
       refreshCloudAxioms, syncDna: refreshCloudAxioms, getWorker: () => workerRef.current, resetWorker: () => { 
           stopAllSounds(); 
-          if(audioContextRef.current) nextBarTimeRef.current = audioContextRef.current.currentTime + 0.1;
+          nextBarTimeRef.current = 0;
           setCurrentBar(0); 
           workerRef.current?.postMessage({ command: 'reset' }); 
       },
