@@ -1,9 +1,9 @@
 /**
- * @fileOverview Dark Foundry Brain V7.8 — "The Mincer Protocol".
- * #ЗАЧЕМ: Ликвидация пауз через принудительное потребление любого доступного Heritage.
- * #ЧТО: 1. Добавлен Fallback: если нет трансовых аксиом, берем ЛЮБЫЕ.
- *       2. 100% плотность Shimmer Arp при отсутствии мелодии.
- *       3. Снижен порог активации текстур.
+ * @fileOverview Dark Foundry Brain V8.0 — "Industrial Power Protocol".
+ * #ЗАЧЕМ: Интеграция технологий Cyber Blues (Golden Ticks, Long Howl, Rhythmic Chugging).
+ * #ЧТО: 1. Аккомпанемент теперь пульсирует по золотым долям (0,3,6,9).
+ *       2. Золотые ноты Heritage получают 2.5x сустейн для "органного" шлейфа.
+ *       3. Внедрен строгий контроль пауз между текстурами (6с окно).
  */
 
 import type {
@@ -74,7 +74,8 @@ export class DarkFoundryBrain {
     private lastTextureTime = -999;
 
     private readonly MELODY_CEILING = 71;
-    private readonly GOLDEN_TICKS = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5];
+    // #ЗАЧЕМ: Протокол Золотой Ноты (0, 3, 6, 9).
+    private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
         this.seed = seed;
@@ -136,7 +137,6 @@ export class DarkFoundryBrain {
                 return axGenres.some((g: string) => ['trance', 'psybient', 'foundry'].includes(g));
             });
 
-        // #ЗАЧЕМ: THE MINCER Fallback. Если нет трансовых аксиом — берем ЛЮБЫЕ.
         if (filteredPool.length === 0 && !effectiveAnchor) {
             filteredPool = poolToUse;
         }
@@ -250,7 +250,6 @@ export class DarkFoundryBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            // #ЗАЧЕМ: ГАРАНТИРОВАННОЕ НАПОЛНЕНИЕ. Если Heritage молчит — 100% арпеджио.
             if (melodyEvents.length === 0) {
                 melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             }
@@ -263,11 +262,14 @@ export class DarkFoundryBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
+                
+                // #ЗАЧЕМ: ПЛАН №2555. Принудительный унисон "Золотой Доли".
                 renders = renders.filter(n => this.isGolden(n.time / TICK_TO_BEAT));
                 renders.forEach(n => {
                     n.note = this.wrapMelody(n.note);
-                    n.weight *= 0.75;
-                    n.duration = Math.min(n.duration, 3.5);
+                    n.weight *= 0.85;
+                    // #ЗАЧЕМ: The Long Howl. Увеличиваем хвост для "органного" резонанса.
+                    n.duration *= 2.0; 
                 }); 
                 events.push(...renders); 
                 usedTargetLayers.add(target);
@@ -275,7 +277,8 @@ export class DarkFoundryBrain {
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            events.push(...this.renderSidechainedPad(epoch, resChord, tension)); 
+            // #ЗАЧЕМ: Заменяем статический пэд на ритмический "Chugging" пэд.
+            events.push(...this.renderRhythmicPowerPad(epoch, resChord, tension)); 
         }
 
         events.push(...this.renderAtmosphericEvents(epoch, tension));
@@ -284,8 +287,8 @@ export class DarkFoundryBrain {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Foundry Logic' },
-            narrative: `Foundry Mincer V6 | DNA: ${this.currentTrackName}`
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Power Protocol' },
+            narrative: `Foundry Power V8 | Chugging: ON | Long Howl: ON`
         };
     }
 
@@ -330,11 +333,19 @@ export class DarkFoundryBrain {
         const localBar = Math.abs(mosaicBar) % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        return barNotes.map(n => ({
-            type: 'melody', note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-            time: (n.t - offset) * TICK_TO_BEAT, duration: 1.5 * TICK_TO_BEAT,
-            weight: 0.75, technique: 'pick', dynamics: 'mf', phrasing: 'legato', params: { attack: 0.05, release: 0.45 }
-        }));
+        
+        return barNotes.map(n => {
+            const isGolden = this.isGolden(n.t - offset);
+            return {
+                type: 'melody', note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
+                time: (n.t - offset) * TICK_TO_BEAT, 
+                // #ЗАЧЕМ: The Long Howl. Удлиняем золотые ноты для резонанса.
+                duration: (n.d * TICK_TO_BEAT) * (isGolden ? 2.2 : 1.0),
+                weight: isGolden ? 0.85 : 0.65, 
+                technique: 'pick', dynamics: 'mf', phrasing: 'legato', 
+                params: { attack: 0.05, release: isGolden ? 0.8 : 0.35 }
+            };
+        });
     }
 
     private renderHeritageLayer(chord: GhostChord, epoch: number, phrase: any[], type: InstrumentPart, tension: number, mosaicBar: number): FractalEvent[] {
@@ -347,19 +358,39 @@ export class DarkFoundryBrain {
         }));
     }
 
-    private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+    private renderRhythmicPowerPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.microTransposition;
-        const intervals = [0, 7, 12]; 
-        return intervals.map(interval => ({
-            type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
-            time: 0, duration: 3.5 * TICK_TO_BEAT, weight: 0.45, technique: 'swell', dynamics: 'p', params: { attack: 0.1, release: 0.4 }
-        }));
+        const intervals = [0, 7, 12]; // Power Chord
+        const events: FractalEvent[] = [];
+
+        // #ЗАЧЕМ: ПЛАН №2155. Rhythmic Chugging (0, 3, 6, 9).
+        this.GOLDEN_TICKS.forEach(t => {
+            const hitChance = 0.5 + (tension * 0.4);
+            if (this.rng.next() < hitChance) {
+                intervals.forEach(interval => {
+                    events.push({
+                        type: 'accompaniment', 
+                        note: this.constrainAccompanimentOctave(root + interval),
+                        time: t * TICK_TO_BEAT, 
+                        duration: 2.8 * TICK_TO_BEAT, // Длинный сустейн для наслоения
+                        weight: 0.45 + (tension * 0.15), 
+                        technique: 'swell', 
+                        dynamics: 'p', 
+                        params: { attack: 0.15, release: 0.6, drive: 0.4 }
+                    });
+                });
+            }
+        });
+        return events;
+    }
+
+    private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
+        return this.renderRhythmicPowerPad(epoch, chord, tension);
     }
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = [0, 7, 12, 19];
-        // #ЗАЧЕМ: ГАРАНТИЯ. В Foundry арпеджио теперь работает постоянно (100%), если нет мелодии.
         const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5];
         return rawTicks.map(t => ({
             type: 'melody', note: this.wrapMelody(root + scale[this.rng.nextInt(scale.length)]),
@@ -372,7 +403,7 @@ export class DarkFoundryBrain {
         const barDuration = (60 / 82) * 4;
         const currentTime = epoch * barDuration; 
         if (currentTime - this.lastTextureTime >= 6) { 
-            if (this.rng.chance(60)) { // Повышен шанс до 60%
+            if (this.rng.chance(60)) { 
                 this.lastTextureTime = currentTime;
                 events.push({
                     type: 'sfx', note: 60, time: 0, duration: 2.5, weight: 0.55, technique: 'hit', dynamics: 'p', phrasing: 'legato',
