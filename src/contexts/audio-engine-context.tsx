@@ -31,8 +31,8 @@ import { BASS_PRESETS } from '@/lib/bass-presets';
 
 const VOICE_BALANCE: Record<string, number> = {
   bass: 0.5,
-  melody: 0.45, 
-  accompaniment: 0.15,
+  melody: 0.225, // Updated: 2x decrease
+  accompaniment: 0.30, // Updated: 2x increase
   drums: 0.65,
   sparkles: 0.65,
   sfx: 0.65,

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Accompaniment Synth Manager V2.2 — "Soft Entrance Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1401 — Линейное нарастание громкости на старте трека для пэдов.
+ * @fileOverview Accompaniment Synth Manager V2.2 — "Absolute Start Protocol".
+ * #ЗАЧЕМ: ПЛАН №2710 — Отключение динамических фейдов вступления.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -111,10 +111,8 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
-        // #ЗАЧЕМ: Протокол Мягкого Входа. Линейное нарастание за 6 тактов.
-        const entranceMultiplier = barCount < 6 
-            ? (0.3 + (barCount / 6) * 0.7) 
-            : 1.0;
+        // #ЗАЧЕМ: ПЛАН №2710. Отмена динамического нарастания громкости.
+        const entranceMultiplier = 1.0;
 
         const notesToPlay: Note[] = filtered.map(e => {
             const extraDuration = 1.5; 
@@ -122,7 +120,7 @@ export class AccompanimentSynthManagerV2 {
                 midi: e.note,
                 time: e.time * beatDuration,
                 duration: (e.duration * beatDuration) + extraDuration,
-                velocity: e.weight * entranceMultiplier, // Применение множителя входа
+                velocity: e.weight * entranceMultiplier,
                 technique: e.technique,
                 pan: e.pan,
                 params: e.params

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Melody Synth Manager V2.2 — "Soft Entrance Protocol".
- * #ЗАЧЕМ: Реализация ПЛАНА №1401 — Линейное нарастание громкости на старте трека.
+ * @fileOverview Melody Synth Manager V2.2 — "Absolute Start Protocol".
+ * #ЗАЧЕМ: ПЛАН №2710 — Отключение динамических фейдов вступления.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { Note } from "@/types/music";
@@ -126,11 +126,8 @@ export class MelodySynthManagerV2 {
         const boundedTempo = Math.max(20, Math.min(300, tempo));
         const beatDuration = 60 / boundedTempo;
 
-        // #ЗАЧЕМ: Протокол Мягкого Входа. Линейное нарастание за 6 тактов.
-        const isMelody = this.partName === 'melody';
-        const entranceMultiplier = (isMelody && barCount < 6) 
-            ? (0.3 + (barCount / 6) * 0.7) 
-            : 1.0;
+        // #ЗАЧЕМ: ПЛАН №2710. Отмена динамического нарастания громкости.
+        const entranceMultiplier = 1.0;
 
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
             const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
@@ -138,10 +135,9 @@ export class MelodySynthManagerV2 {
                 midi: e.note, 
                 time: e.time * beatDuration, 
                 duration: (e.duration * beatDuration) + extraDuration, 
-                velocity: e.weight * entranceMultiplier, // Применение множителя входа
+                velocity: e.weight * entranceMultiplier, 
                 technique: e.technique, 
                 pan: e.pan, 
-                // #ЗАЧЕМ: ПЛАН №1280. Проброс техники в параметры голоса.
                 params: { ...e.params, tempo: boundedTempo, technique: e.technique }
             };
         });

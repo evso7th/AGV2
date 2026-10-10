@@ -7,8 +7,8 @@ import { SamplerPlayer } from './sampler-player';
 import { PIANO_SAMPLES } from './samples';
 
 /**
- * #ЗАЧЕМ: Реформа пианиста V2.3 — "Soft Entrance Protocol".
- * #ЧТО: ПЛАН №1401 — Реализация линейного нарастания громкости (0.3 -> 1.0) за 6 тактов.
+ * #ЗАЧЕМ: Реформа пианиста V2.3 — "Absolute Start Protocol".
+ * #ЧТО: ПЛАН №2710 — Отключение динамических фейдов вступления.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -56,10 +56,8 @@ export class PianoAccompanimentManager {
         const filteredEvents = events.filter(e => e.type === 'pianoAccompaniment');
         if (filteredEvents.length === 0) return;
 
-        // #ЗАЧЕМ: Протокол Мягкого Входа. Линейное нарастание за 6 тактов.
-        const entranceMultiplier = barCount < 6 
-            ? (0.3 + (barCount / 6) * 0.7) 
-            : 1.0;
+        // #ЗАЧЕМ: ПЛАН №2710. Отмена динамического нарастания громкости.
+        const entranceMultiplier = 1.0;
 
         const beatDuration = 60 / tempo;
         const notes: Note[] = filteredEvents.map(e => ({
@@ -67,7 +65,7 @@ export class PianoAccompanimentManager {
             time: e.time * beatDuration,
             // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов.
             duration: (e.duration * beatDuration) + 0.5, 
-            velocity: e.weight * entranceMultiplier // Применение множителя входа
+            velocity: e.weight * entranceMultiplier
         }));
 
         if (this.currentMode === 'acoustic') {
