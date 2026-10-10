@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V82.0 — "Dynamic Narrative Fades".
- * #ЗАЧЕМ: Реализация ПЛАНА №2715. Возврат Soft Entrance и внедрение Soft Exit.
+ * @fileOverview Audio Engine Context V83.0 — "Master Narrative Fades".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2740. Перенос Soft Entrance и Soft Exit на Мастер-канал.
  */
 'use client';
 
@@ -290,7 +290,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
 
           stopAllSounds(); 
-          nextBarTimeRef.current = 0; // Hard Reset Time
+          nextBarTimeRef.current = 0; 
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
@@ -331,17 +331,24 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   }, [setCalibrationGain]);
 
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, totalBars: number, instrumentHints?: InstrumentHints) => {
-    if (!Array.isArray(events)) return;
-    const isFoundry = settingsRef.current?.genre === 'foundry';
+    if (!Array.isArray(events) || !masterGainNodeRef.current || !audioContextRef.current) return;
     
-    // #ЗАЧЕМ: ПЛАН №2715. Расчет множителя для Soft Entrance (0-5) и Soft Exit (last 2).
-    let fadeMultiplier = 1.0;
-    if (barCount < 6) {
-        fadeMultiplier = 0.3 + (barCount / 6) * 0.7;
-    } else if (barCount >= totalBars - 2) {
-        // Плавное затухание в последние 2 такта
-        const barsFromEnd = totalBars - barCount; // 2 или 1
-        fadeMultiplier = barsFromEnd === 2 ? 0.6 : 0.2;
+    const ctx = audioContextRef.current;
+    const targetMasterGain = calibrationGainsRef.current.master;
+    const isFoundry = settingsRef.current?.genre === 'foundry';
+    const barDuration = (60 / tempo) * 4;
+
+    // --- #ЗАЧЕМ: ПЛАН №2740. Мягкий вход/выход на уровне Мастер-канала ---
+    if (barCount === 0) {
+        // Soft Entrance: 0 -> Target в течение 6 тактов
+        masterGainNodeRef.current.gain.cancelScheduledValues(barStartTime);
+        masterGainNodeRef.current.gain.setValueAtTime(0, barStartTime);
+        masterGainNodeRef.current.gain.linearRampToValueAtTime(targetMasterGain, barStartTime + (6 * barDuration));
+    } else if (barCount === totalBars - 2) {
+        // Soft Exit: Target -> 0 за 2 такта
+        masterGainNodeRef.current.gain.cancelScheduledValues(barStartTime);
+        masterGainNodeRef.current.gain.setValueAtTime(targetMasterGain, barStartTime);
+        masterGainNodeRef.current.gain.linearRampToValueAtTime(0.0001, barStartTime + (2 * barDuration));
     }
 
     const duckBass = (hitTime: number) => {
@@ -367,14 +374,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     if (bassManagerV2Ref.current) bassManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.bass, barCount);
     
-    // Передаем fadeMultiplier в менеджеры, которые поддерживают Soft Entrance/Exit
-    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment, fadeMultiplier);
-    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount, fadeMultiplier);
+    if (accompanimentManagerV2Ref.current) accompanimentManagerV2Ref.current.schedule(events, barStartTime, tempo, barCount, instrumentHints?.accompaniment);
+    if (melodyManagerV2Ref.current) melodyManagerV2Ref.current.schedule(events, barStartTime, tempo, instrumentHints?.melody, barCount);
     if (harmonyManagerRef.current) harmonyManagerRef.current.schedule(events, barStartTime, tempo, instrumentHints?.harmony as any, barCount);
     
     if (pianoAccompanimentManagerRef.current) { 
         pianoAccompanimentManagerRef.current.setInstrumentType(instrumentHints?.pianoAccompaniment === 'piano' ? 'acoustic' : 'rhodes'); 
-        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo, barCount, fadeMultiplier); 
+        pianoAccompanimentManagerRef.current.schedule(events, barStartTime, tempo, barCount); 
     }
     
     if (sparklePlayerRef.current) events.filter(e => e.type === 'sparkle').forEach(s => sparklePlayerRef.current!.playRandomSparkle(barStartTime + (s.time * (60/tempo)), s.params?.genre, s.params?.mood, s.params?.category)); 

@@ -1,6 +1,6 @@
 /**
- * @fileOverview Accompaniment Synth Manager V2.3 — "Dynamic Fades".
- * #ЗАЧЕМ: ПЛАН №2715 — Возврат Soft Entrance и внедрение Soft Exit.
+ * @fileOverview Accompaniment Synth Manager V2.3 — "Automation Clean-up".
+ * #ЗАЧЕМ: ПЛАН №2740 — Удаление локальной логики фейдов в пользу Мастер-канала.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -47,7 +47,6 @@ export class AccompanimentSynthManagerV2 {
 
     public setPreampGain(gain: number) {
         if (isFinite(gain)) {
-            // #ЗАЧЕМ: Детерминированный сброс.
             this.preamp.gain.cancelScheduledValues(this.audioContext.currentTime);
             this.preamp.gain.setTargetAtTime(gain, this.audioContext.currentTime, 0.02);
         }
@@ -102,7 +101,7 @@ export class AccompanimentSynthManagerV2 {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string, fadeMultiplier: number = 1.0) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, instrumentHint?: string) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
             return;
@@ -111,16 +110,13 @@ export class AccompanimentSynthManagerV2 {
         const beatDuration = 60 / boundedTempo;
         const filtered = events.filter(e => normalizeEventType(e).has('accompaniment'));
 
-        // #ЗАЧЕМ: ПЛАН №2715. Применение переданного множителя.
-        const entranceMultiplier = fadeMultiplier;
-
         const notesToPlay: Note[] = filtered.map(e => {
             const extraDuration = 1.5; 
             return {
                 midi: e.note,
                 time: e.time * beatDuration,
                 duration: (e.duration * beatDuration) + extraDuration,
-                velocity: e.weight * entranceMultiplier,
+                velocity: e.weight,
                 technique: e.technique,
                 pan: e.pan,
                 params: e.params

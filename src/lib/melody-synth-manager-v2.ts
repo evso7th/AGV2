@@ -1,6 +1,6 @@
 /**
- * @fileOverview Melody Synth Manager V2.3 — "Dynamic Fades".
- * #ЗАЧЕМ: ПЛАН №2715 — Возврат Soft Entrance и внедрение Soft Exit.
+ * @fileOverview Melody Synth Manager V2.3 — "Automation Clean-up".
+ * #ЗАЧЕМ: ПЛАН №2740 — Удаление локальной логики фейдов в пользу Мастер-канала.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -118,7 +118,7 @@ export class MelodySynthManagerV2 {
         }
     }
 
-    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0, fadeMultiplier: number = 1.0) {
+    public schedule(events: FractalEvent[], barStartTime: number, tempo: number, instrumentHint?: string, barCount: number = 0) {
         if (!isFinite(barStartTime) || !isFinite(tempo) || tempo <= 0) return;
         if (barStartTime < this.audioContext.currentTime) {
             return;
@@ -126,16 +126,13 @@ export class MelodySynthManagerV2 {
         const boundedTempo = Math.max(20, Math.min(300, tempo));
         const beatDuration = 60 / boundedTempo;
 
-        // #ЗАЧЕМ: ПЛАН №2715. Применение переданного множителя.
-        const entranceMultiplier = fadeMultiplier;
-
         const notesToPlay = events.filter(e => normalizeEventType(e).has(this.partName)).map(e => {
             const extraDuration = this.partName === 'bass' ? 2.5 : 1.2; 
             return { 
                 midi: e.note, 
                 time: e.time * beatDuration, 
                 duration: (e.duration * beatDuration) + extraDuration, 
-                velocity: e.weight * entranceMultiplier, 
+                velocity: e.weight, 
                 technique: e.technique, 
                 pan: e.pan, 
                 params: { ...e.params, tempo: boundedTempo, technique: e.technique }

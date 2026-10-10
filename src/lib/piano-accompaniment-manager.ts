@@ -7,8 +7,8 @@ import { SamplerPlayer } from './sampler-player';
 import { PIANO_SAMPLES } from './samples';
 
 /**
- * #ЗАЧЕМ: Реформа пианиста V2.4 — "Dynamic Fades".
- * #ЧТО: ПЛАН №2715 — Возврат Soft Entrance и внедрение Soft Exit.
+ * #ЗАЧЕМ: Реформа пианиста V2.5 — "Automation Clean-up".
+ * #ЧТО: ПЛАН №2740 — Удаление локальной логики фейдов в пользу Мастер-канала.
  */
 export class PianoAccompanimentManager {
     private audioContext: AudioContext;
@@ -50,22 +50,18 @@ export class PianoAccompanimentManager {
         this.currentMode = type;
     }
     
-    public schedule(events: FractalEvent[], startTime: number, tempo: number, barCount: number = 0, fadeMultiplier: number = 1.0) {
+    public schedule(events: FractalEvent[], startTime: number, tempo: number, barCount: number = 0) {
         if (!this.isInitialized) return;
         
         const filteredEvents = events.filter(e => e.type === 'pianoAccompaniment');
         if (filteredEvents.length === 0) return;
 
-        // #ЗАЧЕМ: ПЛАН №2715. Применение переданного множителя.
-        const entranceMultiplier = fadeMultiplier;
-
         const beatDuration = 60 / tempo;
         const notes: Note[] = filteredEvents.map(e => ({
             midi: e.note,
             time: e.time * beatDuration,
-            // #ЗАЧЕМ: ПЛАН №85. Уменьшение релизов.
             duration: (e.duration * beatDuration) + 0.5, 
-            velocity: e.weight * entranceMultiplier
+            velocity: e.weight
         }));
 
         if (this.currentMode === 'acoustic') {
