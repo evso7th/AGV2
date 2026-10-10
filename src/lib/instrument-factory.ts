@@ -1,6 +1,7 @@
 /**
- * @fileOverview Центральная фабрика инструментов V13.0 — "Absolute Memory Purity".
- * #ЗАЧЕМ: Ликвидация утечек через немедленную очистку и разрыв замыканий.
+ * @fileOverview Центральная фабрика инструментов V14.0 — "The 32-Voice Barrier".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2650. Лимит 32 голоса для ликвидации перегруза и экономии CPU.
+ * #ЧТО: Усиление "Voice Stealing" и разрыв всех замыканий при очистке.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -8,7 +9,8 @@ import { dbToGain } from './guitar-loudness';
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
-let globalVoiceLimit = 128;
+// #ЗАЧЕМ: ПЛАН №2650. Узаконенный лимит 32 голоса.
+let globalVoiceLimit = 32; 
 
 const STEAL_PRIORITY: Record<string, number> = {
     'sparkle': 0,
@@ -29,7 +31,7 @@ export const setGlobalVoiceLimit = (limit: number) => {
 };
 
 export const globalAllNotesOff = () => {
-    // #ЗАЧЕМ: Агрессивная очистка всех голосов.
+    // #ЗАЧЕМ: Тотальная зачистка реестра.
     const allVoices = Array.from(globalActiveVoices);
     allVoices.forEach(v => deepCleanup(v));
     globalActiveVoices.clear();
@@ -43,7 +45,7 @@ export const deepCleanup = (voiceRecord: any) => {
         voiceRecord.nodes.forEach((n: any) => {
             try {
                 if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) {
-                    n.onended = null; // Рвем замыкание ПЕРЕД остановкой
+                    n.onended = null; 
                     n.stop();
                 }
                 n.disconnect();
@@ -51,8 +53,10 @@ export const deepCleanup = (voiceRecord: any) => {
         });
     }
     
+    // Разрыв ссылок для GC
     voiceRecord.nodes = null;
     voiceRecord.voiceState = null;
+    voiceRecord.instrumentId = null;
     globalActiveVoices.delete(voiceRecord);
 };
 
@@ -73,6 +77,7 @@ const enforceVoiceLimit = () => {
     const toKillCount = globalActiveVoices.size - globalVoiceLimit;
     const allVoices = Array.from(globalActiveVoices).filter(v => !v.disposed);
     
+    // Сортировка: сначала низкий приоритет (эффекты), затем самые старые
     allVoices.sort((a, b) => {
         const prioA = STEAL_PRIORITY[a.type] ?? 1;
         const prioB = STEAL_PRIORITY[b.type] ?? 1;
@@ -81,7 +86,6 @@ const enforceVoiceLimit = () => {
     });
 
     const targets = allVoices.slice(0, toKillCount);
-    // #ЗАЧЕМ: ПЛАН №1285. Немедленное уничтожение.
     targets.forEach(oldest => {
         deepCleanup(oldest);
     });

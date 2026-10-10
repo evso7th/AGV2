@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V79.1 — "Import Path Fix".
- * #ЗАЧЕМ: Исправление ошибки "Module not found" для пресетов V2.
+ * @fileOverview Audio Engine Context V79.2 — "Strict Polyphony & Cleanup".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2650. Жесткое ограничение 32 голоса и ликвидация "призрачного" звука.
  */
 'use client';
 
@@ -121,6 +121,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [isInitialized, setIsInitialized] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
   const [isPlaying, setIsPlayingState] = useState(false);
+  const isPlayingRef = useRef(false); // #ЗАЧЕМ: Стабильный реф для worker.onmessage
+  
   const [isRecording, setIsRecordingState] = useState(false);
   const [isBroadcastActive, setIsBroadcastActive] = useState(false);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
@@ -133,9 +135,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const [voiceLimit, setVoiceLimitState] = useState<number>(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('AuraGroove_VoiceLimit');
-        return saved ? parseInt(saved, 10) : 128;
+        return saved ? parseInt(saved, 10) : 32; // #ЗАЧЕМ: Пониженный дефолт
     }
-    return 128;
+    return 32;
   });
 
   const setVoiceLimit = useCallback((limit: number) => {
@@ -292,6 +294,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
+          isPlayingRef.current = true;
           await requestWakeLock();
           
           if (masterGainNodeRef.current) {
@@ -309,6 +312,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'start' }); 
       } else { 
           setIsPlayingState(false); 
+          isPlayingRef.current = false;
           releaseWakeLock(); 
           if (masterGainNodeRef.current) {
               masterGainNodeRef.current.gain.cancelScheduledValues(context.currentTime);
@@ -316,6 +320,8 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
+          // #ЗАЧЕМ: Физическая остановка аудио-движка для предотвращения призрачных звуков.
+          if (context.state === 'running') await context.suspend();
       }
   }, [stopAllSounds, isBroadcastActive, triggerStreamPulse, requestWakeLock, releaseWakeLock]);
 
@@ -503,6 +509,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         workerRef.current.onmessage = (e) => {
             const { type, payload } = e.data;
             if (type === 'SCORE_READY' && payload) {
+                // #ЗАЧЕМ: Ликвидация призрачного звука. Игнорируем сообщения, если мы в паузе.
+                if (!isPlayingRef.current) return;
+
                 const ctx = audioContextRef.current!;
                 setCurrentBar(payload.barCount); setTotalBars(payload.totalBars);
                 if (payload.trackName) setCurrentTrackName(payload.trackName);
