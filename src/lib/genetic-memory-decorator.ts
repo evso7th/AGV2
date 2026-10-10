@@ -1,6 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V2.5 — "Acoustic Sealing".
- * #ЗАЧЕМ: Снижение плотности и громкости эхо-событий в Foundry.
+ * @fileOverview Genetic Memory Decorator V2.6 — "Foundry Memory Restoration".
+ * #ЗАЧЕМ: Добавлена интерцепция Мелодии для Foundry при ее отсутствии.
+ * #ЧТО: ПЛАН №2575 — Возвращение мастерписов в сольный слой Foundry.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -74,21 +75,6 @@ export class GeneticMemoryDecorator {
                     }
                 } else { melodyFillerState = null; }
 
-                // Перехват Пианино (Rhodes)
-                const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
-                if (!hasPiano) {
-                    if (!pianoFillerState) {
-                        const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                        if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                    }
-                    if (pianoFillerState) {
-                        const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, true);
-                        this.advanceState(pianoFillerState);
-                        if (pianoFillerState.iteration > 1) pianoFillerState = null;
-                        newEvents.push(...filler);
-                    }
-                } else { pianoFillerState = null; }
-
                 return newEvents;
             } else {
                 pianoFillerState = null;
@@ -104,12 +90,29 @@ export class GeneticMemoryDecorator {
             if (isStagnant) {
                 const newEvents = [...events];
                 
+                // #ЗАЧЕМ: ПЛАН №2575. Возвращаем мастерписы в Мелодию.
+                if (!melodyFillerState) {
+                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
+                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
+                }
+                if (melodyFillerState) {
+                    const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, true, 0.65); // Громче
+                    filler.forEach(f => {
+                        if (!f.params) f.params = {};
+                        f.params.isEcho = true;
+                        f.params.drive = 0.45; 
+                    });
+                    newEvents.push(...filler);
+                    this.advanceState(melodyFillerState);
+                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
+                }
+
                 if (!harmonyFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
                     if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
                 }
                 if (harmonyFillerState) {
-                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.30); // Тише
+                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.55); // Слышимо
                     filler.forEach(f => {
                         if (!f.params) f.params = {};
                         f.params.isEcho = true;
@@ -120,25 +123,11 @@ export class GeneticMemoryDecorator {
                     if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
                 }
 
-                if (!pianoFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                    if (best) pianoFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (pianoFillerState) {
-                    const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24, false, 0.35); // Тише
-                    filler.forEach(f => {
-                        if (!f.params) f.params = {};
-                        f.params.isEcho = true;
-                        f.params.drive = 0.65; 
-                    });
-                    newEvents.push(...filler);
-                    this.advanceState(pianoFillerState);
-                    if (pianoFillerState.iteration > 1) pianoFillerState = null;
-                }
                 return newEvents;
             } else {
                 harmonyFillerState = null;
                 pianoFillerState = null;
+                melodyFillerState = null;
             }
         }
 
@@ -160,38 +149,6 @@ export class GeneticMemoryDecorator {
                     newEvents.push(...filler);
                 }
             } else { pianoFillerState = null; }
-
-            // 2. Melody (Dub Memory Shout)
-            const hasMelody = events.some(e => e.type === 'melody');
-            if (!hasMelody) {
-                if (!melodyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (melodyFillerState) {
-                    const phrase = decompressCompactPhrase(melodyFillerState.axiom.phrase);
-                    if (phrase.length > 0) {
-                        const n = phrase[0];
-                        newEvents.push({
-                            type: 'melody' as any,
-                            note: rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0),
-                            time: (n.t % 12) * TICK_TO_BEAT,
-                            duration: 0.5,
-                            weight: 0.95,
-                            technique: 'pick',
-                            dynamics: 'f',
-                            phrasing: 'staccato',
-                            params: { 
-                                isDub: true, 
-                                isEcho: true,
-                                drive: 0.45 
-                            }
-                        });
-                    }
-                    this.advanceState(melodyFillerState);
-                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
-                }
-            } else { melodyFillerState = null; }
             
             return newEvents;
         }
@@ -214,36 +171,6 @@ export class GeneticMemoryDecorator {
                     if (pianoFillerState.iteration > 1) pianoFillerState = null;
                 }
             } else { pianoFillerState = null; }
-
-            // 2. Harmony (Violin/Guitars Reflections)
-            const hasHarmony = events.some(e => e.type === 'harmony');
-            if (!hasHarmony) {
-                if (!harmonyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'harmony', tension);
-                    if (best) harmonyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (harmonyFillerState) {
-                    const filler = this.renderCurrentBar(harmonyFillerState, 'harmony', rootNote, 12, false, 0.35);
-                    newEvents.push(...filler);
-                    this.advanceState(harmonyFillerState);
-                    if (harmonyFillerState.iteration > 1) harmonyFillerState = null;
-                }
-            } else { harmonyFillerState = null; }
-
-            // 3. Melody (Ghost Reflections)
-            const hasMelody = events.some(e => e.type === 'melody');
-            if (!hasMelody) {
-                if (!melodyFillerState) {
-                    const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                    if (best) melodyFillerState = { axiom: best, iteration: 0, currentBar: 0 };
-                }
-                if (melodyFillerState) {
-                    const filler = this.renderCurrentBar(melodyFillerState, 'melody', rootNote, 12, false, 0.4);
-                    newEvents.push(...filler);
-                    this.advanceState(melodyFillerState);
-                    if (melodyFillerState.iteration > 1) melodyFillerState = null;
-                }
-            } else { melodyFillerState = null; }
 
             return newEvents;
         }
