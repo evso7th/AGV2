@@ -1,8 +1,9 @@
 /**
- * @fileOverview Music Control Hook V39.0 — "Media Session Final Fix".
- * #ЗАЧЕМ: ПЛАН №2800. Надежная передача метаданных и обложек в ОС и Авто.
- * #ЧТО: 1. Стабильный URL обложки (без секундного кэш-бастинга).
- *       2. Разделение регистрации обработчиков и обновления метаданных.
+ * @fileOverview Music Control Hook V40.0 — "Bluetooth Resiliency".
+ * #ЗАЧЕМ: ПЛАН №2815. Гарантированная передача метаданных в машины и гарнитуры.
+ * #ЧТО: 1. Добавлены обязательные ActionHandlers.
+ *       2. playbackState управляется принудительно.
+ *       3. Абсолютные пути для Artwork.
  */
 'use client';
 
@@ -562,7 +563,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
-    // #ЗАЧЕМ: ПЛАН №2805. Стабильная версия для обложки (меняется только при смене атмосферы).
+    // #ЗАЧЕМ: ПЛАН №2815. Профессиональная трансляция метаданных для Bluetooth/Авто.
     const version = `${genre}_${mood}`;
     const origin = window.location.origin;
 
@@ -579,12 +580,21 @@ export const useAuraGroove = (): AuraGrooveProps => {
         ]
     });
 
-    // Heartbeat for position state (every 5 seconds instead of 2)
+    // ОБЯЗАТЕЛЬНО обновляем статус плеера для Bluetooth-модулей
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+
+    // Heartbeat loop для поддержания активности сессии в Android/iOS
     const updatePosition = () => {
         if (!navigator.mediaSession.setPositionState) return;
         if (isPlaying) {
             const position = (Date.now() - sessionStartTimeRef.current) / 1000;
-            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
+            try { 
+                navigator.mediaSession.setPositionState({ 
+                    duration: 7200, 
+                    playbackRate: 1.0, 
+                    position: Math.min(position, 7199) 
+                }); 
+            } catch(e) {}
         }
     };
     
@@ -596,23 +606,33 @@ export const useAuraGroove = (): AuraGrooveProps => {
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
     
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    
-    navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
-    navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
-    navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
-    navigator.mediaSession.setActionHandler('nexttrack', () => { 
-        setIsRegenerating(true); 
-        setCurrentSeed(Date.now());
-        setTimeout(() => setIsRegenerating(false), 500);
+    // ОБЯЗАТЕЛЬНО объявляем обработчики. Без них магнитолы часто игнорируют метаданные!
+    const actions: [MediaSessionAction, () => void][] = [
+        ['play', () => setIsPlaying(true)],
+        ['pause', () => setIsPlaying(false)],
+        ['stop', () => { setIsPlaying(false); stopAllSounds(); }],
+        ['nexttrack', () => { 
+            setIsRegenerating(true); 
+            setCurrentSeed(Date.now());
+            setTimeout(() => setIsRegenerating(false), 500);
+        }],
+        ['previoustrack', () => { resetWorker(); }]
+    ];
+
+    actions.forEach(([action, handler]) => {
+        try {
+            navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+            console.warn(`[MediaSession] Action ${action} not supported`);
+        }
     });
-    navigator.mediaSession.setActionHandler('previoustrack', () => { resetWorker(); });
 
     return () => {
-        const handlers = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
-        handlers.forEach(h => navigator.mediaSession.setActionHandler(h as any, null));
+        actions.forEach(([action]) => {
+            try { navigator.mediaSession.setActionHandler(action, null); } catch(e) {}
+        });
     };
-  }, [isPlaying, setIsPlaying, stopAllSounds, resetWorker]);
+  }, [setIsPlaying, stopAllSounds, resetWorker]);
 
   const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
