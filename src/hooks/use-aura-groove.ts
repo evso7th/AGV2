@@ -1,6 +1,8 @@
 /**
- * @fileOverview Music Control Hook V38.1 — "Version Bump".
- * #ЗАЧЕМ: ПЛАН №2700. Обновление версии до 1.0.18.
+ * @fileOverview Music Control Hook V39.0 — "Media Session Final Fix".
+ * #ЗАЧЕМ: ПЛАН №2800. Надежная передача метаданных и обложек в ОС и Авто.
+ * #ЧТО: 1. Стабильный URL обложки (без секундного кэш-бастинга).
+ *       2. Разделение регистрации обработчиков и обновления метаданных.
  */
 'use client';
 
@@ -201,12 +203,11 @@ export const useAuraGroove = (): AuraGrooveProps => {
   const isAlbumModeRef = useRef(isAlbumMode);
 
   useEffect(() => { routeRef.current = route; }, [route]);
+  useEffect(() => { activeRouteIndexRef.current = route.findIndex(it => it.id === activeRouteItemId); }, [route, activeRouteItemId]);
   useEffect(() => { isAlbumModeRef.current = isAlbumMode; }, [isAlbumMode]);
   
   const activeRouteIndex = useMemo(() => {
-      const idx = route.findIndex(it => it.id === activeRouteItemId);
-      activeRouteIndexRef.current = idx;
-      return idx;
+      return route.findIndex(it => it.id === activeRouteItemId);
   }, [route, activeRouteItemId]);
 
   useEffect(() => {
@@ -557,39 +558,61 @@ export const useAuraGroove = (): AuraGrooveProps => {
     }
   }, [isInitialized, bpm, score, genre, instrumentSettings, drumSettings, textureSettings, density, composerControlsInstruments, useHeritage, mood, introBars, selectedCompositionIds, currentSeed, updateSettings, route, activeRouteIndex]);
 
+  // --- STABILIZED MEDIA SESSION EFFECT ---
   useEffect(() => {
     if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    
+    // #ЗАЧЕМ: ПЛАН №2805. Стабильная версия для обложки (меняется только при смене атмосферы).
+    const version = `${genre}_${mood}`;
     const origin = window.location.origin;
+
     navigator.mediaSession.metadata = new MediaMetadata({
         title: `${genre.toUpperCase()} / ${mood.toUpperCase()}`,
         artist: 'AuraGroove',
         album: 'The Infinite Take Orchestra',
         artwork: [
-            { src: `${origin}/assets/cover/cover96.jpg`, sizes: '96x96', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover128.jpg`, sizes: '128x128', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover192.jpg`, sizes: '192x192', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover256.jpg`, sizes: '256x256', type: 'image/jpeg' },
-            { src: `${origin}/assets/cover/cover512.jpg`, sizes: '512x512', type: 'image/jpeg' }
+            { src: `${origin}/assets/cover/cover96.jpg?v=${version}`, sizes: '96x96', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover128.jpg?v=${version}`, sizes: '128x128', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover192.jpg?v=${version}`, sizes: '192x192', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover256.jpg?v=${version}`, sizes: '256x256', type: 'image/jpeg' },
+            { src: `${origin}/assets/cover/cover512.jpg?v=${version}`, sizes: '512x512', type: 'image/jpeg' }
         ]
     });
-    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    if ('setPositionState' in navigator.mediaSession) {
+
+    // Heartbeat for position state (every 5 seconds instead of 2)
+    const updatePosition = () => {
+        if (!navigator.mediaSession.setPositionState) return;
         if (isPlaying) {
             const position = (Date.now() - sessionStartTimeRef.current) / 1000;
             try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 1.0, position: Math.min(position, 7199) }); } catch(e) {}
-        } else {
-            try { navigator.mediaSession.setPositionState({ duration: 7200, playbackRate: 0, position: 0 }); } catch(e) {}
         }
-    }
+    };
+    
+    const interval = setInterval(updatePosition, 5000);
+    return () => clearInterval(interval);
+  }, [genre, mood, isPlaying]);
+
+  // Separate effect for Action Handlers (Static)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('mediaSession' in navigator)) return;
+    
+    navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    
     navigator.mediaSession.setActionHandler('play', () => setIsPlaying(true));
     navigator.mediaSession.setActionHandler('pause', () => setIsPlaying(false));
     navigator.mediaSession.setActionHandler('stop', () => { setIsPlaying(false); stopAllSounds(); });
     navigator.mediaSession.setActionHandler('nexttrack', () => { 
-        setIsRegenerating(true); setCurrentSeed(Date.now());
+        setIsRegenerating(true); 
+        setCurrentSeed(Date.now());
         setTimeout(() => setIsRegenerating(false), 500);
     });
     navigator.mediaSession.setActionHandler('previoustrack', () => { resetWorker(); });
-  }, [isPlaying, genre, mood, setIsPlaying, stopAllSounds, resetWorker, t]);
+
+    return () => {
+        const handlers = ['play', 'pause', 'stop', 'nexttrack', 'previoustrack'];
+        handlers.forEach(h => navigator.mediaSession.setActionHandler(h as any, null));
+    };
+  }, [isPlaying, setIsPlaying, stopAllSounds, resetWorker]);
 
   const prevAppliedGenreRef = useRef<Genre | null>(null);
   useEffect(() => {
@@ -796,8 +819,7 @@ export const useAuraGroove = (): AuraGrooveProps => {
     currentBar, totalBars, currentTrackName, tension,
     eqPresets, activeEqPresetId, saveEqPreset, updateActiveEqPreset, loadEqPreset, deleteEqPreset, setEqPresetGenre,
     mixerPresets, activeMixerPresetId, saveMixerPreset, updateActiveMixerPreset, loadMixerPreset, deleteMixerPreset, setMixerPresetGenre, resetMixerToSystem,
-    useMelodyV2, toggleMelodyEngine,
-    language, toggleLanguage, t
+    useMelodyV2, language, toggleLanguage, t
   }), [
       isInitializing, isPlaying, isRegenerating, isRecording, isAlbumMode, isBroadcastActive, availableCompositions, refreshCloudAxioms, engineSyncDna,
       handlePlayPauseCallback, isRecording, stopRecording, startRecording, handleStartAlbumMode, toggleBroadcast, isInitialized, db, currentSeed, mood, genre, density, bpm, instrumentSettings,

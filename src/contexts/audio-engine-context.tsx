@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V83.0 — "Master Narrative Fades".
- * #ЗАЧЕМ: Реализация ПЛАНА №2740. Перенос Soft Entrance и Soft Exit на Мастер-канал.
+ * @fileOverview Audio Engine Context V84.0 — "Broadcast Auto-bridge".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2810. Автоматический запуск моста при нажатии Play.
  */
 'use client';
 
@@ -180,7 +180,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const blackGuitarSamplerRef = useRef<BlackGuitarSampler | null>(null);
   const telecasterSamplerRef = useRef<TelecasterGuitarSampler | null>(null);
   const darkTelecasterSamplerRef = useRef<DarkTelecasterSampler | null>(null);
-  const cs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
+  const iCs80SamplerRef = useRef<CS80GuitarSampler | null>(null);
   
   const masterGainNodeRef = useRef<GainNode | null>(null);
   const samplersMasterGainRef = useRef<GainNode | null>(null);
@@ -222,7 +222,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     foundryDrumMachineRef.current?.stop();
     sparklePlayerRef.current?.stopAll(); 
     sfxSynthManagerRef.current?.allNotesOff();
-    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, cs80SamplerRef].forEach(r => r.current?.stopAll());
+    [blackGuitarSamplerRef, telecasterSamplerRef, darkTelecasterSamplerRef, iCs80SamplerRef].forEach(r => r.current?.stopAll());
   }, []);
 
   const applyCalibration = useCallback((gains: Record<string, number>) => {
@@ -238,7 +238,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
       blackGuitarSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.acoustic * (gains.acoustic || 1.0));
       telecasterSamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.electric * (gains.electric || 1.0));
       darkTelecasterSamplerRef.current?.setPreampGain(2.2 * (gains.electric || 1.0)); 
-      cs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
+      iCs80SamplerRef.current?.setPreampGain(SAMPLER_DEFAULTS.cs80 * (gains.cs80 || 1.0));
       melodyManagerV2Ref.current?.setPreampGain(gains.electric || 1.0); 
       bassManagerV2Ref.current?.setPreampGain(SAMPLER_DEFAULTS.bass * (gains.bass || 1.0));
       pianoAccompanimentManagerRef.current?.setVolume(gains.piano || 1.0); 
@@ -284,7 +284,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          if (isBroadcastActive && broadcastEngineRef.current) {
+          // #ЗАЧЕМ: ПЛАН №2810. Автозапуск медиа-моста для виджетов ОС и Машин.
+          if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
+              triggerStreamPulse();
+              speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
+              broadcastEngineRef.current.start();
+              setIsBroadcastActive(true);
+          } else if (broadcastEngineRef.current?.isActive()) {
               triggerStreamPulse();
               broadcastEngineRef.current.poke();
           }
@@ -302,9 +308,17 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           }
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
+
+          // Гасим мост при остановке
+          if (broadcastEngineRef.current?.isActive()) {
+              broadcastEngineRef.current.stop();
+              speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
+              setIsBroadcastActive(false);
+          }
+
           if (context.state === 'running') await context.suspend();
       }
-  }, [stopAllSounds, isBroadcastActive, triggerStreamPulse, requestWakeLock, releaseWakeLock]);
+  }, [stopAllSounds, triggerStreamPulse, requestWakeLock, releaseWakeLock]);
 
   const setCalibrationGain = useCallback((key: string, val: number) => {
       setCalibrationGains(prev => {
@@ -335,17 +349,13 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     
     const ctx = audioContextRef.current;
     const targetMasterGain = calibrationGainsRef.current.master;
-    const isFoundry = settingsRef.current?.genre === 'foundry';
     const barDuration = (60 / tempo) * 4;
 
-    // --- #ЗАЧЕМ: ПЛАН №2740. Мягкий вход/выход на уровне Мастер-канала ---
     if (barCount === 0) {
-        // Soft Entrance: 0 -> Target в течение 6 тактов
         masterGainNodeRef.current.gain.cancelScheduledValues(barStartTime);
         masterGainNodeRef.current.gain.setValueAtTime(0, barStartTime);
         masterGainNodeRef.current.gain.linearRampToValueAtTime(targetMasterGain, barStartTime + (6 * barDuration));
     } else if (barCount === totalBars - 2) {
-        // Soft Exit: Target -> 0 за 2 такта
         masterGainNodeRef.current.gain.cancelScheduledValues(barStartTime);
         masterGainNodeRef.current.gain.setValueAtTime(targetMasterGain, barStartTime);
         masterGainNodeRef.current.gain.linearRampToValueAtTime(0.0001, barStartTime + (2 * barDuration));
@@ -369,6 +379,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         }
     }
 
+    const isFoundry = settingsRef.current?.genre === 'foundry';
     if (isFoundry && foundryDrumMachineRef.current) foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
     else if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     
@@ -480,10 +491,10 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
-        cs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
+        iCs80SamplerRef.current = new CS80GuitarSampler(context, gainNodesRef.current.melody);
         accompanimentManagerV2Ref.current = new AccompanimentSynthManagerV2(context, gainNodesRef.current.accompaniment, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!);
-        melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'melody');
-        bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, cs80SamplerRef.current!, 'bass');
+        melodyManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.melody, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, iCs80SamplerRef.current!, 'melody');
+        bassManagerV2Ref.current = new MelodySynthManagerV2(context, gainNodesRef.current.bass, telecasterSamplerRef.current!, blackGuitarSamplerRef.current!, darkTelecasterSamplerRef.current!, iCs80SamplerRef.current!, 'bass');
         harmonyManagerRef.current = new HarmonySynthManager(context, gainNodesRef.current.harmony);
         pianoAccompanimentManagerRef.current = new PianoAccompanimentManager(context, gainNodesRef.current.pianoAccompaniment);
         sparklePlayerRef.current = new SparklePlayer(context, gainNodesRef.current.sparkles);
@@ -492,7 +503,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         blackGuitarSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.blackAcoustic);
         telecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.telecaster);
         darkTelecasterSamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.darkTelecaster);
-        cs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
+        iCs80SamplerRef.current.setOutputTrim(GUITAR_LOUDNESS_TRIM_DB.cs80);
 
         const initPromises = [
             drumMachineRef.current.init(true),
@@ -500,7 +511,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             blackGuitarSamplerRef.current.init(true),
             telecasterSamplerRef.current.init(),
             darkTelecasterSamplerRef.current.init(),
-            cs80SamplerRef.current.init(),
+            iCs80SamplerRef.current.init(),
             accompanimentManagerV2Ref.current.init(),
             melodyManagerV2Ref.current.init(),
             bassManagerV2Ref.current.init(),
@@ -538,7 +549,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
             } else if (type === 'SUITE_TRANSITION') { 
                 globalAllNotesOff();
                 triggerVinyl(); 
-                nextBarTimeRef.current = 0; // Prepare for fresh start
+                nextBarTimeRef.current = 0; 
                 window.dispatchEvent(new CustomEvent('AG_SUITE_TRANSITION'));
             }
         };
