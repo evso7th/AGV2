@@ -1,6 +1,6 @@
 /**
- * @fileOverview Audio Engine Context V84.0 — "Broadcast Auto-bridge".
- * #ЗАЧЕМ: Реализация ПЛАНА №2810. Автоматический запуск моста при нажатии Play.
+ * @fileOverview Audio Engine Context V84.1 — "Platform-aware Auto-bridge".
+ * #ЗАЧЕМ: Реализация ПЛАНА №2810. Автозапуск моста при нажатии Play ТОЛЬКО для мобильных устройств.
  */
 'use client';
 
@@ -273,6 +273,9 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
 
   const handleTogglePlay = useCallback(async (playing: boolean) => {
       const context = audioContextRef.current; if (!context || !workerRef.current) return;
+      
+      const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
       if (playing) { 
           if (context.state === 'suspended') await context.resume(); 
           setIsPlayingState(true); 
@@ -284,15 +287,18 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          // #ЗАЧЕМ: ПЛАН №2810. Автозапуск медиа-моста для виджетов ОС и Машин.
-          if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
-              triggerStreamPulse();
-              speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
-              broadcastEngineRef.current.start();
-              setIsBroadcastActive(true);
-          } else if (broadcastEngineRef.current?.isActive()) {
-              triggerStreamPulse();
-              broadcastEngineRef.current.poke();
+          // #ЗАЧЕМ: ПЛАН №2810. Автозапуск медиа-моста.
+          // #ЧТО: Ограничено только мобильными устройствами для системных виджетов.
+          if (isMobile) {
+              if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
+                  triggerStreamPulse();
+                  speakerGainNodeRef.current?.gain.setTargetAtTime(0.0, context.currentTime, 0.05); 
+                  broadcastEngineRef.current.start();
+                  setIsBroadcastActive(true);
+              } else if (broadcastEngineRef.current?.isActive()) {
+                  triggerStreamPulse();
+                  broadcastEngineRef.current.poke();
+              }
           }
 
           stopAllSounds(); 
@@ -309,7 +315,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
 
-          // Гасим мост при остановке
+          // #ЗАЧЕМ: ПЛАН №2810. Остановка моста при общем Стопе.
           if (broadcastEngineRef.current?.isActive()) {
               broadcastEngineRef.current.stop();
               speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
