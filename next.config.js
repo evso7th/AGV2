@@ -2,13 +2,12 @@
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
-  skipWaiting: true,
+  skipWaiting: false, // Changed to false to support update prompts
   disable: process.env.NODE_ENV === 'development'
 });
 
 const nextConfig = {
-  // #ЗАЧЕМ: Убрали 'export', так как он не поддерживает Server Actions, 
-  // используемые в DNA Auditor для синхронизации файлов.
+  output: 'export',
   typescript: {
     ignoreBuildErrors: true,
   },

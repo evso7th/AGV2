@@ -1,6 +1,6 @@
 /**
- * @fileOverview Welcome Page V4.1 — "Version Bump".
- * #ЗАЧЕМ: ПЛАН №2700. Обновление версии до 1.0.18.
+ * @fileOverview Welcome Page V4.2 — "Version Bump".
+ * #ЗАЧЕМ: ПЛАН №1.0.21. Обновление версии до 1.0.21.
  */
 'use client';
 
@@ -77,7 +77,7 @@ export default function Home() {
             <CardDescription className="text-sm leading-relaxed pt-2">
               <span className="text-white">{t('welcome_desc_main')}</span><br />
               <span className="text-primary font-bold bg-transparent">{t('welcome_desc_orchestra')}</span><br />
-              <span className="text-white opacity-60 text-[10px]">v 1.0.18 stream bridge pwa edition</span>
+              <span className="text-white opacity-60 text-[10px]">v 1.0.21 static export edition</span>
             </CardDescription>
           </div>
         </CardHeader>

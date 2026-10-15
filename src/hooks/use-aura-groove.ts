@@ -1,9 +1,6 @@
 /**
- * @fileOverview Music Control Hook V40.0 — "Bluetooth Resiliency".
- * #ЗАЧЕМ: ПЛАН №2815. Гарантированная передача метаданных в машины и гарнитуры.
- * #ЧТО: 1. Добавлены обязательные ActionHandlers.
- *       2. playbackState управляется принудительно.
- *       3. Абсолютные пути для Artwork.
+ * @fileOverview Music Control Hook V40.1 — "Version Bump".
+ * #ЗАЧЕМ: ПЛАН №1.0.21. Принудительный бамп для деплоя.
  */
 'use client';
 

@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -28,8 +27,8 @@ const COVER_IMAGES = [
 ];
 
 /**
- * @fileOverview Aura Visualizer V20.0 — "Nebula & Cover Only".
- * #ЗАЧЕМ: ПЛАН №2500. Удаление орбиталей, возврат блюра в туманность и ротация обложек.
+ * @fileOverview Aura Visualizer V20.1 — "Warning Fix".
+ * #ЗАЧЕМ: Исправлен ворнинг Tailwind.
  */
 export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, className }: AuraVisualizerProps) {
     const isMobile = useIsMobile();
@@ -103,7 +102,7 @@ export function AuraVisualizer({ genre, tension, isPlaying, tempo, size, classNa
                     <div className="relative w-full h-full shadow-[0_0_60px_rgba(0,0,0,0.6)] rounded-3xl overflow-hidden border border-white/10 bg-black/40">
                         <div 
                             className={cn(
-                                "relative w-full h-full transition-all duration-[1000ms] ease-in-out",
+                                "relative w-full h-full transition-all duration-1000 ease-in-out",
                                 isFading ? "opacity-0 scale-95 blur-sm" : "opacity-90 scale-100 blur-0"
                             )}
                         >

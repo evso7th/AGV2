@@ -95,7 +95,7 @@ export const GUIDE_EN = `
 
 export const DISCLAIMER_RU = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2 text-foreground/90">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3 (Build 1.0.18)</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">ДИСКЛЕЙМЕР: AuraGroove V3 (Build 1.0.21)</h2>
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. Статус системы</h3>
@@ -120,7 +120,7 @@ export const DISCLAIMER_RU = `
 
 export const DISCLAIMER_EN = `
 <div class="prose-info text-[12px] leading-relaxed space-y-6 px-2 text-foreground/90">
-  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3 (Build 1.0.18)</h2>
+  <h2 class="text-base sm:text-lg font-black text-primary uppercase border-b border-primary/20 pb-2">DISCLAIMER: AuraGroove V3 (Build 1.0.21)</h2>
   
   <section class="space-y-2">
     <h3 class="text-[11px] font-black uppercase text-primary/70">1. System Status</h3>
@@ -168,7 +168,7 @@ export const CREDITS_HTML = `
   </section>
 
   <div class="bg-primary/5 p-3 rounded-lg border border-primary/20 text-[10px] italic">
-    <strong>Status:</strong> Ready for Deploy. Version 1.0.18.
+    <strong>Status:</strong> Ready for Deploy. Version 1.0.21.
   </div>
 </div>
 `;
