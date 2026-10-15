@@ -125,7 +125,6 @@ import {
     SEMITONE_TO_DEGREE,
     normalizeStr
 } from '@/lib/music-theory';
-import { readProjectRootManifests } from '@/app/actions/manifest-actions';
 import { initiateAnonymousSignIn } from '@/firebase/non-blocking-login';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -577,14 +576,11 @@ function AuditorContent() {
   };
 
   const handlePushRootToCloud = async () => {
-      setIsProcessing(true);
-      try {
-          const files = await readProjectRootManifests();
-          for (const file of files) {
-              await saveProjectDocument(db, { filename: file.filename, content: file.content, version: '1.1' });
-          }
-          toast({ title: "Sync Complete" });
-      } finally { setIsProcessing(false); }
+    toast({
+        title: "Feature Disabled",
+        description: "This function was temporarily disabled to allow for static export.",
+        variant: "destructive"
+    });
   };
 
   const handleSaveAxiomEdits = async () => {
@@ -1008,7 +1004,7 @@ function AuditorContent() {
           {stagedAxioms.length > 0 && (
             <Card className="border-primary/30 shadow-2xl overflow-hidden flex-grow flex flex-col m-0">
               <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between py-4 shrink-0">
-                <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary"/> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
+                <div><CardTitle className="text-xl font-bold flex items-center gap-2"><Wind className="h-6 w-6 text-primary" /> Staging Buffer: {currentFileName}</CardTitle><CardDescription className="text-[10px] uppercase font-bold text-primary/70">Heritage Ready for Injection</CardDescription></div>
                 <div className="flex gap-3"><Button variant="ghost" size="sm" onClick={() => setStagedAxioms([])} className="text-muted-foreground uppercase text-[10px] font-bold">Clear Buffer</Button><Button onClick={handleCommitSelection} disabled={isProcessing || selectedIds.size === 0} className="gap-3 font-black uppercase tracking-widest px-8 h-11"><Check className={cn("h-5 w-5", isProcessing && "animate-spin")} />Inject {selectedIds.size} Axioms</Button></div>
               </CardHeader>
               <CardContent className="p-0 flex-grow overflow-hidden">
