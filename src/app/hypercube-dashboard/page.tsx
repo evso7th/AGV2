@@ -1,4 +1,5 @@
 'use client';
+'use client';
 
 /**
  * @fileOverview DNA Auditor V7.0.3 — "Accessibility Polish".

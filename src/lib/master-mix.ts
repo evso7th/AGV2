@@ -1,7 +1,7 @@
 /**
- * @fileOverview Master Mix Registry V4.2 — "Blues Melody Correction".
- * #ЗАЧЕМ: Корректировка избыточной громкости лид-инструментов в блюзе. 
- * #ЧТО: ПЛАН №2730 — Снижение уровня melody для blues и cyber_blues.
+ * @fileOverview Master Mix Registry V4.3 — "Blues Volume Balancing".
+ * #ЗАЧЕМ: Радикальное снижение громкости лид-инструментов в блюзе. 
+ * #ЧТО: ПЛАН №2745 — Громкость melody для blues и cyber_blues снижена в 3 раза (до 0.107).
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -38,7 +38,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     blues: {
         bass: 0.68,
-        melody: 0.32, // Снижено с 0.50 для устранения резкости
+        melody: 0.107, // Снижено в 3 раза по запросу (было 0.32)
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
@@ -48,7 +48,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     cyber_blues: {
         bass: 0.68,
-        melody: 0.32, // Снижено с 0.50 для соответствия балансу
+        melody: 0.107, // Снижено в 3 раза для соответствия балансу
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
