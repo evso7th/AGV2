@@ -1,14 +1,14 @@
 /**
- * @fileOverview Master Mix Registry V4.4 — "Universal Volume Balancing".
- * #ЗАЧЕМ: Радикальное снижение громкости лид-инструментов. 
- * #ЧТО: ПЛАН №2750 — Громкость melody для ambient снижена в 3 раза (до 0.07).
+ * @fileOverview Master Mix Registry V4.5 — "Ultra-Soft Melody Calibration".
+ * #ЗАЧЕМ: Финальное снижение громкости лид-инструментов. 
+ * #ЧТО: ПЛАН №2755 — Громкость melody снижена еще в 2 раза для ambient (0.035), blues и cyber_blues (0.0535).
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.07, // Снижено в 3 раза для Ambient и других жанров (было 0.21)
+    melody: 0.035, // Снижено еще в 2 раза (было 0.07)
     accompaniment: 0.10, 
     harmony: 0.0225,      
     pianoAccompaniment: 0.1075, 
@@ -28,17 +28,17 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
         bass: 0.75,               
-        melody: 0.70,             
+        melody: 0.50,             
         accompaniment: 0.75,      
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
         drums: 0.14,
-        sparkles: 0.45,
-        sfx: 0.40
+        sparkles: 0.50,
+        sfx: 0.20
     },
     blues: {
         bass: 0.68,
-        melody: 0.107, // Снижено в 3 раза по запросу (было 0.32)
+        melody: 0.0535, // Снижено еще в 2 раза (было 0.107)
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
@@ -48,7 +48,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
     },
     cyber_blues: {
         bass: 0.68,
-        melody: 0.107, // Снижено в 3 раза для соответствия балансу
+        melody: 0.0535, // Снижено еще в 2 раза (было 0.107)
         accompaniment: 0.06,
         harmony: 0.0109,        
         pianoAccompaniment: 0.08, 
