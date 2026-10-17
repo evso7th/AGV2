@@ -1,9 +1,8 @@
 /**
- * @fileOverview Dark Foundry Brain V8.0 — "Industrial Power Protocol".
- * #ЗАЧЕМ: Интеграция технологий Cyber Blues (Golden Ticks, Long Howl, Rhythmic Chugging).
- * #ЧТО: 1. Аккомпанемент теперь пульсирует по золотым долям (0,3,6,9).
- *       2. Золотые ноты Heritage получают 2.5x сустейн для "органного" шлейфа.
- *       3. Внедрен строгий контроль пауз между текстурами (6с окно).
+ * @fileOverview Dark Foundry Brain V8.1 — "Infinite Loop Fix".
+ * #ЗАЧЕМ: Исправление критического бага ПЛАНА №2565, вызывавшего зависание воркера.
+ * #ЧТО: 1. Исправлена логика в constrainBassOctave (цикл while теперь корректно обновляет переменную).
+ *       2. Унифицированы методы ограничения октав.
  */
 
 import type {
@@ -74,7 +73,6 @@ export class DarkFoundryBrain {
     private lastTextureTime = -999;
 
     private readonly MELODY_CEILING = 71;
-    // #ЗАЧЕМ: Протокол Золотой Ноты (0, 3, 6, 9).
     private readonly GOLDEN_TICKS = [0, 3, 6, 9];
 
     constructor(seed: number, mood: Mood, genre: Genre, useHeritage: boolean = true) {
@@ -277,7 +275,6 @@ export class DarkFoundryBrain {
         });
         
         if (hints.accompaniment && !usedTargetLayers.has('accompaniment')) {
-            // #ЗАЧЕМ: Заменяем статический пэд на ритмический "Chugging" пэд.
             events.push(...this.renderRhythmicPowerPad(epoch, resChord, tension)); 
         }
 
@@ -339,7 +336,6 @@ export class DarkFoundryBrain {
             return {
                 type: 'melody', note: this.wrapMelody(chord.rootNote + 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
                 time: (n.t - offset) * TICK_TO_BEAT, 
-                // #ЗАЧЕМ: The Long Howl. Удлиняем золотые ноты для резонанса.
                 duration: (n.d * TICK_TO_BEAT) * (isGolden ? 2.2 : 1.0),
                 weight: isGolden ? 0.85 : 0.65, 
                 technique: 'pick', dynamics: 'mf', phrasing: 'legato', 
@@ -360,10 +356,9 @@ export class DarkFoundryBrain {
 
     private renderRhythmicPowerPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 12 + this.microTransposition;
-        const intervals = [0, 7, 12]; // Power Chord
+        const intervals = [0, 7, 12]; 
         const events: FractalEvent[] = [];
 
-        // #ЗАЧЕМ: ПЛАН №2155. Rhythmic Chugging (0, 3, 6, 9).
         this.GOLDEN_TICKS.forEach(t => {
             const hitChance = 0.5 + (tension * 0.4);
             if (this.rng.next() < hitChance) {
@@ -372,20 +367,17 @@ export class DarkFoundryBrain {
                         type: 'accompaniment', 
                         note: this.constrainAccompanimentOctave(root + interval),
                         time: t * TICK_TO_BEAT, 
-                        duration: 2.8 * TICK_TO_BEAT, // Длинный сустейн для наслоения
+                        duration: 2.8 * TICK_TO_BEAT, 
                         weight: 0.45 + (tension * 0.15), 
                         technique: 'swell', 
                         dynamics: 'p', 
+                        phrasing: 'legato',
                         params: { attack: 0.15, release: 0.6, drive: 0.4 }
                     });
                 });
             }
         });
         return events;
-    }
-
-    private renderSidechainedPad(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
-        return this.renderRhythmicPowerPad(epoch, chord, tension);
     }
 
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
@@ -414,6 +406,19 @@ export class DarkFoundryBrain {
         return events;
     }
 
-    private constrainBassOctave(n: number): number { let v = n; if(!isFinite(v)) return 36; while (v > 47) n -= 12; while (n < 28) n += 12; return n; }
-    private constrainAccompanimentOctave(note: number): number { let n = note; if(!isFinite(n)) return 60; while (n > 83) n -= 12; while (n < 48) n += 12; return n; }
+    private constrainBassOctave(note: number): number { 
+        let v = note; 
+        if(!isFinite(v)) return 36; 
+        while (v > 47) v -= 12; 
+        while (v < 28) v += 12; 
+        return v; 
+    }
+    
+    private constrainAccompanimentOctave(note: number): number { 
+        let v = note; 
+        if(!isFinite(v)) return 60; 
+        while (v > 83) v -= 12; 
+        while (v < 48) v += 12; 
+        return v; 
+    }
 }

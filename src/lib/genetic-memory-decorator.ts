@@ -1,7 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V3.2 — "Neuro Overlayer".
- * #ЗАЧЕМ: Реализация ПЛАНА №2640. Адаптивное зацикливание (2+2) до 16 повторов.
- * #ОБНОВЛЕНО (V3.2): Порог стагнации для Trance (psybient) снижен до <= 1 для активации мастерписов.
+ * @fileOverview Genetic Memory Decorator V3.3 — "Strict Event Safety".
+ * #ЗАЧЕМ: Предотвращение ошибок в менеджерах при отсутствии обязательных полей.
+ * #ЧТО: Добавлены дефолтные technique, dynamics и phrasing для всех генерируемых событий.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -59,7 +59,6 @@ export class GeneticMemoryDecorator {
         // --- 2. MELODY FILLER (Trance/Foundry) ---
         if (genre === 'psybient' || isFoundry) {
             const melodyEvents = events.filter(e => e.type === 'melody');
-            // #ЗАЧЕМ: Порог <= 1 позволяет мастерписам звучать поверх редкого арпеджиатора.
             const isStagnant = isFoundry || genre === 'psybient' ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
 
             if (isStagnant) {
@@ -119,12 +118,12 @@ export class GeneticMemoryDecorator {
             weight: weightMult,
             technique: 'hit',
             dynamics: 'p',
-            phrasing: 'legate',
+            phrasing: 'legato',
             params: { 
                 isEcho: true, 
                 hpCutoff: isTrance ? 800 : undefined 
             }
-        }));
+        })) as FractalEvent[];
     }
 
     private static advanceState(state: FillerState) {
