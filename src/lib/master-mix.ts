@@ -1,14 +1,14 @@
 /**
- * @fileOverview Master Mix Registry V4.3 — "Blues Volume Balancing".
- * #ЗАЧЕМ: Радикальное снижение громкости лид-инструментов в блюзе. 
- * #ЧТО: ПЛАН №2745 — Громкость melody для blues и cyber_blues снижена в 3 раза (до 0.107).
+ * @fileOverview Master Mix Registry V4.4 — "Universal Volume Balancing".
+ * #ЗАЧЕМ: Радикальное снижение громкости лид-инструментов. 
+ * #ЧТО: ПЛАН №2750 — Громкость melody для ambient снижена в 3 раза (до 0.07).
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.21,        
+    melody: 0.07, // Снижено в 3 раза для Ambient и других жанров (было 0.21)
     accompaniment: 0.10, 
     harmony: 0.0225,      
     pianoAccompaniment: 0.1075, 
