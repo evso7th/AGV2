@@ -1,14 +1,14 @@
 /**
- * @fileOverview Master Mix Registry V4.5 — "Ultra-Soft Melody Calibration".
- * #ЗАЧЕМ: Финальное снижение громкости лид-инструментов. 
- * #ЧТО: ПЛАН №2755 — Громкость melody снижена еще в 2 раза для ambient (0.035), blues и cyber_blues (0.0535).
+ * @fileOverview Master Mix Registry V4.6 — "Visual Alignment".
+ * #ЗАЧЕМ: Синхронизация системного микса с откалиброванными значениями из UI.
+ * #ЧТО: ПЛАН №2760 — Значения для blues и cyber_blues установлены по скриншоту пользователя.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
 
 const UNIVERSAL_IMPERIAL_MIX: SoundMix = {
     bass: 0.70,           
-    melody: 0.035, // Снижено еще в 2 раза (было 0.07)
+    melody: 0.035, 
     accompaniment: 0.10, 
     harmony: 0.0225,      
     pianoAccompaniment: 0.1075, 
@@ -37,24 +37,24 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         sfx: 0.20
     },
     blues: {
-        bass: 0.68,
-        melody: 0.0535, // Снижено еще в 2 раза (было 0.107)
-        accompaniment: 0.06,
-        harmony: 0.0109,        
-        pianoAccompaniment: 0.08, 
-        drums: 0.125,
-        sparkles: 0.65, 
-        sfx: 0.65       
+        bass: 0.78,
+        melody: 0.28,
+        accompaniment: 0.54,
+        harmony: 0.53,        
+        pianoAccompaniment: 0.56, 
+        drums: 0.53,
+        sparkles: 0.56, 
+        sfx: 0.53       
     },
     cyber_blues: {
-        bass: 0.68,
-        melody: 0.0535, // Снижено еще в 2 раза (было 0.107)
-        accompaniment: 0.06,
-        harmony: 0.0109,        
-        pianoAccompaniment: 0.08, 
-        drums: 0.125,
-        sparkles: 0.65, 
-        sfx: 0.65       
+        bass: 0.78,
+        melody: 0.28,
+        accompaniment: 0.54,
+        harmony: 0.53,        
+        pianoAccompaniment: 0.56, 
+        drums: 0.53,
+        sparkles: 0.56, 
+        sfx: 0.53       
     },
     reggae: { 
         ...UNIVERSAL_IMPERIAL_MIX,
