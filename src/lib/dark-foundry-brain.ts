@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Dark Foundry Brain V8.5 — "Maximum Connectivity".
- * #ЗАЧЕМ: Устранение тишины через робастную генерацию и смягчение фильтров.
+ * @fileOverview Dark Foundry Brain V8.6 — "Bass Purity".
+ * #ЗАЧЕМ: Уход от "басовой перкуссии" к глубокому фундаменту.
  */
 
 import type {
@@ -259,7 +258,7 @@ export class DarkFoundryBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Industrial Arp', drums: 'Dynamic Foundry' },
-            narrative: `Foundry V8.5 | Unified Engine: OK | Volume Restored`
+            narrative: `Foundry V8.6 | Bass Purity: ON | Volume Restored`
         };
     }
 
@@ -268,7 +267,6 @@ export class DarkFoundryBrain {
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
 
-        // --- 1. CORE 4/4 ---
         [0, 3, 6, 9].forEach(t => events.push({ 
             type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
             weight: 0.85 + (tension * 0.15), technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
@@ -278,7 +276,6 @@ export class DarkFoundryBrain {
             weight: 0.85, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
         }));
 
-        // --- 2. DYNAMIC PERC ---
         const offbeats = [1.5, 4.5, 7.5, 10.5];
         offbeats.forEach(t => {
             if (this.rng.chance(60 + tension * 40)) {
@@ -292,12 +289,21 @@ export class DarkFoundryBrain {
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
-        [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].forEach(t => {
+        
+        // #ЗАЧЕМ: ПЛАН №2880. Отказ от перкуссионного "стука" в пользу глубокого фундамента.
+        if (tension < 0.6) {
             events.push({
-                type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 0.6 * TICK_TO_BEAT,
-                weight: 0.75, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+                type: 'bass', note: root, time: 0, duration: 11.5 * TICK_TO_BEAT,
+                weight: 0.85, technique: 'long_notes', dynamics: 'f', phrasing: 'legate'
             });
-        });
+        } else {
+            [0, 3, 6, 9].forEach(t => {
+                events.push({
+                    type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 2.8 * TICK_TO_BEAT,
+                    weight: 0.8 + (tension * 0.1), technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
+                });
+            });
+        }
         return events;
     }
 
@@ -310,7 +316,9 @@ export class DarkFoundryBrain {
         return phrase.filter(n => n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR)
             .map(n => ({
                 type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
-                time: (n.t - barOffset) * TICK_TO_BEAT, duration: 1.2 * TICK_TO_BEAT, weight: 0.85, technique: 'pulse', dynamics: 'f', phrasing: 'detached'
+                time: (n.t - barOffset) * TICK_TO_BEAT, 
+                duration: Math.max(n.d, 6) * TICK_TO_BEAT, // #ЗАЧЕМ: Удлинение для жирности
+                weight: 0.85, technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
             }));
     }
 

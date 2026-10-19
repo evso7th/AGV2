@@ -57,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.2 — "Foundry Bass Lockdown".
- * #ЗАЧЕМ: Релаксация жесткого оверрайда баса для Foundry в пользу динамического резолвера.
+ * @fileOverview Fractal Music Engine V47.3 — "Bass Purity Protocol".
+ * #ЗАЧЕМ: ПЛАН №2880. Принудительный fallback баса в Foundry на глубокие тембры.
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -302,7 +302,6 @@ export class FractalMusicEngine {
                     defaultInst = 'ep_rhodes_warm';
                 }
 
-                // #ЗАЧЕМ: ПЛАН №907. Сохраняем ГРУППУ (Hint), а не финальный инструмент.
                 this.activeTimbres[part] = pickWeightedDeterministic(options, this.config.seed, this.epoch, 500) || defaultInst;
             }
         }
@@ -311,7 +310,6 @@ export class FractalMusicEngine {
     this.activatedParts.forEach(part => {
         const isTransition = navInfo.currentPart.id.includes('BRIDGE') || navInfo.currentPart.id.includes('TRANSITION') || navInfo.currentPart.id.includes('PROLOGUE');
         if ((navInfo.currentPart.layers as any)[part] || isTransition) {
-            // #ЗАЧЕМ: РЕШЕНИЕ — Разрешаем тембр КАЖДЫЙ ТАКТ на основе текущего Tension.
             const rawHint = this.activeTimbres[part] || 'synth';
             instrumentHints[part] = resolveSemanticTimbre(rawHint, tension, part, this.config.genre);
         }
@@ -340,10 +338,14 @@ export class FractalMusicEngine {
         Object.assign(instrumentHints, result.instrumentOverrides);
     }
 
-    // #ЗАЧЕМ: Протокол "Bass Lockdown". Принудительная установка Warm Blues для тяжелых жанров.
-    // #ОБНОВЛЕНО: Foundry теперь обрабатывается через resolveSemanticTimbre для поддержки warm/ambient/808.
+    // #ЗАЧЕМ: Протокол "Bass Purity Protocol". 
+    // #ЧТО: ПЛАН №2880. Принудительный выбор глубоких басов для Foundry и Cyber Blues.
     if (this.config.genre === 'cyber_blues') {
         instrumentHints.bass = 'bass_jazz_warm';
+    } else if (this.config.genre === 'foundry') {
+        if (tension < 0.45) instrumentHints.bass = 'bass_ambient';
+        else if (tension < 0.75) instrumentHints.bass = 'bass_jazz_warm';
+        else instrumentHints.bass = 'bass_808';
     }
 
     this.lastEvents = [...result.events];
