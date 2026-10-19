@@ -1,5 +1,4 @@
 'use client';
-'use client';
 
 /**
  * @fileOverview DNA Auditor V7.0.3 — "Accessibility Polish".
@@ -1032,6 +1031,10 @@ function AuditorContent() {
           )}
         </TabsContent>
       </Tabs>
+
+      <div className="flex justify-center pt-2 opacity-20 hover:opacity-100 transition-opacity">
+         <span className="text-[9px] font-black uppercase tracking-[0.4em]">AuraGroove DNA Auditor v1.0.24</span>
+      </div>
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent className="border-primary/20 bg-card">
