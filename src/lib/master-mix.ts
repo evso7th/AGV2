@@ -1,7 +1,7 @@
 /**
- * @fileOverview Master Mix Registry V4.6 — "Visual Alignment".
- * #ЗАЧЕМ: Синхронизация системного микса с откалиброванными значениями из UI.
- * #ЧТО: ПЛАН №2760 — Значения для blues и cyber_blues установлены по скриншоту пользователя.
+ * @fileOverview Master Mix Registry V4.7 — "Rhythm Recalibration".
+ * #ЗАЧЕМ: Снижение громкости ударных в 3 раза для Trance и Foundry по запросу.
+ * #ЧТО: ПЛАН №2910 — Значения drums адаптированы для предотвращения доминирования ритма.
  */
 
 import type { Genre, SoundMix } from '@/types/music';
@@ -23,7 +23,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         melody: 0.75,
         accompaniment: 0.80,
         pianoAccompaniment: 0.035,
-        drums: 0.12
+        drums: 0.04 // Снижено в 3 раза с 0.12
     },
     ambient: { ...UNIVERSAL_IMPERIAL_MIX },
     foundry: {
@@ -32,7 +32,7 @@ export const GENRE_MASTER_MIX: Record<Genre, SoundMix> = {
         accompaniment: 0.75,      
         harmony: 0.035,           
         pianoAccompaniment: 0.035, 
-        drums: 0.14,
+        drums: 0.047, // Снижено в 3 раза с 0.14
         sparkles: 0.50,
         sfx: 0.20
     },
