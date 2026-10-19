@@ -1,6 +1,6 @@
 /**
- * @fileOverview UI AuraGroove V17.2.3 — "Version Bump".
- * #ЗАЧЕМ: ПЛАН №2700. Обновление версии до 1.0.22.
+ * @fileOverview UI AuraGroove V17.2.4 — "Version Bump".
+ * #ЗАЧЕМ: ПЛАН №2700. Обновление версии до 1.0.23.
  */
 'use client';
 
@@ -929,6 +929,9 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                             </Dialog>
                         </div>
                     </div>
+                    <div className="flex justify-center pt-1 border-t border-primary/5 mt-1">
+                        <span className="text-[7px] font-black uppercase opacity-20 tracking-[0.2em]">AuraGroove v1.0.23</span>
+                    </div>
                 </footer>
             </div>
 
@@ -1042,7 +1045,7 @@ export function AuraGrooveRoute(props: AuraGrooveProps) {
                     </Tabs>
                     
                     <div className="p-4 bg-muted/30 border-t border-primary/10 flex justify-between items-center px-6 shrink-0">
-                        <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v1.0.22</span>
+                        <span className="text-[9px] font-black uppercase opacity-40">AuraGroove v1.0.23</span>
                         <Button variant="ghost" size="sm" onClick={() => setIsInfoOpen(false)} className="text-[10px] font-black uppercase h-8 px-4">{t('btn_close')}</Button>
                     </div>
                 </DialogContent>
