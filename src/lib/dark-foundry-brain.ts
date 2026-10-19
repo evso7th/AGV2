@@ -1,6 +1,7 @@
+
 /**
- * @fileOverview Dark Foundry Brain V8.6 — "Bass Purity".
- * #ЗАЧЕМ: Уход от "басовой перкуссии" к глубокому фундаменту.
+ * @fileOverview Dark Foundry Brain V8.7 — "Bass Power Protocol".
+ * #ЗАЧЕМ: Фикс ПЛАНА №2890. Усиление громкости баса и устранение перкуссионных артефактов.
  */
 
 import type {
@@ -214,6 +215,8 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
+        const bassTicks = this.getActiveBassTicks(epoch, tension, mosaicBar);
+
         // 1. DYNAMIC FOUNDRY DRUMS
         if (hints.drums) events.push(...this.renderRefinedFoundryDrums(epoch, tension, mosaicBar, kit));
 
@@ -258,7 +261,7 @@ export class DarkFoundryBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Industrial Arp', drums: 'Dynamic Foundry' },
-            narrative: `Foundry V8.6 | Bass Purity: ON | Volume Restored`
+            narrative: `Foundry V8.7 | Bass Power: REGAINED | Fixed Slaps`
         };
     }
 
@@ -286,21 +289,35 @@ export class DarkFoundryBrain {
         return events;
     }
 
+    private getActiveBassTicks(epoch: number, tension: number, mosaicBar: number): Set<number> {
+        const ticks = new Set<number>();
+        if (this.currentBassTheme) {
+            const localBar = Math.abs(mosaicBar) % this.phraseBarCount(this.currentBassTheme.phrase);
+            const barOffset = localBar * TICKS_PER_BAR;
+            this.currentBassTheme.phrase.forEach(n => {
+                if (n.t >= barOffset && n.t < barOffset + TICKS_PER_BAR) ticks.add(n.t - barOffset);
+            });
+        } else {
+            [0, 3, 6, 9].forEach(t => ticks.add(t));
+        }
+        return ticks;
+    }
+
     private renderRollingBass(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const events: FractalEvent[] = [];
         const root = this.constrainBassOctave(chord.rootNote - 12 + this.microTransposition);
         
-        // #ЗАЧЕМ: ПЛАН №2880. Отказ от перкуссионного "стука" в пользу глубокого фундамента.
+        // #ЗАЧЕМ: ПЛАН №2890. Усиление громкости и устранение шлепков.
         if (tension < 0.6) {
             events.push({
                 type: 'bass', note: root, time: 0, duration: 11.5 * TICK_TO_BEAT,
-                weight: 0.85, technique: 'long_notes', dynamics: 'f', phrasing: 'legate'
+                weight: 1.25, technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
             });
         } else {
             [0, 3, 6, 9].forEach(t => {
                 events.push({
                     type: 'bass', note: root, time: t * TICK_TO_BEAT, duration: 2.8 * TICK_TO_BEAT,
-                    weight: 0.8 + (tension * 0.1), technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
+                    weight: 1.3 + (tension * 0.1), technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
                 });
             });
         }
@@ -317,8 +334,8 @@ export class DarkFoundryBrain {
             .map(n => ({
                 type: 'bass', note: this.constrainBassOctave(chord.rootNote - 12 + (DEGREE_TO_SEMITONE[n.deg] || 0) + this.microTransposition),
                 time: (n.t - barOffset) * TICK_TO_BEAT, 
-                duration: Math.max(n.d, 6) * TICK_TO_BEAT, // #ЗАЧЕМ: Удлинение для жирности
-                weight: 0.85, technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
+                duration: Math.max(n.d, 6) * TICK_TO_BEAT, 
+                weight: 1.25, technique: 'long_notes', dynamics: 'f', phrasing: 'legato'
             }));
     }
 

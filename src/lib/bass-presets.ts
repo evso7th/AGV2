@@ -31,18 +31,18 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_jazz_warm: {
         type: 'bass' as const,
         name: 'Jazz Upright',
-        volume: 0.55, 
+        volume: 1.0, // Усилено до максимума
         osc: [ 
-            { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, 
-            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
+            { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }, 
+            { type: 'sine' as const, octave: 1, detune: 0, gain: 0.15 } 
         ],
-        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.6 },
-        adsr: { a: 0.03, d: 2.8, s: 0.05, r: 1.5 },
+        sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.8 },
+        adsr: { a: 0.03, d: 2.8, s: 0.85, r: 1.5 }, // Повышен sustain
         filter: { type: 'lowpass' as const, cutoff: 450, q: 0.5, keyTrack: 0.1 },
         filterEnv: { on: false, attack: 0.01, decay: 0.25, sustain: 0.2, release: 0.2, depth: 600, velocity: 0.5 },
-        drive: { on: false, type: 'tube' as const, amount: 0, tone: 2000 },
-        comp: { threshold: -22, ratio: 2, attack: 0.01, release: 0.2, makeup: 2 },
-        eq: { lowShelf: { freq: 80, gain: 2 }, mid: { freq: 800, q: 1.2, gain: -4 }, highShelf: { freq: 2500, gain: -8 } },
+        drive: { on: true, type: 'tube' as const, amount: 0.05, tone: 1000 }, // Легкая сатурация для плотности
+        comp: { threshold: -22, ratio: 4, attack: 0.01, release: 0.2, makeup: 6 }, // Сильнее компрессия
+        eq: { lowShelf: { freq: 80, gain: 4 }, mid: { freq: 800, q: 1.2, gain: -4 }, highShelf: { freq: 2500, gain: -8 } },
         stringNoise: { on: true, type: 'finger' as const, amount: 0.05 },
         chorus: { on: false, rate: 0.3, depth: 0.003, mix: 0 },
         delay: { on: false, time: 0.3, fb: 0.2, mix: 0, hc: 2000 },
@@ -51,14 +51,14 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     glideBass: {
         type: 'bass' as const,
         name: 'Ambient Sub',
-        volume: 0.55,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.8 } ],
-        adsr: { a: 0.3, d: 0.8, s: 0.85, r: 1.5 },
+        volume: 1.0, // Усилено
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.9 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 1.0 } ],
+        adsr: { a: 0.3, d: 0.8, s: 0.9, r: 1.5 }, // Повышен sustain
         filter: { type: 'lowpass' as const, cutoff: 350, q: 0.5, keyTrack: 0.1 },
         filterEnv: { on: false, attack: 0.4, decay: 1.0, sustain: 0.4, release: 0.8, depth: 400, velocity: 0.3 },
         drive: { on: false, type: 'tube' as const, amount: 0, tone: 1500 },
-        comp: { threshold: -20, ratio: 2, attack: 0.02, release: 0.3, makeup: 2 },
-        eq: { lowShelf: { freq: 60, gain: 3 }, mid: { freq: 400, q: 0.8, gain: -5 }, highShelf: { freq: 1500, gain: -10 } },
+        comp: { threshold: -20, ratio: 3, attack: 0.02, release: 0.3, makeup: 5 },
+        eq: { lowShelf: { freq: 60, gain: 5 }, mid: { freq: 400, q: 0.8, gain: -5 }, highShelf: { freq: 1500, gain: -10 } },
         stringNoise: { on: false, type: 'finger' as const, amount: 0 },
         chorus: { on: true, rate: 0.1, depth: 0.005, mix: 0.15 },
         delay: { on: true, time: 0.6, fb: 0.4, mix: 0.1, hc: 1200 },
@@ -67,14 +67,14 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_cs80: {
         type: 'bass' as const,
         name: 'CS80 Hybrid Bass',
-        volume: 0.6,
+        volume: 0.8,
         osc: [], 
         adsr: { a: 0.01, d: 0.3, s: 0.6, r: 1.5 } 
     },
     bass_jazz_fretless: {
         type: 'bass' as const,
         name: 'Fretless Jaco',
-        volume: 0.6,
+        volume: 0.8,
         osc: [ { type: 'sawtooth' as const, octave: 0, detune: 0, gain: 0.4 }, { type: 'sine' as const, octave: 0, detune: 0, gain: 0.4 } ],
         sub: { on: true, type: 'sine' as const, octave: -1, gain: 0.4 },
         adsr: { a: 0.025, d: 0.5, s: 0.75, r: 1.2 },
@@ -91,7 +91,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_blues: {
         type: 'bass' as const,
         name: 'Blues Bass',
-        volume: 0.6,
+        volume: 0.8,
         osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 0.7 }, { type: 'triangle' as const, octave: 0, detune: 3, gain: 0.3 } ],
         adsr: { a: 0.012, d: 0.35, s: 0.65, r: 1.0 },
         filter: { type: 'lowpass' as const, cutoff: 900, q: 0.6, keyTrack: 0.2 },
@@ -157,12 +157,12 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_808: {
         type: 'bass' as const,
         name: '808 Sub',
-        volume: 0.7,
-        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.7 } ],
-        adsr: { attack: 0.001, decay: 0.4, sustain: 0.2, release: 0.5 },
-        filter: { type: 'lowpass' as const, cutoff: 400, q: 0.4 },
+        volume: 1.0, // Усилено
+        osc: [ { type: 'sine' as const, octave: 0, detune: 0, gain: 1.0 }, { type: 'sine' as const, octave: -1, detune: 0, gain: 0.9 } ],
+        adsr: { attack: 0.001, decay: 0.4, sustain: 0.6, release: 1.0 }, // Повышен sustain для полноты
+        filter: { type: 'lowpass' as const, cutoff: 350, q: 0.4 },
         lfo: { shape: 'sine' as const, rate: 0, amount: 0, target: 'pitch' as const },
-        effects: { distortion: 0.2, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
+        effects: { distortion: 0.15, chorus: { rate: 0, depth: 0, mix: 0 }, delay: { time: 0, feedback: 0, mix: 0 } }
     },
     bass_deep_house: {
         type: 'bass' as const,
@@ -187,7 +187,7 @@ export const BASS_PRESETS: Record<string, BassPreset> = {
     bass_slap: {
         type: 'bass' as const,
         name: 'Slap Bass',
-        volume: 0.55, 
+        volume: 1.0, 
         osc: [ 
             { type: 'sine' as const, octave: 0, detune: 0, gain: 0.8 }, 
             { type: 'sine' as const, octave: 1, detune: 0, gain: 0.05 } 
