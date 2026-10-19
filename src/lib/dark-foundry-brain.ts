@@ -1,8 +1,9 @@
 /**
- * @fileOverview Dark Foundry Brain V8.1 — "Infinite Loop Fix".
- * #ЗАЧЕМ: Исправление критического бага ПЛАНА №2565, вызывавшего зависание воркера.
- * #ЧТО: 1. Исправлена логика в constrainBassOctave (цикл while теперь корректно обновляет переменную).
- *       2. Унифицированы методы ограничения октав.
+ * @fileOverview Dark Foundry Brain V8.3 — "Subtle Grid Evolution".
+ * #ЗАЧЕМ: Оживление ритма индастриал-транса без потери мощи.
+ * #ЧТО: 1. Жесткая сетка 4/4 для бочки и снейра (0, 3, 6, 9).
+ *       2. Tension-driven hi-hats и ghost-перкуссия.
+ *       3. Исправлен баг constrainBassOctave.
  */
 
 import type {
@@ -61,6 +62,7 @@ export class DarkFoundryBrain {
     private currentAxiomMaxTick: number = 0;
     private currentBassTheme: { phrase: any[], startBar: number, endBar: number, id: string } | null = null;
     private currentAccompAxioms: { phrase: any[], role: string, id: string, preferredInstrument?: string }[] = [];
+    private currentDrumAxioms: { phrase: any[], role: string, id: string }[] = [];
     
     private currentTrackName: string = 'Algorithmic';
     private sessionAnchorId: string | null = null; 
@@ -122,6 +124,7 @@ export class DarkFoundryBrain {
         this.currentTheme = null;
         this.currentBassTheme = null;
         this.currentAccompAxioms = [];
+        this.currentDrumAxioms = [];
 
         if (!this.useHeritage || this.cloudAxioms.length === 0) return undefined;
 
@@ -135,9 +138,7 @@ export class DarkFoundryBrain {
                 return axGenres.some((g: string) => ['trance', 'psybient', 'foundry'].includes(g));
             });
 
-        if (filteredPool.length === 0 && !effectiveAnchor) {
-            filteredPool = poolToUse;
-        }
+        if (filteredPool.length === 0 && !effectiveAnchor) filteredPool = poolToUse;
 
         if (filteredPool.length > 0) {
             let basePool = filteredPool.filter(ax => ax.role === 'melody');
@@ -154,46 +155,31 @@ export class DarkFoundryBrain {
                     }
                 }
 
-                if (basePool.length === 0) {
-                    this.soloistBusyUntilBar = epoch + 1;
-                    return undefined;
-                }
+                if (basePool.length > 0) {
+                    const tension = dna.tensionMap?.[epoch] ?? 0.5;
+                    const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
+                    const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
+                    const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
+                    const picked = sameOffsetPool.length > 0 ? sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)] : basePool[this.rng.nextInt(basePool.length)];
 
-                const maxDonorBars = Math.max(4, ...basePool.map(ax => (ax.barOffset || 0) + (ax.bars || 4)));
-                const tension = dna.tensionMap?.[epoch] ?? 0.5;
-                const targetOffset = this.getMosaicIndex(epoch, 0, maxDonorBars, tension);
-                
-                const sameOffsetPool = basePool.filter(ax => (ax.barOffset || 0) === targetOffset);
-                const freshLicks = sameOffsetPool.filter(ax => !this.lickHistory.includes(ax.id));
-                
-                let selected = null;
-                if (freshLicks.length > 0) {
-                    selected = freshLicks[this.rng.nextInt(freshLicks.length)];
-                } else if (sameOffsetPool.length > 0) {
-                    selected = sameOffsetPool[this.rng.nextInt(sameOffsetPool.length)];
-                } else {
-                    selected = basePool[this.rng.nextInt(basePool.length)];
-                }
+                    if (picked) {
+                        this.currentTrackName = picked.compositionId;
+                        this.currentNativeRoot = keyToMidiRoot(picked.nativeKey);
+                        const cid = normalizeStr(picked.compositionId);
+                        
+                        const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === picked.barOffset);
+                        if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (picked.bars || 4), id: bass.id };
 
-                if (selected) {
-                    this.lickHistory.push(selected.id);
-                    if (this.lickHistory.length > 50) this.lickHistory.shift();
+                        this.currentAccompAxioms = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === picked.barOffset)
+                            .map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                    this.currentTrackName = selected.compositionId;
-                    this.currentNativeRoot = keyToMidiRoot(selected.nativeKey);
-                    const cid = normalizeStr(selected.compositionId);
-                    
-                    const bass = poolToUse.find(ax => ax.role === 'bass' && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset);
-                    if (bass) this.currentBassTheme = { phrase: decompressCompactPhrase(bass.phrase), startBar: epoch, endBar: epoch + (selected.bars || 4), id: bass.id };
+                        const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === picked.barOffset);
+                        this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
-                    this.currentAccompAxioms = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === selected.barOffset)
-                        .map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
-
-                    const baseBars = selected.bars || 4;
-                    this.currentAxiomMaxTick = baseBars * TICKS_PER_BAR;
-                    this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(selected.phrase)), startBar: epoch, endBar: epoch + baseBars, id: selected.id };
-                    this.soloistBusyUntilBar = epoch + baseBars;
-                    return selected.nativeBpm || undefined;
+                        this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(picked.phrase)), startBar: epoch, endBar: epoch + (picked.bars || 4), id: picked.id };
+                        this.soloistBusyUntilBar = epoch + (picked.bars || 4);
+                        return picked.nativeBpm || undefined;
+                    }
                 }
             }
         }
@@ -216,8 +202,8 @@ export class DarkFoundryBrain {
 
         if (epoch % 4 === 0) {
             const roll = calculateMusiNum(epoch, 29, this.seed, 100);
-            if (roll < 30) this.currentMutationType = 'none';
-            else if (roll < 60) this.currentMutationType = 'retrograde';
+            if (roll < 50) this.currentMutationType = 'none';
+            else if (roll < 75) this.currentMutationType = 'retrograde';
             else this.currentMutationType = 'jitter';
         }
 
@@ -231,8 +217,8 @@ export class DarkFoundryBrain {
         const ensembleTotalBars = Math.max(1, Math.ceil(this.currentAxiomMaxTick / TICKS_PER_BAR));
         const mosaicBar = this.getMosaicIndex(epoch, ensembleAnchor, ensembleTotalBars, tension);
 
-        // 1. NEURO DRUMS
-        if (hints.drums) events.push(...this.renderFoundryDrums(epoch, tension, kit));
+        // 1. DYNAMIC FOUNDRY DRUMS
+        if (hints.drums) events.push(...this.renderRefinedFoundryDrums(epoch, tension, mosaicBar, kit));
 
         // 2. BASS
         if (hints.bass) {
@@ -248,9 +234,7 @@ export class DarkFoundryBrain {
             if (this.currentTheme && epoch < this.currentTheme.endBar) {
                 melodyEvents = this.renderHeritageMelody(epoch, resChord, tension, mosaicBar);
             }
-            if (melodyEvents.length === 0) {
-                melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
-            }
+            if (melodyEvents.length === 0) melodyEvents.push(...this.renderShimmerArp(epoch, resChord, tension));
             events.push(...melodyEvents); 
         }
 
@@ -260,15 +244,8 @@ export class DarkFoundryBrain {
             let target: InstrumentPart | null = role.includes('piano') ? 'pianoAccompaniment' : (role.includes('harmony') ? 'harmony' : (role.includes('accomp') ? 'accompaniment' : null));
             if (target && (hints as any)[target] && !usedTargetLayers.has(target)) {
                 let renders = this.renderHeritageLayer(resChord, epoch, ax.phrase, target, tension, mosaicBar);
-                
-                // #ЗАЧЕМ: ПЛАН №2555. Принудительный унисон "Золотой Доли".
                 renders = renders.filter(n => this.isGolden(n.time / TICK_TO_BEAT));
-                renders.forEach(n => {
-                    n.note = this.wrapMelody(n.note);
-                    n.weight *= 0.85;
-                    // #ЗАЧЕМ: The Long Howl. Увеличиваем хвост для "органного" резонанса.
-                    n.duration *= 2.0; 
-                }); 
+                renders.forEach(n => { n.note = this.wrapMelody(n.note); n.weight *= 0.85; n.duration *= 2.0; }); 
                 events.push(...renders); 
                 usedTargetLayers.add(target);
             }
@@ -284,17 +261,56 @@ export class DarkFoundryBrain {
             events, tension, beautyScore: 0.95,
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
-            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Foundry Arp', ensemble: 'Power Protocol' },
-            narrative: `Foundry Power V8 | Chugging: ON | Long Howl: ON`
+            activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Industrial Arp', drums: 'Dynamic Foundry' },
+            narrative: `Foundry V8.3 | Subtle Grid: ON | Mincer: SAFE`
         };
     }
 
-    private renderFoundryDrums(epoch: number, tension: number, kit: any): FractalEvent[] {
+    private renderRefinedFoundryDrums(epoch: number, tension: number, mosaicBar: number, kit: any): FractalEvent[] {
         const events: FractalEvent[] = [];
         const kickSample = kit.kick[this.rng.nextInt(kit.kick.length)];
         const snareSample = kit.snare[0] || 'drum_snare';
-        [0, 3, 6, 9].forEach(t => events.push({ type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.55, technique: 'hit', dynamics: 'f', phrasing: 'staccato' }));
-        [3, 9].forEach(t => events.push({ type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, weight: 0.65, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' }));
+
+        // --- 1. CORE 4/4 (STABLE) ---
+        [0, 3, 6, 9].forEach(t => events.push({ 
+            type: kickSample as any, note: 36, time: t * TICK_TO_BEAT, duration: 0.1, 
+            weight: 0.55 + (tension * 0.1), technique: 'hit', dynamics: 'f', phrasing: 'staccato' 
+        }));
+        [3, 9].forEach(t => events.push({ 
+            type: snareSample as any, note: 38, time: t * TICK_TO_BEAT, duration: 0.1, 
+            weight: 0.65, technique: 'hit', dynamics: 'mf', phrasing: 'staccato' 
+        }));
+
+        // --- 2. DYNAMIC PERC (HATS & GHOSTS) ---
+        const offbeats = [1.5, 4.5, 7.5, 10.5];
+        offbeats.forEach(t => {
+            const prob = 0.5 + (tension * 0.5);
+            if (this.rng.chance(prob * 100)) {
+                events.push({ type: kit.hihat[0] as any, note: 42, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.45, technique: 'hit' });
+            }
+        });
+
+        // Add 1/16th "chug" on snare or high hats at high tension
+        if (tension > 0.7) {
+            [0.75, 2.25, 3.75, 5.25, 6.75, 8.25, 9.75, 11.25].forEach(t => {
+                if (this.rng.chance(30)) {
+                    events.push({ type: 'drum_snare_ghost_note', note: 38, time: t * TICK_TO_BEAT, duration: 0.05, weight: 0.2, technique: 'ghost' });
+                }
+            });
+        }
+
+        // --- 3. DNA HERITAGE OVERLAY (SUBTLE) ---
+        if (this.currentDrumAxioms.length > 0 && tension > 0.5) {
+            const ax = this.currentDrumAxioms[this.rng.nextInt(this.currentDrumAxioms.length)];
+            const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
+            const offset = localBar * TICKS_PER_BAR;
+            ax.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).forEach(n => {
+                if (this.rng.chance(35)) { // 35% mix level for heritage
+                    events.push({ type: 'perc-005', note: 48, time: (n.t - offset) * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', pan: -0.7 });
+                }
+            });
+        }
+
         return events;
     }
 
@@ -330,7 +346,6 @@ export class DarkFoundryBrain {
         const localBar = Math.abs(mosaicBar) % this.phraseBarCount(phrase);
         const offset = localBar * TICKS_PER_BAR;
         const barNotes = phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR);
-        
         return barNotes.map(n => {
             const isGolden = this.isGolden(n.t - offset);
             return {
@@ -358,21 +373,13 @@ export class DarkFoundryBrain {
         const root = chord.rootNote + 12 + this.microTransposition;
         const intervals = [0, 7, 12]; 
         const events: FractalEvent[] = [];
-
         this.GOLDEN_TICKS.forEach(t => {
-            const hitChance = 0.5 + (tension * 0.4);
-            if (this.rng.next() < hitChance) {
+            if (this.rng.next() < (0.5 + tension * 0.4)) {
                 intervals.forEach(interval => {
                     events.push({
-                        type: 'accompaniment', 
-                        note: this.constrainAccompanimentOctave(root + interval),
-                        time: t * TICK_TO_BEAT, 
-                        duration: 2.8 * TICK_TO_BEAT, 
-                        weight: 0.45 + (tension * 0.15), 
-                        technique: 'swell', 
-                        dynamics: 'p', 
-                        phrasing: 'legato',
-                        params: { attack: 0.15, release: 0.6, drive: 0.4 }
+                        type: 'accompaniment', note: this.constrainAccompanimentOctave(root + interval),
+                        time: t * TICK_TO_BEAT, duration: 2.8 * TICK_TO_BEAT, weight: 0.45 + (tension * 0.15), 
+                        technique: 'swell', dynamics: 'p', phrasing: 'legato', params: { attack: 0.15, release: 0.6, drive: 0.4 }
                     });
                 });
             }
@@ -383,8 +390,7 @@ export class DarkFoundryBrain {
     private renderShimmerArp(epoch: number, chord: GhostChord, tension: number): FractalEvent[] {
         const root = chord.rootNote + 24 + this.microTransposition; 
         const scale = [0, 7, 12, 19];
-        const rawTicks = [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5];
-        return rawTicks.map(t => ({
+        return [0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5].filter(() => this.rng.chance(40)).map(t => ({
             type: 'melody', note: this.wrapMelody(root + scale[this.rng.nextInt(scale.length)]),
             time: t * TICK_TO_BEAT, duration: 0.5 * TICK_TO_BEAT, weight: 0.55, technique: 'pick', dynamics: 'p', phrasing: 'staccato'
         }));
@@ -407,18 +413,14 @@ export class DarkFoundryBrain {
     }
 
     private constrainBassOctave(note: number): number { 
-        let v = note; 
-        if(!isFinite(v)) return 36; 
-        while (v > 47) v -= 12; 
-        while (v < 28) v += 12; 
+        let v = note; if(!isFinite(v)) return 36; 
+        while (v > 47) v -= 12; while (v < 28) v += 12; 
         return v; 
     }
     
     private constrainAccompanimentOctave(note: number): number { 
-        let v = note; 
-        if(!isFinite(v)) return 60; 
-        while (v > 83) v -= 12; 
-        while (v < 48) v += 12; 
+        let v = note; if(!isFinite(v)) return 60; 
+        while (v > 83) v -= 12; while (v < 48) v += 12; 
         return v; 
     }
 }
