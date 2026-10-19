@@ -57,8 +57,8 @@ interface EngineConfig {
 }
 
 /**
- * @fileOverview Fractal Music Engine V47.3 — "Bass Purity Protocol".
- * #ЗАЧЕМ: ПЛАН №2880. Принудительный fallback баса в Foundry на глубокие тембры.
+ * @fileOverview Fractal Music Engine V47.4 — "Bass Purity Final".
+ * #ЗАЧЕМ: Исправление ключей пресетов (bass_ambient -> glideBass).
  */
 export class FractalMusicEngine {
   public config: EngineConfig;
@@ -338,12 +338,12 @@ export class FractalMusicEngine {
         Object.assign(instrumentHints, result.instrumentOverrides);
     }
 
-    // #ЗАЧЕМ: Протокол "Bass Purity Protocol". 
-    // #ЧТО: ПЛАН №2880. Принудительный выбор глубоких басов для Foundry и Cyber Blues.
+    // #ЗАЧЕМ: Протокол "Bass Purity Final". 
+    // #ЧТО: Исправлен ключ пресета (bass_ambient -> glideBass).
     if (this.config.genre === 'cyber_blues') {
         instrumentHints.bass = 'bass_jazz_warm';
     } else if (this.config.genre === 'foundry') {
-        if (tension < 0.45) instrumentHints.bass = 'bass_ambient';
+        if (tension < 0.45) instrumentHints.bass = 'glideBass';
         else if (tension < 0.75) instrumentHints.bass = 'bass_jazz_warm';
         else instrumentHints.bass = 'bass_808';
     }

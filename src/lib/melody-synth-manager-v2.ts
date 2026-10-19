@@ -1,7 +1,6 @@
-
 /**
- * @fileOverview Melody Synth Manager V2.4 — "Unified Registry".
- * #ЗАЧЕМ: ПЛАН №2870 — Использование UNIFIED_V2_REGISTRY для предотвращения тишины в Foundry.
+ * @fileOverview Melody Synth Manager V2.5 — "Property Fix".
+ * #ЗАЧЕМ: Исправление критического бага setInstrument (this.instrument -> this.synth).
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
@@ -89,7 +88,6 @@ export class MelodySynthManagerV2 {
         if (this.isChangingInstrument) return;
         this.isChangingInstrument = true;
 
-        // #ЗАЧЕМ: ПЛАН №2870. Поиск во всех доступных реестрах.
         const preset = instrumentType === 'bass'
             ? BASS_PRESETS[presetName as keyof typeof BASS_PRESETS]
             : (UNIFIED_V2_REGISTRY as any)[presetName];

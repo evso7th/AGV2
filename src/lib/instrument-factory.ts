@@ -1,6 +1,6 @@
 /**
- * @fileOverview Центральная фабрика инструментов V15.0 — "Ambient Tail Restoration".
- * #ЗАЧЕМ: Реализация ПЛАНА №2660. Возврат длинных хвостов для Амбиента через расширение пула до 128 голосов.
+ * @fileOverview Центральная фабрика инструментов V15.1 — "Bass Boost Protocol".
+ * #ЗАЧЕМ: ПЛАН №2900. Усиление баса на уровне фабрики для предотвращения тишины.
  */
 
 import { dbToGain } from './guitar-loudness';
@@ -8,7 +8,6 @@ import { dbToGain } from './guitar-loudness';
 // ───── GLOBAL REGISTRY & LIMITS ─────
 
 export let globalActiveVoices = new Set<any>();
-// #ЗАЧЕМ: ПЛАН №2660. Лимит поднят до 128. Этого достаточно для длинных релизов в Ambient.
 let globalVoiceLimit = 128; 
 
 const STEAL_PRIORITY: Record<string, number> = {
@@ -177,7 +176,8 @@ const createIndependentVoice = (
     const attackTime = isDub ? 0.01 : (isEcho ? 1.8 : adsr.a);
     const releaseTime = isEcho ? 4.5 : adsr.r;
     
-    const peak = velocity * (isEcho ? 0.65 : 0.45); 
+    // #ЗАЧЕМ: ПЛАН №2900. Бас должен быть громким.
+    const peak = velocity * (type === 'bass' ? 0.95 : (isEcho ? 0.65 : 0.45)); 
 
     if (type === 'bass') {
         globalActiveVoices.forEach(v => {
