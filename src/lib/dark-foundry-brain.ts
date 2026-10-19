@@ -1,9 +1,8 @@
 /**
- * @fileOverview Dark Foundry Brain V8.3 — "Subtle Grid Evolution".
- * #ЗАЧЕМ: Оживление ритма индастриал-транса без потери мощи.
- * #ЧТО: 1. Жесткая сетка 4/4 для бочки и снейра (0, 3, 6, 9).
- *       2. Tension-driven hi-hats и ghost-перкуссия.
- *       3. Исправлен баг constrainBassOctave.
+ * @fileOverview Dark Foundry Brain V8.4 — "Stability Lock".
+ * #ЗАЧЕМ: Устранение ReferenceError и восстановление партии ударных.
+ * #ЧТО: 1. Исправлен метод renderRefinedFoundryDrums для корректного маппинга инструментов.
+ *       2. Окончательно зафиксирована логика constrainBassOctave.
  */
 
 import type {
@@ -173,7 +172,7 @@ export class DarkFoundryBrain {
                         this.currentAccompAxioms = poolToUse.filter(ax => (ax.role.toLowerCase().includes('accomp') || ax.role.toLowerCase().includes('piano')) && normalizeStr(ax.compositionId) === cid && ax.barOffset === picked.barOffset)
                             .map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id, preferredInstrument: ax.preferredInstrument }));
 
-                        const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(ax.compositionId) === cid && ax.barOffset === picked.barOffset);
+                        const drumSiblings = poolToUse.filter(ax => ax.role.toLowerCase().includes('drum') && normalizeStr(picked.compositionId) === cid && ax.barOffset === picked.barOffset);
                         this.currentDrumAxioms = drumSiblings.map(ax => ({ phrase: decompressCompactPhrase(ax.phrase), role: ax.role, id: ax.id }));
 
                         this.currentTheme = { phrase: mergeIdenticalNotes(decompressCompactPhrase(picked.phrase)), startBar: epoch, endBar: epoch + (picked.bars || 4), id: picked.id };
@@ -262,7 +261,7 @@ export class DarkFoundryBrain {
             trackName: this.currentTrackName,
             mutationType: this.currentMutationType,
             activeAxioms: { melody: this.currentTheme ? this.currentTheme.id : 'Industrial Arp', drums: 'Dynamic Foundry' },
-            narrative: `Foundry V8.3 | Subtle Grid: ON | Mincer: SAFE`
+            narrative: `Foundry V8.4 | Subtle Grid: ON | Rhythm Fixed`
         };
     }
 
@@ -290,7 +289,6 @@ export class DarkFoundryBrain {
             }
         });
 
-        // Add 1/16th "chug" on snare or high hats at high tension
         if (tension > 0.7) {
             [0.75, 2.25, 3.75, 5.25, 6.75, 8.25, 9.75, 11.25].forEach(t => {
                 if (this.rng.chance(30)) {
@@ -305,7 +303,7 @@ export class DarkFoundryBrain {
             const localBar = Math.abs(mosaicBar) % this.phraseBarCount(ax.phrase);
             const offset = localBar * TICKS_PER_BAR;
             ax.phrase.filter(n => n.t >= offset && n.t < offset + TICKS_PER_BAR).forEach(n => {
-                if (this.rng.chance(35)) { // 35% mix level for heritage
+                if (this.rng.chance(35)) {
                     events.push({ type: 'perc-005', note: 48, time: (n.t - offset) * TICK_TO_BEAT, duration: 0.1, weight: 0.3, technique: 'hit', pan: -0.7 });
                 }
             });

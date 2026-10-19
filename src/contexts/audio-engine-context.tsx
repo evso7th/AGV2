@@ -1,6 +1,7 @@
 /**
- * @fileOverview Audio Engine Context V84.1 — "Platform-aware Auto-bridge".
- * #ЗАЧЕМ: Реализация ПЛАНА №2810. Автозапуск моста при нажатии Play ТОЛЬКО для мобильных устройств.
+ * @fileOverview Audio Engine Context V84.2 — "Foundry Rhythm Restoration".
+ * #ЗАЧЕМ: Исправление отсутствия ударных в Foundry.
+ * #ЧТО: Подключение foundryDrumMachine к общему каналу DRM.
  */
 'use client';
 
@@ -18,7 +19,7 @@ import { BlackGuitarSampler } from '@/lib/black-guitar-sampler';
 import { TelecasterGuitarSampler } from '@/lib/telecaster-guitar-sampler';
 import { DarkTelecasterSampler } from '@/lib/dark-telecaster-sampler';
 import { CS80GuitarSampler } from '@/lib/cs80-guitar-sampler';
-import { GUITAR_LOUDNESS_TRIM_DB } from '@/lib/guitar-loudness';
+import { GUITAR_LOUDNESS_TRIM_DB, dbToGain } from '@/lib/guitar-loudness';
 import { loadDnaCache, saveDnaCache } from '@/lib/dna-cache';
 import { BroadcastEngine } from '@/lib/broadcast-engine';
 import { buildMultiInstrument, type InstrumentAPI, setGlobalVoiceLimit, globalAllNotesOff, collectExpiredVoices } from '@/lib/instrument-factory';
@@ -168,7 +169,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   
   const drumMachineRef = useRef<DrumMachine | null>(null);
   const foundryDrumMachineRef = useRef<DrumMachine | null>(null); 
-  const foundryDrumsGainNodeRef = useRef<GainNode | null>(null);
 
   const accompanimentManagerV2Ref = useRef<AccompanimentSynthManagerV2 | null>(null);
   const melodyManagerV2Ref = useRef<MelodySynthManagerV2 | null>(null);
@@ -287,8 +287,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
               masterGainNodeRef.current.gain.setTargetAtTime(calibrationGainsRef.current.master, context.currentTime, 0.05); 
           }
           
-          // #ЗАЧЕМ: ПЛАН №2810. Автозапуск медиа-моста.
-          // #ЧТО: Ограничено только мобильными устройствами для системных виджетов.
           if (isMobile) {
               if (broadcastEngineRef.current && !broadcastEngineRef.current.isActive()) {
                   triggerStreamPulse();
@@ -315,7 +313,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
           workerRef.current.postMessage({ command: 'stop' }); 
           stopAllSounds(); 
 
-          // #ЗАЧЕМ: ПЛАН №2810. Остановка моста при общем Стопе.
           if (broadcastEngineRef.current?.isActive()) {
               broadcastEngineRef.current.stop();
               speakerGainNodeRef.current?.gain.setTargetAtTime(1.0, context.currentTime, 0.05);
@@ -353,7 +350,6 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
   const scheduleEvents = useCallback((events: FractalEvent[], barStartTime: number, tempo: number, barCount: number, totalBars: number, instrumentHints?: InstrumentHints) => {
     if (!Array.isArray(events) || !masterGainNodeRef.current || !audioContextRef.current) return;
     
-    const ctx = audioContextRef.current;
     const targetMasterGain = calibrationGainsRef.current.master;
     const barDuration = (60 / tempo) * 4;
 
@@ -386,6 +382,7 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
     }
 
     const isFoundry = settingsRef.current?.genre === 'foundry';
+    // #ЗАЧЕМ: ПЛАН №2850. Оба экземпляра теперь на одном канале DRM.
     if (isFoundry && foundryDrumMachineRef.current) foundryDrumMachineRef.current.schedule(events, barStartTime, tempo);
     else if (drumMachineRef.current) drumMachineRef.current.schedule(events, barStartTime, tempo);
     
@@ -483,17 +480,15 @@ export const AudioEngineProvider = ({ children }: { children: React.ReactNode })
         recDestRef.current = recDest;
         broadcastEngineRef.current = new BroadcastEngine(context, recDest.stream);
 
-        foundryDrumsGainNodeRef.current = context.createGain();
-        foundryDrumsGainNodeRef.current.gain.value = 0.0; 
-        foundryDrumsGainNodeRef.current.connect(masterGainNodeRef.current!);
-
         ['bass', 'melody', 'accompaniment', 'drums', 'sparkles', 'sfx', 'harmony', 'pianoAccompaniment'].forEach(p => {
             gainNodesRef.current[p] = context.createGain(); 
             gainNodesRef.current[p].connect(['melody', 'harmony'].includes(p) ? samplersMasterGainRef.current! : masterGainNodeRef.current!); 
         });
 
+        // #ЗАЧЕМ: Исправление Foundry. Обе машины подключаются к gainNodesRef.current.drums.
         drumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
-        foundryDrumMachineRef.current = new DrumMachine(context, foundryDrumsGainNodeRef.current!);
+        foundryDrumMachineRef.current = new DrumMachine(context, gainNodesRef.current.drums!);
+
         blackGuitarSamplerRef.current = new BlackGuitarSampler(context, gainNodesRef.current.melody);
         telecasterSamplerRef.current = new TelecasterGuitarSampler(context, gainNodesRef.current.melody);
         darkTelecasterSamplerRef.current = new DarkTelecasterSampler(context, gainNodesRef.current.melody);
