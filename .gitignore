@@ -1,9 +1,14 @@
-
 # Local environment variables
 .env
 .env.*
 !.env.example
+001.env.apikey
+old.env.apike
 
 # Firebase Emulator
 .firebase/hosting.*.cache
-node_modules
+
+# Next.js
+.next/
+node_modules/
+out/
