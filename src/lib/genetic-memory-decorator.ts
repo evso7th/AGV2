@@ -1,7 +1,7 @@
 /**
- * @fileOverview Genetic Memory Decorator V3.3 — "Strict Event Safety".
- * #ЗАЧЕМ: Предотвращение ошибок в менеджерах при отсутствии обязательных полей.
- * #ЧТО: Добавлены дефолтные technique, dynamics и phrasing для всех генерируемых событий.
+ * @fileOverview Genetic Memory Decorator V3.4 — "Mincer Protocol".
+ * #ЗАЧЕМ: ПЛАН №2860. Реализация "всеядного" заполнения пауз для Foundry.
+ * #ЧТО: Добавлен филлер для accompaniment и унифицирована логика для Dark Trance.
  */
 import { FractalEvent } from '@/types/music';
 import { 
@@ -21,6 +21,7 @@ interface FillerState {
 
 let pianoFillerState: FillerState | null = null;
 let melodyFillerState: FillerState | null = null;
+let accompFillerState: FillerState | null = null;
 
 export class GeneticMemoryDecorator {
     public static fillGaps(
@@ -31,44 +32,49 @@ export class GeneticMemoryDecorator {
         rootNote: number
     ): FractalEvent[] {
         const isFoundry = genre === 'foundry';
+        const isTrance = genre === 'psybient';
 
-        // --- 1. PIANO FILLER (Blues/Reggae/Ambient) ---
+        // --- 1. PIANO FILLER (Mincer Protocol: scavenge everything for Foundry) ---
         const hasPiano = events.some(e => e.type === 'pianoAccompaniment');
         if (hasPiano) {
             pianoFillerState = null;
         } else {
-            if (pianoFillerState && pianoFillerState.iteration > 0 && pianoFillerState.iteration % 2 === 0 && pianoFillerState.currentBar === 0) {
-                const candidate = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
-                if (candidate && candidate.id !== pianoFillerState.axiom.id) {
-                    pianoFillerState = this.createState(candidate);
-                }
-            }
-
             if (!pianoFillerState) {
                 const best = findGeneticFillerAxiom(cloudAxioms, 'pianoAccompaniment', tension);
                 if (best) pianoFillerState = this.createState(best);
             }
             if (pianoFillerState) {
-                const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, 24);
+                const filler = this.renderCurrentBar(pianoFillerState, 'pianoAccompaniment', rootNote, isFoundry ? 12 : 24);
                 if (filler.length > 0) events.push(...filler);
                 this.advanceState(pianoFillerState);
                 if (pianoFillerState.iteration >= 16) pianoFillerState = null; 
             }
         }
 
-        // --- 2. MELODY FILLER (Trance/Foundry) ---
-        if (genre === 'psybient' || isFoundry) {
+        // --- 2. ACCOMPANIMENT FILLER (New for Foundry) ---
+        const hasAccomp = events.some(e => e.type === 'accompaniment');
+        if (hasAccomp) {
+            accompFillerState = null;
+        } else if (isFoundry || isTrance) {
+            if (!accompFillerState) {
+                const best = findGeneticFillerAxiom(cloudAxioms, 'accompaniment', tension);
+                if (best) accompFillerState = this.createState(best);
+            }
+            if (accompFillerState) {
+                const filler = this.renderCurrentBar(accompFillerState, 'accompaniment', rootNote, 12, true, 0.45);
+                if (filler.length > 0) events.push(...filler);
+                this.advanceState(accompFillerState);
+                if (accompFillerState.iteration >= 8) accompFillerState = null;
+            }
+        }
+
+        // --- 3. MELODY FILLER (Foundry/Trance) ---
+        if (isTrance || isFoundry) {
             const melodyEvents = events.filter(e => e.type === 'melody');
-            const isStagnant = isFoundry || genre === 'psybient' ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
+            // В Foundry застой детектируется агрессивнее
+            const isStagnant = isFoundry ? (melodyEvents.length <= 1) : (melodyEvents.length === 0);
 
             if (isStagnant) {
-                if (melodyFillerState && melodyFillerState.iteration > 0 && melodyFillerState.iteration % 2 === 0 && melodyFillerState.currentBar === 0) {
-                    const candidate = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
-                    if (candidate && candidate.id !== melodyFillerState.axiom.id) {
-                        melodyFillerState = this.createState(candidate);
-                    }
-                }
-
                 if (!melodyFillerState) {
                     const best = findGeneticFillerAxiom(cloudAxioms, 'melody', tension);
                     if (best) melodyFillerState = this.createState(best);

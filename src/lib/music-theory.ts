@@ -1,6 +1,6 @@
 /**
- * @fileOverview Universal Music Theory Utilities V6.4 — "Foundry Bass Purity".
- * #ЗАЧЕМ: Реализация ПЛАНА №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
+ * @fileOverview Universal Music Theory Utilities V6.5 — "Mincer Expansion".
+ * #ЗАЧЕМ: ПЛАН №2860. Расширение поиска филлеров для поддержки роли accompaniment.
  */
 
 import type { 
@@ -53,8 +53,10 @@ export function findGeneticFillerAxiom(pool: any[], role: string, tension: numbe
     const rolePool = pool.filter(ax => {
         if (ax.ignored) return false;
         const axRole = (ax.role || '').toLowerCase();
+        // #ЗАЧЕМ: Mincer Protocol. Scavenge anything that fits the spectral slot.
         if (role === 'pianoAccompaniment') return axRole.includes('piano') || axRole.includes('accomp');
         if (role === 'melody') return axRole === 'melody';
+        if (role === 'accompaniment') return axRole.includes('accomp') || axRole.includes('piano');
         return false;
     });
     if (rolePool.length === 0) return null;
@@ -202,13 +204,10 @@ export function resolveSemanticTimbre(hint: any, tension: number, part: string, 
         }
 
         if (part === 'bass') {
-            // #ЗАЧЕМ: ПЛАН №1250/2565. Вето на перкуссионные басы в Ambient и Foundry.
             if (genre === 'ambient' || genre === 'foundry') {
                 if (clean.includes('808')) return 'bass_808';
                 if (clean.includes('warm') || clean.includes('jazz')) return 'bass_jazz_warm';
                 if (clean.includes('dark') || clean.includes('ambient')) return 'bass_ambient';
-                
-                // Дефолт для чистки звука: 808 для индустриала, амбиент для Slow Fusion
                 return genre === 'foundry' ? 'bass_808' : 'bass_ambient';
             }
             return BASS_PRESET_MAP[targetHint] || BASS_PRESET_MAP[clean] || 'bass_jazz_warm';
