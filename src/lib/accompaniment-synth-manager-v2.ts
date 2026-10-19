@@ -1,11 +1,12 @@
+
 /**
- * @fileOverview Accompaniment Synth Manager V2.3 — "Automation Clean-up".
- * #ЗАЧЕМ: ПЛАН №2740 — Удаление локальной логики фейдов в пользу Мастер-канала.
+ * @fileOverview Accompaniment Synth Manager V2.4 — "Unified Registry".
+ * #ЗАЧЕМ: ПЛАН №2870 — Использование UNIFIED_V2_REGISTRY для предотвращения тишины в Foundry.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { UNIFIED_V2_REGISTRY, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
 import type { TelecasterGuitarSampler } from './telecaster-guitar-sampler';
@@ -74,7 +75,7 @@ export class AccompanimentSynthManagerV2 {
         if (this.isChangingInstrument) return;
         this.isChangingInstrument = true;
 
-        const preset = V2_PRESETS[presetName as keyof typeof V2_PRESETS];
+        const preset = (UNIFIED_V2_REGISTRY as any)[presetName];
         if (!preset) {
             this.isChangingInstrument = false;
             return;
@@ -167,7 +168,7 @@ export class AccompanimentSynthManagerV2 {
     public async setInstrument(instrumentName: string) {
        if (instrumentName === this.activePresetName) return;
 
-       const newPreset = V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
+       const newPreset = (UNIFIED_V2_REGISTRY as any)[instrumentName];
        if (newPreset) {
            await this.loadInstrument(instrumentName, (newPreset as any).type || 'synth');
        } else {

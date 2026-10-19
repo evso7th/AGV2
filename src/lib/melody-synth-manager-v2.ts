@@ -1,11 +1,12 @@
+
 /**
- * @fileOverview Melody Synth Manager V2.3 — "Automation Clean-up".
- * #ЗАЧЕМ: ПЛАН №2740 — Удаление локальной логики фейдов в пользу Мастер-канала.
+ * @fileOverview Melody Synth Manager V2.4 — "Unified Registry".
+ * #ЗАЧЕМ: ПЛАН №2870 — Использование UNIFIED_V2_REGISTRY для предотвращения тишины в Foundry.
  */
 import type { FractalEvent } from '@/types/fractal';
 import type { PlayableNote as Note } from "@/types/music";
 import { buildMultiInstrument } from './instrument-factory';
-import { V2_PRESETS, V1_TO_V2_PRESET_MAP } from './presets-v2';
+import { UNIFIED_V2_REGISTRY, V1_TO_V2_PRESET_MAP } from './presets-v2';
 import { BASS_PRESETS } from './bass-presets';
 import { normalizeEventType } from './music-theory';
 import type { BlackGuitarSampler } from './black-guitar-sampler';
@@ -88,9 +89,10 @@ export class MelodySynthManagerV2 {
         if (this.isChangingInstrument) return;
         this.isChangingInstrument = true;
 
+        // #ЗАЧЕМ: ПЛАН №2870. Поиск во всех доступных реестрах.
         const preset = instrumentType === 'bass'
             ? BASS_PRESETS[presetName as keyof typeof BASS_PRESETS]
-            : V2_PRESETS[presetName as keyof typeof V2_PRESETS];
+            : (UNIFIED_V2_REGISTRY as any)[presetName];
 
         if (!preset) {
             this.isChangingInstrument = false;
@@ -209,7 +211,7 @@ export class MelodySynthManagerV2 {
        const isBassPart = this.partName === 'bass';
        const preset = isBassPart
            ? BASS_PRESETS[instrumentName as keyof typeof BASS_PRESETS]
-           : V2_PRESETS[instrumentName as keyof typeof V2_PRESETS];
+           : (UNIFIED_V2_REGISTRY as any)[instrumentName];
 
        if (preset) {
            await this.loadInstrument(instrumentName, isBassPart ? 'bass' : (preset.type || 'synth'));
