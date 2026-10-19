@@ -4,6 +4,7 @@
 !.env.example
 001.env.apikey
 old.env.apike
+old.env
 
 # Firebase Emulator
 .firebase/hosting.*.cache
